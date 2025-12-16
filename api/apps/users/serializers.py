@@ -83,8 +83,23 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8, required=True)
-    password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)
+    password_validator = RegexValidator(
+        regex=r'^(?=.*[a-z])(?=.*[A-Z]).+$',
+        message="Пароль має містити хоча б одну велику та одну малу літеру."
+    )
+
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        required=True,
+        validators=[password_validator]
+    )
+
+    password_confirm = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        required=True
+    )
 
     phone_country_code = serializers.CharField(
         max_length=5,
