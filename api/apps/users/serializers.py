@@ -1,7 +1,86 @@
 from django.core.validators import RegexValidator
 from .models.user import User
+from .models import Role
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['full_name'] = user.full_name
+        token['role'] = user.role.name if user.role else 'None'
+        return token
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ('id', 'name', 'slug')
+
+
+class UserSerializer(serializers.ModelSerializer):
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        source='role',
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+
+    role = RoleSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'email',
+            'full_name',
+            'phone',
+            'role', 'role_id'
+        ]
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    role = RoleSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'full_name',
+            'role',
+        )
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        source='role',
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+
+    role = RoleSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'full_name',
+            'phone',
+            'role_id',
+            'role',
+        )
+
+        read_only_fields = ('id',)
+
 
 class RegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8, required=True)
