@@ -3,79 +3,98 @@
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/src/hooks/use-toast"
+import { authApi } from "../api"
+import type { RegisterPayload, ValidationErrorResponse } from "../types"
 
 export function useSignup() {
-    const [name, setName] = useState("")
+    const [fullName, setFullName] = useState("")
     const [email, setEmail] = useState("")
+    const [role, setRole] = useState<number | null>(null)
     const [password, setPassword] = useState("")
+    const [passwordConfirm, setPasswordConfirm] = useState("")
+    const [phoneCountryCode, setPhoneCountryCode] = useState("+380")
+    const [phoneNationalNumber, setPhoneNationalNumber] = useState("")
     const [isLoading, setIsLoading] = useState(false)
+
     const router = useRouter()
     const { toast } = useToast()
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
+
+        if (role === null) {
+            toast({
+                title: "Role is required",
+                variant: "error",
+            })
+            return
+        }
+
         setIsLoading(true)
 
+        const payload: RegisterPayload = {
+            full_name: fullName,
+            email,
+            role,
+            password,
+            password_confirm: passwordConfirm,
+            phone_country_code: phoneCountryCode,
+            phone_national_number: phoneNationalNumber,
+        }
+
         try {
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 1000))
+            await authApi.register(payload)
 
-            // Get existing users or initialize empty array
-            const registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]")
+            toast({
+                title: "Account created",
+                description: "You can now sign in.",
+            })
 
-            // Check if user already exists
-            const userExists = registeredUsers.some((u: any) => u.email === email)
+            router.push("/login")
+        } catch (err) {
+            const errors = err as ValidationErrorResponse
 
-            if (userExists) {
+            if (errors?.email) {
                 toast({
-                    title: "Email already registered",
-                    description: "Please use a different email or sign in.",
-                    variant: "destructive",
+                    title: "Registration failed",
+                    description: errors.email[0],
+                    variant: "error",
                 })
-                setIsLoading(false)
-                return
+            } else if (errors?.password_confirm) {
+                toast({
+                    title: "Password mismatch",
+                    description: errors.password_confirm[0],
+                    variant: "error",
+                })
+            } else {
+                toast({
+                    title: "Error",
+                    description: "Something went wrong. Please try again.",
+                    variant: "error",
+                })
             }
-
-            // Create new user
-            const newUser = {
-                id: Date.now().toString(),
-                name,
-                email,
-                password,
-                role: "Editor",
-                status: "Active",
-                joinDate: new Date().toISOString(),
-            }
-
-            // Save to localStorage
-            registeredUsers.push(newUser)
-            localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers))
-            localStorage.setItem("currentUser", JSON.stringify(newUser))
-
-            toast({
-                title: "Account created!",
-                description: "Welcome to Translation CRM.",
-            })
-
-            router.push("/dashboard")
-        } catch (error) {
-            toast({
-                title: "Error",
-                description: "Something went wrong. Please try again.",
-                variant: "destructive",
-            })
         } finally {
             setIsLoading(false)
         }
     }
 
     return {
-        name,
+        fullName,
         email,
+        role,
         password,
-        setName,
+        passwordConfirm,
+        phoneCountryCode,
+        phoneNationalNumber,
+
+        setFullName,
         setEmail,
+        setRole,
         setPassword,
+        setPasswordConfirm,
+        setPhoneCountryCode,
+        setPhoneNationalNumber,
+
         handleSubmit,
         isLoading,
     }

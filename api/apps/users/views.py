@@ -127,7 +127,7 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
     serializer_class = RegistrationSerializer
-    permission_classes = (IsAdminUser,)
+    # permission_classes = (IsAdminUser,)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

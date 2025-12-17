@@ -34,14 +34,14 @@ export function useLogin() {
                 toast({
                     title: "Invalid credentials",
                     description: "Please check your email and password.",
-                    variant: "destructive",
+                    variant: "error",
                 })
             }
         } catch (error) {
             toast({
                 title: "Error",
                 description: "Something went wrong. Please try again.",
-                variant: "destructive",
+                variant: "error",
             })
         } finally {
             setIsLoading(false)
