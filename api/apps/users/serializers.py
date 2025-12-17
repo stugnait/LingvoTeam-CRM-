@@ -4,7 +4,9 @@ from .models import Role
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
@@ -81,6 +83,56 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
         read_only_fields = ('id',)
 
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, min_length=8, required=True)
+    new_password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError({"new_password_confirm": "Паролі не збігаються."})
+        return attrs
+
+class UserSelfUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'full_name',
+            'phone'
+        )
+
+        read_only_fields = ('id',)
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, email):
+        if not User.objects.filter(email=email, is_active=True).exists():
+            raise serializers.ValidationError("Користувача з таким email не існує.")
+        return email
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)
+    new_password_confirm = serializers.CharField(min_length=8)
+
+    def validate(self, data):
+        if data["new_password"] != data["new_password_confirm"]:
+            raise serializers.ValidationError("Паролі не співпадають.")
+
+        try:
+            uid = force_str(urlsafe_base64_decode(data["uid"])) # секуріті
+            user = User.objects.get(pk=uid)
+        except Exception:
+            raise serializers.ValidationError("Невалідний uid.")
+
+        if not default_token_generator.check_token(user, data["token"]):
+            raise serializers.ValidationError("Невалідний або прострочений токен.")
+
+        data["user"] = user
+        return data
 
 class RegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8, required=True)

@@ -35,6 +35,11 @@ MIDDLEWARE = [
 
 STATIC_URL = 'static/'
 
+FRONTEND_URL = "http://localhost:3000"
+DEFAULT_FROM_EMAIL = "noreply@lingvoteam.com"
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -70,6 +75,9 @@ MIGRATION_MODULES = {}
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.users.utils.StandardResultsPagination",
     "PAGE_SIZE": 10,
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.users.authentification.CookieJWTAuthentication",
+    ],
 
 }
 
