@@ -9,7 +9,7 @@ import type { RegisterPayload, ValidationErrorResponse } from "../types"
 export function useSignup() {
     const [fullName, setFullName] = useState("")
     const [email, setEmail] = useState("")
-    const [role, setRole] = useState<number | null>(null)
+    const [role, setRole] = useState(0)
     const [password, setPassword] = useState("")
     const [passwordConfirm, setPasswordConfirm] = useState("")
     const [phoneCountryCode, setPhoneCountryCode] = useState("+380")
@@ -50,7 +50,7 @@ export function useSignup() {
                 description: "You can now sign in.",
             })
 
-            router.push("/login")
+            router.push("/dashboard")
         } catch (err) {
             const errors = err as ValidationErrorResponse
 

@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/src/hooks/use-toast"
+import { authApi } from "../api"
+import type { LoginPayload, ValidationErrorResponse } from "../types"
 
 export function useLogin() {
     const [email, setEmail] = useState("")
@@ -15,34 +17,42 @@ export function useLogin() {
         e.preventDefault()
         setIsLoading(true)
 
+        const payload: LoginPayload = {
+            email,
+            password
+        }
+
         try {
             // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 1000))
+            await authApi.login(payload)
 
-            // Check localStorage for registered users
-            const registeredUsers = JSON.parse(localStorage.getItem("registeredUsers") || "[]")
-            const user = registeredUsers.find((u: any) => u.email === email && u.password === password)
+            toast({
+                title: "Successfully entered",
+                description: "Now you can use the product"
+            })
+            router.push("/dashboard")
+        } catch (err) {
+            const errors = err as ValidationErrorResponse
 
-            if (user) {
-                localStorage.setItem("currentUser", JSON.stringify(user))
+            if (errors?.email) {
                 toast({
-                    title: "Welcome back!",
-                    description: "You have successfully signed in.",
+                    title: "Registration failed",
+                    description: errors.email[0],
+                    variant: "error",
                 })
-                router.push("/dashboard")
+            } else if (errors?.password_confirm) {
+                toast({
+                    title: "Password mismatch",
+                    description: errors.password_confirm[0],
+                    variant: "error",
+                })
             } else {
                 toast({
-                    title: "Invalid credentials",
-                    description: "Please check your email and password.",
+                    title: "Error",
+                    description: "Something went wrong. Please try again.",
                     variant: "error",
                 })
             }
-        } catch (error) {
-            toast({
-                title: "Error",
-                description: "Something went wrong. Please try again.",
-                variant: "error",
-            })
         } finally {
             setIsLoading(false)
         }

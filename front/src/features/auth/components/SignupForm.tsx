@@ -58,7 +58,7 @@ export function SignupForm() {
                 <select
                     id="role"
                     value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    onChange={(e) => setRole(Number(e.target.value))}
                     disabled={isLoading}
                     required
                     className="w-full rounded-md border px-3 py-2 text-sm"
