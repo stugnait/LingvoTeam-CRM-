@@ -126,14 +126,12 @@ class ForgotPasswordView(APIView):
         send_mail(
             subject="Відновлення паролю.",
             message=f"Перейдіть за посиланням для зміни пароля:\n{reset_link}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=settings.EMAIL_HOST_USER,
             recipient_list=[user.email],
         )
         return Response(
             {
                 "detail": "Лист відправлено на пошту.",
-                "uid": uid,
-                "token": token,
                 "reset_link": reset_link,
             },
             status=status.HTTP_200_OK
