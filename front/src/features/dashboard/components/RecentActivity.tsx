@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card"
+import { Card } from "@/src/components/ui/card"
 
 const activities = [
     { user: "Sarah Johnson", action: "created new project", target: "Website Localization", time: "2 hours ago" },

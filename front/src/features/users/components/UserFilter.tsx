@@ -1,18 +1,19 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/src/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select"
 import { Search } from "lucide-react"
+import type { UsersFilters } from "../types"
 
-interface Filters {
-    search: string
-    role: string
-    status: string
-}
+// interface Filters {
+//     search: string
+//     role: string
+//     status: string
+// }
 
 interface UserFiltersProps {
-    filters: Filters
-    setFilters: (filters: Filters) => void
+    filters: UsersFilters
+    setFilters: (filters: UsersFilters) => void
 }
 
 export function UserFilters({ filters, setFilters }: UserFiltersProps) {
@@ -27,28 +28,52 @@ export function UserFilters({ filters, setFilters }: UserFiltersProps) {
                     className="pl-9"
                 />
             </div>
-            <Select value={filters.role} onValueChange={(value) => setFilters({ ...filters, role: value })}>
+            <Select
+                value={filters.role}
+                onValueChange={(value) =>
+                    setFilters({ ...filters, role: value })
+                }
+            >
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="All roles" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All roles</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                    <SelectItem value="Manager">Manager</SelectItem>
-                    <SelectItem value="Editor">Editor</SelectItem>
-                    <SelectItem value="Finance">Finance</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="editor">Editor</SelectItem>
+                    <SelectItem value="finance">Finance</SelectItem>
                 </SelectContent>
             </Select>
-            <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+            <Select
+                value={
+                    filters.status === null
+                        ? "all"
+                        : filters.status
+                            ? "active"
+                            : "inactive"
+                }
+                onValueChange={(value) =>
+                    setFilters({
+                        ...filters,
+                        status:
+                            value === "all"
+                                ? null
+                                : value === "active",
+                    })
+                }
+            >
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="All status" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All status</SelectItem>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
             </Select>
+
+
         </div>
     )
 }

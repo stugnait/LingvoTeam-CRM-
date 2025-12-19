@@ -1,40 +1,58 @@
 "use client"
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-
-interface User {
-    id: string
-    name: string
-    email: string
-    role: string
-    status: string
-    joinDate: string
-}
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/src/components/ui/table"
+import { Badge } from "@/src/components/ui/badge"
+import { Button } from "@/src/components/ui/button"
+import {
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+    UserX,
+    UserCheck,
+} from "lucide-react"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu"
+import type { User } from "../types"
 
 interface UserTableProps {
     users: User[]
     onEdit: (user: User) => void
     onDelete: (userId: string) => void
+    onDeactivate: (user: User) => void
 }
 
-export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
-    const getStatusVariant = (status: string) => {
-        return status === "Active" ? "default" : "secondary"
+export function UserTable({
+                              users,
+                              onEdit,
+                              onDelete,
+                              onDeactivate,
+                          }: UserTableProps) {
+    const getRoleVariant = (slug: string) => {
+        const variants: Record<string, "default" | "secondary" | "outline"> = {
+            admin: "default",
+            manager: "secondary",
+            editor: "outline",
+            finance: "outline",
+        }
+        return variants[slug] ?? "outline"
     }
 
-    const getRoleVariant = (role: string) => {
-        const variants: Record<string, "default" | "secondary" | "outline"> = {
-            Admin: "default",
-            Manager: "secondary",
-            Editor: "outline",
-            Finance: "outline",
-        }
-        return variants[role] || "outline"
-    }
+    const getStatusVariant = (isActive: boolean) =>
+        isActive ? "default" : "secondary"
+
+    const getStatusLabel = (isActive: boolean) =>
+        isActive ? "Active" : "Inactive"
 
     return (
         <div className="border border-border rounded-lg bg-card">
@@ -45,25 +63,50 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Joined</TableHead>
-                        <TableHead className="w-[70px]"></TableHead>
+                        <TableHead className="w-[70px]" />
                     </TableRow>
                 </TableHeader>
+
                 <TableBody>
                     {users.map((user) => (
                         <TableRow key={user.id}>
                             <TableCell>
                                 <div>
-                                    <p className="font-medium">{user.name}</p>
-                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                    <p className="font-medium">
+                                        {user.full_name}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {user.email}
+                                    </p>
                                 </div>
                             </TableCell>
+
                             <TableCell>
-                                <Badge variant={getRoleVariant(user.role)}>{user.role}</Badge>
+                                <Badge
+                                    variant={getRoleVariant(
+                                        user.role?.slug || user.role?.name
+                                    )}
+                                >
+                                    {user.role?.name}
+                                </Badge>
                             </TableCell>
+
                             <TableCell>
-                                <Badge variant={getStatusVariant(user.status)}>{user.status}</Badge>
+                                <Badge
+                                    variant={getStatusVariant(user.is_active)}
+                                >
+                                    {getStatusLabel(user.is_active)}
+                                </Badge>
                             </TableCell>
-                            <TableCell className="text-muted-foreground">{new Date(user.joinDate).toLocaleDateString()}</TableCell>
+
+                            <TableCell className="text-muted-foreground">
+                                {user.created_at
+                                    ? new Date(
+                                        user.created_at
+                                    ).toLocaleDateString()
+                                    : "—"}
+                            </TableCell>
+
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -71,12 +114,35 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
+
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => onEdit(user)}>
+                                        <DropdownMenuItem
+                                            onClick={() => onEdit(user)}
+                                        >
                                             <Pencil className="h-4 w-4 mr-2" />
                                             Edit
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onDelete(user.id)} className="text-destructive">
+
+                                        <DropdownMenuItem
+                                            onClick={() => onDeactivate(user)}
+                                        >
+                                            {user.is_active ? (
+                                                <>
+                                                    <UserX className="h-4 w-4 mr-2" />
+                                                    Deactivate
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <UserCheck className="h-4 w-4 mr-2" />
+                                                    Activate
+                                                </>
+                                            )}
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuItem
+                                            onClick={() => onDelete(user.id)}
+                                            className="text-destructive"
+                                        >
                                             <Trash2 className="h-4 w-4 mr-2" />
                                             Delete
                                         </DropdownMenuItem>

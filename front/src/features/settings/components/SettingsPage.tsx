@@ -1,10 +1,10 @@
 "use client"
 
-import { Card } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
+import { Card } from "@/src/components/ui/card"
+import { Label } from "@/src/components/ui/label"
+import { Input } from "@/src/components/ui/input"
+import { Button } from "@/src/components/ui/button"
+import { Switch } from "@/src/components/ui/switch"
 import { useSettings } from "../hooks/useSettings"
 
 export function SettingsPage() {

@@ -15,8 +15,14 @@ export async function apiFetch<T>(
     });
 
     if (!res.ok) {
+        // error може бути без body
         const error = await res.json().catch(() => ({}));
         throw error;
+    }
+
+    // 🔴 КЛЮЧОВЕ ВИПРАВЛЕННЯ
+    if (res.status === 204) {
+        return undefined as T;
     }
 
     return res.json();
