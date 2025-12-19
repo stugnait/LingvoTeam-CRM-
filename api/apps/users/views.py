@@ -126,7 +126,7 @@ class ForgotPasswordView(APIView):
         send_mail(
             subject="Відновлення паролю.",
             message=f"Перейдіть за посиланням для зміни пароля:\n{reset_link}",
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.MAIL_USERNAME,
             recipient_list=[user.email],
         )
         return Response(
