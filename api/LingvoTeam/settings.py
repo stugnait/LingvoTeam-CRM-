@@ -74,6 +74,15 @@ MIDDLEWARE = [
 
 STATIC_URL = 'static/'
 
+FRONTEND_URL = "http://localhost:3000"
+MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+MAIL_HOST = os.getenv("MAIL_HOST")
+MAIL_PORT = os.getenv("MAIL_PORT")
+EMAIL_USE_TLS = True
+
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -109,6 +118,9 @@ MIGRATION_MODULES = {}
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.users.utils.StandardResultsPagination",
     "PAGE_SIZE": 10,
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.users.authentification.CookieJWTAuthentication",
+    ],
 
 }
 

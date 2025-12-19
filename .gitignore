@@ -229,3 +229,5 @@ cython_debug/
 # Google Data
 client_secret.json
 credentials.json
+
+.vscode

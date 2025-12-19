@@ -5,13 +5,20 @@ from rest_framework.views import APIView
 
 from LingvoTeam import settings
 from .authentification import set_auth_cookies
-from .serializers import RegistrationSerializer, UserListSerializer, UserUpdateSerializer, \
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, RegistrationSerializer, ResetPasswordSerializer, UserListSerializer, UserSelfUpdateSerializer, UserUpdateSerializer, \
     CustomTokenObtainPairSerializer, UserSerializer
 from drf_spectacular.utils import extend_schema
 from rest_framework_simplejwt.views import (
     TokenObtainPairView as OriginalTokenObtainPairView,
     TokenRefreshView as OriginalTokenRefreshView, TokenObtainPairView,
 )
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from rest_framework.response import Response
 from rest_framework import status
@@ -37,7 +44,11 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return User.objects.all().select_related('role')
 
 class AdminBlackoutUserView(APIView):
+<<<<<<< HEAD
     # permission_classes = [IsAdminUser]
+=======
+    #permission_classes = [IsAdminUser]
+>>>>>>> user_operations
 
     def post(self, request, user_id):
         try:
@@ -54,6 +65,103 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     #permission_classes = ...
+
+    @action(detail=False, methods=['patch'], url_path='user/update', serializer_class=UserSelfUpdateSerializer, permission_classes=[IsAuthenticated])
+    def update_user(self, request):
+        user = request.user
+        serializer = self.get_serializer(
+            user,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {
+                "message": "Дані успішно оновлено.",
+                "user": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=False, methods=["post"], url_path='user/change-password', permission_classes=[IsAuthenticated])
+    def change_password(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        if not user.check_password(serializer.validated_data["current_password"]):
+            return Response(
+                {"detail": "Неправильний поточний пароль."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.set_password(serializer.validated_data["new_password"])
+        user.save()
+
+        refresh_token = request.COOKIES.get("refresh-token")
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except Exception:
+                pass # поки просто ігнор
+
+        resp = Response(
+            {"message": "Пароль успішно змінено. Зайдіть знову в акаунт.", "logout": True},
+            status=status.HTTP_200_OK
+        )
+        resp.delete_cookie("access-token")
+        resp.delete_cookie("refresh-token")
+        return resp
+
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = User.objects.get(email=serializer.validated_data["email"])
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        reset_link = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+
+        send_mail(
+            subject="Відновлення паролю.",
+            message=f"Перейдіть за посиланням для зміни пароля:\n{reset_link}",
+            from_email=settings.MAIL_USERNAME,
+            recipient_list=[user.email],
+        )
+        return Response(
+            {
+                "detail": "Лист відправлено на пошту.",
+                "reset_link": reset_link,
+            },
+            status=status.HTTP_200_OK
+        )
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data["user"]
+        user.set_password(serializer.validated_data["new_password"])
+        user.save()
+
+        response = Response(
+            {"detail": "Пароль успішно змінено. Будь ласка, увійдіть знову."},
+            status=status.HTTP_200_OK
+        )
+
+        response.delete_cookie("access-token")
+        response.delete_cookie("refresh-token")
+
+        return response
+
 
 
 class LogoutView(APIView):
