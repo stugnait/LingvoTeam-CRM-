@@ -1,0 +1,188 @@
+from django.core.validators import RegexValidator
+from .models.user import User
+from .models import Role
+from rest_framework import serializers
+from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['full_name'] = user.full_name
+        token['role'] = user.role.name if user.role else 'None'
+        return token
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ('id', 'name', 'slug')
+
+
+class UserSerializer(serializers.ModelSerializer):
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        source='role',
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+
+    role = RoleSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'email',
+            'full_name',
+            'phone',
+            'role', 'role_id'
+        ]
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    role = RoleSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'full_name',
+            'role',
+        )
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    role_id = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        source='role',
+        required=False,
+        allow_null=True,
+        write_only=True
+    )
+
+    role = RoleSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'full_name',
+            'phone',
+            'role_id',
+            'role',
+        )
+
+        read_only_fields = ('id',)
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, min_length=8, required=True)
+    new_password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError({"new_password_confirm": "Паролі не збігаються."})
+        return attrs
+
+class UserSelfUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'full_name',
+            'phone'
+        )
+
+        read_only_fields = ('id',)
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, email):
+        if not User.objects.filter(email=email, is_active=True).exists():
+            raise serializers.ValidationError("Користувача з таким email не існує.")
+        return email
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8)
+    new_password_confirm = serializers.CharField(min_length=8)
+
+    def validate(self, data):
+        if data["new_password"] != data["new_password_confirm"]:
+            raise serializers.ValidationError("Паролі не співпадають.")
+
+        try:
+            uid = force_str(urlsafe_base64_decode(data["uid"])) # секуріті
+            user = User.objects.get(pk=uid)
+        except Exception:
+            raise serializers.ValidationError("Невалідний uid.")
+
+        if not default_token_generator.check_token(user, data["token"]):
+            raise serializers.ValidationError("Невалідний або прострочений токен.")
+
+        data["user"] = user
+        return data
+
+class RegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8, required=True)
+    password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)
+
+    phone_country_code = serializers.CharField(
+        max_length=5,
+        write_only=True,
+        validators=[RegexValidator(r'^\+[0-9]{1,3}$', message="Format: +380")]
+    )
+    phone_national_number = serializers.CharField(
+        max_length=20,
+        write_only=True,
+        validators=[RegexValidator(r'^[0-9]{6,14}$', message="Digits only")]
+    )
+
+    class Meta:
+        model = User
+        fields = (
+            'full_name',
+            'email',
+            'phone',
+            'role',
+            'password',
+            'password_confirm',
+            'phone_country_code',
+            'phone_national_number'
+        )
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'role': {'required': True}
+        }
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        password_confirm = validated_data.pop('password_confirm')
+
+        country_code = validated_data.pop('phone_country_code')
+        national_number = validated_data.pop('phone_national_number')
+        validated_data['phone'] = country_code + national_number
+
+        hashed_password = make_password(password)
+        user = User(**validated_data)
+        user.password = hashed_password
+        user.save()
+
+        return user
+
+    def validate(self, data):
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError({"password_confirm": "Паролі не збігаються."})
+
+        return data
