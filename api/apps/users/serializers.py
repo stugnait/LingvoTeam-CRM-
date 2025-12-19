@@ -40,7 +40,8 @@ class UserSerializer(serializers.ModelSerializer):
             'email',
             'full_name',
             'phone',
-            'role', 'role_id'
+            'role', 'role_id',
+            'is_active'
         ]
 
 
@@ -54,6 +55,7 @@ class UserListSerializer(serializers.ModelSerializer):
             'email',
             'full_name',
             'role',
+            'is_active'
         )
 
 
