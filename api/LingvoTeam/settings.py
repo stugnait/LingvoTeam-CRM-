@@ -45,6 +45,12 @@ CORS_ALLOWED_ORIGINS = [
     "https://9b34dedeca46.ngrok-free.app",
     "https://secure.wayforpay.com"
 ]
+# Email
+EMAIL_HOST = os.getenv("MAIL_HOST")
+EMAIL_PORT = os.getenv("MAIL_PORT")
+EMAIL_HOST_USER = os.getenv("MAIL_USERNAME")
+EMAIL_HOST_PASSWORD = os.getenv("MAIL_PASSWORD")
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 INSTALLED_APPS = [
     "corsheaders",
@@ -54,7 +60,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
     'apps.users',
+    'apps.clients',
+    'apps.core',
+    'apps.orders',
+    'apps.translators'
 ]
 
 
@@ -118,9 +129,16 @@ MIGRATION_MODULES = {}
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.users.utils.StandardResultsPagination",
     "PAGE_SIZE": 10,
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "apps.users.authentification.CookieJWTAuthentication",
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # Шлях базується на структурі: папка.папка.файл.Клас
+        'apps.users.authentification.CookieJWTAuthentication',
+
+        # Також залиште стандартну аутентифікацію для тестів через Headers
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'apps.users.permissions.HasPermission',
+    ),
 
 }
 

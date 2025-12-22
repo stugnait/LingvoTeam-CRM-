@@ -1,41 +1,40 @@
+import random
+import secrets
+import string
+
 from django.contrib.auth import get_user_model
-from rest_framework import generics, status, viewsets
+from rest_framework import generics, viewsets
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.views import APIView
-
+from django_filters.rest_framework import DjangoFilterBackend
 from LingvoTeam import settings
 from .authentification import set_auth_cookies
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, RegistrationSerializer, ResetPasswordSerializer, UserListSerializer, UserSelfUpdateSerializer, UserUpdateSerializer, \
+from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, UserSelfUpdateSerializer
+from .serializers import RegistrationSerializer, UserUpdateSerializer, \
     CustomTokenObtainPairSerializer, UserSerializer
 from drf_spectacular.utils import extend_schema
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView as OriginalTokenObtainPairView,
     TokenRefreshView as OriginalTokenRefreshView, TokenObtainPairView,
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from django.core.mail import send_mail
 
 from rest_framework.response import Response
 from rest_framework import status
-
-from .utils import StandardResultsPagination
 
 access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
 refresh_lifetime = settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
 User = get_user_model()
 
 
-
-
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserUpdateSerializer
-
     # permission_classes = (IsAdminUser,)
 
     lookup_field = 'id'
@@ -44,11 +43,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return User.objects.all().select_related('role')
 
 class AdminBlackoutUserView(APIView):
-<<<<<<< HEAD
-    # permission_classes = [IsAdminUser]
-=======
-    #permission_classes = [IsAdminUser]
->>>>>>> user_operations
+    permission_classes = [IsAdminUser]
 
     def post(self, request, user_id):
         try:
@@ -63,8 +58,60 @@ class AdminBlackoutUserView(APIView):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
-    #permission_classes = ...
+    serializer_class = RegistrationSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['is_active', 'role', 'role__slug']
+
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        user = self.get_object()
+        lowercase = string.ascii_lowercase
+        uppercase = string.ascii_uppercase
+        digits = string.digits
+        all_characters = lowercase + uppercase + digits
+
+        password_list = [
+            secrets.choice(lowercase),
+            secrets.choice(uppercase),
+            secrets.choice(digits)  # Додав цифру для надійності
+        ]
+
+        password_list += [secrets.choice(all_characters) for _ in range(9)]
+
+        random.shuffle(password_list)
+
+        temporary_password = "".join(password_list)
+        user.set_password(temporary_password)
+        user.save()
+
+        subject = 'Ваш тимчасовий пароль'
+        message = f"""
+            Вітаємо, {user.full_name}!
+
+            Адміністратор скинув ваш пароль. 
+            Ваш новий тимчасовий пароль: {temporary_password}
+
+            Будь ласка, змініть його після входу в систему.
+            """
+
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,
+                [user.email],
+                fail_silently=False,
+            )
+            return Response(
+                {"detail": f"Новий пароль надіслано на пошту {user.email}"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Пароль змінено, але помилка при відправці пошти: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=['patch'], url_path='user/update', serializer_class=UserSelfUpdateSerializer, permission_classes=[IsAuthenticated])
     def update_user(self, request):
@@ -83,7 +130,7 @@ class UserViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
-    
+
     @action(detail=False, methods=["post"], url_path='user/change-password', permission_classes=[IsAuthenticated])
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -235,7 +282,7 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
     serializer_class = RegistrationSerializer
-    # permission_classes = (IsAdminUser,)
+    permission_classes = (IsAdminUser,)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
