@@ -70,6 +70,7 @@ export function useProfile() {
             const res = await profileApi.changePassword({
                 current_password: passwordForm.current_password,
                 new_password: passwordForm.new_password,
+                new_password_confirm: passwordForm.confirm_password
             })
 
             toast({
