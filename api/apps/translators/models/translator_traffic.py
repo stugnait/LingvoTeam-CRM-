@@ -25,6 +25,13 @@ class TranslatorTraffic(models.Model):
         null=True,
         blank=True,
     )
+    translator = models.ForeignKey(
+        'Translator',
+        on_delete=models.CASCADE,
+        related_name='translatortraffic',
+        null=True,
+        blank=True
+    )
 
     class Meta:
         db_table = 'translator_traffic'
