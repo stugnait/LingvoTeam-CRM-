@@ -90,7 +90,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     @action(detail=False, methods=["post"], url_path='user/change-password', permission_classes=[IsAuthenticated])
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -177,11 +177,12 @@ class LogoutView(APIView):
     def post(self, request):
         response = Response({"detail": "Logout successful."}, status=status.HTTP_200_OK)
 
-        response.delete_cookie('access_token')
-        response.delete_cookie('refresh_token')
+        response.delete_cookie('access-token')
+        response.delete_cookie('refresh-token')
 
 
         return response
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -191,8 +192,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.user
-
         tokens = serializer.validated_data
+
+        # ✅ Правильні ключі
         access = tokens.get('access')
         refresh = tokens.get('refresh')
 
@@ -204,37 +206,39 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         })
 
         set_auth_cookies(response, access, refresh)
-
         return response
 
 
 class CustomTokenRefreshView(OriginalTokenRefreshView):
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get('refresh_token')
+        refresh_token = request.COOKIES.get('refresh-token')
+
         if not refresh_token:
-            return Response({"detail": "Refresh token not found."},
-                            status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": "Refresh token not found."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
         request.data['refresh'] = refresh_token
-
         response = super().post(request, *args, **kwargs)
-        if response.status_code == status.HTTP_200_OK:
-            # ❗ ЗМІНА ПОРЯДКУ ТА БЕЗПЕКИ: спочатку отримуємо, потім встановлюємо, потім очищаємо ❗
-            access_token = response.data.get('access')  # Отримуємо токен
 
-            # Встановлення Access Token
+        if response.status_code == status.HTTP_200_OK:
+            # ✅ Правильний ключ
+            access_token = response.data.get('access')
+
             if access_token:
                 response.set_cookie(
-                    key='access_token',
+                    key='access-token',
                     value=access_token,
                     max_age=int(access_lifetime.total_seconds()),
                     httponly=True,
-                    secure=False
+                    secure=not settings.DEBUG,
+                    samesite='Lax'
                 )
 
-            # Очищуємо тіло відповіді
+            # Очищаємо тіло відповіді
             response.data.pop('access', None)
-            response.data.pop('refresh', None)  # SimpleJWT може повертати новий refresh-токен при ротації
+            response.data.pop('refresh', None)
 
         return response
 
