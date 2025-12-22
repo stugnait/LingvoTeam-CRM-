@@ -1,4 +1,4 @@
-import { CrmHeader } from "@/src/components/dashboard/crm-header"
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Badge } from "@/src/components/ui/badge"
@@ -29,7 +29,7 @@ const translations = [
 export default function TranslationsPage() {
     return (
         <>
-            <CrmHeader title="Translations" />
+            <DashboardHeader/>
             <main className="flex-1 overflow-y-auto p-6">
                 <div className="mx-auto max-w-7xl space-y-6">
                     {/* Page Actions */}
