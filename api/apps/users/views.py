@@ -44,11 +44,7 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return User.objects.all().select_related('role')
 
 class AdminBlackoutUserView(APIView):
-<<<<<<< HEAD
-    # permission_classes = [IsAdminUser]
-=======
     #permission_classes = [IsAdminUser]
->>>>>>> user_operations
 
     def post(self, request, user_id):
         try:
@@ -83,6 +79,17 @@ class UserViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="me",
+        permission_classes=[IsAuthenticated],
+        serializer_class=UserSerializer,
+    )
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=["post"], url_path='user/change-password', permission_classes=[IsAuthenticated])
     def change_password(self, request):

@@ -17,12 +17,15 @@ export function DashboardHeader() {
     const { toast } = useToast()
 
     const handleLogout = () => {
-        localStorage.removeItem("currentUser")
         toast({
             title: "Signed out",
             description: "You have been successfully signed out.",
         })
         router.push("/login")
+    }
+
+    const handleProfile = () => {
+        router.push("/dashboard/profile")
     }
 
     return (
@@ -44,13 +47,19 @@ export function DashboardHeader() {
                             </div>
                         </Button>
                     </DropdownMenuTrigger>
+
                     <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+                        <DropdownMenuItem onClick={handleProfile}>
                             <User className="h-4 w-4 mr-2" />
-                            Profile Settings
+                            Profile
                         </DropdownMenuItem>
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+
+                        <DropdownMenuItem
+                            onClick={handleLogout}
+                            className="text-destructive"
+                        >
                             <LogOut className="h-4 w-4 mr-2" />
                             Sign Out
                         </DropdownMenuItem>
