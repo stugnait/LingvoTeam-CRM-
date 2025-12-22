@@ -18,13 +18,14 @@ from .models import Order, OrderTraffic, Status, OrderLink
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer
 from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
+from ..users.permissions import HasPermission
 
 
 class OrderTrafficViewSet(viewsets.ModelViewSet):
     queryset = OrderTraffic.objects.select_related('language_pair', 'currency_id').all()
     serializer_class = OrderTrafficSerializer
-    permission_classes = [AllowAny]
-
+    permission_classes = [HasPermission]
+    required_permissions = ['order.traffic.manage']
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
@@ -210,3 +211,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "expire_at": expire_date
             }
         }, status=status.HTTP_201_CREATED)
+
+    def get_required_permissions(self, request):
+        mapping = {
+            'create': ['order.create'],    # Створення
+            'list': ['order.view'],        # Перегляд у таблиці
+            'update': ['order.update'],    # Редагування/Додавання файлів
+            'partial_update': ['order.update'],
+            'assign_translator': ['order.assign'] # Призначення виконавців
+        }
+        return mapping.get(self.action, [])

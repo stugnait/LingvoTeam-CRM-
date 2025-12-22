@@ -83,6 +83,16 @@ MIGRATION_MODULES = {}
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.users.utils.StandardResultsPagination",
     "PAGE_SIZE": 10,
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # Шлях базується на структурі: папка.папка.файл.Клас
+        'apps.users.authentification.CookieJWTAuthentication',
+
+        # Також залиште стандартну аутентифікацію для тестів через Headers
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'apps.users.permissions.HasPermission',
+    ),
 
 }
 
