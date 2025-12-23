@@ -87,7 +87,7 @@ class Order(models.Model):
     translator_comment = models.TextField(null=True)
 
 
-    created_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True)
     completed_at = models.DateTimeField(null=True)
 

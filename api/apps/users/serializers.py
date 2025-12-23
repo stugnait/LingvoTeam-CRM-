@@ -140,67 +140,47 @@ class ResetPasswordSerializer(serializers.Serializer):
         data["user"] = user
         return data
 
+
 class RegistrationSerializer(serializers.ModelSerializer):
-    # Поля телефону залишаємо без змін
-    phone_country_code = serializers.CharField(
-        max_length=5,
-        write_only=True,
-        validators=[RegexValidator(r'^\+[0-9]{1,3}$', message="Format: +380")]
-    )
-    phone_national_number = serializers.CharField(
-        max_length=20,
-        write_only=True,
-        validators=[RegexValidator(r'^[0-9]{6,14}$', message="Digits only")]
+    password_validator = RegexValidator(
+        regex=r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$',
+        message="Пароль має містити хоча б одну велику літеру, одну малу літеру та цифру."
     )
 
-    # Пароль тепер тільки для читання, щоб повернути його після створення
-    generated_password = serializers.CharField(read_only=True)
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+        required=True,
+        validators=[password_validator]
+    )
+
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        required=True
+    )
 
     class Meta:
         model = User
         fields = (
-            'full_name',
             'email',
+            'full_name',
             'phone',
             'role',
-            'generated_password', # Додаємо, щоб фронтенд міг його показати
-            'phone_country_code',
-            'phone_national_number'
+            'password',
         )
         extra_kwargs = {
+            'password': {'write_only': True},
+            'full_name': {'required': True},
+            'email': {'required': True},
             'role': {'required': True},
-            'phone': {'read_only': True}
         }
 
     def create(self, validated_data):
-        # 1. Формуємо номер телефону
-        country_code = validated_data.pop('phone_country_code')
-        national_number = validated_data.pop('phone_national_number')
-        validated_data['phone'] = country_code + national_number
+        password = validated_data.pop('password')
 
-        lowercase = string.ascii_lowercase
-        uppercase = string.ascii_uppercase
-        digits = string.digits
-        all_characters = lowercase + uppercase + digits
-
-        password_list = [
-            secrets.choice(lowercase),
-            secrets.choice(uppercase),
-            secrets.choice(digits)  # Додав цифру для надійності
-        ]
-
-        password_list += [secrets.choice(all_characters) for _ in range(9)]
-
-        random.shuffle(password_list)
-
-        temporary_password = "".join(password_list)
         user = User(**validated_data)
-        user.password = make_password(temporary_password)
+
+        user.set_password(password)
         user.save()
 
-        user.generated_password =temporary_password
         return user
-
-    def validate(self, data):
-        # Валідація збігу паролів більше не потрібна, бо користувач їх не вводить
-        return data

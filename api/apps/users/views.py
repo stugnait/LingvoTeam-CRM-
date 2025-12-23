@@ -42,8 +42,9 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return User.objects.all().select_related('role')
 
-class AdminBlackoutUserView(APIView):
-    permission_classes = [IsAdminUser]
+
+class AdminToggleUserStatusView(APIView):
+    # permission_classes = [IsAdminUser]
 
     def post(self, request, user_id):
         try:
@@ -51,10 +52,16 @@ class AdminBlackoutUserView(APIView):
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
 
-        user.is_active = False
+        # 👇 Інвертуємо статус (було True стане False, було False стане True)
+        user.is_active = not user.is_active
         user.save()
 
-        return Response({"detail": f"User {user_id} has been deactivated (blackout)."}, status=200)
+        status_msg = "activated" if user.is_active else "deactivated"
+
+        return Response({
+            "detail": f"User {user_id} has been {status_msg}.",
+            "is_active": user.is_active
+        }, status=200)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -299,16 +306,64 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
     serializer_class = RegistrationSerializer
-    permission_classes = (IsAdminUser,)
+    # permission_classes = (IsAdminUser,)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        data = request.data.copy()
+        final_password = data.get('password')
 
+        if not final_password:
+            lowercase = string.ascii_lowercase
+            uppercase = string.ascii_uppercase
+            digits = string.digits
+            all_characters = lowercase + uppercase + digits
+
+            password_list = [
+                secrets.choice(lowercase),
+                secrets.choice(uppercase),
+                secrets.choice(digits)
+            ]
+            password_list += [secrets.choice(all_characters) for _ in range(9)]
+            random.shuffle(password_list)
+
+            generated_password = "".join(password_list)
+            data['password'] = generated_password
+            final_password = generated_password
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        resp = Response({
-            **serializer.data,
-            'message': 'Реєстрація успішна.'
+        email_subject = 'Реєстрація успішна'
+        email_message = f"""
+        Вітаємо, {user.full_name}!
+
+        Ваш обліковий запис створено успішно.
+        Ваші дані для входу:
+
+        Email: {user.email}
+        Пароль: {final_password}
+
+        Будь ласка, змініть пароль після першого входу.
+        """
+
+        try:
+            send_mail(
+                email_subject,
+                email_message,
+                settings.EMAIL_HOST_USER,
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Помилка відправки пошти: {e}")
+
+        return Response({
+            'user_id': user.id,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'role': user.role.id,  # Повертаємо ID ролі
+            'password': final_password,  # Залишаємо і тут для зручності
+            'message': 'Користувача зареєстровано, пароль надіслано на пошту.'
         }, status=status.HTTP_201_CREATED)
-        return resp
