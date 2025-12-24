@@ -75,12 +75,15 @@ MIDDLEWARE = [
 STATIC_URL = 'static/'
 
 FRONTEND_URL = "http://localhost:3000"
-MAIL_USERNAME = os.getenv("MAIL_USERNAME")
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
+EMAIL_HOST_USER = os.getenv("MAIL_USERNAME")
+EMAIL_HOST_PASSWORD = os.getenv("MAIL_PASSWORD")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-MAIL_HOST = os.getenv("MAIL_HOST")
-MAIL_PORT = os.getenv("MAIL_PORT")
+EMAIL_HOST = os.getenv("MAIL_HOST")
+EMAIL_PORT = os.getenv("MAIL_PORT")
 EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+SERVER_EMAIL = EMAIL_HOST_USER
+
 
 
 TEMPLATES = [
