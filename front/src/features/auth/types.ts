@@ -45,6 +45,34 @@ export type RegisterResponse = {
     user: AuthUser;
 };
 
+// src/features/auth/types.ts
+
+// Existing types...
+
+// Forgot Password
+export interface ForgotPasswordPayload {
+    uid: string
+    token: string
+    email: string
+}
+
+export interface ForgotPasswordResponse {
+    detail: string
+    reset_link: string
+}
+
+export interface ResetPasswordPayload {
+    uid: string
+    token: string
+    new_password: string
+    new_password_confirm: string
+}
+
+export interface ResetPasswordResponse {
+    detail: string
+}
+
+
 
 
 /* ========= ERRORS ========= */
