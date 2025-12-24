@@ -3,15 +3,17 @@ import secrets
 import string
 
 from django.contrib.auth import get_user_model
-from rest_framework import generics, viewsets
+from rest_framework import generics, viewsets, status
 from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from LingvoTeam import settings
 from .authentification import set_auth_cookies
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, UserSelfUpdateSerializer
+from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, \
+    UserSelfUpdateSerializer, UserListSerializer
 from .serializers import RegistrationSerializer, UserUpdateSerializer, \
     CustomTokenObtainPairSerializer, UserSerializer
 from drf_spectacular.utils import extend_schema
@@ -24,8 +26,6 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.core.mail import send_mail
 
-from rest_framework.response import Response
-from rest_framework import status
 
 access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
 refresh_lifetime = settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
@@ -65,10 +65,23 @@ class AdminToggleUserStatusView(APIView):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = RegistrationSerializer
+
+
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['is_active', 'role', 'role__slug']
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return UserListSerializer
+
+        elif self.action == 'update_user':
+            return UserSelfUpdateSerializer
+
+        elif self.action == 'me':
+            return UserSerializer
+
+        return RegistrationSerializer
 
     @action(detail=True, methods=['post'], url_path='reset-password')
     def reset_password(self, request, pk=None):
@@ -367,3 +380,5 @@ class RegistrationView(generics.CreateAPIView):
             'password': final_password,  # Залишаємо і тут для зручності
             'message': 'Користувача зареєстровано, пароль надіслано на пошту.'
         }, status=status.HTTP_201_CREATED)
+
+
