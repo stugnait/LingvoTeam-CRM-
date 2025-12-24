@@ -24,8 +24,9 @@ export function useUsers() {
 
     const [form, setForm] = useState<UserFormData>({
         full_name: "",
+        phone: "",
         email: "",
-        role_id: 0,
+        role: 0,
         is_active: false
     })
 
@@ -100,7 +101,7 @@ export function useUsers() {
     // Modal handlers
     // -------------------------
     const openAddUser = () => {
-        setForm({ full_name: "", email: "", role_id: 0, is_active: false })
+        setForm({ full_name: "", phone: "", email: "", role: 0, is_active: false })
         setIsFormOpen(true)
     }
 
@@ -109,7 +110,8 @@ export function useUsers() {
         setForm({
             full_name: user.full_name,
             email: user.email,
-            role_id: user.role.id,
+            phone: user.phone,
+            role: user.role.id,
             is_active: user.is_active
         })
         setIsFormOpen(true)
@@ -147,7 +149,7 @@ export function useUsers() {
                     description: `${data.full_name} updated successfully`,
                 })
             } else {
-                await usersApi.create(data)
+                await usersApi.register(data)
 
                 toast({
                     title: "User created",

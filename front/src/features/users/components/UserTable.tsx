@@ -78,6 +78,9 @@ export function UserTable({
                                     <p className="text-sm text-muted-foreground">
                                         {user.email}
                                     </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {user.phone}
+                                    </p>
                                 </div>
                             </TableCell>
 
@@ -100,9 +103,9 @@ export function UserTable({
                             </TableCell>
 
                             <TableCell className="text-muted-foreground">
-                                {user.created_at
+                                {user.date_joined
                                     ? new Date(
-                                        user.created_at
+                                        user.date_joined
                                     ).toLocaleDateString()
                                     : "—"}
                             </TableCell>

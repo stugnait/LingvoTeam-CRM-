@@ -136,12 +136,23 @@ export function UsersPage() {
                         }
                     />
 
+                    <Input
+                        placeholder="Phone"
+                        value={form.phone}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                phone: e.target.value,
+                            }))
+                        }
+                    />
+
                     <Select
-                        value={String(form.role_id || "")}
+                        value={String(form.role || "")}
                         onValueChange={(value) =>
                             setForm(prev => ({
                                 ...prev,
-                                role_id: Number(value),
+                                role: Number(value),
                             }))
                         }
                     >

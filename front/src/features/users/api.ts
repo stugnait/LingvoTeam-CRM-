@@ -5,6 +5,7 @@ import type {
     UsersListResponse,
     // UsersQueryParams,
 } from "./types"
+import type {RegisterPayload, RegisterResponse} from "@/src/features/auth/types";
 
 export const usersApi = {
     // GET /users/?search=&role=&status=
@@ -22,6 +23,12 @@ export const usersApi = {
     // POST /users/
     create: (data: UserFormData) =>
         apiFetch<User>("users/", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+
+    register: (data: UserFormData) =>
+        apiFetch<RegisterResponse>("auth/register/", {
             method: "POST",
             body: JSON.stringify(data),
         }),

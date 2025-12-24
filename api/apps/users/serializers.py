@@ -59,6 +59,7 @@ class UserListSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'email',
+            'phone',
             'full_name',
             'role',
             'is_active'
