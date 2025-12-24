@@ -316,6 +316,7 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
         return response
 
 
+
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
     serializer_class = RegistrationSerializer
@@ -323,9 +324,10 @@ class RegistrationView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        final_password = data.get('password')
 
-        if not final_password:
+        input_password = data.get('password')
+
+        if not input_password or input_password.strip() == "":
             lowercase = string.ascii_lowercase
             uppercase = string.ascii_uppercase
             digits = string.digits
@@ -339,9 +341,11 @@ class RegistrationView(generics.CreateAPIView):
             password_list += [secrets.choice(all_characters) for _ in range(9)]
             random.shuffle(password_list)
 
-            generated_password = "".join(password_list)
-            data['password'] = generated_password
-            final_password = generated_password
+            final_password = "".join(password_list)
+
+            data['password'] = final_password
+        else:
+            final_password = input_password
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -357,7 +361,7 @@ class RegistrationView(generics.CreateAPIView):
         Email: {user.email}
         Пароль: {final_password}
 
-        Будь ласка, змініть пароль після першого входу.
+        Будь ласка, збережіть ці дані.
         """
 
         try:
@@ -376,9 +380,8 @@ class RegistrationView(generics.CreateAPIView):
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'role': user.role.id,  # Повертаємо ID ролі
-            'password': final_password,  # Залишаємо і тут для зручності
-            'message': 'Користувача зареєстровано, пароль надіслано на пошту.'
+            'role': user.role.id if user.role else None,
+            'password': final_password,  # Повертаємо той пароль, який був використаний (або згенерований, або ваш)
+            'message': 'Користувача успішно створено.'
         }, status=status.HTTP_201_CREATED)
-
 
