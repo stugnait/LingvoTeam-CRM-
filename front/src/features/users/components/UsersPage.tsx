@@ -1,6 +1,5 @@
 "use client"
 
-import { CrmHeader } from "@/src/components/dashboard/crm-header"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Plus } from "lucide-react"
@@ -19,6 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/src/components/ui/select"
+import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
 
 export function UsersPage() {
     const {
@@ -45,7 +45,7 @@ export function UsersPage() {
 
     return (
         <>
-            <CrmHeader title="Users" />
+            <DashboardHeader />
 
             <main className="flex-1 overflow-y-auto p-6">
                 <div className="mx-auto max-w-6xl space-y-6">
@@ -96,7 +96,7 @@ export function UsersPage() {
                                 onEdit={openEditUser}
                                 onDelete={(id) => {
                                     const user = users.find(u => u.id === id)
-                                    if (user) openDeleteUser(user)
+                                    if (user) {openDeleteUser(user)}
                                 }}
                                 onDeactivate={openDeactivateUser}
                             />
