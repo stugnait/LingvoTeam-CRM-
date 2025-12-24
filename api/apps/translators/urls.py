@@ -6,7 +6,7 @@ from .views import TranslatorViewSet, TranslatorTrafficViewSet
 router = DefaultRouter()
 router.register(r'translator-traffic', TranslatorTrafficViewSet, basename='traffic')
 
-router.register(r'translators', TranslatorViewSet, basename='translators')
+router.register(r'', TranslatorViewSet, basename='translators')
 
 urlpatterns = [
     path('', include(router.urls)),

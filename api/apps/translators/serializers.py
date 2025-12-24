@@ -6,7 +6,7 @@ from .models import Translator, TranslatorTraffic
 
 class TranslatorSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
-
+    orders_count = serializers.IntegerField(read_only=True)
     class Meta:
         model = Translator
         fields = [
@@ -17,6 +17,7 @@ class TranslatorSerializer(serializers.ModelSerializer):
             'work_type',
             'currency_id',
             'currency_name',
+            'orders_count',
             'created_at'
         ]
         read_only_fields = ['created_at']
