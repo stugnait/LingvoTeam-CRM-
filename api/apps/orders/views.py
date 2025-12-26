@@ -20,6 +20,9 @@ from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
 
+from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder
+
+
 
 class OrderTrafficViewSet(viewsets.ModelViewSet):
     queryset = OrderTraffic.objects.select_related('language_pair', 'currency_id').all()
@@ -57,7 +60,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Отримуємо об'єкти для заповнення обов'язкових полів
         status_instance = get_object_or_404(Status, slug="in_translation")  # Стовпець 6 на вашому скріншоті
         User = get_user_model()
-        test_user = User.objects.get(pk=1)
+        test_user = User.objects.get(pk=2)
 
         # 👇 ПЕРЕДАЄМО ID ЯВНО
         order = serializer.save(
@@ -184,13 +187,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.page_count = stats["physical_pages"]
         order.save()
 
-
         # Формуємо повне посилання для менеджера
         full_link = f"https://LingvoTeamCRM.com/{order_link.assignee}/{generated_link_slug}"
-
+        
         lp_response_data = None
         if language_pair_obj:
             lp_response_data = LanguagePairSelectSerializer(language_pair_obj).data
+
+        if files:
+            try:
+                base_path = create_order_folder(order)
+
+                for f in files:
+                    f.seek(0) 
+                    upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+            except Exception as e:
+                print(f"Dropbox failed for order {order.id}: {e}")
 
         return Response({
             "message": "Замовлення успішно створено",
