@@ -47,7 +47,7 @@ export const usersApi = {
         }),
 
     deactivate: (id: string) =>
-        apiFetch<void>(`admin/blackout/${id}/`, {
+        apiFetch<void>(`admin/users/${id}/toggle-status/`, {
             method: "POST"
         }),
 }
