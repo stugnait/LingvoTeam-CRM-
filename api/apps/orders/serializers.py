@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction, models
 
-from apps.orders.models import OrderTraffic, Order
+from apps.orders.models import OrderTraffic, Order, File
 
 
 class Priority(models.TextChoices):
@@ -38,3 +38,10 @@ class RejectTranslationSerializer(serializers.Serializer):
 class ApproveTranslationSerializer(serializers.Serializer):
     score = serializers.IntegerField(min_value=1, max_value=5)
     comment = serializers.CharField(required=False, allow_blank=True)
+class FileCreateSerializer(serializers.ModelSerializer):
+    file_type = serializers.CharField(max_length=16)
+
+    class Meta:
+        model = File
+        fields = ['id', 'order', 'file_type', 'dropbox_url']
+        read_only_fields = ['id']
