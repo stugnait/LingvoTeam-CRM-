@@ -196,7 +196,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             try:
                 subject = f"Нове замовлення #{order.id} - LingvoTeam"
                 message = (
-                    f"Вітаємо, {order.translator_id.full_name or 'перекладач'}!\n\n"
+                    f"Вітаємо, {order.translator_id.full_name}!\n\n"
                     f"Для вас створено новий проект доступу до замовлення #{order.id}.\n"
                     f"Посилання для роботи: {full_link}\n"
                     f"Пароль доступу: {generated_password}\n\n"
