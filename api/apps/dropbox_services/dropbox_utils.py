@@ -33,15 +33,15 @@ def create_order_folder(order):
                 AddMember(
                     member=MemberSelector.email(translator_email),
                     access_level=AccessLevel.editor
-                )#,
-                # AddMember(
-                #     member=MemberSelector.email(editor_email),
-                #     access_level=AccessLevel.editor
-                # ),
-                # AddMember(
-                #     member=MemberSelector.email(manager_email),
-                #     access_level=AccessLevel.editor
-                # )
+                ),
+                AddMember(
+                    member=MemberSelector.email(editor_email),
+                    access_level=AccessLevel.editor
+                ),
+                AddMember(
+                    member=MemberSelector.email(manager_email),
+                    access_level=AccessLevel.editor
+                )
 
             ]
         )
