@@ -1,4 +1,3 @@
-// src/features/auth/components/SignupForm.tsx
 "use client"
 
 import { useState } from "react"
@@ -8,31 +7,10 @@ import { Label } from "@/src/components/ui/label"
 import { useSignup } from "../hooks/useSignup"
 import {
     User, Mail, Phone, Lock, Briefcase, Eye, EyeOff,
-    ChevronDown, Globe, Search, Check
+    ChevronDown
 } from "lucide-react"
 import { cn } from "@/src/lib/utils"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/src/components/ui/select"
-
-import { CountrySelect } from "@/src/components/ui/countrySelect";
-
-// Хардкоджені коди країн (5 популярних)
-const COUNTRY_CODES = [
-    { code: "+1", name: "United States", flag: "🇺🇸" },
-    { code: "+44", name: "United Kingdom", flag: "🇬🇧" },
-    { code: "+380", name: "Ukraine", flag: "🇺🇦" },
-    { code: "+48", name: "Poland", flag: "🇵🇱" },
-    { code: "+49", name: "Germany", flag: "🇩🇪" },
-    { code: "+33", name: "France", flag: "🇫🇷" },
-    { code: "+39", name: "Italy", flag: "🇮🇹" },
-    { code: "+34", name: "Spain", flag: "🇪🇸" },
-    { code: "+90", name: "Turkey", flag: "🇹🇷" },
-]
+import { CountrySelect } from "@/src/components/ui/countrySelect"
 
 export function SignupForm() {
     const {
@@ -56,19 +34,9 @@ export function SignupForm() {
 
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-    const [searchQuery, setSearchQuery] = useState("")
-    const [isCountryOpen, setIsCountryOpen] = useState(false)
-
-    // Фільтрація країн за пошуковим запитом
-    const filteredCountries = COUNTRY_CODES.filter(country =>
-        country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        country.code.includes(searchQuery)
-    )
-
-    const selectedCountry = COUNTRY_CODES.find(c => c.code === phoneCountryCode)
 
     return (
-        <form onSubmit={handleSubmit} className="auth-form animate-slide-up">
+        <form onSubmit={handleSubmit} className="auth-form animate-slide-up space-y-5">
             {/* Full name */}
             <div className="space-y-2.5">
                 <Label htmlFor="full_name" className="flex items-center gap-2">
@@ -143,7 +111,6 @@ export function SignupForm() {
             </div>
 
             {/* Phone with Country Select */}
-            // Замініть блок Phone with Country Select на:
             <div className="space-y-2.5">
                 <Label htmlFor="phone" className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
@@ -165,17 +132,29 @@ export function SignupForm() {
                         <div className="relative">
                             <Input
                                 id="phone_national_number"
-                                placeholder="Phone number"
+                                type="tel"
+                                placeholder="123456789"
                                 value={phoneNationalNumber}
-                                onChange={(e) => setPhoneNationalNumber(e.target.value)}
+                                onChange={(e) => {
+                                    // Дозволяємо тільки цифри
+                                    const value = e.target.value.replace(/\D/g, '')
+                                    setPhoneNationalNumber(value)
+                                }}
                                 required
                                 disabled={isLoading}
-                                className="pl-4"
+                                className="pl-10"
                             />
                             <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         </div>
                     </div>
                 </div>
+
+                {/* Preview повного номера */}
+                {phoneNationalNumber && (
+                    <p className="text-xs text-muted-foreground">
+                        Full number: {phoneCountryCode} {phoneNationalNumber}
+                    </p>
+                )}
             </div>
 
             {/* Password */}
@@ -209,25 +188,29 @@ export function SignupForm() {
                         )}
                     </button>
                 </div>
+
+                {/* Password strength indicator */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <div className={cn(
-                        "h-1 flex-1 rounded-full",
+                        "h-1 flex-1 rounded-full transition-colors",
                         password.length >= 8 ? "bg-emerald-500" : "bg-border"
                     )} />
                     <div className={cn(
-                        "h-1 flex-1 rounded-full",
+                        "h-1 flex-1 rounded-full transition-colors",
                         /[A-Z]/.test(password) ? "bg-emerald-500" : "bg-border"
                     )} />
                     <div className={cn(
-                        "h-1 flex-1 rounded-full",
+                        "h-1 flex-1 rounded-full transition-colors",
                         /[0-9]/.test(password) ? "bg-emerald-500" : "bg-border"
                     )} />
                     <div className={cn(
-                        "h-1 flex-1 rounded-full",
+                        "h-1 flex-1 rounded-full transition-colors",
                         /[^A-Za-z0-9]/.test(password) ? "bg-emerald-500" : "bg-border"
                     )} />
                 </div>
-                <p className="text-xs text-muted-foreground">Minimum 8 characters with letters and numbers</p>
+                <p className="text-xs text-muted-foreground">
+                    Minimum 8 characters with letters and numbers
+                </p>
             </div>
 
             {/* Confirm password */}
