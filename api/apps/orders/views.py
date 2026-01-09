@@ -4,6 +4,7 @@ import pypdf
 import zipfile
 import uuid
 import secrets
+import os
 from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
@@ -14,13 +15,13 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
-from .models import Order, OrderTraffic, Status, OrderLink
+from .models import Order, OrderTraffic, Status, OrderLink, File
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer
 from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
 
-from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder
+from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder, get_shared_folder_link
 
 
 
@@ -60,7 +61,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Отримуємо об'єкти для заповнення обов'язкових полів
         status_instance = get_object_or_404(Status, slug="in_translation")  # Стовпець 6 на вашому скріншоті
         User = get_user_model()
-        test_user = User.objects.get(pk=2)
+        test_user = User.objects.get(pk=1)
 
         # 👇 ПЕРЕДАЄМО ID ЯВНО
         order = serializer.save(
@@ -99,6 +100,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             "images": 0,
             "physical_pages": 0
         }
+
+        chars_with_spaces_separate_files = []
+        physical_pages_separate_files = []
 
         WORD_NAMESPACE = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
 
@@ -174,10 +178,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                 # 1. Рахуємо символи з пробілами (очищаємо тільки невидимі службові символи)
                 full_text_cleaned_display = re.sub(r'[\ufeff\u200b]', '', full_text)
                 stats["chars_with_spaces"] += len(full_text_cleaned_display)
+                chars_with_spaces_separate_files.append(len(full_text_cleaned_display))
 
                 # 2. Рахуємо символи БЕЗ пробілів (видаляємо всі пробіли, ентери, таби)
                 clean_text = re.sub(r'[\s\ufeff\u200b]+', '', full_text)
                 stats["chars_no_spaces"] += len(clean_text)
+                physical_pages_separate_files.append(len(clean_text))
 
             except Exception as e:
                 print(f"General error processing file {file.name}: {e}")
@@ -199,8 +205,21 @@ class OrderViewSet(viewsets.ModelViewSet):
                 base_path = create_order_folder(order)
 
                 for f in files:
-                    f.seek(0) 
+                    f.seek(0)
                     upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+                source_folder_link = get_shared_folder_link(base_path) + str(order.id)
+
+                for i, f in enumerate(files):
+                    ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+
+                    File.objects.create(
+                        order=order,
+                        file_type=ext,
+                        dropbox_url=source_folder_link,
+                        detected_pages=physical_pages_separate_files[i],
+                        detected_symbols=chars_with_spaces_separate_files[i],
+                    )
+
             except Exception as e:
                 print(f"Dropbox failed for order {order.id}: {e}")
 

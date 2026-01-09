@@ -5,12 +5,18 @@ from dropbox.sharing import AddMember, MemberSelector, AccessLevel
 from ..core.models import LanguagePair, Language
 
 
-dbx = dropbox.Dropbox(settings.DROPBOX_ACCESS_TOKEN)
+dbx = dropbox.Dropbox(
+    oauth2_refresh_token=settings.DROPBOX_REFRESH_TOKEN,
+    app_key=settings.DROPBOX_APP_KEY,
+    app_secret=settings.DROPBOX_APP_SECRET,
+)
 
 def create_order_folder(order):
     path = f"/orders/order_{order.id}"
 
     translator_email = order.translator_id.email
+    editor_email = order.editor_id.email
+    manager_email = order.manager_id.email
 
     try:
         dbx.files_create_folder_v2(path)
@@ -27,7 +33,16 @@ def create_order_folder(order):
                 AddMember(
                     member=MemberSelector.email(translator_email),
                     access_level=AccessLevel.editor
+                ),
+                AddMember(
+                    member=MemberSelector.email(editor_email),
+                    access_level=AccessLevel.editor
+                ),
+                AddMember(
+                    member=MemberSelector.email(manager_email),
+                    access_level=AccessLevel.editor
                 )
+
             ]
         )
     except dropbox.exceptions.ApiError:
@@ -90,3 +105,18 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
     )
 
     return full_path
+
+def get_shared_folder_link(base_path):
+    # source_path = f"{base_path}/source"
+
+    # res = dbx.sharing_list_shared_links(
+    #     path=source_path,
+    #     direct_only=True
+    # )
+
+    # if not res.links:
+    #     raise RuntimeError(f"No shared link for {source_path}")
+
+    # return res.links[0].url
+    fixed = "https://www.dropbox.com/home/order_"
+    return fixed
