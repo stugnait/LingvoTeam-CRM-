@@ -190,8 +190,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
 
 
-        # Формуємо повне посилання для менеджера
-        full_link = f"https://LingvoTeamCRM.com/{order_link.assignee}/{generated_link_slug}"
+        full_link = f"https://LingvoTeamCRM.com/{generated_link_slug}"
 
         lp_response_data = None
         if language_pair_obj:
@@ -220,11 +219,11 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_required_permissions(self, request):
         mapping = {
-            'create': ['order.create'],    # Створення
-            'list': ['order.view'],        # Перегляд у таблиці
-            'update': ['order.update'],    # Редагування/Додавання файлів
+            'create': ['order.create'],
+            'list': ['order.view'],
+            'update': ['order.update'],
             'partial_update': ['order.update'],
-            'assign_translator': ['order.assign'] # Призначення виконавців
+            'assign_translator': ['order.assign']
         }
         return mapping.get(self.action, [])
 
