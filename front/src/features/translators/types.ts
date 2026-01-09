@@ -12,9 +12,9 @@ export interface Translator {
     full_name: string
     email: string
     phone: string
-    work_type: number
+    work_type: string
 
-    currency_id: number | null
+    currency_id: number
     currency_name: string
 
     created_at: string // ISO datetime
@@ -28,8 +28,8 @@ export interface TranslatorPayload {
     full_name: string
     email: string
     phone: string
-    work_type: number
-    currency_id?: number | null
+    work_type: string
+    currency_id?: number
 }
 
 export interface TranslatorListResponse {

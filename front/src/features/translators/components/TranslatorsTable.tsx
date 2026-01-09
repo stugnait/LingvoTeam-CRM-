@@ -1,4 +1,29 @@
+"use client"
+
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/src/components/ui/table"
+import { Button } from "@/src/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu"
+import {
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+    UserX,
+    UserCheck,
+} from "lucide-react"
 import type { Translator } from "../types"
+import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
 
 interface Props {
     translators: Translator[]
@@ -14,34 +39,69 @@ export function TranslatorsTable({
                                      onDeactivate,
                                  }: Props) {
     return (
-        <table className="w-full border">
-            <thead>
-            <tr className="border-b">
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th />
-            </tr>
-            </thead>
-            <tbody>
-            {translators.map((t) => (
-                <tr key={t.id} className="border-b">
-                    <td>{t.full_name}</td>
-                    <td>{t.email}</td>
-                    <td>{t.phone}</td>
-                    <td className="flex gap-2">
-                        <button onClick={() => onEdit(t)}>Edit</button>
-                        <button onClick={() => onDeactivate(t)}>Deactivate</button>
-                        <button
-                            onClick={() => onDelete(t)}
-                            className="text-red-600"
-                        >
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-            ))}
-            </tbody>
-        </table>
+        <div className="border border-border rounded-lg bg-card">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Translator</TableHead>
+                        <TableHead>Contacts</TableHead>
+                        <TableHead className="w-[70px]" />
+                    </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                    {translators.map((t) => (
+                        <TableRow key={t.id}>
+                            <TableCell>
+                                <p className="font-medium">{t.full_name}</p>
+                            </TableCell>
+
+                            <TableCell>
+                                <p className="text-sm text-muted-foreground">
+                                    {t.email}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {t.phone || "—"}
+                                </p>
+                            </TableCell>
+
+                            <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onClick={() => onEdit(t)}
+                                        >
+                                            <Pencil className="h-4 w-4 mr-2" />
+                                            Edit
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuItem
+                                            onClick={() => onDeactivate(t)}
+                                        >
+                                            <UserX className="h-4 w-4 mr-2" />
+                                            Deactivate
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuItem
+                                            onClick={() => onDelete(t)}
+                                            className="text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
     )
 }

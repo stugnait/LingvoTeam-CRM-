@@ -23,21 +23,21 @@ export const translatorsApi = {
 
     // POST /translators/
     create: (data: TranslatorPayload) =>
-        apiFetch<Translator>("translators/translators", {
+        apiFetch<Translator>("translators/translators/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     // PATCH /translators/:id/
     update: (id: number, data: Partial<TranslatorPayload>) =>
-        apiFetch<Translator>(`translators/${id}/`, {
+        apiFetch<Translator>(`translators/translators/${id}/`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
 
     // DELETE /translators/:id/
     remove: (id: number) =>
-        apiFetch<void>(`translators/${id}/`, {
+        apiFetch<void>(`translators/translators/${id}/`, {
             method: "DELETE",
         }),
 }
