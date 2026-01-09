@@ -192,6 +192,28 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         full_link = f"https://LingvoTeamCRM.com/{generated_link_slug}"
 
+        if order.translator_id and order.translator_id.email:
+            try:
+                subject = f"Нове замовлення #{order.id} - LingvoTeam"
+                message = (
+                    f"Вітаємо, {order.translator_id.full_name or 'перекладач'}!\n\n"
+                    f"Для вас створено новий проект доступу до замовлення #{order.id}.\n"
+                    f"Посилання для роботи: {full_link}\n"
+                    f"Пароль доступу: {generated_password}\n\n"
+                    f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
+                    f"З повагою, команда LingvoTeam."
+                )
+
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[order.translator_id.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Помилка відправки пошти перекладачу: {e}")
+
         lp_response_data = None
         if language_pair_obj:
             lp_response_data = LanguagePairSelectSerializer(language_pair_obj).data
