@@ -31,3 +31,10 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'client_status': {'required': False},
             'translator_status': {'required': False},
         }
+
+class RejectTranslationSerializer(serializers.Serializer):
+    review_comment = serializers.CharField(required=True)
+
+class ApproveTranslationSerializer(serializers.Serializer):
+    score = serializers.IntegerField(min_value=1, max_value=5)
+    comment = serializers.CharField(required=False, allow_blank=True)

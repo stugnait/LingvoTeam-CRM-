@@ -5,17 +5,22 @@ import zipfile
 import uuid
 import secrets
 from datetime import timedelta
+
+from django.core.mail import send_mail
 from django.utils import timezone
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
-from .models import Order, OrderTraffic, Status, OrderLink
-from .serializers import OrderCreateSerializer, OrderTrafficSerializer
+from LingvoTeam import settings
+from .models import Order, OrderTraffic, Status, OrderLink, OrderEditorReview, TranslationQuality
+from .serializers import OrderCreateSerializer, OrderTrafficSerializer, RejectTranslationSerializer, \
+    ApproveTranslationSerializer
 from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
@@ -187,9 +192,31 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.page_count = stats["physical_pages"]
         order.save()
 
-        # Формуємо повне посилання для менеджера
-        full_link = f"https://LingvoTeamCRM.com/{order_link.assignee}/{generated_link_slug}"
-        
+
+        full_link = f"https://LingvoTeamCRM.com/{generated_link_slug}"
+
+        if order.translator_id and order.translator_id.email:
+            try:
+                subject = f"Нове замовлення #{order.id} - LingvoTeam"
+                message = (
+                    f"Вітаємо, {order.translator_id.full_name}!\n\n"
+                    f"Для вас створено новий проект доступу до замовлення #{order.id}.\n"
+                    f"Посилання для роботи: {full_link}\n"
+                    f"Пароль доступу: {generated_password}\n\n"
+                    f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
+                    f"З повагою, команда LingvoTeam."
+                )
+
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[order.translator_id.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Помилка відправки пошти перекладачу: {e}")
+
         lp_response_data = None
         if language_pair_obj:
             lp_response_data = LanguagePairSelectSerializer(language_pair_obj).data
@@ -199,7 +226,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 base_path = create_order_folder(order)
 
                 for f in files:
-                    f.seek(0) 
+                    f.seek(0)
                     upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
             except Exception as e:
                 print(f"Dropbox failed for order {order.id}: {e}")
@@ -224,12 +251,76 @@ class OrderViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
 
+
     def get_required_permissions(self, request):
         mapping = {
-            'create': ['order.create'],    # Створення
-            'list': ['order.view'],        # Перегляд у таблиці
-            'update': ['order.update'],    # Редагування/Додавання файлів
+            'create': ['order.create'],
+            'list': ['order.view'],
+            'update': ['order.update'],
             'partial_update': ['order.update'],
-            'assign_translator': ['order.assign'] # Призначення виконавців
+            'assign_translator': ['order.assign']
         }
         return mapping.get(self.action, [])
+
+    @action(detail=True, methods=['post'], url_path='reject-translation')
+    def reject_translation(self, request, pk=None):
+        order = self.get_object()
+        serializer = RejectTranslationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        comment = serializer.validated_data['review_comment']
+        REJECTED_STATUS_ID = 6
+
+        OrderEditorReview.objects.create(
+            order=order,
+            editor=request.user,
+            review_comment=comment,
+            review_status='rejected'
+        )
+
+        order.status_id_id = REJECTED_STATUS_ID
+
+        order.save()
+
+        if order.manager_id:
+            try:
+                send_mail(
+                    subject=f"УВАГА: Переклад замовлення #{order.id} відхилено!",
+                    message=f"Редактор {request.user.full_name} відхилив переклад.\nКоментар: {comment}",
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[order.manager.email],
+                    fail_silently=True
+                )
+            except Exception:
+                pass
+
+        return Response({"message": "Переклад відхилено, менеджер повідомлений."}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='approve-translation')
+    def approve_translation(self, request, pk=None):
+        order = self.get_object()
+        serializer = ApproveTranslationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        score = serializer.validated_data['score']
+        comment = serializer.validated_data.get('comment', '')
+        COMPLETED_STATUS_ID = 4
+
+        TranslationQuality.objects.create(
+            order=order,
+            user=request.user,
+            score=score,
+            comment=comment
+        )
+
+        OrderEditorReview.objects.create(
+            order=order,
+            editor=request.user,
+            review_comment="Approved",
+            review_status='approved'
+        )
+
+        order.status_id_id = COMPLETED_STATUS_ID
+        order.save()
+
+        return Response({"message": "Замовлення прийнято та оцінено!"}, status=status.HTTP_200_OK)
