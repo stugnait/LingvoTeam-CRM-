@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useState, useEffect, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/src/hooks/use-toast"
 import { authApi } from "../api"
@@ -19,10 +19,23 @@ export function useSignup() {
     const router = useRouter()
     const { toast } = useToast()
 
+
+    const handleSetPhoneCountryCode = (value: string) => {
+        setPhoneCountryCode(value)
+    }
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
 
-        if (role === null) {
+        console.log("Form submitted with:", {
+            fullName,
+            email,
+            role,
+            phoneCountryCode,
+            phoneNationalNumber,
+        })
+
+        if (role === null || role === 0) {
             toast({
                 title: "Role is required",
                 variant: "error",
@@ -42,6 +55,8 @@ export function useSignup() {
             phone_national_number: phoneNationalNumber,
         }
 
+        console.log("Sending payload:", payload)
+
         try {
             await authApi.register(payload)
 
@@ -53,6 +68,8 @@ export function useSignup() {
             router.push("/dashboard")
         } catch (err) {
             const errors = err as ValidationErrorResponse
+
+            console.error("Registration error:", errors)
 
             if (errors?.email) {
                 toast({
@@ -92,7 +109,7 @@ export function useSignup() {
         setRole,
         setPassword,
         setPasswordConfirm,
-        setPhoneCountryCode,
+        setPhoneCountryCode: handleSetPhoneCountryCode,
         setPhoneNationalNumber,
 
         handleSubmit,

@@ -6,12 +6,13 @@ import { cn } from "@/src/lib/utils"
 export interface LabelProps
     extends React.LabelHTMLAttributes<HTMLLabelElement> {}
 
-export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
+const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     ({ className, ...props }, ref) => (
         <label
             ref={ref}
             className={cn(
-                "text-sm font-medium leading-none text-foreground",
+                "form-label text-sm font-semibold text-foreground",
+                "peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
                 className
             )}
             {...props}
@@ -20,3 +21,5 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
 )
 
 Label.displayName = "Label"
+
+export { Label }

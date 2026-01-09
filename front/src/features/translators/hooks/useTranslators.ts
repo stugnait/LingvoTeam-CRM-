@@ -1,0 +1,184 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import { useToast } from "@/src/hooks/use-toast"
+import { translatorsApi } from "../api"
+import type {
+    Translator,
+    TranslatorPayload,
+} from "../types"
+
+export function useTranslators() {
+    const { toast } = useToast()
+
+    // -------------------------
+    // State
+    // -------------------------
+    const [translators, setTranslators] = useState<Translator[]>([])
+    const [loading, setLoading] = useState(false)
+    const [confirmAction, setConfirmAction] =
+        useState<"delete" | "deactivate" | null>(null)
+
+    const [form, setForm] = useState<TranslatorPayload>({
+        full_name: "",
+        email: "",
+        phone: "",
+        work_type: 0,
+        currency_id: 0,
+    })
+
+    // modals
+    const [isFormOpen, setIsFormOpen] = useState(false)
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+    const [selectedTranslator, setSelectedTranslator] =
+        useState<Translator | null>(null)
+
+    // -------------------------
+    // Load translators
+    // -------------------------
+    const loadTranslators = useCallback(async () => {
+        try {
+            setLoading(true)
+            const response = await translatorsApi.list()
+            setTranslators(response.results)
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to load translators",
+                variant: "error",
+            })
+        } finally {
+            setLoading(false)
+        }
+    }, [toast])
+
+    useEffect(() => {
+        loadTranslators()
+    }, [loadTranslators])
+
+    // -------------------------
+    // Modal handlers
+    // -------------------------
+    const openAddTranslator = () => {
+        setSelectedTranslator(null)
+        setForm({
+            full_name: "",
+            email: "",
+            phone: "",
+            work_type: 0,
+            currency_id: 0,
+        })
+        setIsFormOpen(true)
+    }
+
+    const openEditTranslator = (translator: Translator) => {
+        setSelectedTranslator(translator)
+        setForm({
+            full_name: translator.full_name,
+            email: translator.email,
+            phone: translator.phone,
+            work_type: translator.work_type,
+            currency_id: translator.currency_id,
+        })
+        setIsFormOpen(true)
+    }
+
+    const openDeleteTranslator = (translator: Translator) => {
+        setSelectedTranslator(translator)
+        setConfirmAction("delete")
+        setIsConfirmOpen(true)
+    }
+
+    const openDeactivateTranslator = (translator: Translator) => {
+        setSelectedTranslator(translator)
+        setConfirmAction("deactivate")
+        setIsConfirmOpen(true)
+    }
+
+    const closeModals = () => {
+        setIsFormOpen(false)
+        setIsConfirmOpen(false)
+        setSelectedTranslator(null)
+        setConfirmAction(null)
+    }
+
+    // -------------------------
+    // Submit handlers
+    // -------------------------
+    const submitTranslator = async (data: TranslatorPayload) => {
+        try {
+            if (selectedTranslator) {
+                await translatorsApi.update(selectedTranslator.id, data)
+                toast({
+                    title: "Translator updated",
+                    description: `${data.full_name} updated successfully`,
+                })
+            } else {
+                await translatorsApi.create(data)
+                toast({
+                    title: "Translator created",
+                    description: `${data.full_name} created successfully`,
+                })
+            }
+
+            closeModals()
+            await loadTranslators()
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to save translator",
+                variant: "error",
+            })
+        }
+    }
+
+    const confirmActionHandler = async () => {
+        if (!selectedTranslator || !confirmAction) {return}
+
+        try {
+            await translatorsApi.remove(selectedTranslator.id)
+
+            toast({
+                title:
+                    confirmAction === "delete"
+                        ? "Translator deleted"
+                        : "Translator deactivated",
+                description: selectedTranslator.full_name,
+            })
+
+            closeModals()
+            await loadTranslators()
+        } catch {
+            toast({
+                title: "Error",
+                description: "Action failed",
+                variant: "error",
+            })
+        }
+    }
+
+    // -------------------------
+    // Public API
+    // -------------------------
+    return {
+        translators,
+        loading,
+
+        form,
+        setForm,
+
+        isFormOpen,
+        isConfirmOpen,
+        confirmAction,
+        selectedTranslator,
+
+        openAddTranslator,
+        openEditTranslator,
+        openDeleteTranslator,
+        openDeactivateTranslator,
+
+        submitTranslator,
+        confirmActionHandler,
+        closeModals,
+    }
+}
