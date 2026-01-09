@@ -5,7 +5,11 @@ from dropbox.sharing import AddMember, MemberSelector, AccessLevel
 from ..core.models import LanguagePair, Language
 
 
-dbx = dropbox.Dropbox(settings.DROPBOX_ACCESS_TOKEN)
+dbx = dropbox.Dropbox(
+    oauth2_refresh_token=settings.DROPBOX_REFRESH_TOKEN,
+    app_key=settings.DROPBOX_APP_KEY,
+    app_secret=settings.DROPBOX_APP_SECRET,
+)
 
 def create_order_folder(order):
     path = f"/orders/order_{order.id}"
