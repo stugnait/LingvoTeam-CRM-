@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('orders', '0007_alter_order_created_at'),
+        ('orders', '0007_alter_order_created_at_file'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

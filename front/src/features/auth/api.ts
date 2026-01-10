@@ -13,13 +13,13 @@ import type {
 
 export const authApi = {
     login: (data: LoginPayload) =>
-        apiFetch<LoginResponse>("v1/auth/login/", {
+        apiFetch<LoginResponse>("users/auth/login/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     register: (data: RegisterPayload) =>
-        apiFetch<RegisterResponse>("v1/auth/register/", {
+        apiFetch<RegisterResponse>("users/auth/register/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
@@ -28,13 +28,13 @@ export const authApi = {
         apiFetch<AuthUser>("auth/me/"),
 
     forgotPassword: (payload: ForgotPasswordPayload) =>
-        apiFetch<ForgotPasswordResponse>("v1/auth/forgot-password/", {
+        apiFetch<ForgotPasswordResponse>("users/auth/forgot-password/", {
             method: "POST",
             body: JSON.stringify(payload),
         }),
 
     resetPassword: (payload: ResetPasswordPayload) =>
-        apiFetch<ResetPasswordResponse>("v1/auth/reset-password/", {
+        apiFetch<ResetPasswordResponse>("users/auth/reset-password/", {
             method: "POST",
             body: JSON.stringify(payload),
         }),

@@ -52,7 +52,7 @@ export function useSignup() {
             password,
             password_confirm: passwordConfirm,
             phone_country_code: phoneCountryCode,
-            phone_national_number: phoneNationalNumber,
+            phone: phoneCountryCode + phoneNationalNumber,
         }
 
         console.log("Sending payload:", payload)
