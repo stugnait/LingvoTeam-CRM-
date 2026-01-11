@@ -28,7 +28,7 @@ from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
 
-from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder, get_shared_folder_link
+from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder
 
 
 
@@ -160,7 +160,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                                 app_xml = archive.read('docProps/app.xml').decode('utf-8')
                                 pages_match = re.search(r'<Pages>(\d+)</Pages>', app_xml)
                                 if pages_match:
-                                    stats["physical_pages"] += int(pages_match.group(1))
+                                    pages = int(pages_match.group(1))
+                                    stats["physical_pages"] += pages
+                                    physical_pages_separate_files.append(pages)
                     except Exception as e:
                         print(f"DOCX zip analysis error: {e}")
 
@@ -169,6 +171,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     try:
                         reader = pypdf.PdfReader(file)
                         stats["physical_pages"] += len(reader.pages)
+                        physical_pages_separate_files.append(len(reader.pages))
 
                         for page in reader.pages:
                             extracted = page.extract_text()
@@ -190,7 +193,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 # 2. Рахуємо символи БЕЗ пробілів (видаляємо всі пробіли, ентери, таби)
                 clean_text = re.sub(r'[\s\ufeff\u200b]+', '', full_text)
                 stats["chars_no_spaces"] += len(clean_text)
-                physical_pages_separate_files.append(len(clean_text))
 
             except Exception as e:
                 print(f"General error processing file {file.name}: {e}")
@@ -232,19 +234,20 @@ class OrderViewSet(viewsets.ModelViewSet):
         if files:
             try:
                 base_path = create_order_folder(order)
+                uploaded_paths = []
 
                 for f in files:
                     f.seek(0)
-                    upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
-                source_folder_link = get_shared_folder_link(base_path) + str(order.id)
-
+                    f_path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+                    uploaded_paths.append(f_path)
+                
                 for i, f in enumerate(files):
                     ext = os.path.splitext(f.name)[1].lstrip(".").lower()
 
                     File.objects.create(
                         order=order,
                         file_type=ext,
-                        dropbox_url=source_folder_link,
+                        dropbox_url=uploaded_paths[i],
                         detected_pages=physical_pages_separate_files[i],
                         detected_symbols=chars_with_spaces_separate_files[i],
                     )
