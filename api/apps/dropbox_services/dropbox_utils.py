@@ -4,6 +4,7 @@ from django.conf import settings
 from dropbox.sharing import AddMember, MemberSelector, AccessLevel
 from ..core.models import LanguagePair, Language
 
+ORDERS_ROOT = "/orders"
 
 dbx = dropbox.Dropbox(
     oauth2_refresh_token=settings.DROPBOX_REFRESH_TOKEN,
@@ -12,7 +13,12 @@ dbx = dropbox.Dropbox(
 )
 
 def create_order_folder(order):
-    path = f"/orders/order_{order.id}"
+    try:
+        dbx.files_create_folder_v2(ORDERS_ROOT)
+    except:
+        pass
+
+    path = f"{ORDERS_ROOT}/order_{order.id}"
 
     translator_email = order.translator_id.email
     editor_email = order.editor_id.email
@@ -105,18 +111,3 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
     )
 
     return full_path
-
-def get_shared_folder_link(base_path):
-    # source_path = f"{base_path}/source"
-
-    # res = dbx.sharing_list_shared_links(
-    #     path=source_path,
-    #     direct_only=True
-    # )
-
-    # if not res.links:
-    #     raise RuntimeError(f"No shared link for {source_path}")
-
-    # return res.links[0].url
-    fixed = "https://www.dropbox.com/home/order_"
-    return fixed
