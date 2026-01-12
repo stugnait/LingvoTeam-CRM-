@@ -201,7 +201,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
 
 
-        full_link = f"https://LingvoTeamCRM.com/{generated_link_slug}"
+        full_link = f"http://localhost:3000/translator/{generated_link_slug}" #TODO
 
         if order.translator_id and order.translator_id.email:
             try:
