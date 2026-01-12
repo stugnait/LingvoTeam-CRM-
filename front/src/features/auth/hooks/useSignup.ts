@@ -51,8 +51,8 @@ export function useSignup() {
             role,
             password,
             password_confirm: passwordConfirm,
-            phone_country_code: phoneCountryCode,
-            phone_national_number: phoneNationalNumber,
+            // phone_country_code: phoneCountryCode,
+            phone: phoneCountryCode + phoneNationalNumber,
         }
 
         console.log("Sending payload:", payload)

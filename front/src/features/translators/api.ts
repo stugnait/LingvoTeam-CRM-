@@ -11,7 +11,7 @@ import type {RegisterPayload, RegisterResponse} from "@/src/features/auth/types"
 export const translatorsApi = {
     // GET /translators/?search=&work_type=&source_language=&target_language=
     list: () =>
-        apiFetch<TranslatorListResponse>("translators/translators/", {
+        apiFetch<TranslatorListResponse>("translators/", {
             method: "GET",
         }),
 
@@ -23,21 +23,21 @@ export const translatorsApi = {
 
     // POST /translators/
     create: (data: TranslatorPayload) =>
-        apiFetch<Translator>("translators/translators/", {
+        apiFetch<Translator>("translators/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     // PATCH /translators/:id/
     update: (id: number, data: Partial<TranslatorPayload>) =>
-        apiFetch<Translator>(`translators/translators/${id}/`, {
+        apiFetch<Translator>(`translators/${id}/`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
 
     // DELETE /translators/:id/
     remove: (id: number) =>
-        apiFetch<void>(`translators/translators/${id}/`, {
+        apiFetch<void>(`translators/${id}/`, {
             method: "DELETE",
         }),
 }

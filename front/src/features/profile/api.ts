@@ -3,7 +3,7 @@ import type { ProfileUser, ChangePasswordPayload } from "./types"
 
 export const profileApi = {
     me: () =>
-        apiFetch<ProfileUser>("users/me/", {
+        apiFetch<ProfileUser>("users/users/me/", {
             method: "GET",
         }),
 

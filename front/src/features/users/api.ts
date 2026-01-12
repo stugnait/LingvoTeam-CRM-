@@ -10,44 +10,44 @@ import type {RegisterPayload, RegisterResponse} from "@/src/features/auth/types"
 export const usersApi = {
     // GET /users/?search=&role=&status=
     list: () =>
-        apiFetch<UsersListResponse>("v1/users/", {
+        apiFetch<UsersListResponse>("users/users/", {
             method: "GET",
         }),
 
     // GET /users/:id/
     getById: (id: string) =>
-        apiFetch<User>(`v1/users/${id}/`, {
+        apiFetch<User>(`users/${id}/`, {
             method: "GET",
         }),
 
     // POST /users/
     create: (data: UserFormData) =>
-        apiFetch<User>("v1/users/", {
+        apiFetch<User>("users/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     register: (data: UserFormData) =>
-        apiFetch<RegisterResponse>("v1/auth/register/", {
+        apiFetch<RegisterResponse>("auth/register/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
     // PATCH /users/:id/
     update: (id: string, data: UserFormData) =>
-        apiFetch<User>(`v1/users/${id}/`, {
+        apiFetch<User>(`users/${id}/`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
 
     // DELETE /users/:id/
     remove: (id: string) =>
-        apiFetch<void>(`v1/users/${id}/`, {
+        apiFetch<void>(`users/${id}/`, {
             method: "DELETE",
         }),
 
     deactivate: (id: string) =>
-        apiFetch<void>(`v1/admin/users/${id}/toggle-status/`, {
+        apiFetch<void>(`admin/users/${id}/toggle-status/`, {
             method: "POST"
         }),
 }

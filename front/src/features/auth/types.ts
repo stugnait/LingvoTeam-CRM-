@@ -15,8 +15,10 @@ export type RegisterPayload = {
     password: string;
     password_confirm: string;
 
-    phone_country_code: string;    // "+380"
-    phone_national_number: string; // "991234567"
+    phone: string
+
+    // phone_country_code: string;    // "+380"
+    // phone_national_number: string; // "991234567"
 };
 
 
