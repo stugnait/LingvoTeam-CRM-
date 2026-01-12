@@ -1,14 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import {useCallback, useEffect, useState} from "react"
 import { ordersApi } from "../api"
 import type { CreateOrderPayload, CreateOrderResponse } from "../types"
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import type {Translator} from "@/src/features/translators/types";
+import {translatorsApi} from "@/src/features/translators/api";
 
 export function useOrders() {
     const { toast } = useToast()
     const router = useRouter()
+    const [translators, setTranslators] = useState<Translator[]>([])
+    const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
 
     const [loading, setLoading] = useState(false)
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
@@ -24,6 +28,9 @@ export function useOrders() {
             formData.append("source_language", String(data.source_language))
             formData.append("target_language", String(data.target_language))
             formData.append("traffic_id", String(data.traffic_id))
+            formData.append("translator_traffic_id", String(data.translator_traffic_id))
+            formData.append("currency_id_id", String(data.currency_id_id))
+            formData.append("language_pair_id", String(data.language_pair_id))
 
             if (data.translator_id) {
                 formData.append("translator_id", String(data.translator_id))
@@ -59,9 +66,33 @@ export function useOrders() {
         }
     }
 
+    const loadTranslators = useCallback(async () => {
+        try {
+            setLoading(true)
+            const response = await translatorsApi.list()
+            setTranslators(response.results)
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to load translators",
+                variant: "error",
+            })
+        } finally {
+            setLoading(false)
+        }
+    }, [toast])
+
+    useEffect(() => {
+        loadTranslators()
+    }, [loadTranslators])
+
     return {
         createOrder,
         loading,
+        translators,
         order,
+
+        selectedTranslatorId,
+        setSelectedTranslatorId,
     }
 }

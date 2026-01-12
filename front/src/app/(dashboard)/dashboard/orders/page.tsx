@@ -1,5 +1,5 @@
-import { CreateOrderForm } from "@/src/features/orders/components/CreateOrderForm"
+import CreateOrderPage from "@/src/features/orders/components/CreateOrderForm"
 
 export default function Page() {
-    return <CreateOrderForm />
+    return <CreateOrderPage />
 }
