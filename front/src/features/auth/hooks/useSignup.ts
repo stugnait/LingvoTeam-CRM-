@@ -51,7 +51,7 @@ export function useSignup() {
             role,
             password,
             password_confirm: passwordConfirm,
-            phone_country_code: phoneCountryCode,
+            // phone_country_code: phoneCountryCode,
             phone: phoneCountryCode + phoneNationalNumber,
         }
 
