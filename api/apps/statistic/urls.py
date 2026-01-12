@@ -5,8 +5,9 @@ from apps.statistic.views import OwnerDashboardViewSet, OwnerOrderDetailsViewSet
 
 router = DefaultRouter()
 
-router.register(r'dashboard', OwnerDashboardViewSet, basename='owner-dashboard')
-router.register(r'details', OwnerOrderDetailsViewSet, basename='owner-details')
+router.register(r'order-details', OwnerOrderDetailsViewSet, basename='owner-order-details')
+
+router.register(r'owner-dashboard', OwnerDashboardViewSet, basename='owner-dashboard')
 
 urlpatterns = [
     path('', include(router.urls)),
