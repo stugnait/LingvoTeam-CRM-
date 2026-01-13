@@ -1,7 +1,10 @@
 from datetime import timedelta
-from django.db.models import Sum, Avg, Count, F, Q, ExpressionWrapper, fields
+from decimal import Decimal
+
+from django.db.models import Sum, Avg, Count, F, Q, ExpressionWrapper, fields, DecimalField, FloatField
 from django.db.models.functions import Coalesce, TruncMonth
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, NumberFilter
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
@@ -9,7 +12,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.clients.models import Client
+from apps.core.models import LanguagePair
 from apps.orders.models import Order, TranslationQuality
+from apps.orders.utils import FinanceCalculator
 from apps.statistic.serializers import OwnerOrderListSerializer, StatsSerializer
 from apps.translators.models import Translator
 from apps.users.models import User
@@ -36,49 +41,97 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     def get_queryset(self):
         return Order.objects.none()
 
+    # TODO зробити доступ пермішини і топ-10 менеджерів зробити
+    def _get_date_range(self, request):
+        start_str = request.query_params.get('start_date')
+        end_str = request.query_params.get('end_date')
+
+        start = parse_date(start_str) if start_str else timezone.now().date() - timedelta(days=30)
+        end = parse_date(end_str) if end_str else timezone.now().date()
+        return start, end
+
+    @action(detail=False, methods=['get'], url_path='finance-summary')
+    def finance_summary(self, request):
+        start, end = self._get_date_range(request)
+
+        orders = Order.objects.filter(created_at__date__range=[start, end]) \
+            .select_related('traffic_id', 'translator_traffic_id')
+
+        total_revenue = Decimal(0)
+        total_cost = Decimal(0)
+
+        for order in orders:
+            fin = FinanceCalculator.calculate_order_financials(order)
+            total_revenue += fin['revenue']
+            total_cost += fin['cost']
+
+        profit = total_revenue - total_cost
+        margin = (profit / total_revenue * 100) if total_revenue > 0 else 0
+
+        return Response({
+            "period": {"start": start, "end": end},
+            "total_orders": orders.count(),
+            "revenue": round(total_revenue, 2),
+            "cost": round(total_cost, 2),
+            "net_profit": round(profit, 2),
+            "margin_percent": round(margin, 2)
+        })
+
     @action(detail=False, methods=['get'], url_path='kpi-analytics')
     def kpi_analytics(self, request):
-        # Топ-10 менеджерів
-        # revenue_by_manager = Order.objects.values(name=F('manager_id__full_name')) \
-        #                          .annotate(value=Coalesce(Sum(''), 0.0)) \
-        #                          .filter(value__gt=0) \
-        #                          .order_by('-value')[:10]
+        start, end = self._get_date_range(request)
+        orders_qs = Order.objects.filter(created_at__date__range=[start, end])
 
-        # Ефективність менеджерів
-        efficiency_by_manager = Order.objects.filter(manager_id__isnull=False) \
+        # 1. ТОП МЕНЕДЖЕРІВ
+        # revenue_by_manager = User.objects.filter(managed_orders__in=orders_qs) \
+        #                          .annotate(
+        #     virtual_revenue=Sum(
+        #         ExpressionWrapper(
+        #             F('managed_orders__page_count') * F('managed_orders__traffic_id__price_per_page'),
+        #             output_field=DecimalField()
+        #         )
+        #     )
+        # ).values('full_name', 'virtual_revenue').order_by('-virtual_revenue')[:10]
+        #
+        # managers_revenue_data = [
+        #     {"name": item['full_name'], "value": item['virtual_revenue'] or 0}
+        #     for item in revenue_by_manager
+        # ]
+
+        # 2. ЕФЕКТИВНІСТЬ
+        efficiency_by_manager = orders_qs.filter(manager_id__isnull=False) \
                                     .values(name=F('manager_id__full_name')) \
                                     .annotate(
             total=Count('id'),
             on_time=Count('id', filter=Q(completed_at__lte=F('deadline')))
-        ) \
-                                    .annotate(percent=ExpressionWrapper(
-            F('on_time') * 100.0 / F('total'),
-            output_field=fields.FloatField()
-        )).order_by('-total')[:10]
+        ).annotate(
+            percent=ExpressionWrapper(
+                F('on_time') * 100.0 / F('total'),
+                output_field=FloatField()
+            )
+        ).order_by('-total')[:10]
 
-        # KPI Перекладачів
-        translators_performance = Order.objects.filter(translator_id__isnull=False) \
-            .values(name=F('translator_id__full_name')) \
-            .annotate(
+        # 3. KPI ПЕРЕКЛАДАЧІВ
+        translators_performance = orders_qs.filter(translator_id__isnull=False) \
+                                      .values(name=F('translator_id__full_name')) \
+                                      .annotate(
             avg_quality=Coalesce(Avg('quality_score__score'), 0.0),
             delays=Count('id', filter=Q(completed_at__gt=F('deadline'))),
             total_orders=Count('id')
-        ).order_by('-avg_quality')
+        ).order_by('-avg_quality')[:10]
 
-        # Обсяги по місяцях
-        monthly_growth = Order.objects.annotate(month=TruncMonth('created_at')) \
+        # 4. ОБСЯГИ
+        monthly_growth = orders_qs.annotate(month=TruncMonth('created_at')) \
             .values('month') \
             .annotate(
             symbols=Sum('symbols_count'),
             count=Count('id')
         ).order_by('month')
 
-        # Обсяги по мовних парах
-        raw_lang_stats = Order.objects.values('language_pair_id') \
-            .annotate(value=Count('id')) \
-            .order_by('-value')
-
-        from apps.core.models import LanguagePair
+        # 5. МОВНІ ПАРИ
+        raw_lang_stats = orders_qs.values('language_pair_id') \
+                             .annotate(value=Count('id')) \
+                             .order_by('-value')[:10]
 
         pair_ids = [item['language_pair_id'] for item in raw_lang_stats]
         pairs_map = {p.id: str(p) for p in LanguagePair.objects.filter(id__in=pair_ids)}
@@ -91,13 +144,25 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
             for item in raw_lang_stats
         ]
 
+        # 6. КОНВЕРСІЯ
+        DONE_STATUS_ID = 4
+        total_for_conv = orders_qs.count()
+        completed_for_conv = orders_qs.filter(status_id=DONE_STATUS_ID).count()
+        conversion_rate = (completed_for_conv / total_for_conv * 100) if total_for_conv else 0
+
+
+        orders_by_type = orders_qs.values('priority').annotate(count=Count('id'))
+
         return Response({
-            #"revenue_by_manager": revenue_by_manager,
+           # "revenue_by_manager": managers_revenue_data,
             "efficiency_by_manager": efficiency_by_manager,
             "translators_performance": translators_performance,
             "monthly_growth": monthly_growth,
-            "languages_distribution": language_stats
+            "languages_distribution": language_stats,
+            "conversion_rate": round(conversion_rate, 2),
+            "orders_by_type": orders_by_type
         })
+
     @action(detail=False, methods=['get'], url_path='unpaid-orders')
     def unpaid_orders(self, request):
         PAID_STATUS_ID = 5
