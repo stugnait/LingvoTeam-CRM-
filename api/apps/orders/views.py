@@ -2,6 +2,7 @@ import re
 import docx
 import pypdf
 import zipfile
+import tempfile
 import uuid
 import secrets
 import os
@@ -17,6 +18,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from django.http import FileResponse
 
 from LingvoTeam import settings
 from .models import Order, OrderTraffic, Status, OrderLink, OrderEditorReview, TranslationQuality
@@ -28,7 +30,7 @@ from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
 
-from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder
+from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder, get_dbx
 
 
 
@@ -348,3 +350,29 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
 
         return Response({"message": "Замовлення прийнято та оцінено!"}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['get'], url_path='download-files')
+    def download_files(self, request, pk=None):
+        order = self.get_object()
+        files = File.objects.filter(order=order)
+        dbx = get_dbx()
+        tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+        zip_filename = tmp.name
+        tmp.close()
+
+        with zipfile.ZipFile(zip_filename, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for f in files:
+                dropbox_path = f.dropbox_url
+                filename = os.path.basename(dropbox_path)
+                md, resp = dbx.files_download(dropbox_path)
+                zf.writestr(filename, resp.content)
+        
+        return FileResponse(
+            open(zip_filename, "rb"),
+            as_attachment=True,
+            filename=f"order_{order.id}_files.zip",
+            content_type='application/zip'
+
+        )
+
+
