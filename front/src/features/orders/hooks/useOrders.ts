@@ -2,7 +2,12 @@
 
 import {useCallback, useEffect, useState} from "react"
 import { ordersApi } from "../api"
-import type { CreateOrderPayload, CreateOrderResponse } from "../types"
+import type {
+    CreateOrderPayload,
+    CreateOrderResponse,
+    OrderListItem,
+    OrderListResponse,
+} from "../types"
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import type {Translator} from "@/src/features/translators/types";
@@ -16,6 +21,8 @@ export function useOrders() {
 
     const [loading, setLoading] = useState(false)
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
+
+    const [orders, setOrders] = useState<OrderListItem[]>([])
 
     const createOrder = async (data: CreateOrderPayload) => {
         setLoading(true)
@@ -82,17 +89,65 @@ export function useOrders() {
         }
     }, [toast])
 
+    const loadOrders = useCallback(async () => {
+        try {
+            setLoading(true)
+            const response = await ordersApi.listOrders()
+            setOrders(response.results)
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to load orders",
+                variant: "error",
+            })
+        } finally {
+            setLoading(false)
+        }
+    }, [toast])
+
+    const loadOrderDetails = async (orderId: number): Promise<CreateOrderResponse> => {
+        try {
+            setLoading(true)
+            const res = await ordersApi.getById(orderId)
+            setOrder(res) // опційно
+            return res
+        } catch (e: any) {
+            toast({
+                title: "Error",
+                description: e?.detail || "Failed to load order details",
+                variant: "error",
+            })
+            throw e
+        } finally {
+            setLoading(false)
+        }
+    }
+
+
+
     useEffect(() => {
         loadTranslators()
-    }, [loadTranslators])
+        loadOrders()
+    }, [loadTranslators, loadOrders])
+
 
     return {
+        // CREATE
         createOrder,
-        loading,
-        translators,
-        order,
 
+        // READ
+        orders,
+        order,
+        loadOrders,
+        loadOrderDetails,
+
+        // UI
+        loading,
+
+        // TRANSLATORS
+        translators,
         selectedTranslatorId,
         setSelectedTranslatorId,
     }
+
 }

@@ -129,3 +129,17 @@ export interface PermissionErrorResponse {
     detail: string
 }
 
+
+export interface OrderListItem {
+    id: number
+    client_id: number
+    source_language: number
+    target_language: number
+    status: string
+    created_at: string // ISO
+}
+
+export interface OrderListResponse {
+    results: OrderListItem[]
+    total: number
+}

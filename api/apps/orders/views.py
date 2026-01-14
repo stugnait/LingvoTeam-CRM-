@@ -68,7 +68,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Отримуємо об'єкти для заповнення обов'язкових полів
         status_instance = get_object_or_404(Status, slug="in_translation")  # Стовпець 6 на вашому скріншоті
         User = get_user_model()
-        test_user = User.objects.get(pk=1)
+        test_user = User.objects.get(pk=13)
 
         # 👇 ПЕРЕДАЄМО ID ЯВНО
         order = serializer.save(

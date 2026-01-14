@@ -6,8 +6,9 @@ import { Input } from "@/src/components/ui/input"
 import { Select, SelectItem } from "@/src/components/ui/select"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
 import { useState } from "react"
-import {SelectContent, SelectTrigger, SelectValue} from "@radix-ui/react-select";
-import {TranslatorSelect} from "@/src/features/orders/components/TranslatorSelect";
+import { SelectContent, SelectTrigger, SelectValue } from "@radix-ui/react-select"
+import { TranslatorSelect } from "@/src/features/orders/components/TranslatorSelect"
+import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
 
 export default function CreateOrderPage() {
     const {
@@ -16,6 +17,8 @@ export default function CreateOrderPage() {
         translators,
         selectedTranslatorId,
         setSelectedTranslatorId,
+        orders,
+        loadOrderDetails,
     } = useOrders()
 
     /**
@@ -48,80 +51,92 @@ export default function CreateOrderPage() {
     }
 
     return (
-        <Card className="max-w-xl mx-auto">
-            <CardHeader>
-                <CardTitle>Create order</CardTitle>
-            </CardHeader>
+        <div className="space-y-8">
+            <Card className="max-w-xl mx-auto">
+                <CardHeader>
+                    <CardTitle>Create order</CardTitle>
+                </CardHeader>
 
-            <CardContent className="space-y-4">
-                <Input
-                    placeholder="Client ID"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                />
+                <CardContent className="space-y-4">
+                    <Input
+                        placeholder="Client ID"
+                        value={clientId}
+                        onChange={(e) => setClientId(e.target.value)}
+                    />
 
-                <Input
-                    placeholder="Source language ID"
-                    value={sourceLanguage}
-                    onChange={(e) => setSourceLanguage(e.target.value)}
-                />
+                    <Input
+                        placeholder="Source language ID"
+                        value={sourceLanguage}
+                        onChange={(e) => setSourceLanguage(e.target.value)}
+                    />
 
-                <Input
-                    placeholder="Target language ID"
-                    value={targetLanguage}
-                    onChange={(e) => setTargetLanguage(e.target.value)}
-                />
+                    <Input
+                        placeholder="Target language ID"
+                        value={targetLanguage}
+                        onChange={(e) => setTargetLanguage(e.target.value)}
+                    />
 
-                <Input
-                    placeholder="Traffic ID"
-                    value={trafficId}
-                    onChange={(e) => setTrafficId(e.target.value)}
-                />
+                    <Input
+                        placeholder="Traffic ID"
+                        value={trafficId}
+                        onChange={(e) => setTrafficId(e.target.value)}
+                    />
 
-                <Input
-                    placeholder="Language pair"
-                    value={languagePair}
-                    onChange={(e) => setLanguagePair(e.target.value)}
-                />
+                    <Input
+                        placeholder="Language pair"
+                        value={languagePair}
+                        onChange={(e) => setLanguagePair(e.target.value)}
+                    />
 
-                <Input
-                    placeholder="Traffic translator"
-                    value={translatorTrafficId}
-                    onChange={(e) => setTranslatorTrafficId(e.target.value)}
-                />
+                    <Input
+                        placeholder="Traffic translator"
+                        value={translatorTrafficId}
+                        onChange={(e) =>
+                            setTranslatorTrafficId(e.target.value)
+                        }
+                    />
 
-                <Input
-                    placeholder="Currency"
-                    value={currencyId}
-                    onChange={(e) => setCurrencyId(e.target.value)}
-                />
+                    <Input
+                        placeholder="Currency"
+                        value={currencyId}
+                        onChange={(e) => setCurrencyId(e.target.value)}
+                    />
 
-                {/* ---------- TRANSLATOR SELECT ---------- */}
+                    {/* ---------- TRANSLATOR SELECT ---------- */}
+                    <TranslatorSelect
+                        translators={translators}
+                        value={translatorId}
+                        onChange={setSelectedTranslatorId}
+                    />
 
-                <TranslatorSelect
-                    translators={translators}
-                    value={translatorId}
-                    onChange={setSelectedTranslatorId}
-                />
+                    {/* ---------- FILES ---------- */}
+                    <Input
+                        type="file"
+                        multiple
+                        onChange={(e) =>
+                            setFiles(
+                                e.target.files
+                                    ? Array.from(e.target.files)
+                                    : []
+                            )
+                        }
+                    />
 
+                    <Button
+                        disabled={loading}
+                        onClick={onSubmit}
+                        className="w-full"
+                    >
+                        {loading ? "Creating..." : "Create order"}
+                    </Button>
+                </CardContent>
+            </Card>
 
-                {/* ---------- FILES ---------- */}
-                <Input
-                    type="file"
-                    multiple
-                    onChange={(e) =>
-                        setFiles(e.target.files ? Array.from(e.target.files) : [])
-                    }
-                />
-
-                <Button
-                    disabled={loading}
-                    onClick={onSubmit}
-                    className="w-full"
-                >
-                    {loading ? "Creating..." : "Create order"}
-                </Button>
-            </CardContent>
-        </Card>
+            {/* ---------- ORDERS BLOCK (ADDED) ---------- */}
+            <OrdersTable
+                orders={orders}
+                onOpen={loadOrderDetails}
+            />
+        </div>
     )
 }

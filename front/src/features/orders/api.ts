@@ -4,7 +4,7 @@ import { apiFetch } from "@/src/shared/api/client"
 import type { CreateOrderResponse, Translator,
     TranslatorFilters,
     TranslatorPayload,
-    TranslatorListResponse } from "./types"
+    TranslatorListResponse, OrderListResponse } from "./types"
 
 export const ordersApi = {
     create: (body: BodyInit) =>
@@ -19,9 +19,14 @@ export const ordersApi = {
             method: "GET",
         }),
 
+    listOrders: () =>
+        apiFetch<OrderListResponse>("orders/", {
+            method: "GET",
+        }),
+
     // GET /translators/:id/
     getById: (id: number) =>
-        apiFetch<Translator>(`translators/${id}/`, {
+        apiFetch<CreateOrderResponse>(`orders/${id}/`, {
             method: "GET",
         }),
 }
