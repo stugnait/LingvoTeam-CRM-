@@ -727,6 +727,70 @@
 }
 
 /* =========================
+   SIDE MODAL ANIMATIONS
+========================= */
+
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slide-out-right {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes fade-in-blur {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
+}
+
+@keyframes fade-out-blur {
+    from {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
+    to {
+        opacity: 0;
+        backdrop-filter: blur(0);
+    }
+}
+
+.animate-slide-in-right {
+    animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-right {
+    animation: slide-out-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-fade-in-blur {
+    animation: fade-in-blur 0.3s ease-out forwards;
+}
+
+.animate-fade-out-blur {
+    animation: fade-out-blur 0.3s ease-out forwards;
+}
+
+/* =========================
    SPECIFIC STYLES FOR AUTH PAGES
 ========================= */
 

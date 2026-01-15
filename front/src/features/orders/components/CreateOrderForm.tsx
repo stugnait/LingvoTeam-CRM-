@@ -3,13 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
-import { Select, SelectItem } from "@/src/components/ui/select"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
 import { useState } from "react"
-import { SelectContent, SelectTrigger, SelectValue } from "@radix-ui/react-select"
 import { TranslatorSelect } from "@/src/features/orders/components/TranslatorSelect"
 import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
-import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
+import { Plus } from "lucide-react"
+import { SideModal } from "@/src/components/modals/SideModal" // Імпортуємо нову модалку
 
 export default function CreateOrderPage() {
     const {
@@ -20,18 +20,15 @@ export default function CreateOrderPage() {
         setSelectedTranslatorId,
         orders,
         loadOrderDetails,
-        loadLanguagePair,
         languagePairs,
         translatorsCache
     } = useOrders()
 
-    /**
-     * ⛔ Локальний state дозволений
-     * ✔ лише для UI-форм (input/select)
-     * ✔ НЕ бізнес-логіка
-     */
+    // State for modal
+    const [isModalOpen, setIsModalOpen] = useState(false)
+
+    // Form states
     const [clientId, setClientId] = useState("")
-    const [translatorId, setTranslatorId] = useState<number | null>(null)
     const [sourceLanguage, setSourceLanguage] = useState("")
     const [targetLanguage, setTargetLanguage] = useState("")
     const [languagePair, setLanguagePair] = useState("")
@@ -40,7 +37,7 @@ export default function CreateOrderPage() {
     const [currencyId, setCurrencyId] = useState("")
     const [files, setFiles] = useState<File[]>([])
 
-    const onSubmit = async () => {
+    const handleSubmit = async () => {
         await createOrder({
             client_id: Number(clientId),
             source_language: Number(sourceLanguage),
@@ -52,71 +49,154 @@ export default function CreateOrderPage() {
             translator_id: selectedTranslatorId ?? undefined,
             files,
         })
+
+        // Reset form and close modal after successful submission
+        setClientId("")
+        setSourceLanguage("")
+        setTargetLanguage("")
+        setLanguagePair("")
+        setTranslatorTrafficId("")
+        setTrafficId("")
+        setCurrencyId("")
+        setFiles([])
+        setIsModalOpen(false)
     }
 
     return (
         <>
-            <DashboardHeader/>
-            <div className="space-y-8">
-                {/* ---------- CREATE ORDER FORM ---------- */}
-                <Card className="max-w-xl mx-auto">
-                    <CardHeader>
-                        <CardTitle>Create order</CardTitle>
-                    </CardHeader>
 
-                    <CardContent className="space-y-4">
+            {/* Fixed button to open modal */}
+            <div className="fixed bottom-8 right-8 z-40">
+                <Button
+                    onClick={() => setIsModalOpen(true)}
+                    className="rounded-full w-14 h-14 p-0 shadow-lg hover-lift"
+                >
+                    <Plus className="h-6 w-6" />
+                </Button>
+            </div>
+
+            <div className="space-y-8">
+                {/* Orders table */}
+                <OrdersTable
+                    orders={orders}
+                    onOpen={loadOrderDetails}
+                    languagePairs={languagePairs}
+                    translatorsCache={translatorsCache}
+                />
+            </div>
+
+            {/* Side modal for creating order */}
+            <SideModal
+                open={isModalOpen}
+                onOpenChange={setIsModalOpen}
+                title="Create New Order"
+                submitLabel="Create Order"
+                cancelLabel="Cancel"
+                isLoading={loading}
+                onSubmit={handleSubmit}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Client ID
+                        </label>
                         <Input
-                            placeholder="Client ID"
+                            placeholder="Enter client ID"
                             value={clientId}
                             onChange={(e) => setClientId(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
                         />
+                    </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Source Language ID
+                        </label>
                         <Input
-                            placeholder="Source language ID"
+                            placeholder="Enter source language ID"
                             value={sourceLanguage}
                             onChange={(e) => setSourceLanguage(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
                         />
+                    </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Target Language ID
+                        </label>
                         <Input
-                            placeholder="Target language ID"
+                            placeholder="Enter target language ID"
                             value={targetLanguage}
                             onChange={(e) => setTargetLanguage(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
                         />
+                    </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Traffic ID
+                        </label>
                         <Input
-                            placeholder="Traffic ID"
+                            placeholder="Enter traffic ID"
                             value={trafficId}
                             onChange={(e) => setTrafficId(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
                         />
+                    </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Language Pair
+                        </label>
                         <Input
-                            placeholder="Language pair"
+                            placeholder="Enter language pair"
                             value={languagePair}
                             onChange={(e) => setLanguagePair(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
                         />
+                    </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Translator Traffic ID
+                        </label>
                         <Input
-                            placeholder="Traffic translator"
+                            placeholder="Enter translator traffic ID"
                             value={translatorTrafficId}
-                            onChange={(e) =>
-                                setTranslatorTrafficId(e.target.value)
-                            }
+                            onChange={(e) => setTranslatorTrafficId(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
                         />
+                    </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Currency ID
+                        </label>
                         <Input
-                            placeholder="Currency"
+                            placeholder="Enter currency ID"
                             value={currencyId}
                             onChange={(e) => setCurrencyId(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
                         />
+                    </div>
 
-                        {/* ---------- TRANSLATOR SELECT ---------- */}
+                    {/* Translator Select */}
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Select Translator
+                        </label>
                         <TranslatorSelect
                             translators={translators}
-                            value={translatorId}
+                            value={selectedTranslatorId}
                             onChange={setSelectedTranslatorId}
                         />
+                    </div>
 
-                        {/* ---------- FILES ---------- */}
+                    {/* Files Upload */}
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Upload Files
+                        </label>
                         <Input
                             type="file"
                             multiple
@@ -127,26 +207,16 @@ export default function CreateOrderPage() {
                                         : []
                                 )
                             }
+                            className="transition-smooth focus-visible-primary"
                         />
-
-                        <Button
-                            disabled={loading}
-                            onClick={onSubmit}
-                            className="w-full"
-                        >
-                            {loading ? "Creating..." : "Create order"}
-                        </Button>
-                    </CardContent>
-                </Card>
-
-                {/* ---------- ORDERS BLOCK (ADDED) ---------- */}
-                <OrdersTable
-                    orders={orders}
-                    onOpen={loadOrderDetails}
-                    languagePairs={languagePairs}
-                    translatorsCache={translatorsCache}
-                />
-            </div>
+                        {files.length > 0 && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                                {files.length} file(s) selected
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </SideModal>
         </>
     )
 }
