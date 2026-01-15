@@ -12,7 +12,7 @@ export default function DashboardLayout({
             <CrmSidebar />
 
             {/* Main content area */}
-            <div className="flex flex-1 flex-col overflow-hidden pl-64">{children}</div>
+            <div className="flex flex-1 flex-col overflow-y-auto pl-64">{children}</div>
         </div>
     )
 }

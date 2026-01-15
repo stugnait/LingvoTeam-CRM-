@@ -6,11 +6,12 @@ import type {
     CreateOrderPayload,
     CreateOrderResponse,
     OrderListItem,
-    OrderListResponse,
+    Details,
+    LanguagePair,
+    Translator
 } from "../types"
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import type {Translator} from "@/src/features/translators/types";
 import {translatorsApi} from "@/src/features/translators/api";
 
 export function useOrders() {
@@ -21,6 +22,9 @@ export function useOrders() {
 
     const [loading, setLoading] = useState(false)
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
+    const [orderDetail, setOrderDetails] = useState<Details | null>(null)
+    const [languagePairs, setLanguagePairs] = useState<Record<number, LanguagePair>>({})
+    const [translatorsCache, setTranslatorsCache] = useState<Record<number, Translator>>({})
 
     const [orders, setOrders] = useState<OrderListItem[]>([])
 
@@ -28,7 +32,6 @@ export function useOrders() {
         setLoading(true)
 
         try {
-            // 🔴 ТУТ і ТІЛЬКИ ТУТ FormData
             const formData = new FormData()
 
             formData.append("client_id", String(data.client_id))
@@ -78,6 +81,13 @@ export function useOrders() {
             setLoading(true)
             const response = await translatorsApi.list()
             setTranslators(response.results)
+
+            // ✅ Кешуємо перекладачів одразу після завантаження
+            const cache: Record<number, Translator> = {}
+            response.results.forEach(translator => {
+                cache[translator.id] = translator
+            })
+            setTranslatorsCache(cache)
         } catch {
             toast({
                 title: "Error",
@@ -94,6 +104,13 @@ export function useOrders() {
             setLoading(true)
             const response = await ordersApi.listOrders()
             setOrders(response.results)
+
+            // ✅ Завантажуємо мовні пари
+            await Promise.all(
+                response.results.map(o =>
+                    loadLanguagePair(o.language_pair_id)
+                )
+            )
         } catch {
             toast({
                 title: "Error",
@@ -103,13 +120,13 @@ export function useOrders() {
         } finally {
             setLoading(false)
         }
-    }, [toast])
+    }, [])
 
-    const loadOrderDetails = async (orderId: number): Promise<CreateOrderResponse> => {
+    const loadOrderDetails = async (orderId: number): Promise<Details> => {
         try {
             setLoading(true)
             const res = await ordersApi.getById(orderId)
-            setOrder(res) // опційно
+            setOrderDetails(res)
             return res
         } catch (e: any) {
             toast({
@@ -123,13 +140,31 @@ export function useOrders() {
         }
     }
 
+    const loadLanguagePair = useCallback(async (pairId: number) => {
+        if (languagePairs[pairId]) {
+            return languagePairs[pairId]
+        }
 
+        const pair = await ordersApi.getLanguagePairById(pairId)
+
+        setLanguagePairs(prev => ({
+            ...prev,
+            [pairId]: pair,
+        }))
+
+        return pair
+    }, [languagePairs])
+
+    // ✅ Функція для отримання перекладача по ID
+    const getTranslatorById = useCallback((translatorId: number | null): Translator | null => {
+        if (!translatorId) {return null}
+        return translatorsCache[translatorId] || null
+    }, [translatorsCache])
 
     useEffect(() => {
         loadTranslators()
         loadOrders()
     }, [loadTranslators, loadOrders])
-
 
     return {
         // CREATE
@@ -140,14 +175,17 @@ export function useOrders() {
         order,
         loadOrders,
         loadOrderDetails,
+        loadLanguagePair,
+        languagePairs,
 
         // UI
         loading,
 
         // TRANSLATORS
         translators,
+        translatorsCache,
+        getTranslatorById,
         selectedTranslatorId,
         setSelectedTranslatorId,
     }
-
 }

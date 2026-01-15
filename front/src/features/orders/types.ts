@@ -13,17 +13,19 @@ export interface CreateOrderPayload {
 export interface CreateOrderResponse {
     message: string
     order_id: number
-    stats: {
-        physical_pages: number
-        chars_with_spaces: number
-        chars_no_spaces: number
-        images_count: number
-    }
-    translator_link: {
-        full_url: string
-        password: string
-        expire_at: string
-    }
+    page_count: number
+    chars_with_spaces: number
+    chars_no_spaces: number
+    images_count: number
+
+    full_url: string
+    password: string
+    expire_at: string
+}
+
+export interface Details {
+    translator_id: number
+    client_id: number
 }
 
 /* =========================================================
@@ -135,11 +137,18 @@ export interface OrderListItem {
     client_id: number
     source_language: number
     target_language: number
-    status: string
+    status_id: string
     created_at: string // ISO
+    translator_id: string
+    language_pair_id: number
 }
 
 export interface OrderListResponse {
     results: OrderListItem[]
     total: number
+}
+
+export interface LanguagePair {
+    id: number
+    pair_name: string
 }
