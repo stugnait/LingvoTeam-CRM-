@@ -31,6 +31,10 @@ from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
 
 from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder, get_dbx
+from io import BytesIO
+from PIL import Image
+import pytesseract
+import fitz
 
 
 
@@ -375,4 +379,78 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         )
 
+    @action(detail=True, methods=["post"], url_path="analyze-images")
+    def analyze_images(self, request, pk=None):
+        order = self.get_object()
+        files = File.objects.filter(order=order)
+        dbx = get_dbx()
 
+        results = []
+        for f in files:
+            dropbox_path = f.dropbox_url
+            ext = (f.file_type or os.path.splitext(dropbox_path)[1].lstrip(".")).lower()
+            if ext not in ['docx', 'pdf']:
+                continue
+            try:
+                _, resp = dbx.files_download(dropbox_path)
+                data = resp.content
+            except Exception as e:
+                results.append({"file_id": f.id, "error": f"Dropbox download failed: {e}"})
+                continue
+            images_found = 0
+            ocr_texts = []
+            try:
+                if ext == "docx":
+                    with zipfile.ZipFile(BytesIO(data)) as z:
+                        media_files = [n for n in z.namelist() if n.startswith("word/media/")]
+                        for name in media_files:
+                            img_bytes = z.read(name)
+                            try:
+                                img = Image.open(BytesIO(img_bytes)).convert("RGB")
+                                text = pytesseract.image_to_string(img, lang="ukr")
+                                ocr_texts.append(text)
+                                images_found += 1
+                            except Exception:
+                                # якщо якась картинка битая/незрозумілий формат — пропускаємо
+                                pass
+
+                elif ext == "pdf":
+                    doc = fitz.open(stream=data, filetype="pdf")
+                    for page in doc:
+                        for img_info in page.get_images(full=True):
+                            xref = img_info[0]
+                            try:
+                                base = doc.extract_image(xref)
+                                img_bytes = base.get("image")
+                                if not img_bytes:
+                                    continue
+                                img = Image.open(BytesIO(img_bytes)).convert("RGB")
+                                text = pytesseract.image_to_string(img, lang="eng")
+                                ocr_texts.append(text)
+                                images_found += 1
+                            except Exception:
+                                pass
+
+            except Exception as e:
+                results.append({"file_id": f.id, "error": f"Parse/OCR failed: {e}"})
+                continue
+
+            full_text = "\n".join(ocr_texts)
+            full_text_clean = full_text.replace("\ufeff", "").replace("\u200b", "")
+            detected_symbols = len(full_text_clean)
+
+            f.detected_symbols += detected_symbols
+            f.save(update_fields=["detected_symbols"])
+
+            results.append({
+                "file_id": f.id,
+                "file_type": ext,
+                "images_found": images_found,
+                "detected_symbols_from_images": detected_symbols,
+                "preview_text": full_text_clean[:200],
+            })
+
+        return Response(
+            {"order_id": order.id, "results": results},
+            status=status.HTTP_200_OK
+        )
