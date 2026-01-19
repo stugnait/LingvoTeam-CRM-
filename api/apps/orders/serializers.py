@@ -23,7 +23,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'client_id', 'language_pair_id', 'priority', 'deadline',
-            'flex_deadline', 'page_count', 'symbols_count', 'status_id', 'files'
+            'flex_deadline', 'page_count', 'symbols_count', 'status_id', 'files', "translator_id"
         ]
         read_only_fields = ['page_count', 'symbols_count']
         extra_kwargs = {

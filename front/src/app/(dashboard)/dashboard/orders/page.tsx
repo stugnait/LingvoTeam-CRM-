@@ -1,5 +1,5 @@
-import { OrdersPage } from "@/src/features/orders/components/OrdersPage"
+import CreateOrderPage from "@/src/features/orders/components/CreateOrderForm"
 
 export default function Page() {
-    return <OrdersPage />
+    return <CreateOrderPage />
 }
