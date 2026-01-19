@@ -26,7 +26,7 @@ from .serializers import OrderCreateSerializer, OrderTrafficSerializer, RejectTr
     ApproveTranslationSerializer
 from .models import Order, OrderTraffic, Status, OrderLink, File
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer
-from ..core.models import LanguagePair
+from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
 
@@ -385,6 +385,38 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="analyze-images")
     def analyze_images(self, request, pk=None):
         order = self.get_object()
+
+        language_pair_val = (
+            getattr(order, "language_pair_id", None)
+            or getattr(order, "language_pair_id_id", None)
+            or getattr(order, "language_pair", None)
+        )
+
+        language_pair_id = getattr(language_pair_val, "id", language_pair_val)
+
+        source_language_id = None
+        if language_pair_id:
+            lp_row = (
+                LanguagePair.objects
+                .filter(id=language_pair_id)
+                .values("source_language_id")
+                .first()
+            )
+            if lp_row:
+                source_language_id = lp_row.get("source_language_id")
+
+        source_slug = "src"
+        if source_language_id:
+            lang_row = (
+                Language.objects
+                .filter(id=source_language_id)
+                .values("slug")
+                .first()
+            )
+            if lang_row and lang_row.get("slug"):
+                source_slug = lang_row["slug"]
+        
+
         user = request.user
         if user != order.manager_id and user != order.translator_id and user != order.editor_id:
             return Response({"detail": "Недостатньо прав для завантаження файлів."}, status=status.HTTP_403_FORBIDDEN)
@@ -431,7 +463,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                                 if not img_bytes:
                                     continue
                                 img = Image.open(BytesIO(img_bytes)).convert("RGB")
-                                text = pytesseract.image_to_string(img, lang="eng")
+                                text = pytesseract.image_to_string(img, lang=source_slug)
                                 ocr_texts.append(text)
                                 images_found += 1
                             except Exception:
