@@ -74,7 +74,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Отримуємо об'єкти для заповнення обов'язкових полів
         status_instance = get_object_or_404(Status, slug="in_translation")  # Стовпець 6 на вашому скріншоті
         User = get_user_model()
-        test_user = User.objects.get(pk=1)
+        test_user = User.objects.get(pk=3)
 
         # 👇 ПЕРЕДАЄМО ID ЯВНО
         order = serializer.save(
@@ -354,10 +354,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
 
         return Response({"message": "Замовлення прийнято та оцінено!"}, status=status.HTTP_200_OK)
-    
+
     @action(detail=True, methods=['get'], url_path='download-files')
     def download_files(self, request, pk=None):
         order = self.get_object()
+        user = request.user
+        if user != order.manager_id and user != order.translator_id and user != order.editor_id:
+            return Response({"detail": "Недостатньо прав для завантаження файлів."}, status=status.HTTP_403_FORBIDDEN)
         files = File.objects.filter(order=order)
         dbx = get_dbx()
         tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
@@ -382,6 +385,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="analyze-images")
     def analyze_images(self, request, pk=None):
         order = self.get_object()
+        user = request.user
+        if user != order.manager_id and user != order.translator_id and user != order.editor_id:
+            return Response({"detail": "Недостатньо прав для завантаження файлів."}, status=status.HTTP_403_FORBIDDEN)
         files = File.objects.filter(order=order)
         dbx = get_dbx()
 
@@ -437,6 +443,11 @@ class OrderViewSet(viewsets.ModelViewSet):
 
             full_text = "\n".join(ocr_texts)
             full_text_clean = full_text.replace("\ufeff", "").replace("\u200b", "")
+            full_text_clean = re.sub(r'[\ufeff\u200b\u200c\u200d]', '', full_text_clean)
+            full_text_clean = re.sub(r'(.)\1{4,}', r'\1\1', full_text_clean)
+            full_text_clean = re.sub(r'[ \t]+', ' ', full_text_clean)
+            full_text_clean = re.sub(r'\n{3,}', '\n\n', full_text_clean)
+            full_text_clean = full_text_clean.strip()
             detected_symbols = len(full_text_clean)
 
             f.detected_symbols += detected_symbols
