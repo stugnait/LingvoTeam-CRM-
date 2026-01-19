@@ -3,16 +3,40 @@ import dropbox
 from django.conf import settings
 from dropbox.sharing import AddMember, MemberSelector, AccessLevel
 from ..core.models import LanguagePair, Language
+from functools import lru_cache
 
+ORDERS_ROOT = "/orders"
 
-dbx = dropbox.Dropbox(
-    oauth2_refresh_token=settings.DROPBOX_REFRESH_TOKEN,
-    app_key=settings.DROPBOX_APP_KEY,
-    app_secret=settings.DROPBOX_APP_SECRET,
-)
+@lru_cache(maxsize=1)
+def get_dbx():
+    dbx = dropbox.Dropbox(
+        oauth2_refresh_token=settings.DROPBOX_REFRESH_TOKEN,
+        app_key=settings.DROPBOX_APP_KEY,
+        app_secret=settings.DROPBOX_APP_SECRET,
+    )
+    return dbx
+
+def ensure_folder(path: str):
+    dbx = get_dbx()
+    try:
+        dbx.files_create_folder_v2(path)
+    except dropbox.exceptions.ApiError as e:
+        try:
+            if e.error.is_path() and e.error.get_path().is_conflict():
+                return
+        except Exception:
+            pass
+
+        print("Dropbox API error: ", e)
+        raise
+
 
 def create_order_folder(order):
-    path = f"/orders/order_{order.id}"
+
+    dbx = get_dbx()
+    ensure_folder(ORDERS_ROOT)
+    path = f"{ORDERS_ROOT}/order_{order.id}"
+    ensure_folder(path)
 
     translator_email = order.translator_id.email
     editor_email = order.editor_id.email
@@ -20,8 +44,8 @@ def create_order_folder(order):
 
     try:
         dbx.files_create_folder_v2(path)
-    except dropbox.exceptions.ApiError:
-        pass
+    except dropbox.exceptions.ApiError as e:
+        print("Dropbox API error", e)
 
     try:
         launch = dbx.sharing_share_folder(path, force_async=False)
@@ -45,14 +69,15 @@ def create_order_folder(order):
 
             ]
         )
-    except dropbox.exceptions.ApiError:
-        pass
+    except dropbox.exceptions.ApiError as e:
+        print("Dropbox API error", e)
 
     return path
 
 
 
 def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
+    dbx = get_dbx()
     language_pair_val = (
         getattr(order, "language_pair_id", None)
         or getattr(order, "language_pair_id_id", None)
@@ -90,8 +115,8 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
 
     try:
         file.seek(0)
-    except Exception:
-        pass
+    except Exception as e:
+        print("Error seeking file:", e)
 
     content = file.read()
     if not content:
@@ -105,18 +130,3 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
     )
 
     return full_path
-
-def get_shared_folder_link(base_path):
-    # source_path = f"{base_path}/source"
-
-    # res = dbx.sharing_list_shared_links(
-    #     path=source_path,
-    #     direct_only=True
-    # )
-
-    # if not res.links:
-    #     raise RuntimeError(f"No shared link for {source_path}")
-
-    # return res.links[0].url
-    fixed = "https://www.dropbox.com/home/order_"
-    return fixed
