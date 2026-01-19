@@ -25,7 +25,9 @@ export const authApi = {
         }),
 
     me: () =>
-        apiFetch<AuthUser>("auth/me/"),
+        apiFetch<AuthUser>("users/users/me/", {
+            method: "GET",
+        }),
 
     forgotPassword: (payload: ForgotPasswordPayload) =>
         apiFetch<ForgotPasswordResponse>("users/auth/forgot-password/", {
