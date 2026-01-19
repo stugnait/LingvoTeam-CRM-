@@ -31,12 +31,12 @@ export default function Home() {
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <Button asChild size="lg" className="w-full sm:w-auto min-w-40">
-                        <Link href="/signup">
-                            Create account
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                    </Button>
+                    {/*<Button asChild size="lg" className="w-full sm:w-auto min-w-40">*/}
+                    {/*    <Link href="/signup">*/}
+                    {/*        Create account*/}
+                    {/*        <ArrowRight className="ml-2 h-4 w-4" />*/}
+                    {/*    </Link>*/}
+                    {/*</Button>*/}
                     <Button asChild size="lg" variant="outline" className="w-full sm:w-auto min-w-40 bg-transparent">
                         <Link href="/login">Log in</Link>
                     </Button>
