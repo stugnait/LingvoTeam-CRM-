@@ -45,3 +45,7 @@ class FileCreateSerializer(serializers.ModelSerializer):
         model = File
         fields = ['id', 'order', 'file_type', 'dropbox_url']
         read_only_fields = ['id']
+
+class ChangeStatusSerializer(serializers.Serializer):
+    status_id = serializers.IntegerField(required=True)
+    comment = serializers.CharField(required=False, allow_blank=True)
