@@ -26,6 +26,9 @@ class LanguagePairSelectSerializer(serializers.ModelSerializer):
         model = LanguagePair
         fields = ['id', 'source_language', 'target_language', 'pair_name']
 
+    def __str__(self):
+        return f"{self.source_language} -> {self.target_language}"
+
     def get_pair_name(self, obj):
         s_name = obj.source_language.name if obj.source_language else "???"
         t_name = obj.target_language.name if obj.target_language else "???"

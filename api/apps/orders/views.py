@@ -23,7 +23,7 @@ from .models import Order, OrderTraffic, Status, OrderLink, OrderEditorReview, T
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer, RejectTranslationSerializer, \
     ApproveTranslationSerializer
 from .models import Order, OrderTraffic, Status, OrderLink, File
-from .serializers import OrderCreateSerializer, OrderTrafficSerializer
+from .serializers import OrderCreateSerializer, OrderTrafficSerializer, OrderListSerializer
 from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
@@ -40,9 +40,25 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
-    serializer_class = OrderCreateSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [HasPermission]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+    def get_required_permissions(self, request):
+        mapping = {
+            'create': ['order.create'],
+            'list': ['order.view'],
+            'update': ['order.update'],
+            'partial_update': ['order.update'],
+            'assign_translator': ['order.assign']
+        }
+        return mapping.get(self.action, [])
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return OrderListSerializer
+
+        return OrderCreateSerializer
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -217,17 +233,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             import traceback
             traceback.print_exc()
             raise e
-
-
-    def get_required_permissions(self, request):
-        mapping = {
-            'create': ['order.create'],
-            'list': ['order.view'],
-            'update': ['order.update'],
-            'partial_update': ['order.update'],
-            'assign_translator': ['order.assign']
-        }
-        return mapping.get(self.action, [])
 
     @action(detail=True, methods=['post'], url_path='reject-translation')
     def reject_translation(self, request, pk=None):
