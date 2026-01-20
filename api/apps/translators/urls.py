@@ -9,6 +9,7 @@ router.register(r'translator-traffic', TranslatorTrafficViewSet, basename='traff
 router.register(r'', TranslatorViewSet, basename='translators')
 
 urlpatterns = [
+    path('<uuid:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
+
     path('', include(router.urls)),
-    path('<str:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
 ]
