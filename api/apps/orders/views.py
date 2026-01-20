@@ -21,14 +21,14 @@ from rest_framework.permissions import AllowAny
 from LingvoTeam import settings
 from .models import Order, OrderTraffic, Status, OrderLink, OrderEditorReview, TranslationQuality
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer, RejectTranslationSerializer, \
-    ApproveTranslationSerializer
+    ApproveTranslationSerializer, TranslatorUploadFileSerializer
 from .models import Order, OrderTraffic, Status, OrderLink, File
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer
 from ..core.models import LanguagePair
 from ..core.serializers import LanguagePairSelectSerializer
 from ..users.permissions import HasPermission
 
-from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder, get_shared_folder_link
+from ..dropbox_services.dropbox_utils import create_order_folder, upload_file_to_order_folder, get_dbx
 
 
 
@@ -68,7 +68,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Отримуємо об'єкти для заповнення обов'язкових полів
         status_instance = get_object_or_404(Status, slug="in_translation")  # Стовпець 6 на вашому скріншоті
         User = get_user_model()
-        test_user = User.objects.get(pk=13)
+        test_user = User.objects.get(pk=3)
 
         # 👇 ПЕРЕДАЄМО ID ЯВНО
         order = serializer.save(
@@ -345,3 +345,39 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
 
         return Response({"message": "Замовлення прийнято та оцінено!"}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=["post"], url_path="translator-upload",)
+    def translator_file_upload(self, request, pk=None):
+        order = self.get_object()
+        serializer = TranslatorUploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if user != order.manager_id and user != order.translator_id and user != order.editor_id:
+            return Response({"detail": "Недостатньо прав для завантаження файлів."}, status=status.HTTP_403_FORBIDDEN)
+        dbx = get_dbx()
+        files = serializer.validated_data["files"]
+
+        base_path = f"/orders/order_{order.id}"
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="source",
+            )
+            uploaded.append(
+                {
+                    "filename": f.name,
+                    "dropbox_path": dropbox_path,
+                }
+            )
+
+        return Response(
+            {
+                "message": "Files uploaded",
+                "count": len(uploaded),
+                "files": uploaded,
+            },
+            status=status.HTTP_201_CREATED,
+        )

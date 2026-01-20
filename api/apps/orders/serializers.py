@@ -45,3 +45,6 @@ class FileCreateSerializer(serializers.ModelSerializer):
         model = File
         fields = ['id', 'order', 'file_type', 'dropbox_url']
         read_only_fields = ['id']
+
+class TranslatorUploadFileSerializer(serializers.Serializer):
+    files = serializers.ListField(child=serializers.FileField(), write_only=True)
