@@ -18,6 +18,8 @@ from django_filters.rest_framework import DjangoFilterBackend, FilterSet, Number
 from apps.orders.models import Order
 from django.utils import timezone
 
+from apps.users.permissions import HasPermission
+
 
 class OwnerDetailFilter(FilterSet):
     manager = NumberFilter(field_name='manager_id')
@@ -31,7 +33,7 @@ class OwnerDetailFilter(FilterSet):
 
 
 class OwnerOrderDetailsViewSet(viewsets.ReadOnlyModelViewSet):
-
+    permission_classes = [HasPermission]
     queryset = Order.objects.all().order_by('-created_at')
     serializer_class = OwnerOrderListSerializer
 
@@ -42,7 +44,23 @@ class OwnerOrderDetailsViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['title', 'client_comment']
     ordering_fields = ['deadline', 'created_at', 'page_count']
 
+    def get_required_permissions(self, request):
+        return ['statistic.order.view']
+
 class OwnerDashboardViewSet(viewsets.GenericViewSet):
+    permission_classes = [HasPermission]
+
+    def get_required_permissions(self, request):
+        mapping = {
+            'unpaid_orders': ['statistic.unpaid.view'],
+            'manager_stats': ['statistic.manager.view'],
+            'overdue_payments': ['statistic.payment.view'],
+            'high_risk_orders': ['statistic.risk.view'],
+            'client_stats': ['statistic.client.view'],
+            'translator_stats': ['statistic.translator.view'],
+        }
+        return mapping.get(self.action, [])
+
     def get_queryset(self):
         return Order.objects.none()
 
