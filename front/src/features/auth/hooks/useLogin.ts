@@ -6,6 +6,13 @@ import { useToast } from "@/src/hooks/use-toast"
 import { authApi } from "../api"
 import type { LoginPayload, ValidationErrorResponse } from "../types"
 
+
+const ROLE_REDIRECT_MAP: Record<string, string> = {
+    admin: "/dashboard",
+    manager: "/manager",
+    driver: "/driver",
+}
+
 export function useLogin() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -17,39 +24,40 @@ export function useLogin() {
         e.preventDefault()
         setIsLoading(true)
 
-        const payload: LoginPayload = {
-            email,
-            password
-        }
+        const payload: LoginPayload = { email, password }
 
         try {
-            // Simulate API call
-            await authApi.login(payload)
+            const response = await authApi.login(payload)
+            const roleSlug = response?.user?.role?.slug
 
             toast({
                 title: "Successfully entered",
-                description: "Now you can use the product"
+                description: "Now you can use the product",
             })
-            router.push("/dashboard")
+
+            if (!roleSlug) {
+                router.replace("/no-role")
+                return
+            }
+
+            const redirectPath =
+                ROLE_REDIRECT_MAP[roleSlug] ?? "/dashboard"
+
+            router.replace(redirectPath)
+
         } catch (err) {
             const errors = err as ValidationErrorResponse
 
             if (errors?.email) {
                 toast({
-                    title: "Registration failed",
+                    title: "Login failed",
                     description: errors.email[0],
-                    variant: "error",
-                })
-            } else if (errors?.password_confirm) {
-                toast({
-                    title: "Password mismatch",
-                    description: errors.password_confirm[0],
                     variant: "error",
                 })
             } else {
                 toast({
                     title: "Error",
-                    description: "Something went wrong. Please try again.",
+                    description: "Invalid credentials or server error",
                     variant: "error",
                 })
             }

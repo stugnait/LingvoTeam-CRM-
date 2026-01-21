@@ -23,7 +23,7 @@ from django.http import FileResponse
 from LingvoTeam import settings
 from .models import Order, OrderTraffic, Status, OrderLink, OrderEditorReview, TranslationQuality
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer, RejectTranslationSerializer, \
-    ApproveTranslationSerializer
+    ApproveTranslationSerializer, TranslatorUploadFileSerializer
 from .models import Order, OrderTraffic, Status, OrderLink, File
 from .serializers import OrderCreateSerializer, OrderTrafficSerializer
 from ..core.models import LanguagePair, Language
@@ -74,7 +74,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Отримуємо об'єкти для заповнення обов'язкових полів
         status_instance = get_object_or_404(Status, slug="in_translation")  # Стовпець 6 на вашому скріншоті
         User = get_user_model()
-        test_user = User.objects.get(pk=13)
+        test_user = User.objects.get(pk=3)
 
         # 👇 ПЕРЕДАЄМО ID ЯВНО
         order = serializer.save(
@@ -246,7 +246,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     f.seek(0)
                     f_path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
                     uploaded_paths.append(f_path)
-                
+
                 for i, f in enumerate(files):
                     ext = os.path.splitext(f.name)[1].lstrip(".").lower()
 
@@ -373,7 +373,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 filename = os.path.basename(dropbox_path)
                 md, resp = dbx.files_download(dropbox_path)
                 zf.writestr(filename, resp.content)
-        
+
         return FileResponse(
             open(zip_filename, "rb"),
             as_attachment=True,
@@ -415,7 +415,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             if lang_row and lang_row.get("slug"):
                 source_slug = lang_row["slug"]
-        
+
 
         user = request.user
         if user != order.manager_id and user != order.translator_id and user != order.editor_id:
