@@ -83,8 +83,8 @@ class ExternalOrderAccessView(APIView):
             "status": "awaiting_password"
         }, status=http_status.HTTP_200_OK)
 
-    def post(self, request, role, slug):
-        link_obj = get_object_or_404(OrderLink, link=slug, assignee=role)
+    def post(self, request, slug):
+        link_obj = get_object_or_404(OrderLink, link=slug)
         now = timezone.now()
 
         if link_obj.banned_to and link_obj.banned_to > now:
@@ -113,11 +113,11 @@ class ExternalOrderAccessView(APIView):
 
         link_obj.attempts += 1
 
-        if link_obj.attempts >= 3:
-            link_obj.banned_to = now + timedelta(hours=2)
+        if link_obj.attempts >= 5:
+            link_obj.banned_to = now + timedelta(minutes=3)
             message = "Невірний пароль. Доступ заблоковано на 15 хвилин."
         else:
-            message = f"Невірний пароль. Залишилося спроб: {3 - link_obj.attempts}"
+            message = f"Невірний пароль. Залишилося спроб: {5 - link_obj.attempts}"
 
         link_obj.save()
 

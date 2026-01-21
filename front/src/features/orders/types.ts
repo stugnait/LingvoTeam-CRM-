@@ -1,0 +1,154 @@
+export interface CreateOrderPayload {
+    client_id: number
+    source_language: number
+    target_language: number
+    traffic_id: number
+    language_pair_id: number
+    currency_id_id: number,
+    translator_id?: number
+    translator_traffic_id?: number
+    files?: File[]
+}
+
+export interface CreateOrderResponse {
+    message: string
+    order_id: number
+    page_count: number
+    chars_with_spaces: number
+    chars_no_spaces: number
+    images_count: number
+
+    full_url: string
+    password: string
+    expire_at: string
+}
+
+export interface Details {
+    translator_id: number
+    client_id: number
+}
+
+/* =========================================================
+   TRANSLATOR
+   ========================================================= */
+
+import {User} from "@/src/features/users/types";
+
+/**
+ * Відповідає TranslatorSerializer
+ */
+export interface Translator {
+    id: number
+    full_name: string
+    email: string
+    phone: string
+    work_type: string
+
+    currency_id: number
+    currency_name: string
+
+    created_at: string // ISO datetime
+}
+
+/* =========================================================
+   TRANSLATOR — CREATE / UPDATE PAYLOAD
+   ========================================================= */
+
+export interface TranslatorPayload {
+    full_name: string
+    email: string
+    phone: string
+    work_type: string
+    currency_id?: number
+}
+
+export interface TranslatorListResponse {
+    results: Translator[]
+    total: number
+}
+
+/* =========================================================
+   TRANSLATOR FILTERS (query params)
+   ========================================================= */
+
+export interface TranslatorFilters {
+    work_type?: number
+    source_language?: number
+    target_language?: number
+    search?: string
+}
+
+/* =========================================================
+   TRANSLATOR TRAFFIC
+   ========================================================= */
+
+/**
+ * Відповідає TranslatorTrafficSerializer
+ */
+export interface TranslatorTraffic {
+    id: number
+
+    translator_id: number
+    language_pair: number
+    language_pair_name: string
+
+    currency_id: number
+    currency_name: string
+
+    rate_per_page?: number | null
+    rate_per_action?: number | null
+}
+
+/* =========================================================
+   TRANSLATOR TRAFFIC — CREATE / UPDATE PAYLOAD
+   ========================================================= */
+
+export interface TranslatorTrafficPayload {
+    translator_id: number
+    language_pair: number
+    currency_id: number
+
+    rate_per_page?: number | null
+    rate_per_action?: number | null
+}
+
+/* =========================================================
+   COMMON API RESPONSES
+   ========================================================= */
+
+// DRF validation error (400)
+export type ValidationErrorResponse = {
+    [field: string]: string[]
+}
+
+// 401 Unauthorized
+export interface AuthErrorResponse {
+    detail: string
+}
+
+// 403 Forbidden
+export interface PermissionErrorResponse {
+    detail: string
+}
+
+
+export interface OrderListItem {
+    id: number
+    client_id: number
+    source_language: number
+    target_language: number
+    status_id: string
+    created_at: string // ISO
+    translator_id: string
+    language_pair_id: number
+}
+
+export interface OrderListResponse {
+    results: OrderListItem[]
+    total: number
+}
+
+export interface LanguagePair {
+    id: number
+    pair_name: string
+}

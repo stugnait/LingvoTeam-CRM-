@@ -10,5 +10,5 @@ router.register(r'', TranslatorViewSet, basename='translators')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('<str:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
+    path('external/<str:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
 ]

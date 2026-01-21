@@ -18,9 +18,6 @@ export function AuthLayout({
                                children,
                                title,
                                description,
-                               footerText,
-                               footerLinkText,
-                               footerLinkHref,
                                backgroundImage = true,
                            }: AuthLayoutProps) {
     return (
@@ -62,17 +59,6 @@ export function AuthLayout({
 
                 {/* Footer */}
                 <div className="mt-8 text-center">
-                    <p className="text-sm text-muted-foreground">
-                        {footerText}{" "}
-                        <Link
-                            href={footerLinkHref}
-                            className="auth-link font-semibold inline-flex items-center gap-1.5 group"
-                        >
-                            {footerLinkText}
-                            <span className="group-hover:translate-x-1 transition-transform duration-200">→</span>
-                        </Link>
-                    </p>
-
                     {/* Additional links */}
                     <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-border/50">
                         <Link

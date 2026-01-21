@@ -597,6 +597,92 @@
         border-radius: var(--radius);
     }
 
+    @keyframes expand-row {
+        0% {
+            max-height: 0;
+            opacity: 0;
+            transform: scaleY(0.95);
+        }
+        50% {
+            max-height: 200px;
+            opacity: 0.5;
+            transform: scaleY(0.98);
+        }
+        100% {
+            max-height: 500px;
+            opacity: 1;
+            transform: scaleY(1);
+        }
+    }
+
+    @keyframes expand-row-content {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        50% {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes collapse-row {
+        0% {
+            max-height: 500px;
+            opacity: 1;
+            transform: scaleY(1);
+        }
+        50% {
+            max-height: 200px;
+            opacity: 0.5;
+            transform: scaleY(0.98);
+        }
+        100% {
+            max-height: 0;
+            opacity: 0;
+            transform: scaleY(0.95);
+        }
+    }
+
+    /* Утилітарні класи для нових анімацій */
+    .animate-expand-row {
+        animation: expand-row 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .animate-expand-row-content {
+        animation: expand-row-content 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation-delay: 150ms;
+    }
+
+    .animate-collapse-row {
+        animation: collapse-row 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    /* Анімація для пошарового появи контенту */
+    @keyframes content-fade-in {
+        0% {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-content-fade-in {
+        animation: content-fade-in 0.4s ease-out forwards;
+    }
+
+    .animate-content-delay-1 { animation-delay: 200ms; }
+    .animate-content-delay-2 { animation-delay: 300ms; }
+    .animate-content-delay-3 { animation-delay: 400ms; }
+    .animate-content-delay-4 { animation-delay: 500ms; }
+
     /* Градієнтний текст */
     .text-gradient {
         background: linear-gradient(to right, var(--primary), var(--primary-dark));
@@ -638,6 +724,70 @@
     .animate-stagger > *:nth-child(13) { animation-delay: 1300ms; }
     .animate-stagger > *:nth-child(14) { animation-delay: 1400ms; }
     .animate-stagger > *:nth-child(15) { animation-delay: 1500ms; }
+}
+
+/* =========================
+   SIDE MODAL ANIMATIONS
+========================= */
+
+@keyframes slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slide-out-right {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes fade-in-blur {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
+}
+
+@keyframes fade-out-blur {
+    from {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
+    to {
+        opacity: 0;
+        backdrop-filter: blur(0);
+    }
+}
+
+.animate-slide-in-right {
+    animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out-right {
+    animation: slide-out-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-fade-in-blur {
+    animation: fade-in-blur 0.3s ease-out forwards;
+}
+
+.animate-fade-out-blur {
+    animation: fade-out-blur 0.3s ease-out forwards;
 }
 
 /* =========================
