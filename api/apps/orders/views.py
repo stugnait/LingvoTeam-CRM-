@@ -4,6 +4,7 @@ import pypdf
 import zipfile
 import uuid
 import secrets
+import os
 from datetime import timedelta
 
 from django.core.mail import send_mail
@@ -37,6 +38,39 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderCreateSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+
+    def get_required_permissions(self, request):
+        mapping = {
+            'create': ['order.create'],
+            'list': ['order.view'],
+            'update': ['order.update'],
+            'partial_update': ['order.update'],
+            'assign_translator': ['order.assign'],
+            'reject_translation': ['order.reject_translation'],
+            'approve_translation': ['order.approve_translation'],
+        }
+        return mapping.get(self.action, [])
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if not user.is_authenticated:
+            return Order.objects.none()
+
+        if user.role.slug in ['admin', 'owner']:
+            return Order.objects.all()
+
+        if user.role.slug == 'editor':
+            return Order.objects.filter(editor_id=user)
+
+        return Order.objects.none()
+
+    # def get_serializer_class(self):
+    #     if self.action in ['list', 'retrieve']:
+    #         return OrderListSerializer
+    #
+    #     return OrderCreateSerializer
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
