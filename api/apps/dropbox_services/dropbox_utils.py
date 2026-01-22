@@ -78,6 +78,7 @@ def create_order_folder(order):
 
 def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
     dbx = get_dbx()
+
     language_pair_val = (
         getattr(order, "language_pair_id", None)
         or getattr(order, "language_pair_id_id", None)
@@ -87,15 +88,18 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
     language_pair_id = getattr(language_pair_val, "id", language_pair_val)
 
     source_language_id = None
+    target_language_id = None
+
     if language_pair_id:
         lp_row = (
             LanguagePair.objects
             .filter(id=language_pair_id)
-            .values("source_language_id")
+            .values("source_language_id", "target_language_id")
             .first()
         )
         if lp_row:
             source_language_id = lp_row.get("source_language_id")
+            target_language_id = lp_row.get("target_language_id")
 
     source_slug = "src"
     if source_language_id:
@@ -108,10 +112,36 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
         if lang_row and lang_row.get("slug"):
             source_slug = lang_row["slug"]
 
-    name, ext = os.path.splitext(file.name)
-    filename = f"{name}_{source_slug}{ext}"
+    target_slug = "tgt"
+    if target_language_id:
+        lang_row = (
+            Language.objects
+            .filter(id=target_language_id)
+            .values("slug")
+            .first()
+        )
+        if lang_row and lang_row.get("slug"):
+            target_slug = lang_row["slug"]
 
-    full_path = f"{base_path}/{subdir}/{filename}"
+    name, ext = os.path.splitext(file.name)
+
+    if subdir == "source":
+        filename = f"{name}_{source_slug}{ext}"
+        full_path = f"{base_path}/{subdir}/{filename}"
+
+    elif subdir == "target":
+        source_suffix = f"_{source_slug}"
+
+        if name.endswith(source_suffix):
+            new_name = name[: -len(source_suffix)]
+            filename = f"{new_name}_{target_slug}{ext}"
+        else:
+            filename = f"{name}_{target_slug}{ext}"
+
+        full_path = f"{base_path}/{subdir}/{filename}"
+
+    else:
+        full_path = f"{base_path}/{subdir}/{file.name}"
 
     try:
         file.seek(0)
