@@ -345,7 +345,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         files = File.objects.filter(order=order)
         dbx = get_dbx()
         results = []
-        print("Source slug: ", source_slug)
         reader = easyocr.Reader([source_slug], gpu=False)
 
         for f in files:

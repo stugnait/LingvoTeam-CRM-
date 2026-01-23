@@ -152,3 +152,17 @@ export interface LanguagePair {
     id: number
     pair_name: string
 }
+
+export interface AnalyzeImagesResultItem {
+  file_id: number
+  file_type?: string
+  images_found?: number
+  detected_symbols_from_images?: number
+  preview_text?: string
+  error?: string
+}
+
+export interface AnalyzeImagesResponse {
+  order_id: number
+  results: AnalyzeImagesResultItem[]
+}
