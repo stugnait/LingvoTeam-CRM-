@@ -4,6 +4,7 @@ export interface CreateOrderPayload {
     target_language: number
     traffic_id: number
     language_pair_id: number
+    editor_id: number,
     currency_id_id: number,
     translator_id?: number
     translator_traffic_id?: number
