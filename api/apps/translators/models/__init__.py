@@ -1,2 +1,3 @@
 from .translator import Translator
 from .translator_traffic import TranslatorTraffic
+from .translator_language_pairs import TranslatorLanguagePairs

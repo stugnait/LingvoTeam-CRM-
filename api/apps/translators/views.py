@@ -11,6 +11,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework import status as http_status
+
+from .models.translator_language_pairs import TranslatorLanguagePairs
 from ..orders.models import OrderLink, status
 
 from .models import Translator, TranslatorTraffic
@@ -19,13 +21,31 @@ from ..orders.models import OrderLink, status
 from ..orders.serializers import OrderCreateSerializer
 from ..users.permissions import HasPermission
 
+from rest_framework import viewsets
+from .serializers import TranslatorLanguagePairsSerializer
+
+
+class TranslatorLanguagePairsViewSet(viewsets.ModelViewSet):
+    queryset = TranslatorLanguagePairs.objects.all().select_related('translator', 'language_pair')
+    serializer_class = TranslatorLanguagePairsSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        translator_id = self.request.query_params.get('translator_id')
+        if translator_id:
+            queryset = queryset.filter(translator_id=translator_id)
+        return queryset
 
 class TranslatorFilter(django_filters.FilterSet):
+    language_pair_id = django_filters.NumberFilter(
+        field_name='language_pair_relations__language_pair'
+    )
+
     source_language = django_filters.NumberFilter(
-        field_name='translatortraffic__language_pair__source_language_id'
+        field_name='language_pair_relations__language_pair__source_lang'
     )
     target_language = django_filters.NumberFilter(
-        field_name='translatortraffic__language_pair__target_language_id'
+        field_name='language_pair_relations__language_pair__target_lang'
     )
 
     class Meta:
