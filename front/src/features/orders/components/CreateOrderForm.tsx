@@ -33,6 +33,7 @@ export default function CreateOrderPage() {
     const [targetLanguage, setTargetLanguage] = useState("")
     const [languagePair, setLanguagePair] = useState("")
     const [translatorTrafficId, setTranslatorTrafficId] = useState("")
+    const [editor, setEditor] = useState("")
     const [trafficId, setTrafficId] = useState("")
     const [currencyId, setCurrencyId] = useState("")
     const [files, setFiles] = useState<File[]>([])
@@ -46,6 +47,7 @@ export default function CreateOrderPage() {
             translator_traffic_id: Number(translatorTrafficId),
             currency_id_id: Number(currencyId),
             language_pair_id: Number(languagePair),
+            editor_id: Number(editor),
             translator_id: selectedTranslatorId ?? undefined,
             files,
         })
@@ -57,6 +59,7 @@ export default function CreateOrderPage() {
         setLanguagePair("")
         setTranslatorTrafficId("")
         setTrafficId("")
+        setEditor("")
         setCurrencyId("")
         setFiles([])
         setIsModalOpen(false)
@@ -128,6 +131,18 @@ export default function CreateOrderPage() {
                             placeholder="Enter target language ID"
                             value={targetLanguage}
                             onChange={(e) => setTargetLanguage(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Editor ID
+                        </label>
+                        <Input
+                            placeholder="Enter target language ID"
+                            value={editor}
+                            onChange={(e) => setEditor(e.target.value)}
                             className="transition-smooth focus-visible-primary"
                         />
                     </div>

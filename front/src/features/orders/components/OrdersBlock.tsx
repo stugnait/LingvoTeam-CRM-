@@ -17,8 +17,10 @@ import type {
     OrderListItem,
     CreateOrderResponse,
     LanguagePair,
-    Translator
+    Translator,
+    AnalyzeImagesResponse
 } from "@/src/features/orders/types"
+import { ordersApi } from "@/src/features/orders/api"
 
 interface OrdersTableProps {
     orders: OrderListItem[]
@@ -31,6 +33,19 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache }:
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<CreateOrderResponse | null>(null)
     const [loadingId, setLoadingId] = useState<number | null>(null)
+    const [analyzeLoadingId, setAnalyzeLoadingId] = useState<number | null>(null)
+    const [analyzeResult, setAnalyzeResult] = useState<AnalyzeImagesResponse | null>(null)
+
+    const handleAnalyzeImages = async (orderId: number) => {
+        try {
+            setAnalyzeLoadingId(orderId)
+            const res = await ordersApi.analyzeImages(orderId)
+            setAnalyzeResult(res)
+        } finally {
+            setAnalyzeLoadingId(null)
+        }
+    }
+
 
     const handleToggle = async (orderId: number) => {
         if (expandedId === orderId) {
@@ -180,6 +195,53 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache }:
                                                                         {details.chars_no_spaces}
                                                                     </span>
                                                                 </div>
+                                                            </div>
+                                                            <div className="pt-4 border-t border-border/50 space-y-3">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="text-sm font-medium text-foreground">Image OCR</p>
+
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        disabled={analyzeLoadingId === order.id}
+                                                                        onClick={() => handleAnalyzeImages(order.id)}
+                                                                    >
+                                                                        {analyzeLoadingId === order.id ? "Analyzing..." : "Analyze images"}
+                                                                    </Button>
+                                                                </div>
+
+                                                                {analyzeResult?.order_id === order.id && (
+                                                                    <div className="space-y-2">
+                                                                        {analyzeResult.results.length === 0 ? (
+                                                                            <p className="text-sm text-muted-foreground">
+                                                                                No supported files (pdf/docx) found.
+                                                                            </p>
+                                                                        ) : (
+                                                                            analyzeResult.results.map((r) => (
+                                                                                <div key={r.file_id} className="border rounded-md p-3 bg-background/50">
+                                                                                    <div className="text-sm">
+                                                                                        <b>file_id:</b> {r.file_id}{" "}
+                                                                                        {r.file_type ? `(${r.file_type})` : ""}
+                                                                                    </div>
+
+                                                                                    {r.error ? (
+                                                                                        <div className="text-sm text-destructive mt-1">{r.error}</div>
+                                                                                    ) : (
+                                                                                        <div className="text-sm mt-1 space-y-1">
+                                                                                            <div>
+                                                                                                images: {r.images_found ?? 0} • symbols:{" "}
+                                                                                                {r.detected_symbols_from_images ?? 0}
+                                                                                            </div>
+                                                                                            {r.preview_text && (
+                                                                                                <div className="whitespace-pre-wrap">{r.preview_text}</div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            ))
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             {/*<div className="pt-4 border-t border-border/50">*/}

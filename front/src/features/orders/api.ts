@@ -5,7 +5,7 @@ import type { CreateOrderResponse, Translator,
     TranslatorFilters,
     TranslatorPayload,
     Details,
-    TranslatorListResponse, OrderListResponse, LanguagePair } from "./types"
+    TranslatorListResponse, OrderListResponse, LanguagePair, AnalyzeImagesResponse } from "./types"
 
 export const ordersApi = {
     create: (body: BodyInit) =>
@@ -39,5 +39,9 @@ export const ordersApi = {
     getTranslatorById: (id: number) =>
         apiFetch<Translator>(`translators/${id}`, {
             method: "GET",
-        })
+        }),
+    analyzeImages: (orderId: number) =>
+        apiFetch<AnalyzeImagesResponse>(`orders/${orderId}/analyze-images/`, {
+            method: "POST",
+        }),
 }

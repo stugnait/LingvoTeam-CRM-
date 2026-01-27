@@ -4,6 +4,7 @@ export interface CreateOrderPayload {
     target_language: number
     traffic_id: number
     language_pair_id: number
+    editor_id: number,
     currency_id_id: number,
     translator_id?: number
     translator_traffic_id?: number
@@ -151,4 +152,18 @@ export interface OrderListResponse {
 export interface LanguagePair {
     id: number
     pair_name: string
+}
+
+export interface AnalyzeImagesResultItem {
+  file_id: number
+  file_type?: string
+  images_found?: number
+  detected_symbols_from_images?: number
+  preview_text?: string
+  error?: string
+}
+
+export interface AnalyzeImagesResponse {
+  order_id: number
+  results: AnalyzeImagesResultItem[]
 }

@@ -1,3 +1,4 @@
+from csv import reader
 import re
 from decimal import Decimal, InvalidOperation
 
@@ -11,6 +12,8 @@ import os
 import logging
 from io import BytesIO
 from datetime import timedelta
+import easyocr
+import numpy as np
 
 # Third-party imports
 from PIL import Image
@@ -40,7 +43,7 @@ from .models import (
 from .serializers import (
     OrderCreateSerializer, OrderTrafficSerializer,
     RejectTranslationSerializer, ApproveTranslationSerializer,
-    OrderListSerializer
+    OrderListSerializer, TranslatorUploadFileSerializer
 )
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
@@ -323,22 +326,44 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Tesseract використовує 3-літерні коди (eng, ukr, deu), а не slug мови (en, uk).
         # Тут потрібен маппінг. Поки що спробуємо взяти slug, але краще мати окреме поле tesseract_code.
 
-        source_slug = "eng"  # Fallback, тому що "src" поламає Tesseract
+        source_slug = "en"
+        language_pair_val = (
+            getattr(order, "language_pair_id", None)
+            or getattr(order, "language_pair_id_id", None)
+            or getattr(order, "language_pair", None)
+        )
 
-        if order.language_pair and order.language_pair.source_language:
-            lang_slug = order.language_pair.source_language.slug
-            # Простий маппінг для прикладу
-            if lang_slug in ['ua', 'uk', 'ukr']:
-                source_slug = 'ukr'
-            elif lang_slug in ['ru', 'rus']:
-                source_slug = 'rus'
-            elif lang_slug in ['de', 'deu']:
-                source_slug = 'deu'
-            # else source_slug залишається 'eng'
+        language_pair_id = getattr(language_pair_val, "id", language_pair_val)
+
+        source_language_id = None
+
+        if language_pair_id:
+            lp_row = (
+                LanguagePair.objects
+                .filter(id=language_pair_id)
+                .values("source_language_id")
+                .first()
+            )
+            if lp_row:
+                source_language_id = lp_row.get("source_language_id")
+
+        source_slug = "src"
+        lang_row = None
+        if source_language_id:
+            lang_row = (
+                Language.objects
+                .filter(id=source_language_id)
+                .values("slug")
+                .first()
+            )
+        if lang_row and lang_row.get("slug"):
+            source_slug = lang_row["slug"]
+        
 
         files = File.objects.filter(order=order)
         dbx = get_dbx()
         results = []
+        reader = easyocr.Reader([source_slug], gpu=False)
 
         for f in files:
             if not f.dropbox_url:
@@ -370,7 +395,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                             try:
                                 img = Image.open(BytesIO(img_bytes)).convert("RGB")
                                 # Використовуємо визначену мову, а не хардкод 'ukr'
-                                text = pytesseract.image_to_string(img, lang=source_slug)
+                                arr = np.array(img)
+                                text = "\n".join(reader.readtext(arr, detail=0, paragraph=True))
                                 if text.strip():
                                     ocr_texts.append(text)
                                     images_found += 1
@@ -389,7 +415,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                                 if not img_bytes:
                                     continue
                                 img = Image.open(BytesIO(img_bytes)).convert("RGB")
-                                text = pytesseract.image_to_string(img, lang=source_slug)
+                                arr = np.array(img)
+                                text = "\n".join(reader.readtext(arr, detail=0, paragraph=True))
                                 if text.strip():
                                     ocr_texts.append(text)
                                     images_found += 1
@@ -423,6 +450,53 @@ class OrderViewSet(viewsets.ModelViewSet):
             })
 
         return Response({"order_id": order.id, "results": results}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=["post"], url_path="translator-upload")
+    def translator_file_upload(self, request, pk=None):
+        order = self.get_object()
+        user = request.user
+
+        is_authorized = (
+                user == order.manager_id or
+                user == order.translator_id or
+                user == order.editor_id
+        )
+
+        if not is_authorized and not user.role.slug in ['admin', 'owner']:
+            return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = TranslatorUploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["files"]
+        base_path = f"/orders/order_{order.id}"
+
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="target",
+            )
+            uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
+        
+        for i, f in enumerate(files):
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+            dropbox_url = uploaded[i]["dropbox_path"]
+
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=dropbox_url,
+                detected_pages=0,
+                detected_symbols=0,
+            )
+
+        return Response(
+            {"message": "Files uploaded", "count": len(uploaded), "files": uploaded},
+            status=status.HTTP_201_CREATED,
+        )
 
     # --- Private Helpers ---
 

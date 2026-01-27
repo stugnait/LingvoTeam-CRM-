@@ -41,6 +41,7 @@ export function useOrders() {
             formData.append("translator_traffic_id", String(data.translator_traffic_id))
             formData.append("currency_id_id", String(data.currency_id_id))
             formData.append("language_pair_id", String(data.language_pair_id))
+            formData.append("editor_id", String(data.editor_id))
 
             if (data.translator_id) {
                 formData.append("translator_id", String(data.translator_id))
