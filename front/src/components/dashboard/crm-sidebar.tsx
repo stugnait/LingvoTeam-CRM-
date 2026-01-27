@@ -29,7 +29,12 @@ const navigation = [
     {
         name: "Settings",
         href: "/dashboard/settings",
-        roles: ["admin"],
+        roles: ["admin", "editor"],
+    },
+    {
+        name: "Tasks",
+        href: "/dashboard/editor",
+        roles: ["editor"],
     },
 ]
 
