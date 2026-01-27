@@ -5,3 +5,4 @@ from .order_link import OrderLink
 from .order_editor_review import OrderEditorReview
 from .translation_quality import TranslationQuality
 from .file import File
+from .order_status_history import OrderStatusHistory

@@ -54,6 +54,8 @@ class TranslatorTrafficSerializer(serializers.ModelSerializer):
             'language_pair_name',
             'currency_id',
             'currency_name',
+            'category',
+            'category_name',
             'rate_per_page',
             'rate_per_action'
         ]

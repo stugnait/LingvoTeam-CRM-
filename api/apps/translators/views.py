@@ -78,13 +78,14 @@ class TranslatorTrafficViewSet(viewsets.ModelViewSet):
     queryset = TranslatorTraffic.objects.select_related(
         'language_pair',
         'currency_id',
-        'translator'
+        'translator',
+        'category'
     ).all()
 
     serializer_class = TranslatorTrafficSerializer
 
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['translator', 'language_pair']
+    filterset_fields = ['translator', 'language_pair', 'category']
     permission_classes = [HasPermission]
     required_permissions = ['translator.traffic.manage']
 

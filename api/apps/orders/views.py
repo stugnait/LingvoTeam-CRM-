@@ -24,6 +24,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
+from django_filters.rest_framework import DjangoFilterBackend
 
 # DRF imports
 from rest_framework import viewsets, status
@@ -34,7 +35,7 @@ from rest_framework.response import Response
 # Local imports
 from .models import (
     Order, OrderTraffic, Status, OrderLink,
-    OrderEditorReview, TranslationQuality, File
+    OrderEditorReview, TranslationQuality, File, OrderStatusHistory
 )
 from .serializers import (
     OrderCreateSerializer, OrderTrafficSerializer,
@@ -52,10 +53,16 @@ logger = logging.getLogger(__name__)
 
 
 class OrderTrafficViewSet(viewsets.ModelViewSet):
-    queryset = OrderTraffic.objects.select_related('language_pair', 'currency_id').all()
+    queryset = OrderTraffic.objects.select_related(
+        'language_pair',
+        'currency_id',
+        'category'
+    ).all()
     serializer_class = OrderTrafficSerializer
     permission_classes = [HasPermission]
     required_permissions = ['order.traffic.manage']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['language_pair', 'currency_id', 'category']
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -558,3 +565,37 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f"Email error: {e}")
+
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+
+        old_status = instance.status_id
+        old_client_status = instance.client_status
+        old_translator_status = instance.translator_status
+
+        serializer.save()
+
+        instance.refresh_from_db()
+
+        new_status = instance.status_id
+        new_client_status = instance.client_status
+        new_translator_status = instance.translator_status
+
+        old_status_name = old_status.name if old_status else "None"
+        new_status_name = new_status.name if new_status else "None"
+
+
+        if (old_status != new_status or
+                old_client_status != new_client_status or
+                old_translator_status != new_translator_status):
+
+
+            OrderStatusHistory.objects.create(
+                order=instance,
+                status=new_status,
+                client_status=new_client_status,
+                translator_status=new_translator_status
+            )
+        else:
+            return None
