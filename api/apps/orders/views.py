@@ -1,4 +1,6 @@
 import re
+from decimal import Decimal, InvalidOperation
+
 import docx
 import pypdf
 import zipfile
@@ -105,6 +107,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             files_list = request.data.getlist('files')
             if files_list:
                 data['files'] = files_list
+
+        raw_amount = data.get('total_amount')
+        try:
+            if raw_amount is not None and str(raw_amount).strip() != '':
+                final_total_amount = Decimal(str(raw_amount))
+            else:
+                final_total_amount = Decimal('0.00')
+        except (InvalidOperation, ValueError):
+            final_total_amount = Decimal('0.00')
 
         # 2. Отримання мовної пари
         raw_lp_id = data.get('language_pair_id') or data.get('language_pair')

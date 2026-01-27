@@ -33,5 +33,13 @@ class TranslatorTraffic(models.Model):
         blank=True
     )
 
+    category = models.ForeignKey(
+        'core.OrderCategory',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='translator_tariffs'
+    )
+
     class Meta:
         db_table = 'translator_traffic'
