@@ -276,15 +276,15 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         # Перевірка прав (використовуємо порівняння об'єктів або ID)
         is_authorized = (
-                user == order.manager or
-                user == order.translator or
-                user == order.editor
+                user == order.manager_id or
+                user == order.translator_id or
+                user == order.editor_id
         )
 
         if not is_authorized and not user.role.slug in ['admin', 'owner']:
             return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
 
-        files = File.objects.filter(order=order)
+        files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
         if not files.exists():
             return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -360,7 +360,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             source_slug = lang_row["slug"]
         
 
-        files = File.objects.filter(order=order)
+        files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
         dbx = get_dbx()
         results = []
         reader = easyocr.Reader([source_slug], gpu=False)
@@ -606,7 +606,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if files:
             for i, f in enumerate(files):
                 ext = os.path.splitext(f.name)[1].lstrip(".").lower()
-                dropbox_url = uploaded_paths[i] if i < len(uploaded_paths) else None
+                dropbox_url = (uploaded_paths[i] if i < len(uploaded_paths) else None) or "None"
 
                 File.objects.create(
                     order=order,
