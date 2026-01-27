@@ -28,7 +28,7 @@ export const usersApi = {
         }),
 
     register: (data: UserFormData) =>
-        apiFetch<RegisterResponse>("auth/register/", {
+        apiFetch<RegisterResponse>("users/auth/register/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
