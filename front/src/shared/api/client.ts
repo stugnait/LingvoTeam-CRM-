@@ -1,30 +1,54 @@
 // src/shared/api/client.ts
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
+type ResponseType = 'json' | 'blob'
+
+interface ApiFetchOptions extends RequestInit {
+    responseType?: ResponseType
+}
+
 export async function apiFetch<T>(
     url: string,
-    options: RequestInit = {}
+    options: ApiFetchOptions = {}
 ): Promise<T> {
-    const headers = new Headers(options.headers)
+    const {
+        responseType = 'json',
+        headers: customHeaders,
+        ...fetchOptions
+    } = options
 
-    // ✅ КЛЮЧОВА ЛОГІКА
-    if (!(options.body instanceof FormData)) {
-        headers.set("Content-Type", "application/json")
+    const headers = new Headers(customHeaders)
+
+    // Content-Type тільки якщо НЕ blob і НЕ FormData
+    if (
+        responseType === 'json' &&
+        !(fetchOptions.body instanceof FormData)
+    ) {
+        headers.set('Content-Type', 'application/json')
     }
 
     const res = await fetch(`${API_URL}${url}`, {
-        credentials: "include",
-        ...options,
+        credentials: 'include',
+        ...fetchOptions,
         headers,
     })
 
     if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
+        // ⚠️ error може бути НЕ json (наприклад 403 з text)
+        const error = await res.json().catch(() => ({
+            status: res.status,
+            statusText: res.statusText,
+        }))
         throw error
     }
 
     if (res.status === 204) {
         return undefined as T
+    }
+
+    // 🔑 ГОЛОВНЕ
+    if (responseType === 'blob') {
+        return (await res.blob()) as T
     }
 
     return res.json()

@@ -51,4 +51,10 @@ export const ordersApi = {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
+
+    downloadFiles: (orderId: number) =>
+        apiFetch<Blob>(`orders/${orderId}/download-files/`, {
+            method: 'GET',
+            responseType: 'blob',
+        }),
 }

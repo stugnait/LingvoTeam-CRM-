@@ -32,6 +32,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
         isModalOpen,
         isModalLoading,
         closeModal,
+        downloadOrderFiles
     } = useEditor()
 
     return (
@@ -71,22 +72,31 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                     ))}
                 </SortableContext>
 
-                <SideModal
-                    open={isModalOpen}
-                    onOpenChange={closeModal}
-                    title={
-                        selectedTask
-                            ? `Order #${selectedTask.id}`
-                            : 'Loading'
-                    }
-                    isLoading={isModalLoading}
-                    onSubmit={() => {}}
-                >
-                    <div>some</div>
-                </SideModal>
+                {/*<SideModal*/}
+                {/*    open={isModalOpen}*/}
+                {/*    onOpenChange={closeModal}*/}
+                {/*    title={*/}
+                {/*        selectedTask*/}
+                {/*            ? `Order #${selectedTask.id}`*/}
+                {/*            : 'Loading'*/}
+                {/*    }*/}
+                {/*    isLoading={isModalLoading}*/}
+                {/*    onSubmit={() => {*/}
+                {/*    }}*/}
+                {/*>*/}
+                {/*    <div>some</div>*/}
+
+                {/*    <button*/}
+                {/*        onClick={() => downloadOrderFiles(selectedTask!.id)}*/}
+                {/*        className="px-4 py-2 bg-blue-500 text-white rounded"*/}
+                {/*    >*/}
+                {/*        Download files*/}
+                {/*    </button>*/}
+
+                {/*</SideModal>*/}
 
                 {/* Дроп-зона для порожніх колонок */}
-                {tasks.length === 0 && <ColumnDropZone columnId={column.id} />}
+                {tasks.length === 0 && <ColumnDropZone columnId={column.id}/>}
 
                 {/*<button*/}
                 {/*    onClick={onAddTask}*/}

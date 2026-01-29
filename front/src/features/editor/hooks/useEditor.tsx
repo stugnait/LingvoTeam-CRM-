@@ -5,6 +5,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { KanbanTask, KanbanColumn, statusIdToTaskStatus, taskStatusToStatusId, OrderListItem } from '../types';
 import { fetchOrders, updateOrderStatus, fetchOrderById } from '../services/orders';
 import type {ProfileUser} from "@/src/features/profile/types";
+import {ordersApi} from "@/src/features/editor/api";
 
 // Define columns based on status_id
 const initialColumns: KanbanColumn[] = [
@@ -153,7 +154,26 @@ export const useEditor = () => {
         loadOrders();
     }, []);
 
+    const downloadOrderFiles = useCallback(async (orderId: number) => {
+        try {
+            const blob = await ordersApi.downloadFiles(orderId)
 
+            const url = URL.createObjectURL(blob)
+
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `order_${orderId}_files.zip`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+
+            URL.revokeObjectURL(url)
+        } catch (error) {
+            console.error('❌ Failed to download order files:', error)
+
+            // можеш тут показати toast / alert
+        }
+    }, [])
 
     // Create maps for fast access
     const tasksMap = useMemo(() =>
@@ -447,6 +467,7 @@ export const useEditor = () => {
         setSearchQuery,
         setActiveTask,
         setSelectedTask,
+        downloadOrderFiles,
 
         // Maps
         tasksMap,

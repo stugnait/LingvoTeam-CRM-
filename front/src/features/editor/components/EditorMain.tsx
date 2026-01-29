@@ -64,6 +64,7 @@ export default function EditorMain() {
         isModalLoading,
         openOrderById,
         closeModal,
+        downloadOrderFiles
     } = useEditor();
 
     // Sensors for DnD
@@ -229,7 +230,8 @@ export default function EditorMain() {
                     onOpenChange={closeModal}
                     title={selectedTask ? `Order #${selectedTask.id}` : 'Loading'}
                     isLoading={isModalLoading}
-                    onSubmit={() => {}}
+                    onSubmit={() => {
+                    }}
                 >
                     {selectedTask && (
                         <div className="space-y-2">
@@ -238,6 +240,14 @@ export default function EditorMain() {
                             <div>Translator: {selectedTask.translator_id}</div>
                         </div>
                     )}
+
+                    <button
+                        onClick={() => downloadOrderFiles(selectedTask!.id)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded"
+                    >
+                        Download files
+                    </button>
+
                 </SideModal>
 
             </div>
