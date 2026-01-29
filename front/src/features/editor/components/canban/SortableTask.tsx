@@ -4,15 +4,17 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, User } from 'lucide-react';
+import { Calendar, User, Hash, Globe } from 'lucide-react';
 import { KanbanTask } from '../../types';
 import { cn } from '@/src/lib/utils';
 
 interface SortableTaskProps {
-    task: KanbanTask;
+    task: KanbanTask
+    onClick: () => void
 }
 
-const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task }) => {
+
+const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick }) => {
     const {
         attributes,
         listeners,
@@ -21,7 +23,7 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task }) => {
         transition,
         isDragging
     } = useSortable({
-        id: task.id,
+        id: task.id.toString(), // Convert number to string for DnD
     });
 
     const style = {
@@ -55,6 +57,10 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task }) => {
                     "cursor-grab active:cursor-grabbing",
                     "select-none"
                 )}
+                onClick={(e) => {
+                    e.stopPropagation();   // ⬅️ критично
+                    onClick();
+                }}
             >
                 <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -63,10 +69,16 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task }) => {
                             task.priority === 'critical' ? 'bg-red-500' :
                                 task.priority === 'high' ? 'bg-yellow-500' :
                                     task.priority === 'medium' ? 'bg-blue-500' : 'bg-green-500'
-                        )} />
-                        <h3 className="font-medium text-sm line-clamp-2 flex-1">
-                            {task.title}
-                        </h3>
+                        )}/>
+                        <div className="min-w-0 flex-1">
+                            <h3 className="font-medium text-sm line-clamp-2">
+                                {task.title}
+                            </h3>
+                            <div className="flex items-center gap-1 mt-1">
+                                <Hash className="w-3 h-3 text-gray-400"/>
+                                <span className="text-xs text-gray-500">#{task.id}</span>
+                            </div>
+                        </div>
                     </div>
                     <span className={cn(
                         "text-xs font-medium px-2 py-1 rounded flex-shrink-0",
@@ -82,12 +94,39 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task }) => {
                     </p>
                 )}
 
+                {/* Order info */}
+                <div className="grid grid-cols-2 gap-2 mb-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                        <span className="font-medium">Client:</span>
+                        <span>#{task.client_id}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Globe className="w-3 h-3"/>
+                        <span>Pair: {task.language_pair_id}</span>
+                    </div>
+                </div>
+
+                {/* Tags */}
+                {task.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                        {task.tags.map((tag, index) => (
+                            <span
+                                key={index}
+                                className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded"
+                            >
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
+
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
                     <div className="flex items-center gap-2">
                         {task.assignee ? (
                             <>
                                 {task.assignee.avatar ? (
-                                    <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center overflow-hidden">
+                                    <div
+                                        className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center overflow-hidden">
                                         <img
                                             src={task.assignee.avatar}
                                             alt={task.assignee.name}
@@ -96,8 +135,9 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task }) => {
                                         />
                                     </div>
                                 ) : (
-                                    <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                                        <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                    <div
+                                        className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                        <User className="w-3 h-3 text-blue-600 dark:text-blue-400"/>
                                     </div>
                                 )}
                                 <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -113,7 +153,7 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task }) => {
 
                     {task.dueDate && (
                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                            <Calendar className="w-3 h-3" />
+                            <Calendar className="w-3 h-3"/>
                             {new Date(task.dueDate).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric'

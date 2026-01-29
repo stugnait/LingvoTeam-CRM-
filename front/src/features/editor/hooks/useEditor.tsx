@@ -2,124 +2,27 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { KanbanTask, KanbanColumn } from '../types';
+import { KanbanTask, KanbanColumn, statusIdToTaskStatus, taskStatusToStatusId, OrderListItem } from '../types';
+import { fetchOrders, updateOrderStatus, fetchOrderById } from '../services/orders';
+import type {ProfileUser} from "@/src/features/profile/types";
 
-// Initial data
-const initialTasks: KanbanTask[] = [
-    {
-        id: 'task-1',
-        title: 'Design new dashboard layout',
-        description: 'Create wireframes and mockups',
-        status: 'planned',
-        priority: 'high',
-        assignee: {
-            id: 'user-1',
-            name: 'Alex Johnson',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex'
-        },
-        tags: ['Design', 'UI/UX'],
-        dueDate: new Date('2024-12-20')
-    },
-    {
-        id: 'task-2',
-        title: 'Implement user authentication',
-        description: 'Add login, registration',
-        status: 'in_progress',
-        priority: 'critical',
-        assignee: {
-            id: 'user-2',
-            name: 'Maria Garcia',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria'
-        },
-        tags: ['Backend', 'Security'],
-        dueDate: new Date('2024-12-15')
-    },
-    {
-        id: 'task-3',
-        title: 'Fix mobile responsive issues',
-        description: 'Address layout problems',
-        status: 'todo',
-        priority: 'medium',
-        assignee: {
-            id: 'user-3',
-            name: 'David Chen',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David'
-        },
-        tags: ['Frontend', 'Responsive'],
-        dueDate: new Date('2024-12-10')
-    },
-    {
-        id: 'task-4',
-        title: 'Write API documentation',
-        description: 'Document all endpoints',
-        status: 'in_progress',
-        priority: 'medium',
-        assignee: {
-            id: 'user-4',
-            name: 'Sarah Wilson',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah'
-        },
-        tags: ['Documentation', 'API'],
-        dueDate: new Date('2024-12-12')
-    },
-    {
-        id: 'task-5',
-        title: 'Optimize database queries',
-        description: 'Improve performance',
-        status: 'done',
-        priority: 'high',
-        assignee: {
-            id: 'user-5',
-            name: 'Michael Brown',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael'
-        },
-        tags: ['Database', 'Performance'],
-        dueDate: new Date('2024-12-05')
-    },
-    {
-        id: 'task-6',
-        title: 'Fix critical security bug',
-        description: 'Patch vulnerability in auth system',
-        status: 'reject',
-        priority: 'critical',
-        assignee: {
-            id: 'user-2',
-            name: 'Maria Garcia',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria'
-        },
-        tags: ['Security', 'Bug'],
-        dueDate: new Date('2024-12-01')
-    },
-    {
-        id: 'task-7',
-        title: 'Update user onboarding flow',
-        description: 'Improve first-time user experience',
-        status: 'pause',
-        priority: 'medium',
-        assignee: {
-            id: 'user-1',
-            name: 'Alex Johnson',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex'
-        },
-        tags: ['UX', 'Onboarding'],
-        dueDate: new Date('2024-12-25')
-    }
-];
-
+// Define columns based on status_id
 const initialColumns: KanbanColumn[] = [
     {
         id: 'planned',
         title: 'Planned',
         status: 'planned',
-        taskIds: ['task-1'],
+        status_id: '1',
+        taskIds: [],
         color: '#8b5cf6',
-        icon: null // Will be set in component
+        icon: null
     },
     {
         id: 'todo',
         title: 'To Do',
         status: 'todo',
-        taskIds: ['task-3'],
+        status_id: '2',
+        taskIds: [],
         color: '#6366f1',
         icon: null
     },
@@ -127,7 +30,8 @@ const initialColumns: KanbanColumn[] = [
         id: 'in_progress',
         title: 'In Progress',
         status: 'in_progress',
-        taskIds: ['task-2', 'task-4'],
+        status_id: '3',
+        taskIds: [],
         color: '#f59e0b',
         icon: null
     },
@@ -135,7 +39,8 @@ const initialColumns: KanbanColumn[] = [
         id: 'reject',
         title: 'Reject',
         status: 'reject',
-        taskIds: ['task-6'],
+        status_id: '4',
+        taskIds: [],
         color: '#ef4444',
         icon: null
     },
@@ -143,7 +48,8 @@ const initialColumns: KanbanColumn[] = [
         id: 'pause',
         title: 'Pause',
         status: 'pause',
-        taskIds: ['task-7'],
+        status_id: '5',
+        taskIds: [],
         color: '#6b7280',
         icon: null
     },
@@ -151,21 +57,107 @@ const initialColumns: KanbanColumn[] = [
         id: 'done',
         title: 'Done',
         status: 'done',
-        taskIds: ['task-5'],
+        status_id: '6',
+        taskIds: [],
         color: '#10b981',
         icon: null
     }
 ];
 
 export const useEditor = () => {
-    const [tasks, setTasks] = useState<KanbanTask[]>(initialTasks);
+    const [tasks, setTasks] = useState<KanbanTask[]>([]);
+    const [selectedTask, setSelectedTask] = useState<OrderListItem | null>(null)
     const [columns, setColumns] = useState<KanbanColumn[]>(initialColumns);
     const [activeTask, setActiveTask] = useState<KanbanTask | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isModalLoading, setIsModalLoading] = useState(false)
+
+    // Load orders from API on component mount
+    // /hooks/useEditor.ts - оновлюємо useEffect
+    useEffect(() => {
+        const loadOrders = async () => {
+            setIsLoading(true);
+            setError(null);
+
+            try {
+                console.log('🔍 Завантаження ордерів з API...');
+                const fetchedTasks = await fetchOrders();
+
+                // Логуємо що прийшло
+                console.log('📦 Отримано ордерів:', fetchedTasks.length);
+                console.log('📋 Усі ордери з їх status_id:', fetchedTasks.map(t => ({
+                    id: t.id,
+                    status_id: t.status_id,
+                    title: t.title
+                })));
+
+                setTasks(fetchedTasks);
+
+                // Детальне логування розподілу
+                console.log('📊 Статуси у колонках (що очікуємо):');
+                initialColumns.forEach(col => {
+                    console.log(`  - "${col.title}": status_id = "${col.status_id}"`);
+                });
+
+                console.log('📊 Розподіл ордерів по status_id:');
+                const statusCounts: Record<string, number> = {};
+                fetchedTasks.forEach(task => {
+                    const status = task.status_id || 'unknown';
+                    statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+                    // Логуємо кожен ордер
+                    console.log(`  - Order #${task.id}: status_id = "${task.status_id}" (type: ${typeof task.status_id})`);
+                });
+                console.log('📈 Підсумок:', statusCounts);
+
+                // Update columns with task IDs based on status_id
+                const newColumns = initialColumns.map(column => {
+                    // Знаходимо задачі, де status_id збігається з колонкою
+                    const matchingTasks = fetchedTasks.filter(task => {
+                        const taskStatus = String(task.status_id).trim();
+                        const columnStatus = String(column.status_id).trim();
+
+                        console.log(`🔍 Порівняння: task #${task.id} (status_id: "${taskStatus}") vs column "${column.title}" (status_id: "${columnStatus}")`);
+
+                        const matches = taskStatus === columnStatus;
+                        if (matches) {
+                            console.log(`✅ Order #${task.id} потрапляє в "${column.title}"`);
+                        }
+                        return matches;
+                    });
+
+                    const taskIds = matchingTasks.map(task => task.id.toString());
+
+                    console.log(`📂 Колонка "${column.title}" (status_id: "${column.status_id}"): знайдено ${matchingTasks.length} задач, taskIds:`, taskIds);
+                    return {
+                        ...column,
+                        taskIds
+                    };
+                });
+
+                setColumns(newColumns);
+                console.log('✅ Дані успішно завантажено та оброблено');
+
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                console.error('❌ Помилка завантаження ордерів:', errorMessage, err);
+                setError(`Failed to load orders: ${errorMessage}`);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadOrders();
+    }, []);
+
+
 
     // Create maps for fast access
     const tasksMap = useMemo(() =>
-            new Map(tasks.map(task => [task.id, task])),
+            new Map(tasks.map(task => [task.id.toString(), task])),
         [tasks]
     );
 
@@ -185,17 +177,17 @@ export const useEditor = () => {
         }
     }, [tasksMap]);
 
-    const handleDragEnd = useCallback((activeId: string, overId: string | null) => {
+    const handleDragEnd = useCallback(async (activeId: string, overId: string | null) => {
         setActiveTask(null);
 
         // Restore styles
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
 
-        if (!overId) return;
+        if (!overId) {return;}
 
         const sourceColumn = columns.find(col => col.taskIds.includes(activeId));
-        if (!sourceColumn) return;
+        if (!sourceColumn) {return;}
 
         // Check if dragging to column or dropzone
         const isOverColumn = columns.some(col => col.id === overId) || overId.startsWith('dropzone-');
@@ -206,12 +198,15 @@ export const useEditor = () => {
                 : overId;
 
             const targetColumn = columns.find(col => col.id === targetColumnId);
-            if (!targetColumn || sourceColumn.id === targetColumn.id) return;
+            if (!targetColumn || sourceColumn.id === targetColumn.id) {return;}
 
-            // Update task status
+            // Update task status in local state
+            const taskId = parseInt(activeId);
+            const newStatusId = targetColumn.status_id;
+
             setTasks(prev => prev.map(task =>
-                task.id === activeId
-                    ? { ...task, status: targetColumn.status }
+                task.id === taskId
+                    ? { ...task, status_id: newStatusId }
                     : task
             ));
 
@@ -232,12 +227,20 @@ export const useEditor = () => {
                 return col;
             }));
 
+            // Update status on server
+            try {
+                await updateOrderStatus(taskId, newStatusId);
+            } catch (error) {
+                console.error('Failed to update order status:', error);
+                // Optionally revert the change on error
+            }
+
             return;
         }
 
         // Dragging to another task
         const targetColumn = columns.find(col => col.taskIds.includes(overId));
-        if (!targetColumn) return;
+        if (!targetColumn) {return;}
 
         // Within same column
         if (sourceColumn.id === targetColumn.id) {
@@ -257,14 +260,19 @@ export const useEditor = () => {
                 );
             }
         }
-        // Between columns
+        // Between columns - update status
         else {
+            const taskId = parseInt(activeId);
+            const newStatusId = targetColumn.status_id;
+
+            // Update task status in local state
             setTasks(prev => prev.map(task =>
-                task.id === activeId
-                    ? { ...task, status: targetColumn.status }
+                task.id === taskId
+                    ? { ...task, status_id: newStatusId }
                     : task
             ));
 
+            // Move task between columns
             setColumns(prev => prev.map(col => {
                 if (col.id === sourceColumn.id) {
                     return {
@@ -284,49 +292,92 @@ export const useEditor = () => {
                 }
                 return col;
             }));
+
+            // Update status on server
+            try {
+                await updateOrderStatus(taskId, newStatusId);
+            } catch (error) {
+                console.error('Failed to update order status:', error);
+            }
         }
     }, [columns, tasksMap]);
 
-    // Add new task
-    const handleAddTask = useCallback((columnId: string) => {
-        const column = columns.find(col => col.id === columnId);
-        if (!column) return;
-
-        const newTask: KanbanTask = {
-            id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-            title: 'New Task',
-            description: 'Task description',
-            status: column.status,
-            priority: 'medium',
-            tags: ['new'],
-            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        };
-
-        setTasks(prev => [...prev, newTask]);
-        setColumns(prev =>
-            prev.map(col =>
-                col.id === columnId
-                    ? { ...col, taskIds: [...col.taskIds, newTask.id] }
-                    : col
-            )
-        );
-    }, [columns]);
+    // // Add new task (for now, using mock data until we implement create API)
+    // const handleAddTask = useCallback((columnId: string) => {
+    //     const column = columns.find(col => col.id === columnId);
+    //     if (!column) return;
+    //
+    //     // Generate a mock task for demo
+    //     const newTask: KanbanTask = {
+    //         id: Date.now(), // Temporary ID
+    //         client_id: Math.floor(Math.random() * 100) + 1,
+    //         source_language: 1,
+    //         target_language: 2,
+    //         status_id: column.status_id,
+    //         created_at: new Date().toISOString(),
+    //         translator_id: '1',
+    //         language_pair_id: Math.floor(Math.random() * 10) + 1,
+    //
+    //         // KanbanTask fields
+    //         title: `New Order #${Date.now() % 1000}`,
+    //         description: 'New translation order',
+    //         priority: 'medium',
+    //         tags: ['New', 'Translation'],
+    //         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    //         assignee: {
+    //             id: 'user-1',
+    //             name: 'Alex Johnson',
+    //             avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex'
+    //         },
+    //     };
+    //
+    //     setTasks(prev => [...prev, newTask]);
+    //     setColumns(prev =>
+    //         prev.map(col =>
+    //             col.id === columnId
+    //                 ? { ...col, taskIds: [...col.taskIds, newTask.id.toString()] }
+    //                 : col
+    //         )
+    //     );
+    // }, [columns]);
 
     // Update task
     const handleUpdateTask = useCallback((taskId: string, updates: Partial<KanbanTask>) => {
         setTasks(prev => prev.map(task =>
-            task.id === taskId ? { ...task, ...updates } : task
+            task.id.toString() === taskId ? { ...task, ...updates } : task
         ));
     }, []);
 
     // Delete task
     const handleDeleteTask = useCallback((taskId: string) => {
-        setTasks(prev => prev.filter(task => task.id !== taskId));
+        setTasks(prev => prev.filter(task => task.id.toString() !== taskId));
         setColumns(prev => prev.map(col => ({
             ...col,
             taskIds: col.taskIds.filter(id => id !== taskId)
         })));
     }, []);
+
+    const openOrderById = useCallback(async (orderId: number) => {
+        setIsModalOpen(true)
+        setIsModalLoading(true)
+
+        try {
+            const order = await fetchOrderById(orderId)
+            if (!order) {throw new Error('Order not found')}
+            setSelectedTask(order)
+        } catch (e) {
+            console.error(e)
+            setIsModalOpen(false)
+        } finally {
+            setIsModalLoading(false)
+        }
+    }, [])
+
+    const closeModal = () => {
+        setIsModalOpen(false)
+        setSelectedTask(null)
+    }
+
 
     // Filter tasks for column
     const getTasksForColumn = useCallback((column: KanbanColumn) => {
@@ -334,14 +385,16 @@ export const useEditor = () => {
             .map(taskId => tasksMap.get(taskId))
             .filter(Boolean) as KanbanTask[];
 
-        if (!searchQuery.trim()) return columnTasks;
+        if (!searchQuery.trim()) {return columnTasks;}
 
         const query = searchQuery.toLowerCase();
         return columnTasks.filter(task =>
             task.title.toLowerCase().includes(query) ||
             task.description?.toLowerCase().includes(query) ||
             task.tags.some(tag => tag.toLowerCase().includes(query)) ||
-            task.assignee?.name.toLowerCase().includes(query)
+            task.assignee?.name.toLowerCase().includes(query) ||
+            task.id.toString().includes(query) ||
+            task.client_id.toString().includes(query)
         );
     }, [tasksMap, searchQuery]);
 
@@ -353,16 +406,47 @@ export const useEditor = () => {
         };
     }, []);
 
+    // Refresh orders
+    const refreshOrders = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const fetchedTasks = await fetchOrders();
+            setTasks(fetchedTasks);
+
+            const newColumns = initialColumns.map(column => ({
+                ...column,
+                taskIds: fetchedTasks
+                    .filter(task => task.status_id === column.status_id)
+                    .map(task => task.id.toString())
+            }));
+
+            setColumns(newColumns);
+            setError(null);
+        } catch (err) {
+            setError('Failed to refresh orders.');
+            console.error('Error refreshing orders:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     return {
         // State
         tasks,
         columns,
         activeTask,
         searchQuery,
+        isLoading,
+        error,
+        selectedTask,
+        isModalOpen,
+        isModalLoading,
 
-        // Setters
+
+        closeModal,
         setSearchQuery,
         setActiveTask,
+        setSelectedTask,
 
         // Maps
         tasksMap,
@@ -371,14 +455,18 @@ export const useEditor = () => {
         // Handlers
         handleDragStart,
         handleDragEnd,
-        handleAddTask,
+        // handleAddTask,
         handleUpdateTask,
         handleDeleteTask,
         getTasksForColumn,
+
+        // Actions
+        refreshOrders,
+        openOrderById
     };
 };
 
-// Helper function for array moves (needs to be imported from @dnd-kit/sortable)
+// Helper function for array moves
 function arrayMove<T>(array: T[], from: number, to: number): T[] {
     const newArray = [...array];
     newArray.splice(to, 0, newArray.splice(from, 1)[0]);

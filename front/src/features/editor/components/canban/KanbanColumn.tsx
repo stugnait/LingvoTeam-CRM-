@@ -7,20 +7,32 @@ import { Plus } from 'lucide-react';
 import { KanbanColumn as KanbanColumnType, KanbanTask } from '../../types';
 import SortableTask from './SortableTask';
 import ColumnDropZone from './ColumnDropZone';
+import {useEditor} from "@/src/features/editor/hooks/useEditor";
 import { cn } from '@/src/lib/utils';
+import { SideModal } from '@/src/components/modals/SideModal';
 
 interface KanbanColumnProps {
-    column: KanbanColumnType;
-    tasks: KanbanTask[];
-    onAddTask?: () => void;
+    column: KanbanColumnType
+    tasks: KanbanTask[]
+    onTaskOpen: (id: number) => void
 }
+
 
 const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                                                                   column,
                                                                   tasks,
-                                                                  onAddTask
+                                                                  onTaskOpen
                                                               }) => {
     const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
+
+    const {
+        selectedTask,
+        openOrderById,
+        setSelectedTask,
+        isModalOpen,
+        isModalLoading,
+        closeModal,
+    } = useEditor()
 
     return (
         <div className="flex flex-col h-full w-[280px] flex-shrink-0 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
@@ -43,14 +55,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                         </div>
                     </div>
                 </div>
-
-                <button
-                    onClick={onAddTask}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    title="Add task"
-                >
-                    <Plus className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </button>
             </div>
 
             <div className="flex-1 p-3 space-y-3 overflow-y-auto min-h-[200px] max-h-[calc(100vh-220px)]">
@@ -59,26 +63,44 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                     strategy={verticalListSortingStrategy}
                 >
                     {tasks.map((task) => (
-                        <SortableTask key={task.id} task={task} />
+                        <SortableTask
+                            key={task.id}
+                            task={task}
+                            onClick={() => onTaskOpen(task.id)}
+                        />
                     ))}
                 </SortableContext>
+
+                <SideModal
+                    open={isModalOpen}
+                    onOpenChange={closeModal}
+                    title={
+                        selectedTask
+                            ? `Order #${selectedTask.id}`
+                            : 'Loading'
+                    }
+                    isLoading={isModalLoading}
+                    onSubmit={() => {}}
+                >
+                    <div>some</div>
+                </SideModal>
 
                 {/* Дроп-зона для порожніх колонок */}
                 {tasks.length === 0 && <ColumnDropZone columnId={column.id} />}
 
-                <button
-                    onClick={onAddTask}
-                    className={cn(
-                        "w-full py-3 rounded-lg border border-dashed",
-                        "flex items-center justify-center gap-2 text-sm",
-                        "text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700",
-                        "hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400",
-                        "hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
-                    )}
-                >
-                    <Plus className="w-4 h-4" />
-                    Add task
-                </button>
+                {/*<button*/}
+                {/*    onClick={onAddTask}*/}
+                {/*    className={cn(*/}
+                {/*        "w-full py-3 rounded-lg border border-dashed",*/}
+                {/*        "flex items-center justify-center gap-2 text-sm",*/}
+                {/*        "text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700",*/}
+                {/*        "hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400",*/}
+                {/*        "hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"*/}
+                {/*    )}*/}
+                {/*>*/}
+                {/*    <Plus className="w-4 h-4" />*/}
+                {/*    Add task*/}
+                {/*</button>*/}
             </div>
         </div>
     );
