@@ -25,6 +25,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
+from django.db.models import Q
 
 # DRF imports
 from rest_framework import viewsets, status
@@ -251,8 +252,8 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "Замовлення прийнято та оцінено!"}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['get'], url_path='download-files')
-    def download_files(self, request, pk=None):
+    @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target))?')
+    def download_files(self, request, pk=None, folder=None):
         order = self.get_object()
         user = request.user
 
@@ -267,6 +268,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
 
         files = File.objects.filter(order=order)
+        folder_label = "all"
+        folder_param = (folder or "").strip().lower()
+
+        if folder_param:
+            folder_label = folder_param
+            base = f"/orders/order_{order.id}/{folder_param}"
+            files = files.filter(dropbox_url__startswith=base)
+        
         if not files.exists():
             return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
 
