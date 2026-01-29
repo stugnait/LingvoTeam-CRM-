@@ -149,7 +149,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             client_id_id=data.get('client_id'),
             traffic_id_id=data.get('traffic_id'),
             translator_id_id=data.get('translator_id'),
-            translator_traffic_id_id=data.get('translator_traffic_id')
+            translator_traffic_id_id=data.get('translator_traffic_id'),
+            total_amount=final_total_amount
         )
 
         # 5. Генерація посилань
@@ -171,6 +172,9 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
         order.page_count = stats_data["total_stats"]["physical_pages"]
+
+        order.total_amount = order.page_count * order.traffic_id.price_per_page
+        
         order.save()
 
         # 7. Відправка пошти
@@ -498,29 +502,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
     
-    @action(detail=True, methods=["get"], url_path="calculate-price")
-    def calculate_price(self, request, pk=None):
-        order = self.get_object()
-        user = request.user
-
-        translator_traffic = order.translator_traffic_id.rate_per_page
-        order_traffic = order.traffic_id.price_per_page
-        page_count = order.page_count
-
-        translator_price = translator_traffic * page_count
-        client_price = order_traffic * page_count
-        margin = client_price - translator_price
-        marginality = (margin / client_price * 100)
-        return Response({
-            "order_id": order.id,
-            "page_count": page_count,
-            "translator_price_per_page": translator_traffic,
-            "client_price_per_page": order_traffic,
-            "translator_total_price": translator_price,
-            "client_total_price": client_price,
-            "margin": margin,
-            "marginality_percent": round(marginality, 2)
-        }, status=status.HTTP_200_OK)
+    @action(detail=True, methods=["get"], url_path="calculate-marginality")
+    def calculate_marginality(self, request, pk=None):
+        pass
 
     # --- Private Helpers ---
 
