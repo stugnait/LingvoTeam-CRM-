@@ -258,9 +258,9 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         # Перевірка прав (використовуємо порівняння об'єктів або ID)
         is_authorized = (
-                user == order.manager or
-                user == order.translator or
-                user == order.editor
+                user == order.manager_id or
+                user == order.translator_id or
+                user == order.editor_id
         )
 
         if not is_authorized and not user.role.slug in ['admin', 'owner']:
@@ -588,17 +588,18 @@ class OrderViewSet(viewsets.ModelViewSet):
         if files:
             for i, f in enumerate(files):
                 ext = os.path.splitext(f.name)[1].lstrip(".").lower()
-                dropbox_url = uploaded_paths[i] if i < len(uploaded_paths) else None
+                dropbox_url = (uploaded_paths[i] if i < len(uploaded_paths) else None) or "None"
 
-                File.objects.create(
-                    order=order,
-                    file_type=ext,
-                    dropbox_url=dropbox_url,
-                    detected_pages=pages_per_file[i],
-                    detected_symbols=chars_per_file[i],
-                )
+        File.objects.create(
+            order=order,
+            file_type=ext,
+            dropbox_url=dropbox_url,
+            detected_pages=pages_per_file[i],
+            detected_symbols=chars_per_file[i],
+        )
 
         return {"total_stats": stats}
+
 
     def _send_translator_invite(self, order, full_link, password, expire_date):
         try:
