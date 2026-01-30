@@ -1,5 +1,7 @@
 from csv import reader
 import re
+from decimal import Decimal, InvalidOperation
+
 import docx
 import pypdf
 import zipfile
@@ -25,6 +27,8 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
+from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 
 # DRF imports
@@ -36,7 +40,7 @@ from rest_framework.response import Response
 # Local imports
 from .models import (
     Order, OrderTraffic, Status, OrderLink,
-    OrderEditorReview, TranslationQuality, File
+    OrderEditorReview, TranslationQuality, File, OrderStatusHistory
 )
 from .serializers import (
     OrderCreateSerializer, OrderTrafficSerializer,
@@ -54,10 +58,16 @@ logger = logging.getLogger(__name__)
 
 
 class OrderTrafficViewSet(viewsets.ModelViewSet):
-    queryset = OrderTraffic.objects.select_related('language_pair', 'currency_id').all()
+    queryset = OrderTraffic.objects.select_related(
+        'language_pair',
+        'currency_id',
+        'category'
+    ).all()
     serializer_class = OrderTrafficSerializer
     permission_classes = [HasPermission]
     required_permissions = ['order.traffic.manage']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['language_pair', 'currency_id', 'category']
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -71,13 +81,22 @@ class OrderViewSet(viewsets.ModelViewSet):
             'list': ['order.view'],
             'retrieve': ['order.view'],
             'update': ['order.update'],
-            'partial_update': ['order.update'],
             'assign_translator': ['order.assign'],
             'reject_translation': ['order.reject_translation'],
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
         }
+
+        if self.action in ['update', 'partial_update']:
+            status_fields = {'status_id', 'status', 'client_status', 'translator_status'}
+
+            data_keys = set(request.data.keys())
+            if data_keys.intersection(status_fields):
+                return ['order.change.status']
+
+            return ['order.update']
+
         return mapping.get(self.action, [])
 
     def get_queryset(self):
@@ -109,6 +128,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             files_list = request.data.getlist('files')
             if files_list:
                 data['files'] = files_list
+
+        raw_amount = data.get('total_amount')
+        try:
+            if raw_amount is not None and str(raw_amount).strip() != '':
+                final_total_amount = Decimal(str(raw_amount))
+            else:
+                final_total_amount = Decimal('0.00')
+        except (InvalidOperation, ValueError):
+            final_total_amount = Decimal('0.00')
 
         # 2. Отримання мовної пари
         raw_lp_id = data.get('language_pair_id') or data.get('language_pair')
@@ -275,7 +303,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             folder_label = folder_param
             base = f"/orders/order_{order.id}/{folder_param}"
             files = files.filter(dropbox_url__startswith=base)
-        
+
         if not files.exists():
             return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -351,7 +379,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             source_slug = lang_row["slug"]
         
 
-        files = File.objects.filter(order=order)
+        files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
         dbx = get_dbx()
         results = []
         reader = easyocr.Reader([source_slug], gpu=False)
@@ -488,6 +516,30 @@ class OrderViewSet(viewsets.ModelViewSet):
             {"message": "Files uploaded", "count": len(uploaded), "files": uploaded},
             status=status.HTTP_201_CREATED,
         )
+
+    @action(detail=True, methods=["get"], url_path="calculate-price")
+    def calculate_price(self, request, pk=None):
+        order = self.get_object()
+        user = request.user
+
+        translator_traffic = order.translator_traffic_id.rate_per_page
+        order_traffic = order.traffic_id.price_per_page
+        page_count = order.page_count
+
+        translator_price = translator_traffic * page_count
+        client_price = order_traffic * page_count
+        margin = client_price - translator_price
+        marginality = (margin / client_price * 100)
+        return Response({
+            "order_id": order.id,
+            "page_count": page_count,
+            "translator_price_per_page": translator_traffic,
+            "client_price_per_page": order_traffic,
+            "translator_total_price": translator_price,
+            "client_total_price": client_price,
+            "margin": margin,
+            "marginality_percent": round(marginality, 2)
+        }, status=status.HTTP_200_OK)
 
     # --- Private Helpers ---
 
@@ -631,3 +683,37 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f"Email error: {e}")
+
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+
+        old_status = instance.status_id
+        old_client_status = instance.client_status
+        old_translator_status = instance.translator_status
+
+        serializer.save()
+
+        instance.refresh_from_db()
+
+        new_status = instance.status_id
+        new_client_status = instance.client_status
+        new_translator_status = instance.translator_status
+
+        old_status_name = old_status.name if old_status else "None"
+        new_status_name = new_status.name if new_status else "None"
+
+
+        if (old_status != new_status or
+                old_client_status != new_client_status or
+                old_translator_status != new_translator_status):
+
+
+            OrderStatusHistory.objects.create(
+                order=instance,
+                status=new_status,
+                client_status=new_client_status,
+                translator_status=new_translator_status
+            )
+        else:
+            return None

@@ -26,7 +26,7 @@ def ensure_folder(path: str):
                 return
         except Exception:
             pass
-
+        
         print("Dropbox API error: ", e)
         raise
 
@@ -45,7 +45,7 @@ def create_order_folder(order):
     try:
         dbx.files_create_folder_v2(path)
     except dropbox.exceptions.ApiError as e:
-        print("Dropbox API error", e)
+        print("Folder already exists.")
 
     try:
         launch = dbx.sharing_share_folder(path, force_async=False)
@@ -70,7 +70,7 @@ def create_order_folder(order):
             ]
         )
     except dropbox.exceptions.ApiError as e:
-        print("Dropbox API error", e)
+        pass
 
     return path
 

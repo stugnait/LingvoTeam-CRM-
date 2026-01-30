@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction, models
 
-from apps.orders.models import OrderTraffic, Order, File
+from apps.orders.models import OrderTraffic, Order, File, OrderStatusHistory
 
 
 class Priority(models.TextChoices):
@@ -11,9 +11,23 @@ class Priority(models.TextChoices):
 
 
 class OrderTrafficSerializer(serializers.ModelSerializer):
+    language_pair_name = serializers.StringRelatedField(source='language_pair', read_only=True)
+    currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
+
+    category_name = serializers.CharField(source='category.name', read_only=True, default="Загальна")
+
     class Meta:
         model = OrderTraffic
-        fields = '__all__'
+        fields = [
+            'id',
+            'language_pair',
+            'language_pair_name',
+            'currency_id',
+            'currency_name',
+            'category',
+            'category_name',
+            'rate_per_page',
+        ]
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -23,7 +37,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'client_id', 'language_pair_id', 'priority', 'deadline',
-            'flex_deadline', 'page_count', 'symbols_count', 'status_id', 'files', "translator_id"
+            'flex_deadline', 'page_count', 'symbols_count', 'status_id', 'files', "translator_id", "total_amount",
+            'client_status',
+            'translator_status',
         ]
         read_only_fields = ['page_count', 'symbols_count']
         extra_kwargs = {
@@ -43,6 +59,24 @@ class ApproveTranslationSerializer(serializers.Serializer):
 from rest_framework import serializers
 from apps.orders.models import Order, OrderTraffic
 
+class OrderStatusHistorySerializer(serializers.ModelSerializer):
+    status_name = serializers.CharField(source='status.name', read_only=True, allow_null=True)
+    client_status_name = serializers.CharField(source='client_status.name', read_only=True, allow_null=True)
+    translator_status_name = serializers.CharField(source='translator_status.name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = OrderStatusHistory
+        fields = [
+            'id',
+            'created_at',
+            'status',
+            'status_name',
+            'client_status',
+            'client_status_name',
+            'translator_status',
+            'translator_status_name'
+        ]
+
 
 class OrderListSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source='client_id.full_name', default="-", read_only=True)
@@ -52,6 +86,8 @@ class OrderListSerializer(serializers.ModelSerializer):
 
     status_name = serializers.CharField(source='status_id.name', default="-", read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+
+    history = OrderStatusHistorySerializer(source='history_logs', many=True, read_only=True)
 
     language_pair_name = serializers.SerializerMethodField()
 
@@ -64,7 +100,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'editor_id', 'editor_name',
             'translator_id', 'translator_name',
             'status_id', 'status_name',
-
+            'history',
             'traffic_id', 'translator_traffic_id',
 
             'language_pair_id', 'language_pair_name',

@@ -25,5 +25,13 @@ class OrderTraffic(models.Model):
         blank=True,
     )
 
+    category = models.ForeignKey(
+        'core.OrderCategory',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='client_tariffs'
+    )
+
     class Meta:
         db_table = 'order_traffic'

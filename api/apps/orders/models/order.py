@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 
 from apps import core, users, clients, orders, translators
@@ -90,6 +92,13 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True)
     completed_at = models.DateTimeField(null=True)
+
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name="Сума для клієнта"
+    )
 
     class Meta:
         db_table = 'orders'
