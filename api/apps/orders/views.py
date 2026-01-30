@@ -79,13 +79,23 @@ class OrderViewSet(viewsets.ModelViewSet):
             'list': ['order.view'],
             'retrieve': ['order.view'],
             'update': ['order.update'],
-            'partial_update': ['order.update'],
             'assign_translator': ['order.assign'],
             'reject_translation': ['order.reject_translation'],
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
+            #'perform_update': ['order.change.status']
         }
+
+        if self.action in ['update', 'partial_update']:
+            status_fields = {'status_id', 'status', 'client_status', 'translator_status'}
+
+            data_keys = set(request.data.keys())
+            if data_keys.intersection(status_fields):
+                return ['order.change.status']
+
+            return ['order.update']
+
         return mapping.get(self.action, [])
 
     def get_queryset(self):
