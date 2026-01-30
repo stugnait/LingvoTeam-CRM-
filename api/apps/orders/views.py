@@ -207,7 +207,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "images_count": stats_data["total_stats"]["images"]
             },
             "translator_link": {
-                "full_url": full_link,
+                "slug": generated_link_slug,
                 "password": generated_password,
                 "expire_at": expire_date
             }
