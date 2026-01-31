@@ -28,6 +28,8 @@ from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q, Avg
 
 # DRF imports
 from rest_framework import viewsets, status
@@ -47,6 +49,7 @@ from .serializers import (
 )
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
+from ..translators.models import Translator
 from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
@@ -84,7 +87,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
-            #'perform_update': ['order.change.status']
         }
 
         if self.action in ['update', 'partial_update']:
@@ -206,7 +208,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "images_count": stats_data["total_stats"]["images"]
             },
             "translator_link": {
-                "full_url": full_link,
+                "slug": generated_link_slug,
                 "password": generated_password,
                 "expire_at": expire_date
             }
@@ -257,13 +259,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         score = serializer.validated_data['score']
         comment = serializer.validated_data.get('comment', '')
-        completed_status = Status.objects.filter(id=4).first()
 
-        TranslationQuality.objects.create(
+        TranslationQuality.objects.update_or_create(
             order=order,
-            user=request.user,
-            score=score,
-            comment=comment
+            defaults={
+                'user': request.user,
+                'score': score,
+                'comment': comment
+            }
         )
 
         OrderEditorReview.objects.create(
@@ -273,14 +276,33 @@ class OrderViewSet(viewsets.ModelViewSet):
             review_status='approved'
         )
 
+        completed_status = Status.objects.filter(id=4).first()
         if completed_status:
-            order.status_id = completed_status
+            order.status = completed_status
             order.save()
+
+        if order.translator_id:
+            self.update_translator_rating(order.translator_id)
 
         return Response({"message": "Замовлення прийнято та оцінено!"}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['get'], url_path='download-files')
-    def download_files(self, request, pk=None):
+    def update_translator_rating(self, translator):
+
+        average_data = TranslationQuality.objects.filter(
+            order__translator_id=translator.id
+        ).aggregate(avg_score=Avg('score'))
+
+        new_rating = average_data['avg_score'] or 0.0
+
+        translator.rating = round(new_rating, 2)
+        translator.save()
+
+        return translator.rating
+
+    @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target))?')
+    def download_files(self, request, pk=None, folder=None):
+    # @action(detail=True, methods=['get'], url_path='download-files')
+    # def download_files(self, request, pk=None):
         order = self.get_object()
         user = request.user
 
@@ -507,7 +529,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             {"message": "Files uploaded", "count": len(uploaded), "files": uploaded},
             status=status.HTTP_201_CREATED,
         )
-    
+
     @action(detail=True, methods=["get"], url_path="calculate-price")
     def calculate_price(self, request, pk=None):
         order = self.get_object()
@@ -642,15 +664,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 ext = os.path.splitext(f.name)[1].lstrip(".").lower()
                 dropbox_url = (uploaded_paths[i] if i < len(uploaded_paths) else None) or "None"
 
-                File.objects.create(
-                    order=order,
-                    file_type=ext,
-                    dropbox_url=dropbox_url,
-                    detected_pages=pages_per_file[i],
-                    detected_symbols=chars_per_file[i],
-                )
+        File.objects.create(
+            order=order,
+            file_type=ext,
+            dropbox_url=dropbox_url,
+            detected_pages=pages_per_file[i],
+            detected_symbols=chars_per_file[i],
+        )
 
         return {"total_stats": stats}
+
 
     def _send_translator_invite(self, order, full_link, password, expire_date):
         try:
