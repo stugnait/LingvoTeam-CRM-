@@ -27,8 +27,9 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
+from django_filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter, SearchFilter
 from django.db.models import Q, Avg
 
 # DRF imports
@@ -67,14 +68,25 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
     serializer_class = OrderTrafficSerializer
     permission_classes = [HasPermission]
     required_permissions = ['order.traffic.manage']
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['language_pair', 'currency_id', 'category']
+    filter_backends = [
+        DjangoFilterBackend,
+        OrderingFilter,
+        SearchFilter
+    ]
+
+    filterset_fields = ['status_id', 'client_id', 'manager_id']
+
+    ordering_fields = ['position', 'created_at', 'deadline']
+    ordering = ['position']
 
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     permission_classes = [HasPermission]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['position', 'created_at']
+    ordering = ['position']
 
     def get_required_permissions(self, request):
         mapping = {
@@ -730,3 +742,82 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         else:
             return None
+
+    @action(detail=True, methods=['post'], url_path='move')
+    @transaction.atomic
+    def move_order(self, request, pk=None):
+        order = self.get_object()
+
+        prev_id = request.data.get('prev_id')
+        next_id = request.data.get('next_id')
+
+        pos_above = None
+        pos_below = None
+
+        # --- 1. Визначаємо верхню межу (pos_above) ---
+        if prev_id:
+            # Шукаємо конкретного сусіда зверху
+            prev_order = Order.objects.filter(id=prev_id).first()
+            if prev_order:
+                pos_above = float(prev_order.position)
+
+        # Якщо prev_id не передали або його не знайшли — значить ми ставимо на самий ВЕРХ
+        if pos_above is None:
+            # Беремо найменшу існуючу позицію в колонці і віднімаємо від неї
+            first_order = Order.objects.filter(
+                status_id=order.status_id
+            ).order_by('position').first()
+
+            # Якщо список пустий - старт з 0, якщо ні - відступаємо вгору
+            pos_above = (float(first_order.position) - 10000.0) if first_order else 0.0
+
+        # --- 2. Визначаємо нижню межу (pos_below) ---
+        next_order_obj = None  # Збережемо об'єкт, бо може доведеться його посунути
+
+        if next_id:
+            # Шукаємо конкретного сусіда знизу
+            next_order_obj = Order.objects.filter(id=next_id).first()
+            if next_order_obj:
+                pos_below = float(next_order_obj.position)
+
+        # Якщо next_id не передали або не знайшли — значить ми ставимо в самий КІНЕЦЬ
+        if pos_below is None:
+            # Беремо найбільшу позицію
+            last_order = Order.objects.filter(
+                status_id=order.status_id
+            ).order_by('-position').first()
+
+            pos_below = (float(last_order.position) + 10000.0) if last_order else 10000.0
+
+        # --- 3. ЗАХИСТ ВІД "ЗЛИПАННЯ" (Fix for 0.0 problem) ---
+        # Перевіряємо, чи є місце між числами.
+        # Наприклад, якщо зверху 0.0 і знизу 0.0 -> різниця 0.
+        if (pos_below - pos_above) < 0.001:
+            # Місця немає! Треба звільнити простір.
+
+            if next_order_obj:
+                # Варіант А: Вставляємо всередину списку.
+                # Відсуваємо нижнього сусіда вниз на 10000
+                new_next_pos = pos_above + 10000.0
+                next_order_obj.position = new_next_pos
+                next_order_obj.save(update_fields=['position'])
+
+                # Оновлюємо pos_below, бо ми його тільки що посунули
+                pos_below = new_next_pos
+            else:
+                # Варіант Б: Ми в кінці списку (або на початку), але числа збігаються.
+                # Просто штучно збільшуємо верхню межу
+                pos_below = pos_above + 10000.0
+
+        # --- 4. Фінальний розрахунок ---
+        # (A + B) / 2
+        new_position = (pos_above + pos_below) / 2.0
+
+        order.position = new_position
+        order.save(update_fields=['position'])
+
+        return Response({
+            "id": order.id,
+            "position": new_position,
+            "message": "Order moved successfully"
+        }, status=status.HTTP_200_OK)

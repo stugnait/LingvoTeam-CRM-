@@ -100,5 +100,8 @@ class Order(models.Model):
         verbose_name="Сума для клієнта"
     )
 
+    position = models.FloatField(default=0.0, db_index=True)
+
     class Meta:
         db_table = 'orders'
+        ordering = ['position']
