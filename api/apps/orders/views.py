@@ -51,6 +51,7 @@ from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
 )
+from ..translators.models import TranslatorTraffic
 
 logger = logging.getLogger(__name__)
 
@@ -504,9 +505,62 @@ class OrderViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=["get"], url_path="calculate-marginality")
     def calculate_marginality(self, request, pk=None):
-        pass
+        order = self.get_object()
 
-    # --- Private Helpers ---
+        revenue = order.total_amount or Decimal("0.00")
+        pages = Decimal(str(order.page_count or 0))
+
+        if pages <= 0:
+            return Response(
+                {"detail": "order.page_count is 0. Upload/analyze files first."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        lp_id = getattr(order.language_pair_id, "id", getattr(order, "language_pair_id_id", None))
+        currency_id = getattr(order.traffic_id, "currency_id_id", None)
+        category_id = getattr(order.traffic_id, "category_id", None)
+
+        # ВАЖЛИВО: тут твоя модель тарифів перекладачів
+        # заміни імпорт: from .models import TranslatorTraffic
+        qs = (TranslatorTraffic.objects
+            .filter(
+                language_pair_id=lp_id,
+                currency_id_id=currency_id,
+                category_id=category_id,
+            )
+            .select_related("translator")  # якщо FK називається translator (звичайно так і є)
+        )
+
+        result = []
+        for tt in qs:
+            pp = tt.rate_per_page
+            if pp is None:
+                continue
+
+            cost = Decimal(str(pp)) * pages
+            margin_amount = revenue - cost
+            margin_percent = (margin_amount / revenue * Decimal("100")) if revenue > 0 else Decimal("0.00")
+
+            tr = tt.translator  # FK
+            result.append({
+                "translator_id": tr.id if tr else tt.translator_id,
+                "translator_name": getattr(tr, "full_name", None),
+                "translator_traffic_id": tt.id,
+                "translator_rate_per_page": str(Decimal(str(pp))),
+                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))),
+                "margin_amount": str(margin_amount),
+            })
+
+        # найкращі зверху
+        result.sort(key=lambda x: Decimal(x["margin_amount"]), reverse=True)
+
+        return Response({
+            "order_id": order.id,
+            "pages": int(order.page_count or 0),
+            "revenue": str(revenue),
+            "marginality": result,
+        }, status=status.HTTP_200_OK)
+
 
     def _get_language_pair(self, raw_lp_id):
         if not raw_lp_id:

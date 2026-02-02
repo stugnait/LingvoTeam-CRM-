@@ -15,14 +15,17 @@ interface TranslatorSelectProps {
     value: number | null
     onChange: (value: number | null) => void
     disabled?: boolean
+
+    marginality?: Record<number, number>
 }
 
 export function TranslatorSelect({
-                                     translators,
-                                     value,
-                                     onChange,
-                                     disabled,
-                                 }: TranslatorSelectProps) {
+    translators,
+    value,
+    onChange,
+    disabled,
+    marginality,
+}: TranslatorSelectProps) {
     return (
         <Select
             value={value !== null ? value.toString() : undefined}
@@ -34,14 +37,15 @@ export function TranslatorSelect({
             </SelectTrigger>
 
             <SelectContent>
-                {translators.map((translator) => (
-                    <SelectItem
-                        key={translator.id}
-                        value={translator.id.toString()}
-                    >
-                        {translator.full_name}
-                    </SelectItem>
-                ))}
+                {translators.map((translator) => {
+                    const m = marginality?.[translator.id]
+                    return (
+                        <SelectItem key={translator.id} value={translator.id.toString()}>
+                            {translator.full_name}
+                            {typeof m === "number" ? ` — ${m.toFixed(1)}%` : ""}
+                        </SelectItem>
+                    )
+                })}
             </SelectContent>
         </Select>
     )

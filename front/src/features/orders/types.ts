@@ -113,6 +113,8 @@ export interface TranslatorTrafficPayload {
     rate_per_action?: number | null
 }
 
+export type MarginalityMap = Record<number, number>
+
 /* =========================================================
    COMMON API RESPONSES
    ========================================================= */
