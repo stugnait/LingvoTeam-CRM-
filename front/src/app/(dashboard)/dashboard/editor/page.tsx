@@ -1,5 +1,5 @@
-import EditorMain from "@/src/features/editor/components/EditorMain"
+import TestModa from "@/src/features/editor/components/TestModa"
 
 export default function Page() {
-    return <EditorMain />
+    return <TestModa />
 }

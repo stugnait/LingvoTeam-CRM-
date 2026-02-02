@@ -9,7 +9,7 @@ export const translatorOrderApi = {
     // GET /api/translators/<slug>/
     check: (slug: string) =>
         apiFetch<CheckExternalOrderResponse>(
-            `translators/external/${slug}/`,
+            `translators/${slug}/`,
             {
                 method: "GET",
             }
@@ -18,10 +18,18 @@ export const translatorOrderApi = {
     // POST /api/translators/<slug>/
     login: (slug: string, payload: ExternalOrderLoginPayload) =>
         apiFetch<ExternalOrderLoginResponse>(
-            `translators/external/${slug}/`,
+            `translators/${slug}/`,
             {
                 method: "POST",
                 body: JSON.stringify(payload),
             }
         ),
+
+    downloadFiles: (orderId: number) =>
+        apiFetch<Blob>(`orders/${orderId}/download-files/`, {
+            method: 'GET',
+            responseType: 'blob',
+        }),
+
+
 }
