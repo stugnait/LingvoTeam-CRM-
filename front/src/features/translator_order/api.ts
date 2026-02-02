@@ -25,11 +25,13 @@ export const translatorOrderApi = {
             }
         ),
 
-    downloadFiles: (orderId: number) =>
-        apiFetch<Blob>(`orders/${orderId}/download-files/`, {
-            method: 'GET',
-            responseType: 'blob',
-        }),
-
-
+    // В api файлі
+    uploadFiles: (orderId: number, formData: FormData) =>
+        apiFetch<{ message: string; count: number; files: any[] }>(
+            `orders/${orderId}/translator-upload/`,  // Додаємо ID та слеш в кінці
+            {
+                method: 'POST',
+                body: formData,
+            }
+        ),
 }
