@@ -59,3 +59,6 @@ class TranslatorTrafficSerializer(serializers.ModelSerializer):
             'rate_per_page',
             'rate_per_action'
         ]
+
+class TranslatorUploadFileSerializer(serializers.Serializer):
+    files = serializers.ListField(child=serializers.FileField(), write_only=True)

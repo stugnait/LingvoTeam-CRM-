@@ -1,4 +1,5 @@
 import secrets
+import os
 from datetime import timedelta
 
 from django.db import transaction
@@ -13,18 +14,22 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework import status as http_status
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models.translator_language_pairs import TranslatorLanguagePairs
 from ..orders.models import OrderLink, status
 
 from .models import Translator, TranslatorTraffic
+from ..orders.models import Order, File
 from .serializers import TranslatorSerializer, TranslatorTrafficSerializer
 from ..orders.models import OrderLink, status
 from ..orders.serializers import OrderCreateSerializer
 from ..users.permissions import HasPermission
 
 from rest_framework import viewsets
-from .serializers import TranslatorLanguagePairsSerializer
+from .serializers import TranslatorLanguagePairsSerializer, TranslatorUploadFileSerializer
+
+from ..dropbox_services.dropbox_utils import upload_file_to_order_folder
 
 
 class TranslatorLanguagePairsViewSet(viewsets.ModelViewSet):
@@ -160,3 +165,55 @@ class ExternalOrderAccessView(APIView):
             link_obj.save()
 
             return Response({"error": message}, status=http_status.HTTP_403_FORBIDDEN)
+
+class TranslatorUploadView(APIView):
+    permission_classes = [AllowAny]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        order_id = request.data.get("order_id")
+        if not order_id:
+            return Response(
+                {"detail": "order_id is required"},
+                status=http_status.HTTP_400_BAD_REQUEST
+            )
+
+        order = get_object_or_404(Order, id=order_id)
+
+        serializer = TranslatorUploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["files"]
+        base_path = f"/orders/order_{order.id}"
+
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="target",
+            )
+            uploaded.append({
+                "filename": f.name,
+                "dropbox_path": dropbox_path
+            })
+
+        for i, f in enumerate(files):
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=uploaded[i]["dropbox_path"],
+                detected_pages=0,
+                detected_symbols=0,
+            )
+
+        return Response(
+            {
+                "message": "Files uploaded",
+                "count": len(uploaded),
+                "files": uploaded
+            },
+            status=http_status.HTTP_201_CREATED,
+        )
