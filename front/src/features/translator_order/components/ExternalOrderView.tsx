@@ -1,5 +1,5 @@
 import type { ExternalOrder } from "../types"
-import { Calendar, MessageSquare, Languages, FileText, Upload, X, CheckCircle2 } from "lucide-react"
+import { Calendar, MessageSquare, Languages, FileText, Upload, X, CheckCircle2, AlertCircle } from "lucide-react"
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
 import { Progress } from "@/src/components/ui/progress"
@@ -10,9 +10,10 @@ interface Props {
     onUpload: (files: File[]) => Promise<boolean>
     isUploading: boolean
     uploadProgress: number
+    error?: string | null
 }
 
-export function ExternalOrderView({ order, onUpload, isUploading, uploadProgress }: Props) {
+export function ExternalOrderView({ order, onUpload, isUploading, uploadProgress, error }: Props) {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([])
     const [uploadSuccess, setUploadSuccess] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -142,6 +143,13 @@ export function ExternalOrderView({ order, onUpload, isUploading, uploadProgress
                         </div>
                     )}
 
+                    {error && (
+                        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-800">
+                            <AlertCircle className="h-5 w-5" />
+                            <span className="text-sm font-medium">{error}</span>
+                        </div>
+                    )}
+
                     <div className="space-y-4">
                         {/* Зона завантаження */}
                         <div
@@ -243,17 +251,18 @@ export function ExternalOrderView({ order, onUpload, isUploading, uploadProgress
                         <div className="flex items-center gap-2">
                             <div className={`h-3 w-3 rounded-full ${order.status === 'completed' ? 'bg-green-500' : order.status === 'in_progress' ? 'bg-blue-500' : 'bg-amber-500'}`} />
                             <span className="capitalize font-medium">
-                {order.status === 'completed' ? 'Завершено' :
-                    order.status === 'in_progress' ? 'В роботі' :
-                        'Очікує'}
-            </span>
+                                {order.status === 'completed' ? 'Завершено' :
+                                    order.status === 'in_progress' ? 'В роботі' :
+                                        'Очікує'}
+                            </span>
                         </div>
                         {order.file_url && (
                             <a
                             href={order.file_url}
                             className="text-primary hover:text-primary/80 text-sm underline underline-offset-4"
                             target="_blank"
-                            rel="noopener noreferrer">
+                            rel="noopener noreferrer"
+                            >
                             Завантажити файл
                             </a>
                             )}

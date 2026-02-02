@@ -45,7 +45,7 @@ from .models import (
 from .serializers import (
     OrderCreateSerializer, OrderTrafficSerializer,
     RejectTranslationSerializer, ApproveTranslationSerializer,
-    OrderListSerializer, TranslatorUploadFileSerializer
+    OrderListSerializer
 )
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer

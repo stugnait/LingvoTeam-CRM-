@@ -26,9 +26,9 @@ export const translatorOrderApi = {
         ),
 
     // В api файлі
-    uploadFiles: (orderId: number, formData: FormData) =>
+    uploadFiles: (formData: FormData) =>
         apiFetch<{ message: string; count: number; files: any[] }>(
-            `orders/${orderId}/translator-upload/`,  // Додаємо ID та слеш в кінці
+            `translators/translator-upload/`,
             {
                 method: 'POST',
                 body: formData,

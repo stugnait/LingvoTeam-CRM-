@@ -32,22 +32,29 @@ export function useExternalOrder(slug: string) {
     }
 
     async function uploadFiles(files: File[]) {
+        if (!order) {
+            setError("Замовлення не знайдено")
+            return false
+        }
+
         setIsUploading(true)
         setUploadProgress(0)
         setError(null)
 
         try {
             const formData = new FormData()
+            formData.append('order_id', order.id.toString())
+
             files.forEach(file => {
                 formData.append('files', file)
             })
 
+            // Симуляція прогресу
             const progressInterval = setInterval(() => {
                 setUploadProgress(prev => Math.min(prev + 10, 90))
             }, 200)
 
-            // Передаємо ID замовлення
-            await translatorOrderApi.uploadFiles(order!.id, formData)
+            await translatorOrderApi.uploadFiles(formData)
 
             clearInterval(progressInterval)
             setUploadProgress(100)
