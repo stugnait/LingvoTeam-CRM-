@@ -24,6 +24,7 @@ import fitz  # PyMuPDF
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
@@ -54,6 +55,7 @@ from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
 )
+from ..translators.models import TranslatorTraffic
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +89,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
+
+            'margins': ['order.create'],
         }
 
         if self.action in ['update', 'partial_update']:
@@ -161,7 +165,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             client_id_id=data.get('client_id'),
             traffic_id_id=data.get('traffic_id'),
             translator_id_id=data.get('translator_id'),
-            translator_traffic_id_id=data.get('translator_traffic_id')
+            translator_traffic_id_id=data.get('translator_traffic_id'),
+            total_amount=final_total_amount
         )
 
         # 5. Генерація посилань
@@ -183,6 +188,9 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
         order.page_count = stats_data["total_stats"]["physical_pages"]
+
+        order.total_amount = order.page_count * order.traffic_id.price_per_page
+        
         order.save()
 
         # 7. Відправка пошти
@@ -530,31 +538,85 @@ class OrderViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    @action(detail=True, methods=["get"], url_path="calculate-price")
-    def calculate_price(self, request, pk=None):
-        order = self.get_object()
-        user = request.user
+    
+    @action(detail=False, methods=["get"], url_path="margins")
+    def margins(self, request):
+        """
+        GET /api/orders/margins/?traffic_id=1
 
-        translator_traffic = order.translator_traffic_id.rate_per_page
-        order_traffic = order.traffic_id.price_per_page
-        page_count = order.page_count
+        Повертає маржу (%) для кожного перекладача по:
+        - order_traffic.price_per_page (дохід за сторінку)
+        - translator_traffic.rate_per_page (витрата на сторінку)
+        """
 
-        translator_price = translator_traffic * page_count
-        client_price = order_traffic * page_count
-        margin = client_price - translator_price
-        marginality = (margin / client_price * 100)
+        traffic_id = request.query_params.get("traffic_id")
+        if not traffic_id:
+            return Response({"detail": "traffic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            traffic_id_int = int(str(traffic_id).strip())
+        except ValueError:
+            return Response({"detail": "traffic_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
+
+        ot = (OrderTraffic.objects
+            .filter(id=traffic_id_int)
+            .values("id", "price_per_page", "currency_id_id", "language_pair_id", "category_id")
+            .first())
+
+        if not ot:
+            return Response({"detail": "OrderTraffic not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        price_per_page = ot.get("price_per_page")
+        if price_per_page is None:
+            return Response({"detail": "OrderTraffic.price_per_page is null"}, status=status.HTTP_400_BAD_REQUEST)
+
+        order_price = Decimal(str(price_per_page))
+        if order_price <= 0:
+            return Response({"detail": "OrderTraffic.price_per_page must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+
+        currency_id = ot.get("currency_id_id")
+        lp_id = ot.get("language_pair_id")
+        category_id = ot.get("category_id")
+
+        qs = (TranslatorTraffic.objects
+            .filter(language_pair_id=lp_id))
+
+        if category_id is not None:
+            qs = qs.filter(Q(category_id=category_id) | Q(category_id__isnull=True))
+
+
+        qs = qs.select_related("translator")
+
+        results = []
+        for tt in qs:
+            if tt.rate_per_page is None:
+                continue
+
+            tr_rate = Decimal(str(tt.rate_per_page))
+            margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
+
+            tr = getattr(tt, "translator", None)
+            results.append({
+                "translator_id": tr.id if tr else tt.translator_id,
+                "translator_name": getattr(tr, "full_name", None),
+                "translator_traffic_id": tt.id,
+                "order_price_per_page": str(order_price),
+                "translator_rate_per_page": str(tr_rate),
+                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))),
+            })
+
+        # краща маржа зверху
+        results.sort(key=lambda x: Decimal(x["margin_percent"]), reverse=True)
+
         return Response({
-            "order_id": order.id,
-            "page_count": page_count,
-            "translator_price_per_page": translator_traffic,
-            "client_price_per_page": order_traffic,
-            "translator_total_price": translator_price,
-            "client_total_price": client_price,
-            "margin": margin,
-            "marginality_percent": round(marginality, 2)
+            "traffic_id": traffic_id_int,
+            "language_pair_id": lp_id,
+            "currency_id": currency_id,
+            "category_id": category_id,
+            "results": results,
         }, status=status.HTTP_200_OK)
 
-    # --- Private Helpers ---
+
 
     def _get_language_pair(self, raw_lp_id):
         if not raw_lp_id:

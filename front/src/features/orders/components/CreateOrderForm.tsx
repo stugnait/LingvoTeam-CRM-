@@ -176,11 +176,12 @@ export default function CreateOrderPage() {
                             Translator Traffic ID
                         </label>
                         <Input
-                            placeholder="Enter translator traffic ID"
+                            placeholder="Will be set automatically after selecting translator"
                             value={translatorTrafficId}
-                            onChange={(e) => setTranslatorTrafficId(e.target.value)}
+                            readOnly
                             className="transition-smooth focus-visible-primary"
-                        />
+                            />
+
                     </div>
 
                     <div>
@@ -203,8 +204,13 @@ export default function CreateOrderPage() {
                         <TranslatorSelect
                             translators={translators}
                             value={selectedTranslatorId}
-                            onChange={setSelectedTranslatorId}
-                        />
+                            onChange={(translatorId, translatorTrafficId) => {
+                                setSelectedTranslatorId(translatorId)
+                                setTranslatorTrafficId(translatorTrafficId ? String(translatorTrafficId) : "")
+                            }}
+                            orderTrafficId={trafficId ? Number(trafficId) : null}
+                            />
+
                     </div>
 
                     {/* Files Upload */}

@@ -33,7 +33,7 @@ export interface Details {
    TRANSLATOR
    ========================================================= */
 
-import {User} from "@/src/features/users/types";
+import { User } from "@/src/features/users/types";
 
 /**
  * Відповідає TranslatorSerializer
@@ -155,15 +155,56 @@ export interface LanguagePair {
 }
 
 export interface AnalyzeImagesResultItem {
-  file_id: number
-  file_type?: string
-  images_found?: number
-  detected_symbols_from_images?: number
-  preview_text?: string
-  error?: string
+    file_id: number
+    file_type?: string
+    images_found?: number
+    detected_symbols_from_images?: number
+    preview_text?: string
+    error?: string
 }
 
 export interface AnalyzeImagesResponse {
-  order_id: number
-  results: AnalyzeImagesResultItem[]
+    order_id: number
+    results: AnalyzeImagesResultItem[]
+}
+
+export interface OrderTraffic {
+    id: number
+    language_pair_id: number
+    currency_id_id: number
+    category_id?: number | null
+    price_per_page: number | null
+    price_per_action?: number | null
+}
+
+export interface TranslatorTraffic {
+    id: number
+    translator_id: number
+    language_pair_id: number
+    currency_id_id: number
+    category_id?: number | null
+    rate_per_page?: number | null
+    rate_per_action?: number | null
+}
+
+export interface TranslatorTrafficListResponse {
+    results: TranslatorTraffic[]
+    total?: number
+}
+
+export interface OrderMarginsRow {
+    translator_id: number
+    translator_name: string | null
+    translator_traffic_id: number
+    order_price_per_page: string
+    translator_rate_per_page: string
+    margin_percent: string
+}
+
+export interface OrderMarginsResponse {
+    traffic_id: number
+    language_pair_id: number
+    currency_id: number
+    category_id: number | null
+    results: OrderMarginsRow[]
 }
