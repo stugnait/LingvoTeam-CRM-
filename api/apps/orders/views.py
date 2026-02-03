@@ -31,6 +31,8 @@ from django_filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django.db.models import Q, Avg
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Q
 
 # DRF imports
 from rest_framework import viewsets, status
@@ -99,6 +101,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
+            #'perform_update': ['order.change.status']
         }
 
         if self.action in ['update', 'partial_update']:
@@ -328,7 +331,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not is_authorized and not user.role.slug in ['admin', 'owner']:
             return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
 
-        files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
+        files = File.objects.filter(order=order)
+        folder_label = "all"
+        folder_param = (folder or "").strip().lower()
+
+        if folder_param:
+            folder_label = folder_param
+            base = f"/orders/order_{order.id}/{folder_param}"
+            files = files.filter(dropbox_url__startswith=base)
+
         if not files.exists():
             return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -717,6 +728,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
 
         return {"total_stats": stats}
+
 
 #TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
