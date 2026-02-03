@@ -202,7 +202,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         full_link = f"{base_url}/translator/{generated_link_slug}"
 
         if order.translator_id and order.translator_id.email:
-            self._send_translator_invite(order, full_link, generated_password, expire_date)
+            self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
 
         # 8. Відповідь
         lp_response_data = None
@@ -566,6 +566,38 @@ class OrderViewSet(viewsets.ModelViewSet):
             "marginality_percent": round(marginality, 2)
         }, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["get"], url_path="confirm-order")
+    def confirm_order(self, request, pk=None):
+        order = self.get_object()
+        order.status_id_id = 4
+
+        generated_link_slug = str(uuid.uuid4())
+        generated_password = secrets.token_urlsafe(8)
+        expire_date = timezone.now() + timedelta(days=45)
+
+        OrderLink.objects.create(
+            order=order,
+            assignee=OrderLink.Assignee.TRANSLATOR,
+            link=generated_link_slug,
+            password=generated_password,
+            expire_at=expire_date
+        )
+
+        uploaded_files = request.FILES.getlist('files')
+        stats_data = self._analyze_and_upload_files(order, uploaded_files)
+
+        order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
+        order.page_count = stats_data["total_stats"]["physical_pages"]
+        order.save()
+
+        base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        full_link = f"{base_url}/translator/{generated_link_slug}"
+
+        self._send_translator_invite(order, full_link, generated_password, expire_date, order.client_id)
+
+        order.save()
+        return Response({"message": "Статус змінено на Виконано"})
+
     # --- Private Helpers ---
 
     def _get_language_pair(self, raw_lp_id):
@@ -686,14 +718,13 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return {"total_stats": stats}
 
-
-    def _send_translator_invite(self, order, full_link, password, expire_date):
+#TODO full_link to change order.translator_id
+    def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
         try:
-            subject = f"Нове замовлення #{order.id} - LingvoTeam"
+            subject = f"Нове замовлення - LingvoTeam"
             message = (
-                f"Вітаємо, {order.translator_id.full_name}!\n\n"
-                f"Для вас створено новий проект доступу до замовлення #{order.id}.\n"
-                f"Посилання для роботи: {full_link}\n"
+                f"Вітаємо, {recipient.full_name}!\n\n"
+                f"Посилання з роботою: {full_link}\n"
                 f"Пароль доступу: {password}\n\n"
                 f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
                 f"З повагою, команда LingvoTeam."
@@ -703,7 +734,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 subject=subject,
                 message=message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[order.translator_id.email],
+                recipient_list=[recipient.email],
                 fail_silently=False,
             )
         except Exception as e:
@@ -754,63 +785,43 @@ class OrderViewSet(viewsets.ModelViewSet):
         pos_above = None
         pos_below = None
 
-        # --- 1. Визначаємо верхню межу (pos_above) ---
         if prev_id:
-            # Шукаємо конкретного сусіда зверху
             prev_order = Order.objects.filter(id=prev_id).first()
             if prev_order:
                 pos_above = float(prev_order.position)
 
-        # Якщо prev_id не передали або його не знайшли — значить ми ставимо на самий ВЕРХ
         if pos_above is None:
-            # Беремо найменшу існуючу позицію в колонці і віднімаємо від неї
             first_order = Order.objects.filter(
                 status_id=order.status_id
             ).order_by('position').first()
 
-            # Якщо список пустий - старт з 0, якщо ні - відступаємо вгору
             pos_above = (float(first_order.position) - 10000.0) if first_order else 0.0
 
-        # --- 2. Визначаємо нижню межу (pos_below) ---
-        next_order_obj = None  # Збережемо об'єкт, бо може доведеться його посунути
+        next_order_obj = None
 
         if next_id:
-            # Шукаємо конкретного сусіда знизу
             next_order_obj = Order.objects.filter(id=next_id).first()
             if next_order_obj:
                 pos_below = float(next_order_obj.position)
 
-        # Якщо next_id не передали або не знайшли — значить ми ставимо в самий КІНЕЦЬ
         if pos_below is None:
-            # Беремо найбільшу позицію
             last_order = Order.objects.filter(
                 status_id=order.status_id
             ).order_by('-position').first()
 
             pos_below = (float(last_order.position) + 10000.0) if last_order else 10000.0
 
-        # --- 3. ЗАХИСТ ВІД "ЗЛИПАННЯ" (Fix for 0.0 problem) ---
-        # Перевіряємо, чи є місце між числами.
-        # Наприклад, якщо зверху 0.0 і знизу 0.0 -> різниця 0.
         if (pos_below - pos_above) < 0.001:
-            # Місця немає! Треба звільнити простір.
 
             if next_order_obj:
-                # Варіант А: Вставляємо всередину списку.
-                # Відсуваємо нижнього сусіда вниз на 10000
                 new_next_pos = pos_above + 10000.0
                 next_order_obj.position = new_next_pos
                 next_order_obj.save(update_fields=['position'])
 
-                # Оновлюємо pos_below, бо ми його тільки що посунули
                 pos_below = new_next_pos
             else:
-                # Варіант Б: Ми в кінці списку (або на початку), але числа збігаються.
-                # Просто штучно збільшуємо верхню межу
                 pos_below = pos_above + 10000.0
 
-        # --- 4. Фінальний розрахунок ---
-        # (A + B) / 2
         new_position = (pos_above + pos_below) / 2.0
 
         order.position = new_position
