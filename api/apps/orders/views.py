@@ -24,6 +24,7 @@ import fitz  # PyMuPDF
 from django.core.mail import send_mail
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
@@ -86,6 +87,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
+
+            'margins': ['order.create'],
         }
         return mapping.get(self.action, [])
 
@@ -503,63 +506,83 @@ class OrderViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
     
-    @action(detail=True, methods=["get"], url_path="calculate-marginality")
-    def calculate_marginality(self, request, pk=None):
-        order = self.get_object()
+    @action(detail=False, methods=["get"], url_path="margins")
+    def margins(self, request):
+        """
+        GET /api/orders/margins/?traffic_id=1
 
-        revenue = order.total_amount or Decimal("0.00")
-        pages = Decimal(str(order.page_count or 0))
+        Повертає маржу (%) для кожного перекладача по:
+        - order_traffic.price_per_page (дохід за сторінку)
+        - translator_traffic.rate_per_page (витрата на сторінку)
+        """
 
-        if pages <= 0:
-            return Response(
-                {"detail": "order.page_count is 0. Upload/analyze files first."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        traffic_id = request.query_params.get("traffic_id")
+        if not traffic_id:
+            return Response({"detail": "traffic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        lp_id = getattr(order.language_pair_id, "id", getattr(order, "language_pair_id_id", None))
-        currency_id = getattr(order.traffic_id, "currency_id_id", None)
-        category_id = getattr(order.traffic_id, "category_id", None)
+        try:
+            traffic_id_int = int(str(traffic_id).strip())
+        except ValueError:
+            return Response({"detail": "traffic_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ВАЖЛИВО: тут твоя модель тарифів перекладачів
-        # заміни імпорт: from .models import TranslatorTraffic
+        ot = (OrderTraffic.objects
+            .filter(id=traffic_id_int)
+            .values("id", "price_per_page", "currency_id_id", "language_pair_id", "category_id")
+            .first())
+
+        if not ot:
+            return Response({"detail": "OrderTraffic not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        price_per_page = ot.get("price_per_page")
+        if price_per_page is None:
+            return Response({"detail": "OrderTraffic.price_per_page is null"}, status=status.HTTP_400_BAD_REQUEST)
+
+        order_price = Decimal(str(price_per_page))
+        if order_price <= 0:
+            return Response({"detail": "OrderTraffic.price_per_page must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+
+        currency_id = ot.get("currency_id_id")
+        lp_id = ot.get("language_pair_id")
+        category_id = ot.get("category_id")
+
         qs = (TranslatorTraffic.objects
-            .filter(
-                language_pair_id=lp_id,
-                currency_id_id=currency_id,
-                category_id=category_id,
-            )
-            .select_related("translator")  # якщо FK називається translator (звичайно так і є)
-        )
+            .filter(language_pair_id=lp_id))
 
-        result = []
+        if category_id is not None:
+            qs = qs.filter(Q(category_id=category_id) | Q(category_id__isnull=True))
+
+
+        qs = qs.select_related("translator")
+
+        results = []
         for tt in qs:
-            pp = tt.rate_per_page
-            if pp is None:
+            if tt.rate_per_page is None:
                 continue
 
-            cost = Decimal(str(pp)) * pages
-            margin_amount = revenue - cost
-            margin_percent = (margin_amount / revenue * Decimal("100")) if revenue > 0 else Decimal("0.00")
+            tr_rate = Decimal(str(tt.rate_per_page))
+            margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
 
-            tr = tt.translator  # FK
-            result.append({
+            tr = getattr(tt, "translator", None)
+            results.append({
                 "translator_id": tr.id if tr else tt.translator_id,
                 "translator_name": getattr(tr, "full_name", None),
                 "translator_traffic_id": tt.id,
-                "translator_rate_per_page": str(Decimal(str(pp))),
+                "order_price_per_page": str(order_price),
+                "translator_rate_per_page": str(tr_rate),
                 "margin_percent": str(margin_percent.quantize(Decimal("0.01"))),
-                "margin_amount": str(margin_amount),
             })
 
-        # найкращі зверху
-        result.sort(key=lambda x: Decimal(x["margin_amount"]), reverse=True)
+        # краща маржа зверху
+        results.sort(key=lambda x: Decimal(x["margin_percent"]), reverse=True)
 
         return Response({
-            "order_id": order.id,
-            "pages": int(order.page_count or 0),
-            "revenue": str(revenue),
-            "marginality": result,
+            "traffic_id": traffic_id_int,
+            "language_pair_id": lp_id,
+            "currency_id": currency_id,
+            "category_id": category_id,
+            "results": results,
         }, status=status.HTTP_200_OK)
+
 
 
     def _get_language_pair(self, raw_lp_id):

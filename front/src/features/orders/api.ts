@@ -2,12 +2,20 @@
 
 import { apiFetch } from "@/src/shared/api/client"
 import type {
-    CreateOrderResponse, Translator,
+    CreateOrderResponse,
+    Translator,
     TranslatorFilters,
     TranslatorPayload,
     Details,
-    TranslatorListResponse, OrderListResponse, LanguagePair, AnalyzeImagesResponse, TranslatorTraffic
+    TranslatorListResponse,
+    OrderListResponse,
+    LanguagePair,
+    AnalyzeImagesResponse,
+    OrderTraffic,
+    TranslatorTrafficListResponse,
+    OrderMarginsResponse,
 } from "./types"
+
 
 export const ordersApi = {
     create: (body: BodyInit) =>
@@ -46,14 +54,9 @@ export const ordersApi = {
         apiFetch<AnalyzeImagesResponse>(`orders/${orderId}/analyze-images/`, {
             method: "POST",
         }),
-    getOrderTrafficById: (id: number) =>
-        apiFetch<{ id: number; price_per_page: number }>(`order-traffics/${id}/`, {
-            method: "GET",
+    getOrderMargins: (trafficId: number) =>
+        apiFetch<OrderMarginsResponse>(`orders/margins/?traffic_id=${trafficId}`, {
+        method: "GET",
         }),
 
-    listTranslatorTraffics: (params: { language_pair: number; currency_id: number }) =>
-        apiFetch<{ results: TranslatorTraffic[] }>(
-            `translator-traffics/?language_pair=${params.language_pair}&currency_id=${params.currency_id}`,
-            { method: "GET" }
-        ),
 }

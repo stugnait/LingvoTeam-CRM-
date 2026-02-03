@@ -4,15 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
-import { useEffect, useMemo, useState } from "react"
+import { useState } from "react"
 import { TranslatorSelect } from "@/src/features/orders/components/TranslatorSelect"
 import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Plus } from "lucide-react"
-import { SideModal } from "@/src/components/modals/SideModal"
-
-// 🔴 NEW: беремо API з твого api.ts
-import { getOrderTraffic, getTranslatorTraffic } from "@/src/features/orders/api"
+import { SideModal } from "@/src/components/modals/SideModal" // Імпортуємо нову модалку
 
 export default function CreateOrderPage() {
     const {
@@ -41,77 +38,6 @@ export default function CreateOrderPage() {
     const [currencyId, setCurrencyId] = useState("")
     const [files, setFiles] = useState<File[]>([])
 
-    // =====================================================
-    // 🔴 NEW: стейт для маржинальності
-    // =====================================================
-    const [clientRate, setClientRate] = useState<number | null>(null)
-    const [translatorRate, setTranslatorRate] = useState<number | null>(null)
-    const [translatorIdFromTraffic, setTranslatorIdFromTraffic] = useState<number | null>(null)
-
-    // =====================================================
-    // 🔴 NEW: тягнемо client price_per_page по trafficId
-    // =====================================================
-    useEffect(() => {
-        const id = Number(trafficId)
-        if (!id) {
-            setClientRate(null)
-            return
-        }
-
-        getOrderTraffic(id)
-            .then((res) => {
-                setClientRate(Number(res.price_per_page))
-            })
-            .catch(() => {
-                setClientRate(null)
-            })
-    }, [trafficId])
-
-    // =====================================================
-    // 🔴 NEW: тягнемо translator rate_per_page по translatorTrafficId
-    // =====================================================
-    useEffect(() => {
-        const id = Number(translatorTrafficId)
-        if (!id) {
-            setTranslatorRate(null)
-            setTranslatorIdFromTraffic(null)
-            return
-        }
-
-        getTranslatorTraffic(id)
-            .then((res) => {
-                setTranslatorRate(Number(res.rate_per_page))
-                setTranslatorIdFromTraffic(res.translator_id)
-            })
-            .catch(() => {
-                setTranslatorRate(null)
-                setTranslatorIdFromTraffic(null)
-            })
-    }, [translatorTrafficId])
-
-    // =====================================================
-    // 🔴 NEW: рахуємо маржинальність (frontend)
-    // margin% = (clientRate - translatorRate) / clientRate * 100
-    // =====================================================
-    const marginality = useMemo(() => {
-        if (
-            !clientRate ||
-            clientRate <= 0 ||
-            !translatorRate ||
-            !translatorIdFromTraffic
-        ) {
-            return {}
-        }
-
-        return {
-            [translatorIdFromTraffic]:
-                ((clientRate - translatorRate) / clientRate) * 100,
-        } as Record<number, number>
-    }, [clientRate, translatorRate, translatorIdFromTraffic])
-
-    // =====================================================
-    // Submit
-    // =====================================================
     const handleSubmit = async () => {
         await createOrder({
             client_id: Number(clientId),
@@ -126,7 +52,7 @@ export default function CreateOrderPage() {
             files,
         })
 
-        // Reset form and close modal
+        // Reset form and close modal after successful submission
         setClientId("")
         setSourceLanguage("")
         setTargetLanguage("")
@@ -141,6 +67,7 @@ export default function CreateOrderPage() {
 
     return (
         <>
+
             {/* Fixed button to open modal */}
             <div className="fixed bottom-8 right-8 z-40">
                 <Button
@@ -152,6 +79,7 @@ export default function CreateOrderPage() {
             </div>
 
             <div className="space-y-8">
+                {/* Orders table */}
                 <OrdersTable
                     orders={orders}
                     onOpen={loadOrderDetails}
@@ -160,6 +88,7 @@ export default function CreateOrderPage() {
                 />
             </div>
 
+            {/* Side modal for creating order */}
             <SideModal
                 open={isModalOpen}
                 onOpenChange={setIsModalOpen}
@@ -170,33 +99,143 @@ export default function CreateOrderPage() {
                 onSubmit={handleSubmit}
             >
                 <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Client ID
+                        </label>
+                        <Input
+                            placeholder="Enter client ID"
+                            value={clientId}
+                            onChange={(e) => setClientId(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
 
-                    {/* inputs без змін */}
-                    <Input placeholder="Client ID" value={clientId} onChange={(e) => setClientId(e.target.value)} />
-                    <Input placeholder="Source Language ID" value={sourceLanguage} onChange={(e) => setSourceLanguage(e.target.value)} />
-                    <Input placeholder="Target Language ID" value={targetLanguage} onChange={(e) => setTargetLanguage(e.target.value)} />
-                    <Input placeholder="Editor ID" value={editor} onChange={(e) => setEditor(e.target.value)} />
-                    <Input placeholder="Traffic ID" value={trafficId} onChange={(e) => setTrafficId(e.target.value)} />
-                    <Input placeholder="Language Pair ID" value={languagePair} onChange={(e) => setLanguagePair(e.target.value)} />
-                    <Input placeholder="Translator Traffic ID" value={translatorTrafficId} onChange={(e) => setTranslatorTrafficId(e.target.value)} />
-                    <Input placeholder="Currency ID" value={currencyId} onChange={(e) => setCurrencyId(e.target.value)} />
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Source Language ID
+                        </label>
+                        <Input
+                            placeholder="Enter source language ID"
+                            value={sourceLanguage}
+                            onChange={(e) => setSourceLanguage(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Target Language ID
+                        </label>
+                        <Input
+                            placeholder="Enter target language ID"
+                            value={targetLanguage}
+                            onChange={(e) => setTargetLanguage(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Editor ID
+                        </label>
+                        <Input
+                            placeholder="Enter target language ID"
+                            value={editor}
+                            onChange={(e) => setEditor(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Traffic ID
+                        </label>
+                        <Input
+                            placeholder="Enter traffic ID"
+                            value={trafficId}
+                            onChange={(e) => setTrafficId(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Language Pair
+                        </label>
+                        <Input
+                            placeholder="Enter language pair"
+                            value={languagePair}
+                            onChange={(e) => setLanguagePair(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Translator Traffic ID
+                        </label>
+                        <Input
+                            placeholder="Will be set automatically after selecting translator"
+                            value={translatorTrafficId}
+                            readOnly
+                            className="transition-smooth focus-visible-primary"
+                            />
+
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Currency ID
+                        </label>
+                        <Input
+                            placeholder="Enter currency ID"
+                            value={currencyId}
+                            onChange={(e) => setCurrencyId(e.target.value)}
+                            className="transition-smooth focus-visible-primary"
+                        />
+                    </div>
 
                     {/* Translator Select */}
-                    <TranslatorSelect
-                        translators={translators}
-                        value={selectedTranslatorId}
-                        onChange={setSelectedTranslatorId}
-                        marginality={marginality} // 🔴 NEW
-                    />
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Select Translator
+                        </label>
+                        <TranslatorSelect
+                            translators={translators}
+                            value={selectedTranslatorId}
+                            onChange={(translatorId, translatorTrafficId) => {
+                                setSelectedTranslatorId(translatorId)
+                                setTranslatorTrafficId(translatorTrafficId ? String(translatorTrafficId) : "")
+                            }}
+                            orderTrafficId={trafficId ? Number(trafficId) : null}
+                            />
 
-                    {/* Files */}
-                    <Input
-                        type="file"
-                        multiple
-                        onChange={(e) =>
-                            setFiles(e.target.files ? Array.from(e.target.files) : [])
-                        }
-                    />
+                    </div>
+
+                    {/* Files Upload */}
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Upload Files
+                        </label>
+                        <Input
+                            type="file"
+                            multiple
+                            onChange={(e) =>
+                                setFiles(
+                                    e.target.files
+                                        ? Array.from(e.target.files)
+                                        : []
+                                )
+                            }
+                            className="transition-smooth focus-visible-primary"
+                        />
+                        {files.length > 0 && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                                {files.length} file(s) selected
+                            </p>
+                        )}
+                    </div>
                 </div>
             </SideModal>
         </>
