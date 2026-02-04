@@ -1,11 +1,21 @@
 // orders/api.ts
 
 import { apiFetch } from "@/src/shared/api/client"
-import type { CreateOrderResponse, Translator,
+import type {
+    CreateOrderResponse,
+    Translator,
     TranslatorFilters,
     TranslatorPayload,
     Details,
-    TranslatorListResponse, OrderListResponse, LanguagePair, AnalyzeImagesResponse } from "./types"
+    TranslatorListResponse,
+    OrderListResponse,
+    LanguagePair,
+    AnalyzeImagesResponse,
+    OrderTraffic,
+    TranslatorTrafficListResponse,
+    OrderMarginsResponse,
+} from "./types"
+
 
 export const ordersApi = {
     create: (body: BodyInit) =>
@@ -44,4 +54,9 @@ export const ordersApi = {
         apiFetch<AnalyzeImagesResponse>(`orders/${orderId}/analyze-images/`, {
             method: "POST",
         }),
+    getOrderMargins: (trafficId: number) =>
+        apiFetch<OrderMarginsResponse>(`orders/margins/?traffic_id=${trafficId}`, {
+        method: "GET",
+        }),
+
 }
