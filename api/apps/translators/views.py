@@ -120,6 +120,7 @@ class ExternalOrderAccessView(APIView):
                     status=http_status.HTTP_410_GONE
                 )
 
+
             if link_obj.banned_to and link_obj.banned_to > now:
                 remaining_time = int((link_obj.banned_to - now).total_seconds() / 60)
                 display_time = remaining_time if remaining_time > 0 else 1
@@ -135,7 +136,8 @@ class ExternalOrderAccessView(APIView):
                 link_obj.save()
 
                 order = link_obj.order
-                return Response({
+
+                response = Response({
                     "access": "granted",
                     "order_data": {
                         "id": order.id,
@@ -144,6 +146,19 @@ class ExternalOrderAccessView(APIView):
                         "comment": getattr(order, 'translator_comment', "Коментар відсутній")
                     }
                 }, status=http_status.HTTP_200_OK)
+
+                max_age = int((link_obj.expire_at - now).total_seconds())
+
+                response.set_cookie(
+                    key=f'order_auth_{order.id}',
+                    value=input_password,
+                    max_age=max_age,
+                    httponly=True,
+                    samesite='Lax',
+                    secure=False
+                )
+
+                return response
 
             link_obj.attempts += 1
             max_attempts = 5

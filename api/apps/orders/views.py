@@ -38,6 +38,7 @@ from django.db.models import Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 # Local imports
@@ -98,7 +99,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'update': ['order.update'],
             'assign_translator': ['order.assign'],
             'reject_translation': ['order.reject_translation'],
-            'approve_translation': ['order.approve_translation'],
+            # 'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
             #'perform_update': ['order.change.status']
@@ -266,19 +267,41 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "Переклад відхилено, менеджер повідомлений."}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'], url_path='approve-translation')
+
+    @action(detail=True, methods=['post'], url_path='approve-translation', permission_classes=[AllowAny])
     def approve_translation(self, request, pk=None):
-        order = self.get_object()
+        order = get_object_or_404(Order, pk=pk)
+
+        is_editor = request.user.is_authenticated and (
+                request.user.is_staff or
+                getattr(request.user, 'role_id', None) == 2
+        )
+
+        provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
+        link_obj = OrderLink.objects.filter(order=order).last()
+
+        is_password_valid = False
+        if provided_password and link_obj:
+            is_password_valid = secrets.compare_digest(link_obj.password, provided_password)
+
+        if not (is_editor or is_password_valid):
+            return Response(
+                {"detail": "У вас немає доступу (потрібна роль Editor або вірний пароль)."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = ApproveTranslationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         score = serializer.validated_data['score']
         comment = serializer.validated_data.get('comment', '')
 
+        acting_user = request.user if request.user.is_authenticated else None
+
         TranslationQuality.objects.update_or_create(
             order=order,
             defaults={
-                'user': request.user,
+                'user': acting_user,
                 'score': score,
                 'comment': comment
             }
@@ -286,20 +309,18 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         OrderEditorReview.objects.create(
             order=order,
-            editor=request.user,
-            review_comment="Approved",
+            editor=acting_user,
+            review_comment="Approved via guest link" if not acting_user else "Approved by editor",
             review_status='approved'
         )
 
-        completed_status = Status.objects.filter(id=4).first()
-        if completed_status:
-            order.status = completed_status
-            order.save()
+        order.status_id_id = 4
+        order.save(update_fields=['status_id'])
 
         if order.translator_id:
             self.update_translator_rating(order.translator_id)
 
-        return Response({"message": "Замовлення прийнято та оцінено!"}, status=status.HTTP_200_OK)
+        return Response({"message": "Замовлення успішно прийнято та оцінено!"}, status=status.HTTP_200_OK)
 
     def update_translator_rating(self, translator):
 
@@ -607,7 +628,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         self._send_translator_invite(order, full_link, generated_password, expire_date, order.client_id)
 
         order.save()
-        return Response({"message": "Статус змінено на Виконано"})
+        return Response({"message": "Статус змінено на Виконано", "slug": generated_link_slug}, status=status.HTTP_200_OK)
 
     # --- Private Helpers ---
 
