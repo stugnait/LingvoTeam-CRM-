@@ -305,7 +305,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             files = files.filter(dropbox_url__startswith=base)
 
         if not files.exists():
-            return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Файли відсутні."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             dbx = get_dbx()
