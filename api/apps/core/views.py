@@ -1,14 +1,17 @@
-from rest_framework import viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, filters
 from rest_framework.permissions import AllowAny
 
 # Імпортуємо моделі
-from .models import Currency
+from .models import Currency, OrderCategory
 from .models.language import Language
 from .models.language_pair import LanguagePair
+from .models.transaction import Transaction
+from .models.transaction_category import TransactionCategory
 from .serializers import (
     CurrencySerializer,
     LanguageSerializer,
-    LanguagePairSelectSerializer
+    LanguagePairSelectSerializer, OrderCategorySerializer, TransactionSerializer, TransactionCategorySerializer
 )
 from ..users.permissions import HasPermission
 
@@ -32,3 +35,26 @@ class LanguagePairViewSet(viewsets.ModelViewSet):
     serializer_class = LanguagePairSelectSerializer
     permission_classes = [HasPermission]
     required_permissions = ['language.manage']
+
+
+class OrderCategoryViewSet(viewsets.ModelViewSet):
+    queryset = OrderCategory.objects.all().order_by('name')
+    serializer_class = OrderCategorySerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
+
+
+class TransactionViewSet(viewsets.ModelViewSet):
+    queryset = Transaction.objects.select_related('currency', 'category').all()
+    serializer_class = TransactionSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['type', 'currency', 'category', 'category__slug']
+    search_fields = ['comment']
+    ordering_fields = ['created_at', 'amount']
+    ordering = ['-created_at']
+
+class TransactionCategoryViewSet(viewsets.ModelViewSet):
+    queryset = TransactionCategory.objects.all()
+    serializer_class = TransactionCategorySerializer
+    lookup_field = 'slug'
+

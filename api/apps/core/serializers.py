@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from .models.language import Language
 from .models.language_pair import LanguagePair
-from .models import Currency
+from .models import Currency, OrderCategory
+from .models.transaction import Transaction
+from .models.transaction_category import TransactionCategory
 
 
 class CurrencySerializer(serializers.ModelSerializer):
@@ -9,6 +11,10 @@ class CurrencySerializer(serializers.ModelSerializer):
         model = Currency
         fields = ['id', 'code', 'name', 'code_name']
 
+class OrderCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderCategory
+        fields = ['id', 'name', 'slug']
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,3 +39,20 @@ class LanguagePairSelectSerializer(serializers.ModelSerializer):
         s_name = obj.source_language.name if obj.source_language else "???"
         t_name = obj.target_language.name if obj.target_language else "???"
         return f"{s_name} -> {t_name}"
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    category_name = serializers.ReadOnlyField(source='category.name')
+
+    class Meta:
+        model = Transaction
+        fields = [
+            'id', 'amount', 'currency', 'type',
+            'category', 'category_name', 'comment', 'created_at'
+        ]
+
+class TransactionCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransactionCategory
+        fields = ['id', 'name', 'slug']
+        read_only_fields = ['slug']

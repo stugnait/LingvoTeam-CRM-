@@ -38,7 +38,15 @@ class TranslatorLanguagePairsViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(translator_id=translator_id)
         return queryset
 
+class NumberInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
+    pass
+
 class TranslatorFilter(django_filters.FilterSet):
+    categories = NumberInFilter(
+        field_name='translatortraffic__category',
+        lookup_expr='in'
+    )
+
     language_pair_id = django_filters.NumberFilter(
         field_name='language_pair_relations__language_pair'
     )
@@ -50,6 +58,7 @@ class TranslatorFilter(django_filters.FilterSet):
         field_name='language_pair_relations__language_pair__target_lang'
     )
 
+
     class Meta:
         model = Translator
         fields = ['work_type']
@@ -58,7 +67,6 @@ class TranslatorFilter(django_filters.FilterSet):
 class TranslatorViewSet(viewsets.ModelViewSet):
     serializer_class = TranslatorSerializer
     permission_classes = [HasPermission]
-
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TranslatorFilter
     search_fields = ['full_name', 'email']
@@ -74,6 +82,11 @@ class TranslatorViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return ['translator.create']
         return ['order.view']
+
+    def get_queryset(self):
+        return Translator.objects.annotate(
+            orders_count=Count('order')
+        ).prefetch_related('translatortraffic').order_by('-created_at').distinct()
 
 
 class TranslatorTrafficViewSet(viewsets.ModelViewSet):
