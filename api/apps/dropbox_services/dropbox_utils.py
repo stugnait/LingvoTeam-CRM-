@@ -76,8 +76,16 @@ def create_order_folder(order):
 
 
 
-def upload_file_to_order_folder(order, file, base_path, subdir="orders"):
+def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_only_dir=None):
     dbx = get_dbx()
+
+    if create_only_dir:
+        dir_path = f"{base_path}/{create_only_dir}".replace("//", "/")
+        try:
+            dbx.files_create_folder_v2(dir_path)
+        except dropbox.exceptions.ApiError as e:
+            print("Folder already exists.")
+        return dir_path
 
     language_pair_val = (
         getattr(order, "language_pair_id", None)

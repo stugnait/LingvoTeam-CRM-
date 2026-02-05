@@ -720,6 +720,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 for f in files:
                     f.seek(0)
                     path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+                    _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target", create_only_dir="target")
                     uploaded_paths.append(path)
             except Exception as e:
                 logger.error(f"Upload failed: {e}")
