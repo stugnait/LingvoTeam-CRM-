@@ -1,6 +1,7 @@
 import os
 import dropbox
 from django.conf import settings
+from django.core.mail import send_mail
 from dropbox.sharing import AddMember, MemberSelector, AccessLevel
 from ..core.models import LanguagePair, Language
 from functools import lru_cache
@@ -67,8 +68,23 @@ def create_order_folder(order):
                     access_level=AccessLevel.editor
                 )
 
-            ]
+            ],
+            quiet=True
         )
+        folder_link = None
+        try:
+            links = dbx.sharing_list_shared_links(path=path, direct_only=True).links
+            if links:
+                folder_link = links[0].url
+            else:
+                folder_link = dbx.sharing_create_shared_link_with_settings(path).url
+        except dropbox.exceptions.ApiError:
+            pass
+
+        subject = f"Access to Order {order.id} Folder"
+        message = f"You have been granted access to the Dropbox folder for Order {order.id}\n\nFolder Link: {folder_link}"
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [translator_email, editor_email, manager_email], fail_silently=False)
+
     except dropbox.exceptions.ApiError as e:
         pass
 
