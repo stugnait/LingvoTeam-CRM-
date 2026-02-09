@@ -11,17 +11,42 @@ export default function TranslatorExternalOrderPage({
                                                     }: {
     params: Promise<{ slug: string }>
 }) {
-    const { slug } = use(params) // Розв'язуємо Promise за допомогою use()
+    const { slug } = use(params)
 
-    const { step, order, error, init, submitPassword } = useExternalOrder(slug)
+    const {
+        step,
+        order,
+        error,
+        isUploading,
+        uploadProgress,
+        init,
+        submitPassword,
+        uploadFiles
+    } = useExternalOrder(slug)
 
     useEffect(() => {
         init()
     }, [slug])
 
-    if (step === "loading") {return <>Loading...</>}
-    if (step === "expired") {return <ExpiredLink />}
-    if (step === "password") {return <PasswordForm onSubmit={submitPassword} error={error} />}
+    if (step === "loading") {
+        return <>Loading...</>
+    }
 
-    return <ExternalOrderView order={order!} />
+    if (step === "expired") {
+        return <ExpiredLink />
+    }
+
+    if (step === "password") {
+        return <PasswordForm onSubmit={submitPassword} error={error} />
+    }
+
+    return (
+        <ExternalOrderView
+            order={order!}
+            onUpload={uploadFiles}
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+            error={error}
+        />
+    )
 }
