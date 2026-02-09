@@ -10,6 +10,7 @@ router.register(r'translator-pairs', TranslatorLanguagePairsViewSet, basename='t
 
 router.register(r'', TranslatorViewSet, basename='translators')
 
+
 urlpatterns = [
     path('<uuid:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
 

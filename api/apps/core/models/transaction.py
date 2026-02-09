@@ -29,6 +29,8 @@ class Transaction(models.Model):
     )
     comment = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = 'transaction'
 
     def __str__(self):
         return f"{self.type} - {self.amount} ({self.created_at.strftime('%Y-%m-%d')})"

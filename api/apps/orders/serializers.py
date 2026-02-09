@@ -26,7 +26,7 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
             'currency_name',
             'category',
             'category_name',
-            'rate_per_page',
+            'price_per_page',
         ]
 
 

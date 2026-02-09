@@ -3,6 +3,7 @@ import secrets
 import string
 
 from django.contrib.auth import get_user_model
+from drf_spectacular.types import OpenApiTypes
 from rest_framework import generics, viewsets, status
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -16,7 +17,7 @@ from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, Res
     UserSelfUpdateSerializer, UserListSerializer
 from .serializers import RegistrationSerializer, UserUpdateSerializer, \
     CustomTokenObtainPairSerializer, UserSerializer
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework_simplejwt.views import (
     TokenRefreshView as OriginalTokenRefreshView, TokenObtainPairView,
 )
@@ -31,7 +32,12 @@ access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
 refresh_lifetime = settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
 User = get_user_model()
 
-
+@extend_schema_view(
+    get=extend_schema(summary="Деталі користувача (Admin)", tags=["Users Management"]),
+    put=extend_schema(summary="Оновити користувача (Admin)", tags=["Users Management"]),
+    patch=extend_schema(summary="Часткове оновити користувача (Admin)", tags=["Users Management"]),
+    delete=extend_schema(summary="Видалити користувача", tags=["Users Management"]),
+)
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserUpdateSerializer
@@ -46,6 +52,12 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 class AdminToggleUserStatusView(APIView):
     # permission_classes = [IsAdminUser]
 
+    @extend_schema(
+        summary="Активувати/Деактивувати користувача",
+        description="Перемикає статус is_active. Якщо користувач був активним — блокує, якщо заблокованим — активує.",
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Users Management"]
+    )
     def post(self, request, user_id):
         try:
             user = User.objects.get(id=user_id)
@@ -62,6 +74,20 @@ class AdminToggleUserStatusView(APIView):
             "detail": f"User {user_id} has been {status_msg}.",
             "is_active": user.is_active
         }, status=200)
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список користувачів",
+        description="Отримати список всіх користувачів з можливістю фільтрації за роллю та статусом.",
+        tags=["Users Management"]
+    ),
+    retrieve=extend_schema(summary="Деталі користувача", tags=["Users Management"]),
+    create=extend_schema(summary="Створити користувача (Admin)", tags=["Users Management"]),
+    update=extend_schema(summary="Оновити користувача", tags=["Users Management"]),
+    partial_update=extend_schema(summary="Частково оновити користувача", tags=["Users Management"]),
+    destroy=extend_schema(summary="Видалити користувача", tags=["Users Management"]),
+)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -83,6 +109,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return RegistrationSerializer
 
+    @extend_schema(
+        summary="Скинути пароль (Admin)",
+        description="Адміністратор генерує новий тимчасовий пароль для користувача та надсилає його на пошту.",
+        request=None,
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Users Management"]
+    )
     @action(detail=True, methods=['post'], url_path='reset-password')
     def reset_password(self, request, pk=None):
         user = self.get_object()
@@ -133,6 +166,12 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @extend_schema(
+        summary="Оновити свій профіль",
+        description="Дозволяє залогіненому користувачу змінити свої особисті дані.",
+        request=UserSelfUpdateSerializer,
+        tags=["Profile"]
+    )
     @action(detail=False, methods=['patch'], url_path='user/update', serializer_class=UserSelfUpdateSerializer, permission_classes=[IsAuthenticated])
     def update_user(self, request):
         user = request.user
@@ -151,6 +190,12 @@ class UserViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+    @extend_schema(
+        summary="Отримати свій профіль",
+        description="Повертає дані поточного авторизованого користувача.",
+        responses={200: UserSerializer},
+        tags=["Profile"]
+    )
     @action(
         detail=False,
         methods=["get"],
@@ -162,7 +207,13 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
+    @extend_schema(
+        summary="Змінити пароль",
+        description="Зміна пароля поточного користувача. Після успішної зміни старі токени (Cookies) видаляються.",
+        request=ChangePasswordSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Profile"]
+    )
     @action(detail=False, methods=["post"], url_path='user/change-password', permission_classes=[IsAuthenticated])
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
@@ -192,6 +243,13 @@ class UserViewSet(viewsets.ModelViewSet):
         resp.delete_cookie("refresh-token")
         return resp
 
+@extend_schema(
+        summary="Забули пароль?",
+        description="Надсилає посилання для відновлення пароля на email користувача.",
+        request=ForgotPasswordSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Password Reset"]
+    )
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -220,6 +278,13 @@ class ForgotPasswordView(APIView):
             status=status.HTTP_200_OK
         )
 
+@extend_schema(
+        summary="Встановити новий пароль",
+        description="Приймає токен з пошти та новий пароль.",
+        request=ResetPasswordSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Password Reset"]
+    )
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -242,7 +307,12 @@ class ResetPasswordView(APIView):
         return response
 
 
-
+@extend_schema(
+        summary="Вихід з системи",
+        description="Видаляє HttpOnly cookies з токенами (access-token, refresh-token).",
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Authentication"]
+    )
 class LogoutView(APIView):
     permission_classes = [AllowAny]
 
@@ -255,7 +325,11 @@ class LogoutView(APIView):
 
         return response
 
-
+@extend_schema(
+        summary="Логін (JWT у Cookies)",
+        responses={200: UserUpdateSerializer},
+        tags=["Authentication"]
+    )
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -282,6 +356,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class CustomTokenRefreshView(OriginalTokenRefreshView):
+
+    @extend_schema(
+        summary="Оновити токен (Refresh)",
+        tags=["Authentication"]
+    )
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get('refresh-token')
 
