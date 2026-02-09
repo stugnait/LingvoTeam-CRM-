@@ -52,9 +52,42 @@ export const ordersApi = {
             body: JSON.stringify(data),
         }),
 
-    downloadFiles: (orderId: number) =>
-        apiFetch<Blob>(`orders/${orderId}/download-files/`, {
+    downloadFilesSource: (orderId: number) =>
+        apiFetch<Blob>(`orders/${orderId}/download-files/source/`, {
             method: 'GET',
             responseType: 'blob',
         }),
+
+    downloadFilesTarget: (orderId: number) =>
+        apiFetch<Blob>(`orders/${orderId}/download-files/target/`, {
+            method: 'GET',
+            responseType: 'blob',
+        }),
+
+    rejectTranslation: (orderId: number, comment?: string) =>
+        apiFetch(
+            `orders/${orderId}/reject-translation/`,
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    review_comment: comment ?? "",
+                }),
+            }
+        ),
+
+    // 🟢 ПРИЙНЯТТЯ + ОЦІНКА
+    approveTranslation: (
+        orderId: number,
+        data: {
+            score: number
+            comment?: string
+        }
+    ) =>
+        apiFetch(
+            `orders/${orderId}/approve-translation/`,
+            {
+                method: "POST",
+                body: JSON.stringify(data),
+            }
+        ),
 }

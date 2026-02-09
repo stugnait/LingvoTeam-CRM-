@@ -65,6 +65,14 @@ const initialColumns: KanbanColumn[] = [
     }
 ];
 
+const ALLOWED_MODAL_STATUS_IDS = new Set(['1', '2', '3', '5'])
+const STATUS = {
+    COMPLETED: '4',
+    REJECTED: '6',
+} as const
+
+
+
 export const useEditor = () => {
     const [tasks, setTasks] = useState<KanbanTask[]>([]);
     const [selectedTask, setSelectedTask] = useState<OrderListItem | null>(null)
@@ -75,6 +83,11 @@ export const useEditor = () => {
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isModalLoading, setIsModalLoading] = useState(false)
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+    const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
+    const [isEditorActionLoading, setIsEditorActionLoading] = useState(false)
+
+
 
     // Load orders from API on component mount
     // /hooks/useEditor.ts - оновлюємо useEffect
@@ -154,26 +167,111 @@ export const useEditor = () => {
         loadOrders();
     }, []);
 
-    const downloadOrderFiles = useCallback(async (orderId: number) => {
+    const openEditorActionModal = useCallback(async (orderId: number) => {
+        const order = await fetchOrderById(orderId)
+        if (!order) {throw new Error('Order not found')}
+
+        const statusId = String(order.status_id)
+
+        if (statusId === STATUS.COMPLETED) {
+            setIsApproveModalOpen(true)
+            return
+        }
+
+        if (statusId === STATUS.REJECTED) {
+            setIsRejectModalOpen(true)
+            return
+        }
+
+        console.warn('No editor action for status:', statusId)
+    }, [])
+
+
+    const rejectTranslation = useCallback(
+        async (orderId: number, comment?: string) => {
+            try {
+                setIsEditorActionLoading(true)
+
+
+                await ordersApi.rejectTranslation(orderId, comment)
+
+                // 🔄 після дії — оновлюємо дані
+
+                setIsRejectModalOpen(false)
+                setIsModalOpen(false)
+                setSelectedTask(null)
+            } catch (e) {
+                console.error('❌ Reject translation failed:', e)
+            } finally {
+                setIsEditorActionLoading(false)
+            }
+        },
+        []
+    )
+
+    const approveTranslation = useCallback(
+        async (
+            orderId: number,
+            score: number,
+            comment?: string
+        ) => {
+            try {
+                setIsEditorActionLoading(true)
+
+                await ordersApi.approveTranslation(orderId, {
+                    score,
+                    comment,
+                })
+
+                // 🔄 оновлюємо канбан
+
+                setIsApproveModalOpen(false)
+                setIsModalOpen(false)
+                setSelectedTask(null)
+            } catch (e) {
+                console.error('❌ Approve translation failed:', e)
+            } finally {
+                setIsEditorActionLoading(false)
+            }
+        },
+        []
+    )
+
+
+
+
+    const downloadBlob = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+
+        URL.revokeObjectURL(url)
+    }
+
+
+    const downloadOrderSourceFiles = useCallback(async (orderId: number) => {
         try {
-            const blob = await ordersApi.downloadFiles(orderId)
-
-            const url = URL.createObjectURL(blob)
-
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `order_${orderId}_files.zip`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-
-            URL.revokeObjectURL(url)
+            const blob = await ordersApi.downloadFilesSource(orderId)
+            downloadBlob(blob, `order_${orderId}_source.zip`)
         } catch (error) {
-            console.error('❌ Failed to download order files:', error)
-
-            // можеш тут показати toast / alert
+            console.error('❌ Failed to download SOURCE files:', error)
         }
     }, [])
+
+    const downloadOrderTargetFiles = useCallback(async (orderId: number) => {
+        try {
+            const blob = await ordersApi.downloadFilesTarget(orderId)
+            downloadBlob(blob, `order_${orderId}_target.zip`)
+        } catch (error) {
+            console.error('❌ Failed to download TARGET files:', error)
+        }
+    }, [])
+
 
     // Create maps for fast access
     const tasksMap = useMemo(() =>
@@ -378,20 +476,41 @@ export const useEditor = () => {
     }, []);
 
     const openOrderById = useCallback(async (orderId: number) => {
-        setIsModalOpen(true)
         setIsModalLoading(true)
 
         try {
             const order = await fetchOrderById(orderId)
-            if (!order) {throw new Error('Order not found')}
+            if (!order) throw new Error('Order not found')
+
             setSelectedTask(order)
+
+            const statusId = String(order.status_id)
+
+            if (['1', '2', '3', '5'].includes(statusId)) {
+                setIsModalOpen(true)
+                return
+            }
+
+            if (statusId === '4') {
+                setIsRejectModalOpen(true)
+                return
+            }
+
+            if (statusId === '6') {
+                setIsApproveModalOpen(true)
+                return
+            }
+
+            console.warn('No modal for status:', statusId)
         } catch (e) {
             console.error(e)
-            setIsModalOpen(false)
         } finally {
             setIsModalLoading(false)
         }
     }, [])
+
+
+
 
     const closeModal = () => {
         setIsModalOpen(false)
@@ -467,7 +586,8 @@ export const useEditor = () => {
         setSearchQuery,
         setActiveTask,
         setSelectedTask,
-        downloadOrderFiles,
+        downloadOrderSourceFiles,
+        downloadOrderTargetFiles,
 
         // Maps
         tasksMap,
@@ -483,7 +603,18 @@ export const useEditor = () => {
 
         // Actions
         refreshOrders,
-        openOrderById
+        openOrderById,
+        isRejectModalOpen,
+        isApproveModalOpen,
+        isEditorActionLoading,
+        setIsRejectModalOpen,
+        setIsApproveModalOpen,
+
+        // Editor actions
+        rejectTranslation,
+        approveTranslation,
+
+        openEditorActionModal,
     };
 };
 

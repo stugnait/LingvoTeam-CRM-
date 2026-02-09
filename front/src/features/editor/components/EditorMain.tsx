@@ -19,6 +19,8 @@ import KanbanHeader from '@/src/features/editor/components/canban/KanbanHeader';
 import KanbanColumn from '@/src/features/editor/components/canban/KanbanColumn';
 import KanbanStats from '@/src/features/editor/components/canban/KanbanStats';
 import {SideModal} from "@/src/components/modals/SideModal";
+import { Search } from 'lucide-react';
+import {TaskModal} from "@/src/components/modals/jira/InfoModal";
 
 // Hooks and types
 import { useEditor } from '../hooks/useEditor';
@@ -34,6 +36,8 @@ import {
     PauseCircle,
     CheckSquare
 } from 'lucide-react';
+import {RejectOrderModal} from "@/src/components/modals/jira/RejectOrderModal";
+import {RatingModal} from "@/src/components/modals/jira/RatingModal";
 
 // Map column status to icons
 const COLUMN_ICONS = {
@@ -47,6 +51,7 @@ const COLUMN_ICONS = {
 
 export default function EditorMain() {
     const {
+        // existing
         tasks,
         columns,
         activeTask,
@@ -64,8 +69,20 @@ export default function EditorMain() {
         isModalLoading,
         openOrderById,
         closeModal,
-        downloadOrderFiles
+        downloadOrderSourceFiles,
+        downloadOrderTargetFiles,
+
+        // 👉 ADD THIS
+        isRejectModalOpen,
+        isApproveModalOpen,
+        isEditorActionLoading,
+        setIsRejectModalOpen,
+        setIsApproveModalOpen,
+        rejectTranslation,
+        approveTranslation,
+        openEditorActionModal,
     } = useEditor();
+
 
     // Sensors for DnD
     const sensors = useSensors(
@@ -225,30 +242,57 @@ export default function EditorMain() {
                     </DndContext>
                 )}
 
-                <SideModal
-                    open={isModalOpen}
-                    onOpenChange={closeModal}
-                    title={selectedTask ? `Order #${selectedTask.id}` : 'Loading'}
-                    isLoading={isModalLoading}
-                    onSubmit={() => {
-                    }}
-                >
-                    {selectedTask && (
-                        <div className="space-y-2">
-                            <div>Client: #{selectedTask.client_id}</div>
-                            <div>Status: {selectedTask.status_id}</div>
-                            <div>Translator: {selectedTask.translator_id}</div>
-                        </div>
+                {selectedTask &&
+                    ['1', '2', '3', '5'].includes(String(selectedTask.status_id)) && (
+                        <TaskModal
+                            open={isModalOpen}
+                            onOpenChange={closeModal}
+                            taskId={selectedTask.id.toString()}
+                            taskTitle={selectedTask.language_pair_name}
+                            taskDescription={selectedTask.client_comment}
+                            status={selectedTask.status_name}
+                            priority={selectedTask.priority}
+                            manager={selectedTask.manager_name}
+                            translator={selectedTask.translator_name}
+                            onDownloadOriginal={() =>
+                                downloadOrderSourceFiles(selectedTask.id)
+                            }
+                            onDownloadTranslation={() =>
+                                downloadOrderTargetFiles(selectedTask.id)
+                            }
+                            onCancel={closeModal}
+                            onSave={closeModal}
+                        />
                     )}
 
-                    <button
-                        onClick={() => downloadOrderFiles(selectedTask!.id)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded"
-                    >
-                        Download files
-                    </button>
+                {selectedTask &&
+                    ['4'].includes(String(selectedTask.status_id)) && (
+                    <RejectOrderModal
+                        open={isRejectModalOpen}
+                        onOpenChange={setIsRejectModalOpen}
+                        isLoading={isEditorActionLoading}
+                        onConfirm={(comment?: string) =>
+                            rejectTranslation(selectedTask.id, comment)
+                        }
+                        onCancel={() => setIsRejectModalOpen(false)}
+                    />
+                )}
 
-                </SideModal>
+                {selectedTask &&
+                    ['6'].includes(String(selectedTask.status_id)) && (
+                    <RatingModal
+                        open={isApproveModalOpen}
+                        onOpenChange={setIsApproveModalOpen}
+                        isLoading={isEditorActionLoading}
+                        onConfirm={(score: number, comment?: string) =>
+                            approveTranslation(selectedTask.id, score, comment)
+                        }
+                        onCancel={() => setIsApproveModalOpen(false)}
+                    />
+                )}
+
+
+
 
             </div>
 
@@ -262,4 +306,3 @@ export default function EditorMain() {
 }
 
 // Import Search icon
-import { Search } from 'lucide-react';

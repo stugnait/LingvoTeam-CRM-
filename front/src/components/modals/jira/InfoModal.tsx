@@ -10,13 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
 import { Textarea } from "../../ui/textarea"
 import {
     ChevronDown,
-    Link2,
     Share2,
     MoreHorizontal,
     X,
-    Plus,
     Paperclip,
-    Settings
+    Settings,
+    Download,
+    FileText
 } from "lucide-react"
 
 interface TaskModalProps {
@@ -26,16 +26,9 @@ interface TaskModalProps {
     taskTitle: string
     taskDescription: string
     status: string
-    priority: "low" | "medium" | "high" | "critical"
-    assignee?: {
-        name: string
-        avatar?: string
-        role: string
-    }
-    reporter?: {
-        name: string
-        avatar?: string
-    }
+    priority: string,
+    manager: string
+    translator: string,
     dueDate?: string
     labels?: string[]
     sprint?: string
@@ -46,6 +39,8 @@ interface TaskModalProps {
     onCancel: () => void
     onDelete?: () => void
     onAssignToMe?: () => void
+    onDownloadOriginal?: () => void
+    onDownloadTranslation?: () => void
 }
 
 export function TaskModal({
@@ -56,8 +51,8 @@ export function TaskModal({
                               taskDescription,
                               status,
                               priority,
-                              assignee,
-                              reporter,
+                              manager,
+                              translator,
                               dueDate,
                               labels,
                               sprint,
@@ -68,6 +63,8 @@ export function TaskModal({
                               onCancel,
                               onDelete,
                               onAssignToMe,
+                              onDownloadOriginal,
+                              onDownloadTranslation,
                           }: TaskModalProps) {
     const getPriorityIcon = () => {
         const icons = {
@@ -85,10 +82,6 @@ export function TaskModal({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-3 border-b bg-white sticky top-0 z-10">
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-100">
-                            <Link2 className="h-4 w-4 mr-2" />
-                            Добавить еріс
-                        </Button>
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500">✓</span>
                             <span className="text-sm font-medium text-blue-600">{taskId}</span>
@@ -126,89 +119,42 @@ export function TaskModal({
                         {/* Description Section */}
                         <div className="mb-8">
                             <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-semibold text-gray-700">Описание</h3>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs">
-                                    Редактировать описание
-                                </Button>
+                                <h3 className="text-sm font-semibold text-gray-700">Опис</h3>
                             </div>
                             <div className="text-sm text-gray-600 whitespace-pre-line bg-gray-50 p-3 rounded">
-                                {taskDescription || "Редактировать описание"}
+                                {taskDescription || "Редагувати опис"}
                             </div>
                         </div>
 
-                        {/* Subtasks Section */}
+                        {/* Download Buttons Section */}
                         <div className="mb-8">
-                            <button className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3 hover:text-gray-900">
-                                <ChevronDown className="h-4 w-4" />
-                                Подзадачи
-                                <span className="text-xs text-gray-500 font-normal">Выполнено 50 %</span>
-                            </button>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-semibold text-gray-700">Файли</h3>
 
-                            <div className="mb-2">
-                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div className="h-full bg-green-500" style={{ width: '50%' }} />
-                                </div>
-                            </div>
-
-                            {/* Example subtasks */}
-                            <div className="space-y-2 mb-3">
-                                <div className="flex items-center gap-2 text-sm p-2 hover:bg-gray-50 rounded">
-                                    <span className="text-gray-400">☐</span>
-                                    <span className="text-blue-600">LIN-60</span>
-                                    <span className="text-gray-700">Завантаження і перегляд таски</span>
-                                    <span className="ml-auto">{getPriorityIcon()}</span>
-                                    <span className="text-xs">M</span>
-                                    <Avatar className="h-5 w-5">
-                                        <AvatarFallback className="text-xs">A</AvatarFallback>
-                                    </Avatar>
-                                    <Badge variant="secondary" className="text-xs">ГОТОВО</Badge>
-                                </div>
-                            </div>
-
-                            <Button variant="ghost" size="sm" className="text-xs text-gray-600 h-8">
-                                + Добавить связанную задачу
-                            </Button>
-                        </div>
-
-                        {/* Linked Tasks */}
-                        <div className="mb-8">
-                            <h3 className="text-sm font-semibold text-gray-700 mb-3">Привязанные задачи</h3>
-                            <Button variant="ghost" size="sm" className="text-xs text-gray-600 h-8">
-                                Добавить связанную задачу
-                            </Button>
-                        </div>
-
-                        {/* Comments Section */}
-                        <div className="mb-4">
-                            <h3 className="text-sm font-semibold text-gray-700 mb-4">Комментарии</h3>
-
-                            <div className="flex gap-3">
-                                <Avatar className="h-8 w-8 mt-1">
-                                    <AvatarFallback>{reporter?.name?.charAt(0) || "U"}</AvatarFallback>
-                                    <AvatarImage src={reporter?.avatar} />
-                                </Avatar>
-                                <div className="flex-1">
-                                    <Textarea
-                                        placeholder="Добавить комментарий..."
-                                        className="min-h-[80px] resize-none text-sm border-gray-300 focus:border-blue-500"
-                                    />
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs">
-                                            Сохранить
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <Paperclip className="h-4 w-4" />
-                                        </Button>
-                                        <div className="flex gap-1 ml-2">
-                                            <button className="text-lg hover:bg-gray-100 rounded px-1">👍</button>
-                                            <button className="text-lg hover:bg-gray-100 rounded px-1">😊</button>
-                                            <button className="text-lg hover:bg-gray-100 rounded px-1">👎</button>
-                                            <button className="text-lg hover:bg-gray-100 rounded px-1">🚫</button>
-                                        </div>
-                                    </div>
+                                {/* Кнопки завантаження */}
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={onDownloadOriginal}
+                                        className="h-8 text-xs gap-1.5 border-gray-300 hover:bg-gray-50"
+                                    >
+                                        <Download className="h-3.5 w-3.5" />
+                                        Завантажити оригінал
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={onDownloadTranslation}
+                                        className="h-8 text-xs gap-1.5 border-blue-300 text-blue-600 hover:bg-blue-50"
+                                    >
+                                        <FileText className="h-3.5 w-3.5" />
+                                        Завантажити переклад
+                                    </Button>
                                 </div>
                             </div>
                         </div>
+
                     </div>
 
                     {/* Right Sidebar */}
@@ -216,31 +162,34 @@ export function TaskModal({
                         {/* Status Dropdown */}
                         <div className="mb-6">
                             <Button
-                                className="w-full justify-between bg-blue-600 hover:bg-blue-700 text-white"
+                                className="w-full justify-between bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                                 variant="default"
                             >
-                                {status}
+                                <span className="font-medium">{status}</span>
                                 <ChevronDown className="h-4 w-4 ml-2" />
                             </Button>
                         </div>
 
                         {/* Details Section */}
-                        <div className="space-y-1">
-                            <button className="flex items-center justify-between w-full py-2 hover:bg-gray-100 rounded px-2">
-                                <span className="text-sm font-semibold text-gray-700">Сведения</span>
+                        <div className="space-y-1 bg-white rounded-lg border border-gray-200 p-1">
+                            <button className="flex items-center justify-between w-full py-2.5 px-3 hover:bg-gray-50 rounded">
+                                <span className="text-sm font-semibold text-gray-700">Деталі</span>
                                 <Settings className="h-4 w-4 text-gray-400" />
                             </button>
 
                             {/* Assignee */}
-                            <div className="py-3 px-2">
-                                <label className="text-xs text-gray-600 mb-2 block">Исполнитель</label>
-                                {assignee ? (
+                            <div className="py-3 px-3 border-t">
+                                <label className="text-xs text-gray-600 mb-2 block">Виконавець</label>
+                                {translator ? (
                                     <div className="flex items-center gap-2">
-                                        <Avatar className="h-6 w-6">
-                                            <AvatarImage src={assignee.avatar} />
-                                            <AvatarFallback className="text-xs">{assignee.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="text-sm font-medium">{assignee.name}</span>
+                                        {/*<Avatar className="h-7 w-7">*/}
+                                        {/*    /!*<AvatarImage src={assignee.avatar} />*!/*/}
+                                        {/*    <AvatarFallback className="text-xs bg-blue-100">{manager}</AvatarFallback>*/}
+                                        {/*</Avatar>*/}
+                                        <div>
+                                            <span className="text-sm font-medium">{translator}</span>
+                                            {/*<div className="text-xs text-gray-500">{assignee.role}</div>*/}
+                                        </div>
                                     </div>
                                 ) : (
                                     <Button
@@ -248,85 +197,79 @@ export function TaskModal({
                                         size="sm"
                                         onClick={onAssignToMe}
                                         disabled={isLoading}
-                                        className="h-8 w-full justify-start text-gray-600 hover:bg-gray-100"
+                                        className="h-8 w-full justify-start text-gray-600 hover:bg-gray-50 border border-dashed border-gray-300"
                                     >
-                                        Нет
+                                        <span className="text-gray-400">+</span>
+                                        Призначити
                                     </Button>
                                 )}
                             </div>
 
                             {/* Labels */}
-                            <div className="py-3 px-2">
-                                <label className="text-xs text-gray-600 mb-2 block">Метки</label>
+                            <div className="py-3 px-3 border-t">
+                                <label className="text-xs text-gray-600 mb-2 block">Мітки</label>
                                 {labels && labels.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
+                                    <div className="flex flex-wrap gap-1.5">
                                         {labels.map((label, index) => (
-                                            <Badge key={index} variant="outline" className="bg-gray-200 text-xs">
+                                            <Badge
+                                                key={index}
+                                                variant="outline"
+                                                className="bg-gray-100 text-xs hover:bg-gray-200 border-gray-300"
+                                            >
                                                 {label}
                                             </Badge>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="text-sm text-gray-600">Нет</div>
+                                    <div className="text-sm text-gray-600">Немає</div>
                                 )}
                             </div>
 
-                            {/* Reporter */}
-                            <div className="py-3 px-2">
-                                <label className="text-xs text-gray-600 mb-2 block">Родитель</label>
-                                <div className="text-sm text-gray-600">Нет</div>
+                            {/* Priority */}
+                            <div className="py-3 px-3 border-t">
+                                <label className="text-xs text-gray-600 mb-2 block">Пріоритет</label>
+                                <div className="flex items-center gap-2">
+                                    <span>{getPriorityIcon()}</span>
+                                    <span className="text-sm font-medium capitalize">{priority}</span>
+                                </div>
                             </div>
 
                             {/* Due Date */}
-                            <div className="py-3 px-2">
-                                <label className="text-xs text-gray-600 mb-2 block">Срок исполнения</label>
-                                <div className="text-sm text-gray-600">{dueDate || "Нет"}</div>
+                            <div className="py-3 px-3 border-t">
+                                <label className="text-xs text-gray-600 mb-2 block">Термін виконання</label>
+                                <div className={`text-sm ${dueDate ? "font-medium" : "text-gray-600"}`}>
+                                    {dueDate || "Немає"}
+                                </div>
                             </div>
 
                             {/* Team */}
                             {team && (
-                                <div className="py-3 px-2">
-                                    <label className="text-xs text-gray-600 mb-2 block">Team</label>
-                                    <div className="text-sm text-gray-600">{team}</div>
+                                <div className="py-3 px-3 border-t">
+                                    <label className="text-xs text-gray-600 mb-2 block">Команда</label>
+                                    <div className="text-sm text-gray-700 font-medium">{team}</div>
                                 </div>
                             )}
-
-                            {/* Start Date */}
-                            {startDate && (
-                                <div className="py-3 px-2">
-                                    <label className="text-xs text-gray-600 mb-2 block">Start date</label>
-                                    <div className="text-sm text-gray-600">{startDate}</div>
-                                </div>
-                            )}
-
-                            {/* Sprint */}
-                            <div className="py-3 px-2">
-                                <label className="text-xs text-gray-600 mb-2 block">Sprint</label>
-                                <div className="text-sm text-blue-600 hover:underline cursor-pointer">
-                                    {sprint || "Нет"}
-                                </div>
-                            </div>
 
                             {/* Reporter/Author */}
-                            <div className="py-3 px-2">
-                                <label className="text-xs text-gray-600 mb-2 block">Автор</label>
-                                {reporter && (
+                            <div className="py-3 px-3 border-t">
+                                <label className="text-xs text-gray-600 mb-2 block">Менеджер</label>
+                                {manager && (
                                     <div className="flex items-center gap-2">
-                                        <Avatar className="h-6 w-6">
-                                            <AvatarImage src={reporter.avatar} />
-                                            <AvatarFallback className="text-xs">{reporter.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="text-sm font-medium">{reporter.name}</span>
+                                        {/*<Avatar className="h-7 w-7">*/}
+                                        {/*    <AvatarImage src={reporter.avatar} />*/}
+                                        {/*    <AvatarFallback className="text-xs bg-green-100">{manager}</AvatarFallback>*/}
+                                        {/*</Avatar>*/}
+                                        <span className="text-sm font-medium">{manager}</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {/* Development Section */}
-                        <div className="mt-6">
-                            <button className="flex items-center gap-2 w-full py-2 hover:bg-gray-100 rounded px-2">
+                        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-1">
+                            <button className="flex items-center gap-2 w-full py-2.5 px-3 hover:bg-gray-50 rounded">
                                 <ChevronDown className="h-4 w-4" />
-                                <span className="text-sm font-semibold text-gray-700">Разработка</span>
+                                <span className="text-sm font-semibold text-gray-700">Розробка</span>
                             </button>
                         </div>
                     </div>
