@@ -8,6 +8,8 @@ export function useExternalOrder(slug: string) {
     const [step, setStep] = useState<Step>("loading")
     const [order, setOrder] = useState<ExternalOrder | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [isUploading, setIsUploading] = useState(false)
+    const [uploadProgress, setUploadProgress] = useState(0)
 
     async function init() {
         try {
@@ -29,11 +31,52 @@ export function useExternalOrder(slug: string) {
         }
     }
 
+    async function uploadFiles(files: File[]) {
+        if (!order) {
+            setError("Замовлення не знайдено")
+            return false
+        }
+
+        setIsUploading(true)
+        setUploadProgress(0)
+        setError(null)
+
+        try {
+            const formData = new FormData()
+            formData.append('order_id', order.id.toString())
+
+            files.forEach(file => {
+                formData.append('files', file)
+            })
+
+            // Симуляція прогресу
+            const progressInterval = setInterval(() => {
+                setUploadProgress(prev => Math.min(prev + 10, 90))
+            }, 200)
+
+            await translatorOrderApi.uploadFiles(formData)
+
+            clearInterval(progressInterval)
+            setUploadProgress(100)
+
+            return true
+        } catch (e: any) {
+            setError(e?.message || "Помилка завантаження файлів")
+            return false
+        } finally {
+            setIsUploading(false)
+            setTimeout(() => setUploadProgress(0), 1000)
+        }
+    }
+
     return {
         step,
         order,
         error,
+        isUploading,
+        uploadProgress,
         init,
         submitPassword,
+        uploadFiles,
     }
 }

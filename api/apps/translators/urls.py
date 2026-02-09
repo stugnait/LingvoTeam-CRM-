@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import TranslatorViewSet, TranslatorTrafficViewSet, ExternalOrderAccessView, TranslatorLanguagePairsViewSet
+from .views import TranslatorUploadView, TranslatorViewSet, TranslatorTrafficViewSet, ExternalOrderAccessView, TranslatorLanguagePairsViewSet
 
 router = DefaultRouter()
 router.register(r'translator-traffic', TranslatorTrafficViewSet, basename='traffic')
@@ -12,6 +12,6 @@ router.register(r'', TranslatorViewSet, basename='translators')
 
 urlpatterns = [
     path('<uuid:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
-
+    path("translator-upload/", TranslatorUploadView.as_view()),
     path('', include(router.urls)),
 ]
