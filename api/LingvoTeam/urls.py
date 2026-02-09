@@ -7,5 +7,5 @@ urlpatterns = [
     path('api/orders/', include('apps.orders.urls')),
     path('api/clients/', include('apps.clients.urls')),
     path('api/users/', include('apps.users.urls')),
-
+    path('api/notifications/', include('apps.notifications.urls')),
 ]

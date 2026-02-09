@@ -71,7 +71,8 @@ INSTALLED_APPS = [
     'apps.clients',
     'apps.core',
     'apps.orders',
-    'apps.translators'
+    'apps.translators',
+    'apps.notifications',
 ]
 
 

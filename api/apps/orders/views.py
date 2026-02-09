@@ -54,6 +54,7 @@ from .serializers import (
 )
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
+from ..notifications.models import Notification
 from ..translators.models import Translator
 from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
@@ -812,6 +813,61 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return {"total_stats": stats}
 
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        old_status = instance.status_id
+        old_client_status = instance.client_status
+        old_translator_status = instance.translator_status
+
+        updated_instance = serializer.save()
+
+        new_status = updated_instance.status_id
+        new_client_status = updated_instance.client_status
+        new_translator_status = updated_instance.translator_status
+
+        if old_status != new_status:
+            if updated_instance.manager_id and self.request.user != updated_instance.manager_id:
+
+                status_name = new_status.name if new_status else 'None'
+                user_name = self.request.user.full_name
+
+                manager_obj = updated_instance.manager_id
+
+                Notification.objects.create(
+                    recipient=manager_obj,
+                    order=updated_instance,
+                    title="Зміна статусу",
+                    message=f"Користувач {user_name} змінив статус замовлення #{updated_instance.id} на {status_name}"
+                )
+
+                subject = f"Замовлення #{updated_instance.id} перейшло на новий етап - LingvoTeam"
+                message = (
+                    f"Вітаємо, {manager_obj.full_name}!\n\n"  # <-- Виправлено
+                    f"Користувач {user_name} змінив статус замовлення #{updated_instance.id} на {status_name}.\n\n"
+                    f"З повагою, команда LingvoTeam."
+                )
+
+                try:
+                    send_mail(
+                        subject=subject,
+                        message=message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[manager_obj.email],
+                        fail_silently=True
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send email to manager: {e}")
+
+        if (old_status != new_status or
+                old_client_status != new_client_status or
+                old_translator_status != new_translator_status):
+            OrderStatusHistory.objects.create(
+                order=updated_instance,
+                status=new_status,
+                client_status=new_client_status,
+                translator_status=new_translator_status
+            )
+
 
 #TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
@@ -836,38 +892,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             logger.error(f"Email error: {e}")
 
 
-    def perform_update(self, serializer):
-        instance = serializer.instance
-
-        old_status = instance.status_id
-        old_client_status = instance.client_status
-        old_translator_status = instance.translator_status
-
-        serializer.save()
-
-        instance.refresh_from_db()
-
-        new_status = instance.status_id
-        new_client_status = instance.client_status
-        new_translator_status = instance.translator_status
-
-        old_status_name = old_status.name if old_status else "None"
-        new_status_name = new_status.name if new_status else "None"
-
-
-        if (old_status != new_status or
-                old_client_status != new_client_status or
-                old_translator_status != new_translator_status):
-
-
-            OrderStatusHistory.objects.create(
-                order=instance,
-                status=new_status,
-                client_status=new_client_status,
-                translator_status=new_translator_status
-            )
-        else:
-            return None
 
     @action(detail=True, methods=['post'], url_path='move')
     @transaction.atomic
