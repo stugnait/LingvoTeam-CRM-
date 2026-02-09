@@ -81,9 +81,16 @@ def create_order_folder(order):
         except dropbox.exceptions.ApiError:
             pass
 
-        subject = f"Access to Order {order.id} Folder"
-        message = f"You have been granted access to the Dropbox folder for Order {order.id}\n\nFolder Link: {folder_link}"
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [translator_email, editor_email, manager_email], fail_silently=False)
+        subject = f"Доступ до папки замовлення №{order.id}"
+        message = (
+            f"Вітаємо!\n\n"
+            f"Вам надано доступ до папки Dropbox для замовлення №{order.id}.\n\n"
+            f"Посилання на папку: {folder_link}\n\n"
+            f"Якщо виникнуть запитання — звертайтеся до менеджера.\n\n"
+            f"З повагою,\n"
+            f"команда LingvoTeam."
+        )
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [editor_email, manager_email], fail_silently=False)
 
     except dropbox.exceptions.ApiError as e:
         pass
