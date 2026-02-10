@@ -815,58 +815,54 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.instance
-        old_status = instance.status_id
-        old_client_status = instance.client_status
-        old_translator_status = instance.translator_status
+
+        old_status_int = instance.status_id_id
+        old_translator_status_int = instance.translator_status_id
 
         updated_instance = serializer.save()
 
-        new_status = updated_instance.status_id
-        new_client_status = updated_instance.client_status
-        new_translator_status = updated_instance.translator_status
+        new_status_obj = updated_instance.status_id
+        new_status_int = updated_instance.status_id_id
 
-        if old_status != new_status:
-            if updated_instance.manager_id and self.request.user != updated_instance.manager_id:
+        new_trans_obj = updated_instance.translator_status
+        new_trans_int = updated_instance.translator_status_id
 
-                status_name = new_status.name if new_status else 'None'
-                user_name = self.request.user.full_name
+        DONE_SLUGS = ['Done']
 
-                manager_obj = updated_instance.manager_id
+        main_slug = new_status_obj.slug if new_status_obj else ""
+        trans_slug = new_trans_obj.slug if new_trans_obj else ""
 
-                Notification.objects.create(
-                    recipient=manager_obj,
-                    order=updated_instance,
-                    title="Зміна статусу",
-                    message=f"Користувач {user_name} змінив статус замовлення #{updated_instance.id} на {status_name}"
-                )
+        main_became_done = (old_status_int != new_status_int) and (main_slug in DONE_SLUGS)
 
-                subject = f"Замовлення #{updated_instance.id} перейшло на новий етап - LingvoTeam"
-                message = (
-                    f"Вітаємо, {manager_obj.full_name}!\n\n"  # <-- Виправлено
-                    f"Користувач {user_name} змінив статус замовлення #{updated_instance.id} на {status_name}.\n\n"
-                    f"З повагою, команда LingvoTeam."
-                )
+        trans_became_done = (old_translator_status_int != new_trans_int) and (trans_slug in DONE_SLUGS)
+
+
+        if main_became_done or trans_became_done:
+
+            manager_obj = updated_instance.manager_id
+            current_user_id = self.request.user.id
+            manager_id = manager_obj.id if manager_obj else None
+
+            if manager_obj:
+
+                if trans_became_done:
+                    msg_text = f"Статус перекладача змінено на {new_trans_obj.name}"
+                else:
+                    msg_text = f"Статус замовлення змінено на {new_status_obj.name}"
 
                 try:
-                    send_mail(
-                        subject=subject,
-                        message=message,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[manager_obj.email],
-                        fail_silently=True
+                    Notification.objects.create(
+                        recipient=manager_obj,
+                        order=updated_instance,
+                        title="Зміна статусу",
+                        message=msg_text
                     )
-                except Exception as e:
-                    logger.error(f"Failed to send email to manager: {e}")
 
-        if (old_status != new_status or
-                old_client_status != new_client_status or
-                old_translator_status != new_translator_status):
-            OrderStatusHistory.objects.create(
-                order=updated_instance,
-                status=new_status,
-                client_status=new_client_status,
-                translator_status=new_translator_status
-            )
+
+                except Exception as e:
+                    print(f"DEBUG: ERROR creating notification: {e}")
+            else:
+                print("DEBUG: Notification SKIPPED (No manager or Self-update)")
 
 
 #TODO full_link to change order.translator_id
