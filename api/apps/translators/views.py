@@ -24,7 +24,7 @@ from ..orders.models import OrderLink, status
 from .models import Translator, TranslatorTraffic
 from ..orders.models import Order, File
 from .serializers import TranslatorSerializer, TranslatorTrafficSerializer
-from ..orders.models import OrderLink, status
+from ..orders.models import OrderLink, Status
 from ..orders.serializers import OrderCreateSerializer
 from ..users.permissions import HasPermission
 
@@ -274,6 +274,12 @@ class TranslatorUploadView(APIView):
                 detected_pages=0,
                 detected_symbols=0,
             )
+
+        done_status = Status.objects.get(slug="Done")
+
+        if order.status_id != done_status:
+            order.status_id = done_status
+            order.save(update_fields=["status_id"])
 
         return Response(
             {
