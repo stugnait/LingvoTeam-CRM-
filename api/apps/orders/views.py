@@ -342,10 +342,8 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return translator.rating
 
-    @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target))?')
+    @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target|final))?')
     def download_files(self, request, pk=None, folder=None):
-    # @action(detail=True, methods=['get'], url_path='download-files')
-    # def download_files(self, request, pk=None):
         order = self.get_object()
         user = request.user
 
@@ -721,6 +719,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     f.seek(0)
                     path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
                     _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target", create_only_dir="target")
+                    _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final", create_only_dir="final")
                     uploaded_paths.append(path)
             except Exception as e:
                 logger.error(f"Upload failed: {e}")
