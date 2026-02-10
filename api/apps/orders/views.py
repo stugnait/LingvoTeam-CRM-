@@ -58,6 +58,7 @@ from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
 from ..notifications.models import Notification
 from ..translators.models import Translator
+from ..translators.serializers import TranslatorUploadFileSerializer
 from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
