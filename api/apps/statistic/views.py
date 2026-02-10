@@ -1,13 +1,19 @@
 from datetime import timezone, timedelta
 
-from django.db.models import Q, Count, Sum
-from django.db.models.functions import Coalesce
-from rest_framework import viewsets
+from django.db.models import Q, Count, Sum, Value
+from django.db.models.functions import Coalesce, Concat
+from drf_spectacular.utils import extend_schema_view
 from rest_framework.decorators import action
+
+
+from decimal import Decimal
+from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+from apps.core.models import Transaction
 
 from apps.clients.models import Client
-from apps.orders.models import Order
 from apps.statistic.serializers import OwnerOrderListSerializer, StatsSerializer
 from apps.translators.models import Translator
 from apps.users.models import User
@@ -31,7 +37,17 @@ class OwnerDetailFilter(FilterSet):
         model = Order
         fields = ['manager', 'client', 'translator', 'status']
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary="Детальний список замовлень (Owner)",
+        description="Повний перелік замовлень з можливістю глибокої фільтрації за менеджером, клієнтом та статусом.",
+        tags=["Owner Analytics"]
+    ),
+    retrieve=extend_schema(
+        summary="Перегляд конкретного замовлення (Owner)",
+        tags=["Owner Analytics"]
+    )
+)
 class OwnerOrderDetailsViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [HasPermission]
     queryset = Order.objects.all().order_by('-created_at')
@@ -47,6 +63,44 @@ class OwnerOrderDetailsViewSet(viewsets.ReadOnlyModelViewSet):
     def get_required_permissions(self, request):
         return ['statistic.order.view']
 
+@extend_schema_view(
+    unpaid_orders=extend_schema(
+        summary="Неоплачені замовлення",
+        description="Список замовлень, де клієнт ще не здійснив оплату (статус не дорівнює 5).",
+        responses={200: OwnerOrderListSerializer(many=True)},
+        tags=["Owner Dashboard"]
+    ),
+    manager_stats=extend_schema(
+        summary="Статистика по менеджерах",
+        description="Агреговані дані: кількість замовлень, загальний обсяг (revenue) та кількість боргів по кожному менеджеру.",
+        responses={200: StatsSerializer(many=True)},
+        tags=["Owner Dashboard"]
+    ),
+    overdue_payments=extend_schema(
+        summary="Протерміновані виплати",
+        description="Замовлення, де дедлайн вже минув, а оплата від клієнта ще не надійшла.",
+        responses={200: OwnerOrderListSerializer(many=True)},
+        tags=["Owner Dashboard"]
+    ),
+    high_risk_orders=extend_schema(
+        summary="Замовлення з наближенням дедлайну",
+        description="Замовлення, дедлайн яких настане протягом наступних 2 днів, але вони ще не виконані.",
+        responses={200: OwnerOrderListSerializer(many=True)},
+        tags=["Owner Dashboard"]
+    ),
+    client_stats=extend_schema(
+        summary="Статистика по клієнтах",
+        description="Рейтинг клієнтів за прибутковістю (загальна кількість сторінок) та активністю.",
+        responses={200: StatsSerializer(many=True)},
+        tags=["Owner Dashboard"]
+    ),
+    translator_stats=extend_schema(
+        summary="Статистика по перекладачах",
+        description="Аналіз ефективності перекладачів за обсягом виконаних робіт.",
+        responses={200: StatsSerializer(many=True)},
+        tags=["Owner Dashboard"]
+    ),
+)
 class OwnerDashboardViewSet(viewsets.GenericViewSet):
     permission_classes = [HasPermission]
 
@@ -148,3 +202,94 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         serializer = StatsSerializer(stats, many=True)
         return Response(serializer.data)
+
+
+
+class PnLViewSet(viewsets.ViewSet):
+    @extend_schema(
+        summary="PnL Звіт (Фінальний)",
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, required=True),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, required=True),
+            OpenApiParameter("group_by", str, description="client, manager, language_pair"),
+        ],
+        tags=["Finance Analytics"]
+    )
+    def list(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        group_by = request.query_params.get('group_by')
+
+        orders = Order.objects.filter(
+            completed_at__date__range=[start_date, end_date],
+            status_id__id__in=[4, 5]  # Completed / Paid
+        )
+
+        revenue = orders.aggregate(total=Sum('total_amount'))['total'] or Decimal(0)
+
+        orders_with_cost = orders.annotate(
+            translator_cost_calc=ExpressionWrapper(
+                F('page_count') * F('translator_traffic_id__rate_per_page'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+
+        cogs_translators = orders_with_cost.aggregate(sum=Sum('translator_cost_calc'))['sum'] or Decimal(0)
+
+        gross_profit = revenue - cogs_translators
+        gross_margin = (gross_profit / revenue * 100) if revenue > 0 else 0
+
+        opex_agg = Transaction.objects.filter(
+            created_at__date__range=[start_date, end_date],
+            type='expense'
+        ).aggregate(sum=Sum('amount'))['sum']
+
+        total_opex = Decimal(str(opex_agg)) if opex_agg is not None else Decimal('0.00')
+
+        net_profit = gross_profit - total_opex
+
+        breakdown_data = []
+        if group_by:
+            if group_by == 'language_pair':
+                orders_with_cost = orders_with_cost.annotate(
+                    full_pair_name=Concat(
+                        F('language_pair_id__source_language__name'),
+                        Value(' -> '),
+                        F('language_pair_id__target_language__name')
+                    )
+                )
+
+                breakdown_data = orders_with_cost.values(name=F('full_pair_name')).annotate(
+                    val_revenue=Sum('total_amount'),
+                    val_cost=Sum('translator_cost_calc'),
+                    val_profit=Sum('total_amount') - Sum('translator_cost_calc')
+                ).order_by('-val_revenue')
+
+            else:
+                mapping = {
+                    'client': 'client_id__full_name',
+                    'manager': 'manager_id__full_name',
+                    'translator': 'translator_id__full_name',
+                }
+
+                db_field = mapping.get(group_by)
+                if db_field:
+                    breakdown_data = orders_with_cost.values(name=F(db_field)).annotate(
+                        val_revenue=Sum('total_amount'),
+                        val_cost=Sum('translator_cost_calc'),
+                        val_profit=Sum('total_amount') - Sum('translator_cost_calc')
+                    ).order_by('-val_revenue')
+
+
+        return Response({
+            "period": {"start": start_date, "end": end_date},
+            "summary": {
+                "revenue": revenue,
+                "cogs": cogs_translators,
+                "gross_profit": gross_profit,
+                "gross_margin_percent": round(gross_margin, 2),
+                "opex": total_opex,
+                "net_profit": net_profit
+            },
+            "breakdown": breakdown_data
+        })

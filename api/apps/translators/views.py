@@ -1,9 +1,12 @@
 import secrets
+import os
 from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from rest_framework import viewsets, filters
 from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
@@ -13,20 +16,32 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import viewsets
 from rest_framework import status as http_status
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models.translator_language_pairs import TranslatorLanguagePairs
 from ..orders.models import OrderLink, status
 
 from .models import Translator, TranslatorTraffic
+from ..orders.models import Order, File
 from .serializers import TranslatorSerializer, TranslatorTrafficSerializer
 from ..orders.models import OrderLink, status
 from ..orders.serializers import OrderCreateSerializer
 from ..users.permissions import HasPermission
 
 from rest_framework import viewsets
-from .serializers import TranslatorLanguagePairsSerializer
+from .serializers import TranslatorLanguagePairsSerializer, TranslatorUploadFileSerializer
 
+from ..dropbox_services.dropbox_utils import upload_file_to_order_folder
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="Мовні пари перекладачів",
+        parameters=[
+            OpenApiParameter("translator_id", OpenApiTypes.INT, OpenApiParameter.QUERY, description="Фільтр за ID перекладача")
+        ],
+        tags=["Translators"]
+    )
+)
 class TranslatorLanguagePairsViewSet(viewsets.ModelViewSet):
     queryset = TranslatorLanguagePairs.objects.all().select_related('translator', 'language_pair')
     serializer_class = TranslatorLanguagePairsSerializer
@@ -63,7 +78,15 @@ class TranslatorFilter(django_filters.FilterSet):
         model = Translator
         fields = ['work_type']
 
-
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список перекладачів",
+        description="Повертає список перекладачів з кількістю їхніх замовлень (orders_count). Підтримує складну фільтрацію за мовами та категоріями.",
+        tags=["Translators"]
+    ),
+    create=extend_schema(summary="Додати перекладача", tags=["Translators"]),
+    retrieve=extend_schema(summary="Профіль перекладача", tags=["Translators"]),
+)
 class TranslatorViewSet(viewsets.ModelViewSet):
     serializer_class = TranslatorSerializer
     permission_classes = [HasPermission]
@@ -88,7 +111,10 @@ class TranslatorViewSet(viewsets.ModelViewSet):
             orders_count=Count('order')
         ).prefetch_related('translatortraffic').order_by('-created_at').distinct()
 
-
+@extend_schema_view(
+    list=extend_schema(summary="Тарифи перекладачів", tags=["Translators Pricing"]),
+    create=extend_schema(summary="Встановити тариф", tags=["Translators Pricing"]),
+)
 class TranslatorTrafficViewSet(viewsets.ModelViewSet):
     queryset = TranslatorTraffic.objects.select_related(
         'language_pair',
@@ -108,6 +134,12 @@ class TranslatorTrafficViewSet(viewsets.ModelViewSet):
 class ExternalOrderAccessView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        summary="Перевірка валідності посилання",
+        description="Перевіряє, чи не закінчився термін дії UUID-посилання для зовнішнього доступу.",
+        responses={200: OpenApiTypes.OBJECT, 410: OpenApiTypes.OBJECT},
+        tags=["External Access"]
+    )
     def get(self, request, slug):
         link_obj = get_object_or_404(OrderLink, link=slug)
 
@@ -122,6 +154,17 @@ class ExternalOrderAccessView(APIView):
             "status": "awaiting_password"
         }, status=http_status.HTTP_200_OK)
 
+    @extend_schema(
+        summary="Авторизація за паролем",
+        description="Перевірка пароля для доступу до замовлення. Реалізовано захист від brute-force (бан на 15 хв після 5 спроб).",
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {"password": {"type": "string"}},
+                "required": ["password"]
+            }
+        }
+    )
     def post(self, request, slug):
         with transaction.atomic():
             link_obj = get_object_or_404(OrderLink.objects.select_for_update(), link=slug)
@@ -188,3 +231,55 @@ class ExternalOrderAccessView(APIView):
             link_obj.save()
 
             return Response({"error": message}, status=http_status.HTTP_403_FORBIDDEN)
+
+class TranslatorUploadView(APIView):
+    permission_classes = [AllowAny]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        order_id = request.data.get("order_id")
+        if not order_id:
+            return Response(
+                {"detail": "order_id is required"},
+                status=http_status.HTTP_400_BAD_REQUEST
+            )
+
+        order = get_object_or_404(Order, id=order_id)
+
+        serializer = TranslatorUploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["files"]
+        base_path = f"/orders/order_{order.id}"
+
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="target",
+            )
+            uploaded.append({
+                "filename": f.name,
+                "dropbox_path": dropbox_path
+            })
+
+        for i, f in enumerate(files):
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=uploaded[i]["dropbox_path"],
+                detected_pages=0,
+                detected_symbols=0,
+            )
+
+        return Response(
+            {
+                "message": "Files uploaded",
+                "count": len(uploaded),
+                "files": uploaded
+            },
+            status=http_status.HTTP_201_CREATED,
+        )

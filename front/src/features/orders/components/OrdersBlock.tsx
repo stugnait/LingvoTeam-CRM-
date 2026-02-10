@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import {
     Table,
     TableBody,
@@ -21,20 +21,24 @@ import type {
     AnalyzeImagesResponse
 } from "@/src/features/orders/types"
 import { ordersApi } from "@/src/features/orders/api"
+import {cn} from "@/src/lib/utils";
 
 interface OrdersTableProps {
     orders: OrderListItem[]
     onOpen: (orderId: number) => Promise<CreateOrderResponse>
     languagePairs: Record<number, LanguagePair>
     translatorsCache: Record<number, Translator>
+    highlightId?: number
 }
 
-export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache }: OrdersTableProps) {
+export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, highlightId }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<CreateOrderResponse | null>(null)
     const [loadingId, setLoadingId] = useState<number | null>(null)
     const [analyzeLoadingId, setAnalyzeLoadingId] = useState<number | null>(null)
     const [analyzeResult, setAnalyzeResult] = useState<AnalyzeImagesResponse | null>(null)
+    const [activeHighlightId, setActiveHighlightId] = useState<number | null>(null)
+
 
     const handleAnalyzeImages = async (orderId: number) => {
         try {
@@ -62,6 +66,20 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache }:
         setLoadingId(null)
     }
 
+    useEffect(() => {
+        if (!highlightId) {return}
+
+        setActiveHighlightId(highlightId)
+
+        const timer = setTimeout(() => {
+            setActiveHighlightId(null)
+        }, 5000)
+
+        return () => clearTimeout(timer)
+    }, [highlightId])
+
+
+
     const getStatusVariant = (status: string) =>
         status === "completed" ? "default" : "secondary"
 
@@ -88,8 +106,16 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache }:
                     {orders.map((order) => (
                         <>
                             {/* MAIN ROW */}
-                            <TableRow key={order.id} className="hover:bg-muted/30">
-                                <TableCell className="align-middle h-16 pl-6">
+                            <TableRow
+                                key={order.id}
+                                className={cn(
+                                    "hover:bg-muted/30 transition-colors",
+                                    order.id === highlightId &&
+                                    "bg-primary/10 ring-2 ring-primary animate-pulse"
+                                )}
+                            >
+
+                            <TableCell className="align-middle h-16 pl-6">
                                     <div className="font-medium text-foreground">
                                         #{order.id}
                                     </div>

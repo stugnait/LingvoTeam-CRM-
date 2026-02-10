@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import { TranslatorSelect } from "@/src/features/orders/components/TranslatorSelect"
 import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Plus } from "lucide-react"
-import { SideModal } from "@/src/components/modals/SideModal" // Імпортуємо нову модалку
+import { SideModal } from "@/src/components/modals/SideModal"
+import {useSearchParams} from "next/navigation";
+import { useRouter } from "next/navigation"
 
 export default function CreateOrderPage() {
     const {
@@ -37,6 +39,26 @@ export default function CreateOrderPage() {
     const [trafficId, setTrafficId] = useState("")
     const [currencyId, setCurrencyId] = useState("")
     const [files, setFiles] = useState<File[]>([])
+    const searchParams = useSearchParams()
+    const highlightId = Number(searchParams.get("highlight"))
+    const [activeHighlightId, setActiveHighlightId] = useState<number | null>(null)
+    const router = useRouter()
+
+    useEffect(() => {
+        if (!highlightId) {return}
+
+        setActiveHighlightId(highlightId)
+
+        const timer = setTimeout(() => {
+            setActiveHighlightId(null)
+            router.replace("/dashboard/orders", { scroll: false })
+        }, 5000)
+
+
+        return () => clearTimeout(timer)
+    }, [highlightId])
+
+
 
     const handleSubmit = async () => {
         await createOrder({
@@ -85,7 +107,9 @@ export default function CreateOrderPage() {
                     onOpen={loadOrderDetails}
                     languagePairs={languagePairs}
                     translatorsCache={translatorsCache}
+                    highlightId={activeHighlightId}
                 />
+
             </div>
 
             {/* Side modal for creating order */}

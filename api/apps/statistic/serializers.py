@@ -13,12 +13,12 @@ class ManagerInfoSerializer(serializers.ModelSerializer):
 class ClientInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
-        fields = ['id', 'full_name', 'email', 'phone', 'category']
+        fields = ['id', 'full_name', 'email', 'phone_number', 'category']
 
 class TranslatorInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Translator
-        fields = ['id', 'full_name', 'email', 'phone', 'work_type', 'currency']
+        fields = ['id', 'full_name', 'email', 'phone', 'work_type', 'currency_id']
 
 
 

@@ -1,12 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from apps.statistic.views import OwnerDashboardViewSet, OwnerOrderDetailsViewSet
+from apps.statistic.views import OwnerDashboardViewSet, OwnerOrderDetailsViewSet, PnLViewSet
 
 router = DefaultRouter()
 
 router.register(r'dashboard', OwnerDashboardViewSet, basename='owner-dashboard')
 router.register(r'details', OwnerOrderDetailsViewSet, basename='owner-details')
+
+router.register(r'pnl', PnLViewSet, basename='pnl')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -9,9 +9,16 @@ export interface OrderListItem {
     source_language: number
     target_language: number
     status_id: string  // '1', '2', '3', '4', '5', '6'
+    status_name: string,
+    comment: string,
+    language_pair_name: string
     created_at: string // ISO
+    client_comment: string
     translator_id: string
-    language_pair_id: number
+    language_pair_id: number,
+    priority: string,
+    manager_name: string,
+    translator_name: string
 }
 
 export interface OrderListResponse {

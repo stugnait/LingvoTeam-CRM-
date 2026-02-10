@@ -44,6 +44,7 @@ class TranslatorSerializer(serializers.ModelSerializer):
 class TranslatorTrafficSerializer(serializers.ModelSerializer):
     language_pair_name = serializers.CharField(source='language_pair.__str__', read_only=True)
     currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
+    category_name = serializers.CharField(source='category.name', read_only=True, default="---")
 
     class Meta:
         model = TranslatorTraffic
@@ -59,3 +60,6 @@ class TranslatorTrafficSerializer(serializers.ModelSerializer):
             'rate_per_page',
             'rate_per_action'
         ]
+
+class TranslatorUploadFileSerializer(serializers.Serializer):
+    files = serializers.ListField(child=serializers.FileField(), write_only=True)

@@ -15,3 +15,4 @@ class TransactionCategory(models.Model):
 
     class Meta:
         verbose_name_plural = "Transaction Categories"
+        db_table = 'transaction_category'
