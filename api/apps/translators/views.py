@@ -202,18 +202,12 @@ class ExternalOrderAccessView(APIView):
         
 
 class ExternalTranslatorDownloadView(APIView):
-    """
-    Ендпоінт ТІЛЬКИ для перекладача, який зайшов по external-лінку + паролю.
-    Авторизація — через cookie order_auth_<order_id>
-    """
-
     authentication_classes = []
     permission_classes = []
 
     def get(self, request, order_id, folder=None):
         order = get_object_or_404(Order, id=order_id)
 
-        # 🔐 Перевірка cookie-паролю
         provided_password = request.COOKIES.get(f"order_auth_{order.id}")
         link_obj = OrderLink.objects.filter(order=order).last()
 
@@ -227,12 +221,11 @@ class ExternalTranslatorDownloadView(APIView):
         if not secrets.compare_digest(link_obj.password, provided_password):
             return Response({"detail": "Невірний пароль."}, status=http_status.HTTP_403_FORBIDDEN)
 
-        # 📂 Файли (для перекладача зазвичай target / final)
         files = File.objects.filter(order=order)
 
         if folder:
             folder = folder.lower()
-            if folder not in ["target", "final"]:
+            if folder != "source":
                 return Response({"detail": "Недоступна папка."}, status=http_status.HTTP_403_FORBIDDEN)
 
             base = f"/orders/order_{order.id}/{folder}"
@@ -241,7 +234,6 @@ class ExternalTranslatorDownloadView(APIView):
         if not files.exists():
             return Response({"detail": "Файли відсутні."}, status=http_status.HTTP_404_NOT_FOUND)
 
-        # 📦 ZIP
         try:
             dbx = get_dbx()
             tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
@@ -264,12 +256,12 @@ class ExternalTranslatorDownloadView(APIView):
             return FileResponse(
                 open(zip_path, "rb"),
                 as_attachment=True,
-                filename=f"order_{order.id}_translator_files.zip",
+                filename=f"order_{order.id}_files.zip",
                 content_type="application/zip"
             )
 
         except Exception as e:
             return Response(
                 {"detail": f"Помилка створення ZIP: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=http_status.HTTP_500_INTERNAL_SERVER_ERROR
             )
