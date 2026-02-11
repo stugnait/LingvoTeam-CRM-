@@ -1,38 +1,38 @@
 import os
 import secrets
-from datetime import timedelta
+import logging
 import tempfile
 import zipfile
-import logging
+from datetime import timedelta
 
 from django.db import transaction
-from django.utils import timezone
+from django.db.models import Count # 1. Імпортуємо Count для підрахунку
 from django.shortcuts import get_object_or_404
-from apps.dropbox_services.dropbox_utils import get_dbx
-from apps.orders.models.file import File
-from apps.orders.models.order import Order
-from rest_framework import viewsets, filters
-from rest_framework.permissions import AllowAny
-from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
+
 from django_filters import rest_framework as django_filters
-from django.db.models import Count  # 1. Імпортуємо Count для підрахунку
+from django_filters.rest_framework import DjangoFilterBackend
+
+from rest_framework import filters, status as http_status, viewsets
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import viewsets
-from rest_framework import status as http_status
 
-from .models.translator_language_pairs import TranslatorLanguagePairs
-from ..orders.models import OrderLink, status
+from apps.dropbox_services.dropbox_utils import get_dbx
 
-from .models import Translator, TranslatorTraffic
-from .serializers import TranslatorSerializer, TranslatorTrafficSerializer
-from ..orders.models import OrderLink, status
+from ..dropbox_services.dropbox_utils import get_dbx
+from ..orders.models import OrderLink, status, Order, File
 from ..orders.serializers import OrderCreateSerializer
 from ..users.permissions import HasPermission
-from ..dropbox_services.dropbox_utils import get_dbx
 
-from rest_framework import viewsets
-from .serializers import TranslatorLanguagePairsSerializer
+from .models import Translator, TranslatorTraffic
+from .models.translator_language_pairs import TranslatorLanguagePairs
+from .serializers import (
+    TranslatorLanguagePairsSerializer,
+    TranslatorSerializer,
+    TranslatorTrafficSerializer,
+)
+
 
 logger = logging.getLogger(__name__)
 
