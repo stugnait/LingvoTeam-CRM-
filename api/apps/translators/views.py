@@ -1,35 +1,44 @@
-import secrets
+import logging
 import os
+import secrets
+import tempfile
+import zipfile
 from datetime import timedelta
 
 from django.db import transaction
-from django.utils import timezone
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
-from rest_framework import viewsets, filters
-from rest_framework.permissions import AllowAny
-from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
+
 from django_filters import rest_framework as django_filters
-from django.db.models import Count  # 1. Імпортуємо Count для підрахунку
+from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+
+from rest_framework import filters, status as http_status, viewsets
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import viewsets
-from rest_framework import status as http_status
-from rest_framework.parsers import MultiPartParser, FormParser
 
-from .models.translator_language_pairs import TranslatorLanguagePairs
-from ..orders.models import OrderLink, status
+from apps.dropbox_services.dropbox_utils import get_dbx
 
-from .models import Translator, TranslatorTraffic
-from ..orders.models import Order, File
-from .serializers import TranslatorSerializer, TranslatorTrafficSerializer
-from ..orders.models import OrderLink, Status
+from ..dropbox_services.dropbox_utils import get_dbx
+from ..orders.models import File, Order, OrderLink, Status, status
 from ..orders.serializers import OrderCreateSerializer
 from ..users.permissions import HasPermission
 
-from rest_framework import viewsets
-from .serializers import TranslatorLanguagePairsSerializer, TranslatorUploadFileSerializer
+from .models import Translator, TranslatorTraffic
+from .models.translator_language_pairs import TranslatorLanguagePairs
+from .serializers import (
+    TranslatorLanguagePairsSerializer,
+    TranslatorSerializer,
+    TranslatorTrafficSerializer,
+    TranslatorUploadFileSerializer,
+)
+
+logger = logging.getLogger(__name__)
+
 
 from ..dropbox_services.dropbox_utils import upload_file_to_order_folder
 
@@ -289,3 +298,69 @@ class TranslatorUploadView(APIView):
             },
             status=http_status.HTTP_201_CREATED,
         )
+        
+
+class ExternalTranslatorDownloadView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, order_id, folder=None):
+        order = get_object_or_404(Order, id=order_id)
+
+        provided_password = request.COOKIES.get(f"order_auth_{order.id}")
+        link_obj = OrderLink.objects.filter(order=order).last()
+
+        if not (provided_password and link_obj):
+            return Response({"detail": "Немає доступу."}, status=http_status.HTTP_403_FORBIDDEN)
+
+        expire_at = getattr(link_obj, "expire_at", None) or getattr(link_obj, "expire_date", None)
+        if expire_at and expire_at < timezone.now():
+            return Response({"detail": "Посилання протерміноване."}, status=http_status.HTTP_403_FORBIDDEN)
+
+        if not secrets.compare_digest(link_obj.password, provided_password):
+            return Response({"detail": "Невірний пароль."}, status=http_status.HTTP_403_FORBIDDEN)
+
+        files = File.objects.filter(order=order)
+
+        if folder:
+            folder = folder.lower()
+            if folder != "source":
+                return Response({"detail": "Недоступна папка."}, status=http_status.HTTP_403_FORBIDDEN)
+
+            base = f"/orders/order_{order.id}/{folder}"
+            files = files.filter(dropbox_url__startswith=base)
+
+        if not files.exists():
+            return Response({"detail": "Файли відсутні."}, status=http_status.HTTP_404_NOT_FOUND)
+
+        try:
+            dbx = get_dbx()
+            tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
+            zip_path = tmp.name
+            tmp.close()
+
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for f in files:
+                    if not f.dropbox_url:
+                        continue
+
+                    filename = os.path.basename(f.dropbox_url)
+
+                    try:
+                        md, resp = dbx.files_download(f.dropbox_url)
+                        zf.writestr(filename, resp.content)
+                    except Exception as e:
+                        logger.error(f"Dropbox error {filename}: {e}")
+
+            return FileResponse(
+                open(zip_path, "rb"),
+                as_attachment=True,
+                filename=f"order_{order.id}_files.zip",
+                content_type="application/zip"
+            )
+
+        except Exception as e:
+            return Response(
+                {"detail": f"Помилка створення ZIP: {str(e)}"},
+                status=http_status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

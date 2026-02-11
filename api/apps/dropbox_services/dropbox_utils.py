@@ -147,6 +147,20 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_
             filename = f"{name}_{target_slug}{ext}"
 
         full_path = f"{base_path}/{subdir}/{filename}"
+    
+    elif subdir == "final":
+        source_suffix = f"_{source_slug}"
+        target_suffix = f"_{target_slug}"
+        if name.endswith(source_suffix):
+            new_name = name[: -len(source_suffix)]
+            filename = f"{new_name}_{target_slug}{ext}"
+        elif name.endswith(target_suffix):
+            new_name = name[: -len(target_suffix)]
+            filename = f"{new_name}_{target_slug}{ext}"
+        else:
+            filename = f"{name}_final{ext}"
+            
+        full_path = f"{base_path}/{subdir}/{filename}"
 
     else:
         full_path = f"{base_path}/{subdir}/{file.name}"
