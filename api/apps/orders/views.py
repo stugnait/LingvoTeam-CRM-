@@ -392,7 +392,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return translator.rating
 
-<<<<<<< HEAD
     @extend_schema(
         summary="Завантажити файли (ZIP)",
         description="Збирає файли з Dropbox (джерела або готові переклади) у ZIP-архів.",
@@ -401,10 +400,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         ],
         tags=["Order Files"]
     )
-    @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target))?')
-=======
+
     @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target|final))?')
->>>>>>> client_files
+
     def download_files(self, request, pk=None, folder=None):
         order = self.get_object()
         user = request.user
