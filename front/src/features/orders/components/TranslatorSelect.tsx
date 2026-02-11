@@ -34,8 +34,10 @@ export function TranslatorSelect({
     const [loading, setLoading] = React.useState(false)
 
     // translator_id -> "40.00"
-    const [marginByTranslator, setMarginByTranslator] = React.useState<Record<number, string>>({})
-    // translator_id -> translator_traffic_id
+    type MarginInfo = { percent: string; label: string }
+
+    // translator_id -> { percent, label }
+    const [marginByTranslator, setMarginByTranslator] = React.useState<Record<number, MarginInfo>>({})    // translator_id -> translator_traffic_id
     const [ttByTranslator, setTtByTranslator] = React.useState<Record<number, number>>({})
 
     React.useEffect(() => {
@@ -52,11 +54,14 @@ export function TranslatorSelect({
             try {
                 const res: OrderMarginsResponse = await ordersApi.getOrderMargins(orderTrafficId)
 
-                const m: Record<number, string> = {}
+                const m: Record<number, MarginInfo> = {}
                 const tt: Record<number, number> = {}
 
                 for (const row of res.results ?? []) {
-                    m[row.translator_id] = row.margin_percent
+                    m[row.translator_id] = {
+                        percent: row.margin_percent,
+                        label: row.margin_label
+                    }
                     tt[row.translator_id] = row.translator_traffic_id
                 }
 
@@ -96,12 +101,12 @@ export function TranslatorSelect({
 
             <SelectContent>
                 {translators.map((translator) => {
-                    const margin = marginByTranslator[translator.id]
+                    const marginInfo = marginByTranslator[translator.id]
 
                     let label = "—"
                     if (!orderTrafficId) label = "—"
                     else if (loading) label = "…"
-                    else if (margin != null) label = `${Number(margin).toFixed(0)}%`
+                    else if (marginInfo) label = `${Number(marginInfo.percent).toFixed(0)}% ${marginInfo.label}`
 
                     return (
                         <SelectItem key={translator.id} value={translator.id.toString()}>

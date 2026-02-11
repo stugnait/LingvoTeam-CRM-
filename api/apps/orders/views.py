@@ -715,6 +715,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
             tr_rate = Decimal(str(tt.rate_per_page))
             margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
+            margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
 
             tr = getattr(tt, "translator", None)
             results.append({
@@ -724,6 +725,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "order_price_per_page": str(order_price),
                 "translator_rate_per_page": str(tr_rate),
                 "margin_percent": str(margin_percent.quantize(Decimal("0.01"))),
+                "margin_label": margin_label,
             })
 
         # краща маржа зверху

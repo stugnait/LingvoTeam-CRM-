@@ -199,6 +199,7 @@ export interface OrderMarginsRow {
     order_price_per_page: string
     translator_rate_per_page: string
     margin_percent: string
+    margin_label: string
 }
 
 export interface OrderMarginsResponse {
