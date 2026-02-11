@@ -402,7 +402,6 @@ class OrderViewSet(viewsets.ModelViewSet):
     )
 
     @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target|final))?')
-
     def download_files(self, request, pk=None, folder=None):
         order = self.get_object()
         user = request.user
