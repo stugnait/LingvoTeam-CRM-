@@ -52,13 +52,12 @@ from .models import (
 from .serializers import (
     OrderCreateSerializer, OrderTrafficSerializer,
     RejectTranslationSerializer, ApproveTranslationSerializer,
-    OrderListSerializer
+    OrderListSerializer, UploadFileSerializer
 )
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
 from ..notifications.models import Notification
 from ..translators.models import Translator
-from ..translators.serializers import TranslatorUploadFileSerializer
 from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
@@ -142,8 +141,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
-
-            'margins': ['order.create'],
+            'upload_files' : ['order.view'],
+            'margins': ['order.view'],
         }
 
         if self.action in ['update', 'partial_update']:
@@ -596,61 +595,56 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response({"order_id": order.id, "results": results}, status=status.HTTP_200_OK)
 
     @extend_schema(
-        summary="Завантаження перекладених файлів",
-        request=TranslatorUploadFileSerializer,
+        summary="Завантаження файлів",
+        request=UploadFileSerializer,
         tags=["Order Files"]
     )
-    @action(detail=True, methods=["post"], url_path="translator-upload")
-    def translator_file_upload(self, request, pk=None):
+    @action(detail=True, methods=["post"], url_path="upload-files")
+    def upload_files(self, request, pk=None):
         order = self.get_object()
         user = request.user
 
-    # @action(detail=True, methods=["post"], url_path="translator-upload")
-    # def translator_file_upload(self, request, pk=None):
-    #     order = self.get_object()
-    #     user = request.user
+        is_authorized = (
+                user == order.manager_id or
+                user == order.translator_id or
+                user == order.editor_id
+        )
 
-    #     is_authorized = (
-    #             user == order.manager_id or
-    #             user == order.translator_id or
-    #             user == order.editor_id
-    #     )
+        if not is_authorized and not user.role.slug in ['admin', 'owner']:
+            return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
 
-    #     if not is_authorized and not user.role.slug in ['admin', 'owner']:
-    #         return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = UploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-    #     serializer = TranslatorUploadFileSerializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
+        files = serializer.validated_data["files"]
+        base_path = f"/orders/order_{order.id}"
 
-    #     files = serializer.validated_data["files"]
-    #     base_path = f"/orders/order_{order.id}"
-
-    #     uploaded = []
-    #     for f in files:
-    #         dropbox_path = upload_file_to_order_folder(
-    #             order=order,
-    #             file=f,
-    #             base_path=base_path,
-    #             subdir="target",
-    #         )
-    #         uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="final",
+            )
+            uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
         
-    #     for i, f in enumerate(files):
-    #         ext = os.path.splitext(f.name)[1].lstrip(".").lower()
-    #         dropbox_url = uploaded[i]["dropbox_path"]
+        for i, f in enumerate(files):
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+            dropbox_url = uploaded[i]["dropbox_path"]
 
-    #         File.objects.create(
-    #             order=order,
-    #             file_type=ext,
-    #             dropbox_url=dropbox_url,
-    #             detected_pages=0,
-    #             detected_symbols=0,
-    #         )
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=dropbox_url,
+                detected_pages=0,
+                detected_symbols=0,
+            )
 
-    #     return Response(
-    #         {"message": "Files uploaded", "count": len(uploaded), "files": uploaded},
-    #         status=status.HTTP_201_CREATED,
-    #     )
+        return Response(
+            {"message": "Files uploaded", "count": len(uploaded), "files": uploaded},
+            status=status.HTTP_201_CREATED,
+        )
 
     @extend_schema(
         summary="Розрахунок маржинальності",
