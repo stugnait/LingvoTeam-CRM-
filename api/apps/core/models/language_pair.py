@@ -20,4 +20,9 @@ class LanguagePair(models.Model):
     class Meta:
         db_table = 'language_pairs'
 
+    def __str__(self):
+        s_name = self.source_language.name if self.source_language else "???"
+        t_name = self.target_language.name if self.target_language else "???"
+        return f"{s_name} -> {t_name}"
+
 
