@@ -80,7 +80,7 @@ export function useOrders() {
     const loadTranslators = useCallback(async () => {
         try {
             setLoading(true)
-            const response = await translatorsApi.list()
+            const response = await ordersApi.list()
             setTranslators(response.results)
 
             // ✅ Кешуємо перекладачів одразу після завантаження
