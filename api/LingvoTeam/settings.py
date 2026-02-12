@@ -71,7 +71,9 @@ INSTALLED_APPS = [
     'apps.clients',
     'apps.core',
     'apps.orders',
-    'apps.translators'
+    'apps.translators',
+    'apps.notifications',
+    'drf_spectacular',
 ]
 
 
@@ -148,6 +150,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'apps.users.permissions.HasPermission',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 
 }
 
@@ -160,6 +163,18 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     'TOKEN_OBTAIN_SERIALIZER': 'apps.users.serializers.CustomTokenObtainPairSerializer',
 }
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'LingvoTeam API',
+    'DESCRIPTION': '',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SCHEMA_PATH_PREFIX': '/api/',
+
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
+}
+
 
 AUTH_USER_MODEL = 'users.User'
 APPEND_SLASH = False

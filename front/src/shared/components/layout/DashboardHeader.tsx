@@ -11,6 +11,9 @@ import {
 } from "@/src/components/ui/dropdown-menu"
 import { Bell, User, LogOut } from "lucide-react"
 import { useToast } from "@/src/hooks/use-toast"
+// shared/layout/DashboardHeader.tsx
+import { NotificationsDropdown } from "@/src/features/notifications/components/NotificationsDropdown"
+
 
 export function DashboardHeader() {
     const router = useRouter()
@@ -35,15 +38,17 @@ export function DashboardHeader() {
             </div>
 
             <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                    <Bell className="h-5 w-5" />
-                </Button>
+                <NotificationsDropdown />
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="gap-2">
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <User className="h-4 w-4 text-primary" />
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-full hover:scale-105 transition-all duration-200"
+                        >
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-blue-600 shadow-soft">
+                                <span className="text-xs font-bold text-white">AD</span>
                             </div>
                         </Button>
                     </DropdownMenuTrigger>

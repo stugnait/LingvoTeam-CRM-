@@ -1,3 +1,6 @@
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import viewsets
+
 import logging
 import secrets
 import os
@@ -25,6 +28,16 @@ from .serializers import ClientCategorySerializer, ClientSerializer
 
 logger = logging.getLogger(__name__)
 
+@extend_schema_view(
+    list=extend_schema(summary="Список категорій клієнтів", description="Отримати перелік усіх категорій з їхніми знижками."),
+    create=extend_schema(summary="Створити категорію", description="Додати нову категорію клієнтів (напр. VIP, Standard)."),
+    retrieve=extend_schema(summary="Деталі категорії", description="Отримати інформацію про конкретну категорію за ID."),
+    update=extend_schema(summary="Оновити категорію", description="Повне оновлення даних категорії."),
+    partial_update=extend_schema(summary="Змінити категорію", description="Часткове оновлення полів категорії."),
+    destroy=extend_schema(summary="Видалити категорію", description="Видалення категорії клієнтів з бази даних.")
+)
+
+
 class ClientCategoryViewSet(viewsets.ModelViewSet):
     queryset = ClientCategory.objects.all()
     serializer_class = ClientCategorySerializer
@@ -41,6 +54,13 @@ class ClientCategoryViewSet(viewsets.ModelViewSet):
         return mapping.get(self.action, [])
 
 
+@extend_schema_view(
+    list=extend_schema(summary="Список клієнтів", description="Отримати список усіх клієнтів з інформацією про їхні категорії."),
+    retrieve=extend_schema(summary="Дані клієнта", description="Детальна інформація про конкретного клієнта."),
+    create=extend_schema(summary="Додати клієнта", description="Реєстрація нового клієнта в системі."),
+    update=extend_schema(summary="Редагувати клієнта", description="Повне оновлення профілю клієнта."),
+    destroy=extend_schema(summary="Видалити клієнта", description="Видалення клієнта з системи.")
+)
 
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.select_related('category').all()
@@ -158,13 +178,8 @@ class ClientDownloadView(APIView):
 
         files = File.objects.filter(order=order)
 
-        if folder:
-            folder = folder.lower()
-            if folder != "final":
-                return Response({"detail": "Недоступна папка."}, status=http_status.HTTP_403_FORBIDDEN)
-
-            base = f"/orders/order_{order.id}/{folder}"
-            files = files.filter(dropbox_url__startswith=base)
+        base = f"/orders/order_{order.id}/final"
+        files = files.filter(dropbox_url__startswith=base)
 
         if not files.exists():
             return Response({"detail": "Файли відсутні."}, status=http_status.HTTP_404_NOT_FOUND)

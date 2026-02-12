@@ -28,8 +28,10 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 from django.conf import settings
-from django_filters import OrderingFilter
+from django_filters import OrderingFilter, filters
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django.db.models import Q, Avg
 from django_filters.rest_framework import DjangoFilterBackend
@@ -50,20 +52,38 @@ from .models import (
 from .serializers import (
     OrderCreateSerializer, OrderTrafficSerializer,
     RejectTranslationSerializer, ApproveTranslationSerializer,
-    OrderListSerializer, TranslatorUploadFileSerializer
+    OrderListSerializer, UploadFileSerializer
 )
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
+from ..notifications.models import Notification
 from ..translators.models import Translator
 from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
 )
 from ..translators.models import TranslatorTraffic
+from django_filters import rest_framework as filters
 
 logger = logging.getLogger(__name__)
 
 
+
+class OrderTrafficFilter(filters.FilterSet):
+    status = filters.AllValuesFilter(field_name='status')
+    client = filters.AllValuesFilter(field_name='client')
+    manager = filters.AllValuesFilter(field_name='manager')
+
+    class Meta:
+        model = OrderTraffic
+        fields = ['status', 'client', 'manager']
+
+@extend_schema_view(
+    list=extend_schema(summary="Список трафіку замовлень", tags=["Order Pricing"]),
+    retrieve=extend_schema(summary="Деталі трафіку", tags=["Order Pricing"]),
+    create=extend_schema(summary="Створити тариф замовлення", tags=["Order Pricing"]),
+    update=extend_schema(summary="Оновити тариф замовлення", tags=["Order Pricing"]),
+)
 class OrderTrafficViewSet(viewsets.ModelViewSet):
     queryset = OrderTraffic.objects.select_related(
         'language_pair',
@@ -79,11 +99,28 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
         SearchFilter
     ]
 
-    filterset_fields = ['status_id', 'client_id', 'manager_id']
+    filterset_class = OrderTrafficFilter
 
     ordering_fields = ['position', 'created_at', 'deadline']
     ordering = ['position']
 
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список замовлень",
+        description="Повертає замовлення залежно від ролі: адмін бачить все, редактор — лише свої.",
+        tags=["Orders"]
+    ),
+    create=extend_schema(
+        summary="Створити замовлення",
+        description="Створює замовлення, завантажує файли в Dropbox, аналізує текст та генерує посилання для перекладача.",
+        tags=["Orders"]
+    ),
+    retrieve=extend_schema(summary="Деталі замовлення", tags=["Orders"]),
+    update=extend_schema(summary="Оновити замовлення", tags=["Orders"]),
+    partial_update=extend_schema(summary="Частково змінити замовлення", tags=["Orders"]),
+    destroy=extend_schema(summary="Видалити замовлення", tags=["Orders"]),
+)
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
@@ -104,8 +141,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
-
-            'margins': ['order.create'],
+            'upload_files' : ['order.view'],
+            'margins': ['order.view'],
         }
 
         if self.action in ['update', 'partial_update']:
@@ -259,6 +296,13 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     # --- Actions ---
 
+    @extend_schema(
+        summary="Відхилити переклад",
+        description="Метод для редактора. Змінює статус на 'Відхилено' та надсилає email менеджеру.",
+        request=RejectTranslationSerializer,
+        tags=["Order Workflow"]
+    )
+
     @action(detail=True, methods=['post'], url_path='reject-translation')
     def reject_translation(self, request, pk=None):
         order = self.get_object()
@@ -294,7 +338,12 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return Response({"message": "Переклад відхилено, менеджер повідомлений."}, status=status.HTTP_200_OK)
 
-
+    @extend_schema(
+        summary="Прийняти переклад",
+        description="Оцінка якості перекладу та закриття замовлення. Доступно по паролю з посилання.",
+        request=ApproveTranslationSerializer,
+        tags=["Order Workflow"]
+    )
     @action(detail=True, methods=['post'], url_path='approve-translation', permission_classes=[AllowAny])
     def approve_translation(self, request, pk=None):
         order = get_object_or_404(Order, pk=pk)
@@ -362,6 +411,15 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return translator.rating
 
+    @extend_schema(
+        summary="Завантажити файли (ZIP)",
+        description="Збирає файли з Dropbox (джерела або готові переклади) у ZIP-архів.",
+        parameters=[
+            OpenApiParameter("folder", str, OpenApiParameter.PATH, description="Папка: 'source' або 'target'")
+        ],
+        tags=["Order Files"]
+    )
+
     @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target|final))?')
     def download_files(self, request, pk=None, folder=None):
         order = self.get_object()
@@ -387,7 +445,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             files = files.filter(dropbox_url__startswith=base)
 
         if not files.exists():
-            return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Файли відсутні."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             dbx = get_dbx()
@@ -415,6 +473,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"detail": f"Error generating zip: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @extend_schema(
+        summary="Аналіз зображень",
+        tags=["Order Files"]
+    )
     @action(detail=True, methods=["post"], url_path="analyze-images")
     def analyze_images(self, request, pk=None):
         """
@@ -551,9 +613,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             })
 
         return Response({"order_id": order.id, "results": results}, status=status.HTTP_200_OK)
-    
-    @action(detail=True, methods=["post"], url_path="translator-upload")
-    def translator_file_upload(self, request, pk=None):
+
+    @extend_schema(
+        summary="Завантаження файлів",
+        request=UploadFileSerializer,
+        tags=["Order Files"]
+    )
+    @action(detail=True, methods=["post"], url_path="upload-files")
+    def upload_files(self, request, pk=None):
         order = self.get_object()
         user = request.user
 
@@ -566,7 +633,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not is_authorized and not user.role.slug in ['admin', 'owner']:
             return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = TranslatorUploadFileSerializer(data=request.data)
+        serializer = UploadFileSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         files = serializer.validated_data["files"]
@@ -578,7 +645,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 order=order,
                 file=f,
                 base_path=base_path,
-                subdir="",
+                subdir="final",
             )
             uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
         
@@ -599,7 +666,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-
+    @extend_schema(
+        summary="Розрахунок маржинальності",
+        description="Порівнює ціну замовлення з тарифами всіх доступних перекладачів для обраної мовної пари.",
+        parameters=[
+            OpenApiParameter("traffic_id", int, required=True, description="ID тарифу замовлення")
+        ],
+        tags=["Order Pricing"]
+    )
     @action(detail=False, methods=["get"], url_path="margins")
     def margins(self, request):
         """
@@ -677,6 +751,16 @@ class OrderViewSet(viewsets.ModelViewSet):
             "results": results,
         }, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        summary="Підтвердити та активувати замовлення",
+        description=(
+                "Змінює статус замовлення на 'Виконано' (ID 4), генерує унікальне посилання з паролем "
+                "для перекладача, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
+        ),
+        operation_id="confirm_order_with_files",
+        responses={200: OpenApiTypes.OBJECT},
+        tags=["Order Workflow"]
+    )
     @action(detail=True, methods=["get"], url_path="confirm-order")
     def confirm_order(self, request, pk=None):
         order = self.get_object()
@@ -832,6 +916,57 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return {"total_stats": stats}
 
+    def perform_update(self, serializer):
+        instance = serializer.instance
+
+        old_status_int = instance.status_id_id
+        old_translator_status_int = instance.translator_status_id
+
+        updated_instance = serializer.save()
+
+        new_status_obj = updated_instance.status_id
+        new_status_int = updated_instance.status_id_id
+
+        new_trans_obj = updated_instance.translator_status
+        new_trans_int = updated_instance.translator_status_id
+
+        DONE_SLUGS = ['Done']
+
+        main_slug = new_status_obj.slug if new_status_obj else ""
+        trans_slug = new_trans_obj.slug if new_trans_obj else ""
+
+        main_became_done = (old_status_int != new_status_int) and (main_slug in DONE_SLUGS)
+
+        trans_became_done = (old_translator_status_int != new_trans_int) and (trans_slug in DONE_SLUGS)
+
+
+        if main_became_done or trans_became_done:
+
+            manager_obj = updated_instance.manager_id
+            current_user_id = self.request.user.id
+            manager_id = manager_obj.id if manager_obj else None
+
+            if manager_obj:
+
+                if trans_became_done:
+                    msg_text = f"Статус перекладача змінено на {new_trans_obj.name}"
+                else:
+                    msg_text = f"Статус замовлення змінено на {new_status_obj.name}"
+
+                try:
+                    Notification.objects.create(
+                        recipient=manager_obj,
+                        order=updated_instance,
+                        title="Зміна статусу",
+                        message=msg_text
+                    )
+
+
+                except Exception as e:
+                    print(f"DEBUG: ERROR creating notification: {e}")
+            else:
+                print("DEBUG: Notification SKIPPED (No manager or Self-update)")
+
 
 #TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
@@ -876,40 +1011,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Email error: {e}")
 
-
-    def perform_update(self, serializer):
-        instance = serializer.instance
-
-        old_status = instance.status_id
-        old_client_status = instance.client_status
-        old_translator_status = instance.translator_status
-
-        serializer.save()
-
-        instance.refresh_from_db()
-
-        new_status = instance.status_id
-        new_client_status = instance.client_status
-        new_translator_status = instance.translator_status
-
-        old_status_name = old_status.name if old_status else "None"
-        new_status_name = new_status.name if new_status else "None"
-
-
-        if (old_status != new_status or
-                old_client_status != new_client_status or
-                old_translator_status != new_translator_status):
-
-
-            OrderStatusHistory.objects.create(
-                order=instance,
-                status=new_status,
-                client_status=new_client_status,
-                translator_status=new_translator_status
-            )
-        else:
-            return None
-
+    @extend_schema(
+        summary="Перемістити замовлення",
+        description="Змінює позицію замовлення в канбан-дошці.",
+        request=OpenApiTypes.OBJECT,
+        examples=[OpenApiExample("Move Example", value={"prev_id": 1, "next_id": 2})],
+        tags=["Orders"]
+    )
     @action(detail=True, methods=['post'], url_path='move')
     @transaction.atomic
     def move_order(self, request, pk=None):
