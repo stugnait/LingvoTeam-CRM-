@@ -21,7 +21,7 @@ from apps.users.models import User
 
 from rest_framework import viewsets, filters
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, NumberFilter
-from apps.orders.models import Order
+from apps.orders.models import Order, status
 from django.utils import timezone
 
 from apps.users.permissions import HasPermission
@@ -204,14 +204,14 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         return Response(serializer.data)
 
 
-
 class PnLViewSet(viewsets.ViewSet):
     @extend_schema(
         summary="PnL Звіт (Фінальний)",
         parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, required=True),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, required=True),
-            OpenApiParameter("group_by", str, description="client, manager, language_pair"),
+            OpenApiParameter("start_date", OpenApiTypes.DATE, required=True,
+                             description="Початок періоду (YYYY-MM-DD)"),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, required=True, description="Кінець періоду (YYYY-MM-DD)"),
+            OpenApiParameter("group_by", str, description="Варіанти: client, manager, translator, language_pair"),
         ],
         tags=["Finance Analytics"]
     )
@@ -220,24 +220,33 @@ class PnLViewSet(viewsets.ViewSet):
         end_date = request.query_params.get('end_date')
         group_by = request.query_params.get('group_by')
 
+        if not start_date or not end_date:
+            return Response({"detail": "start_date and end_date are required"}, status=status.HTTP_400_BAD_REQUEST)
+
         orders = Order.objects.filter(
             completed_at__date__range=[start_date, end_date],
-            status_id__id__in=[4, 5]  # Completed / Paid
+            status_id__id__in=[4, 5]
         )
 
         revenue = orders.aggregate(total=Sum('total_amount'))['total'] or Decimal(0)
 
         orders_with_cost = orders.annotate(
-            translator_cost_calc=ExpressionWrapper(
-                F('page_count') * F('translator_traffic_id__rate_per_page'),
-                output_field=DecimalField(max_digits=12, decimal_places=2)
+            translator_cost_calc=Coalesce(
+                ExpressionWrapper(
+                    F('page_count') * F('translator_traffic_id__rate_per_page'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                ), Decimal(0)
             )
         )
 
-        cogs_translators = orders_with_cost.aggregate(sum=Sum('translator_cost_calc'))['sum'] or Decimal(0)
+        cogs = orders_with_cost.aggregate(sum=Sum('translator_cost_calc'))['sum'] or Decimal(0)
 
-        gross_profit = revenue - cogs_translators
-        gross_margin = (gross_profit / revenue * 100) if revenue > 0 else 0
+        gross_profit = revenue - cogs
+
+        if revenue > 0:
+            gross_margin = (gross_profit / revenue) * 100
+        else:
+            gross_margin = Decimal(0)
 
         opex_agg = Transaction.objects.filter(
             created_at__date__range=[start_date, end_date],
@@ -249,43 +258,43 @@ class PnLViewSet(viewsets.ViewSet):
         net_profit = gross_profit - total_opex
 
         breakdown_data = []
+
         if group_by:
+            qs_breakdown = orders_with_cost
+            group_field_name = None
+
             if group_by == 'language_pair':
-                orders_with_cost = orders_with_cost.annotate(
-                    full_pair_name=Concat(
+                qs_breakdown = qs_breakdown.annotate(
+                    group_name=Concat(
                         F('language_pair_id__source_language__name'),
                         Value(' -> '),
                         F('language_pair_id__target_language__name')
                     )
                 )
-
-                breakdown_data = orders_with_cost.values(name=F('full_pair_name')).annotate(
-                    val_revenue=Sum('total_amount'),
-                    val_cost=Sum('translator_cost_calc'),
-                    val_profit=Sum('total_amount') - Sum('translator_cost_calc')
-                ).order_by('-val_revenue')
-
+                group_field_name = 'group_name'
             else:
                 mapping = {
                     'client': 'client_id__full_name',
                     'manager': 'manager_id__full_name',
                     'translator': 'translator_id__full_name',
                 }
-
                 db_field = mapping.get(group_by)
                 if db_field:
-                    breakdown_data = orders_with_cost.values(name=F(db_field)).annotate(
-                        val_revenue=Sum('total_amount'),
-                        val_cost=Sum('translator_cost_calc'),
-                        val_profit=Sum('total_amount') - Sum('translator_cost_calc')
-                    ).order_by('-val_revenue')
+                    qs_breakdown = qs_breakdown.annotate(group_name=F(db_field))
+                    group_field_name = 'group_name'
 
+            if group_field_name:
+                breakdown_data = qs_breakdown.values('group_name').annotate(
+                    val_revenue=Sum('total_amount'),
+                    val_cost=Sum('translator_cost_calc'),
+                    val_profit=Sum('total_amount') - Sum('translator_cost_calc')
+                ).order_by('-val_revenue')
 
         return Response({
             "period": {"start": start_date, "end": end_date},
             "summary": {
                 "revenue": revenue,
-                "cogs": cogs_translators,
+                "cogs": cogs,
                 "gross_profit": gross_profit,
                 "gross_margin_percent": round(gross_margin, 2),
                 "opex": total_opex,

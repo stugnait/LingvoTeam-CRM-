@@ -1,6 +1,6 @@
 from csv import reader
 import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import docx
 import pypdf
@@ -54,6 +54,7 @@ from .serializers import (
     RejectTranslationSerializer, ApproveTranslationSerializer,
     OrderListSerializer
 )
+from ..clients.models import Client
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
 from ..notifications.models import Notification
@@ -656,21 +657,16 @@ class OrderViewSet(viewsets.ModelViewSet):
         summary="Розрахунок маржинальності",
         description="Порівнює ціну замовлення з тарифами всіх доступних перекладачів для обраної мовної пари.",
         parameters=[
-            OpenApiParameter("traffic_id", int, required=True, description="ID тарифу замовлення")
+            OpenApiParameter("traffic_id", int, required=True, description="ID тарифу замовлення"),
+            OpenApiParameter("client_id", int, required=True, description="ID клієнта"),
         ],
         tags=["Order Pricing"]
     )
     @action(detail=False, methods=["get"], url_path="margins")
     def margins(self, request):
-        """
-        GET /api/orders/margins/?traffic_id=1
-
-        Повертає маржу (%) для кожного перекладача по:
-        - order_traffic.price_per_page (дохід за сторінку)
-        - translator_traffic.rate_per_page (витрата на сторінку)
-        """
-
         traffic_id = request.query_params.get("traffic_id")
+        client_id = request.query_params.get("client_id")
+
         if not traffic_id:
             return Response({"detail": "traffic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -680,9 +676,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({"detail": "traffic_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
 
         ot = (OrderTraffic.objects
-            .filter(id=traffic_id_int)
-            .values("id", "price_per_page", "currency_id_id", "language_pair_id", "category_id")
-            .first())
+              .filter(id=traffic_id_int)
+              .values(
+            "id",
+            "price_per_page",
+            "currency_id_id",
+            "language_pair_id",
+            "category_id"
+        )
+              .first())
 
         if not ot:
             return Response({"detail": "OrderTraffic not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -691,20 +693,37 @@ class OrderViewSet(viewsets.ModelViewSet):
         if price_per_page is None:
             return Response({"detail": "OrderTraffic.price_per_page is null"}, status=status.HTTP_400_BAD_REQUEST)
 
-        order_price = Decimal(str(price_per_page))
-        if order_price <= 0:
+        base_price = Decimal(str(price_per_page))
+        if base_price <= 0:
             return Response({"detail": "OrderTraffic.price_per_page must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
+
+        discount_percent = Decimal("0.00")
+        discount_comment = "Знижка відсутня (клієнт не обраний або без категорії)"
+
+        if client_id:
+            try:
+                client = Client.objects.select_related('category').get(id=client_id)
+
+                if client.category and client.category.discount_percent:
+                    discount_percent = Decimal(str(client.category.discount_percent))
+                    discount_comment = f"Знижка {discount_percent}% (Категорія: {client.category.name})"
+                else:
+                    discount_comment = "У клієнта немає категорії знижок"
+
+            except Client.DoesNotExist:
+                pass
+
+        discount_amount = base_price * (discount_percent / Decimal("100"))
+        final_price = base_price - discount_amount
 
         currency_id = ot.get("currency_id_id")
         lp_id = ot.get("language_pair_id")
         category_id = ot.get("category_id")
 
-        qs = (TranslatorTraffic.objects
-            .filter(language_pair_id=lp_id))
+        qs = TranslatorTraffic.objects.filter(language_pair_id=lp_id)
 
         if category_id is not None:
             qs = qs.filter(Q(category_id=category_id) | Q(category_id__isnull=True))
-
 
         qs = qs.select_related("translator")
 
@@ -714,28 +733,47 @@ class OrderViewSet(viewsets.ModelViewSet):
                 continue
 
             tr_rate = Decimal(str(tt.rate_per_page))
-            margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
 
+            if final_price > 0:
+                margin_percent = (final_price - tr_rate) / final_price * Decimal("100")
+            else:
+                margin_percent = Decimal("-100")
             tr = getattr(tt, "translator", None)
+
+            # Округлення
+            fmt_margin = margin_percent.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            fmt_final_price = final_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            fmt_base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
             results.append({
                 "translator_id": tr.id if tr else tt.translator_id,
                 "translator_name": getattr(tr, "full_name", None),
                 "translator_traffic_id": tt.id,
-                "order_price_per_page": str(order_price),
-                "translator_rate_per_page": str(tr_rate),
-                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))),
+                "base_price": str(fmt_base_price),
+                "final_price": str(fmt_final_price),
+                "translator_rate": str(tr_rate),
+                "margin_percent": str(fmt_margin),
+                "discount_info": {
+                    "percent": str(discount_percent),
+                    "comment": discount_comment
+                }
             })
 
-        # краща маржа зверху
         results.sort(key=lambda x: Decimal(x["margin_percent"]), reverse=True)
 
+        # !!!! ВАЖЛИВО !!!!
+        # Цей return має бути на рівні з def margins, а НЕ всередині for чи if
         return Response({
             "traffic_id": traffic_id_int,
+            "client_id": client_id,
             "language_pair_id": lp_id,
             "currency_id": currency_id,
-            "category_id": category_id,
+            "base_price_per_page": str(base_price),
+            "applied_discount_percent": str(discount_percent),
+            "discount_reason": discount_comment,
             "results": results,
         }, status=status.HTTP_200_OK)
+
 
     @extend_schema(
         summary="Підтвердити та активувати замовлення",
