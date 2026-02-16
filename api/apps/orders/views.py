@@ -178,50 +178,54 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        # 1. Обробка даних запиту
         data = request.data.dict() if hasattr(request.data, 'getlist') else request.data.copy()
-
         if hasattr(request.data, 'getlist'):
             files_list = request.data.getlist('files')
             if files_list:
                 data['files'] = files_list
 
-        raw_amount = data.get('total_amount')
-        try:
-            if raw_amount is not None and str(raw_amount).strip() != '':
-                final_total_amount = Decimal(str(raw_amount))
-            else:
-                final_total_amount = Decimal('0.00')
-        except (InvalidOperation, ValueError):
-            final_total_amount = Decimal('0.00')
-
-        # 2. Отримання мовної пари
-        raw_lp_id = data.get('language_pair_id') or data.get('language_pair')
-        language_pair_instance = self._get_language_pair(raw_lp_id)
-
-        # 3. Валідація
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
+
+        source_id = serializer.validated_data.pop('source_language')
+        target_id = serializer.validated_data.pop('target_language')
+
         serializer.validated_data.pop('files', None)
 
-        status_instance = get_object_or_404(Status, slug="in_translation")
+        try:
+            language_pair_instance, created = LanguagePair.objects.get_or_create(
+                source_language_id=source_id,
+                target_language_id=target_id
+            )
+        except Exception as e:
+            return Response({"detail": f"Помилка з мовною парою: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 4. Створення замовлення
+        raw_amount = data.get('total_amount')
+        final_total_amount = Decimal('0.00')
+        if raw_amount and str(raw_amount).strip():
+            try:
+                final_total_amount = Decimal(str(raw_amount))
+            except:
+                pass
+
+        status_in_progress = get_object_or_404(Status, slug="in_translation")
+
         order = serializer.save(
             manager_id=request.user,
-            editor_id_id=data.get('editor_id'),
-            status_id=status_instance,
-            client_status=status_instance,
-            translator_status=status_instance,
             language_pair_id=language_pair_instance,
-            client_id_id=data.get('client_id'),
+
+            status_id=status_in_progress,
+            client_status=status_in_progress,
+            translator_status=status_in_progress,
+
+            total_amount=final_total_amount,
+
+            editor_id_id=data.get('editor_id'),
             traffic_id_id=data.get('traffic_id'),
             translator_id_id=data.get('translator_id'),
             translator_traffic_id_id=data.get('translator_traffic_id'),
-            total_amount=final_total_amount
         )
 
-        # 5. Генерація посилань
         generated_link_slug = str(uuid.uuid4())
         generated_password = secrets.token_urlsafe(8)
         expire_date = timezone.now() + timedelta(days=45)
@@ -234,43 +238,35 @@ class OrderViewSet(viewsets.ModelViewSet):
             expire_at=expire_date
         )
 
-        # 6. Обробка файлів та статистика
         uploaded_files = request.FILES.getlist('files')
         stats_data = self._analyze_and_upload_files(order, uploaded_files)
 
         order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
         order.page_count = stats_data["total_stats"]["physical_pages"]
 
-        order.total_amount = order.page_count * order.traffic_id.price_per_page
+        if order.traffic_id:
+            order.total_amount = Decimal(order.page_count) * Decimal(order.traffic_id.price_per_page)
 
         order.save()
 
-        # 7. Відправка пошти
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         full_link = f"{base_url}/translator/{generated_link_slug}"
 
         if order.translator_id and order.translator_id.email:
             self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
 
-        # 8. Відповідь
-        lp_response_data = None
-        if language_pair_instance:
-            lp_response_data = LanguagePairSelectSerializer(language_pair_instance).data
-
         return Response({
             "message": "Замовлення успішно створено",
             "order_id": order.id,
-            "language_pair": lp_response_data,
-            "stats": {
-                "physical_pages": stats_data["total_stats"]["physical_pages"],
-                "chars_with_spaces": stats_data["total_stats"]["chars_with_spaces"],
-                "chars_no_spaces": stats_data["total_stats"]["chars_no_spaces"],
-                "images_count": stats_data["total_stats"]["images"]
+            "language_pair": {
+                "id": language_pair_instance.id,
+                "source": source_id,
+                "target": target_id
             },
+            "stats": stats_data["total_stats"],
             "translator_link": {
                 "slug": generated_link_slug,
-                "password": generated_password,
-                "expire_at": expire_date
+                "password": generated_password
             }
         }, status=status.HTTP_201_CREATED)
 
