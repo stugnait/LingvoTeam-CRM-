@@ -51,6 +51,59 @@ export interface Translator {
     created_at: string // ISO datetime
 }
 
+export interface Client {
+    id: number
+    full_name: string
+    email: string
+    phone_number: string
+    category: string
+
+    category_name: number
+
+    created_at: string
+}
+
+export interface ClientListResponse {
+    results: Client[]
+    total: number
+}
+
+export interface Language {
+    id: number
+    name: string
+    slug: string
+}
+
+export interface LanguageListResponse {
+    results: Language[]
+    total: number
+}
+
+export interface Editor {
+    id: number
+    email: number
+    phone: number,
+    full_name: string,
+    is_active: boolean
+}
+
+export interface EditorListResponse {
+    results: Editor[]
+    total: number
+}
+
+export interface Currency {
+    id: number,
+    code: string,
+    name: string,
+    code_name: string,
+}
+
+export interface CurrencyListResponse {
+    results: Currency[]
+    total: number
+}
+
 /* =========================================================
    TRANSLATOR — CREATE / UPDATE PAYLOAD
    ========================================================= */

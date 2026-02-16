@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/src/components/ui/button"
-import { X } from "lucide-react"
+import {
+    X,
+    FileText,
+    CheckCircle
+} from "lucide-react"
+import { cn } from "@/src/lib/utils"
 
 interface SideModalProps {
     open: boolean
@@ -31,13 +36,9 @@ export function SideModal({
     useEffect(() => {
         if (open) {
             setShouldRender(true)
-            // Невелика затримка для ініціалізації анімації
-            setTimeout(() => {
-                setAnimationState('enter')
-            }, 10)
+            setTimeout(() => setAnimationState('enter'), 10)
         } else {
             setAnimationState('exit')
-            // Затримка для завершення анімації перед видаленням з DOM
             setTimeout(() => {
                 setShouldRender(false)
                 setAnimationState(null)
@@ -45,7 +46,7 @@ export function SideModal({
         }
     }, [open])
 
-    if (!shouldRender) {return null}
+    if (!shouldRender) return null
 
     const isOpen = animationState === 'enter'
 
@@ -53,62 +54,87 @@ export function SideModal({
         <>
             {/* Backdrop with blur */}
             <div
-                className={`fixed inset-0 z-50 bg-black/20 backdrop-blur-sm transition-all duration-300 ease-out ${
-                    isOpen ? 'opacity-100' : 'opacity-0'
-                }`}
+                className={cn(
+                    "fixed inset-0 z-50 transition-all duration-300",
+                    isOpen
+                        ? "opacity-100 backdrop-blur-sm bg-black/30"
+                        : "opacity-0 backdrop-blur-0 bg-black/0"
+                )}
                 onClick={() => onOpenChange(false)}
             />
 
-            {/* Modal side panel */}
-            <div className={`fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg ${
-                isOpen ? 'animate-slide-in-right' : 'animate-slide-out-right'
-            }`}>
-                <div className="h-full bg-card border-l border-border shadow-2xl flex flex-col">
+            {/* Modal side panel with blue gradient */}
+            <div className={cn(
+                "fixed right-0 top-0 bottom-0 z-50 w-full max-w-2xl",
+                "transition-transform duration-300 ease-out",
+                isOpen ? "translate-x-0" : "translate-x-full"
+            )}>
+                <div className="h-full bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col relative overflow-hidden">
+
+                    {/* Blue gradient background effect */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-50/30 to-transparent dark:from-blue-950/20 dark:to-transparent pointer-events-none" />
+
+                    {/* Top blue gradient line */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600" />
+
                     {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                        <h2 className="text-xl font-semibold text-foreground">
-                            {title}
-                        </h2>
+                    <div className="relative flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20">
+                                <FileText className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-semibold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
+                                    {title}
+                                </h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Fill in the order details
+                                </p>
+                            </div>
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => onOpenChange(false)}
-                            className="rounded-full w-8 h-8 p-0 hover:bg-muted/50 transition-smooth"
+                            className="rounded-lg w-9 h-9 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
-                            <X className="h-4 w-4" />
+                            <X className="h-4 w-4 text-gray-500" />
                         </Button>
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto px-6 py-6">
+                    <div className="flex-1 overflow-y-auto px-6 py-6 relative">
                         <div className="space-y-6">
                             {children}
                         </div>
                     </div>
 
-                    {/* Footer */}
-                    <div className="px-6 py-4 border-t border-border bg-muted/30">
+                    {/* Footer with blue gradient button */}
+                    <div className="relative px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gradient-to-t from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
                         <div className="flex justify-end gap-3">
                             <Button
                                 variant="outline"
                                 onClick={() => onOpenChange(false)}
                                 disabled={isLoading}
-                                className="transition-smooth"
+                                className="px-4 py-2 h-9 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-lg text-sm"
                             >
                                 {cancelLabel}
                             </Button>
                             <Button
                                 onClick={onSubmit}
                                 disabled={isLoading}
-                                className="transition-smooth hover-lift"
+                                className="px-4 py-2 h-9 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all rounded-lg text-sm font-medium"
                             >
                                 {isLoading ? (
                                     <div className="flex items-center gap-2">
-                                        <div className="loading-spinner h-4 w-4" />
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                                         <span>{submitLabel}...</span>
                                     </div>
                                 ) : (
-                                    submitLabel
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="h-4 w-4" />
+                                        <span>{submitLabel}</span>
+                                    </div>
                                 )}
                             </Button>
                         </div>

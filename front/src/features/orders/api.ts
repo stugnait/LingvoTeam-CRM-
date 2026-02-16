@@ -1,7 +1,7 @@
 // orders/api.ts
 
 import { apiFetch } from "@/src/shared/api/client"
-import type {
+import {
     CreateOrderResponse,
     Translator,
     TranslatorFilters,
@@ -14,6 +14,10 @@ import type {
     OrderTraffic,
     TranslatorTrafficListResponse,
     OrderMarginsResponse,
+    Client,
+    Language,
+    Editor,
+    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse
 } from "./types"
 
 
@@ -56,7 +60,22 @@ export const ordersApi = {
         }),
     getOrderMargins: (trafficId: number) =>
         apiFetch<OrderMarginsResponse>(`orders/margins/?traffic_id=${trafficId}`, {
-        method: "GET",
+            method: "GET",
         }),
-
+    listClients: () =>
+        apiFetch<ClientListResponse>(`clients/`, {
+            method: "GET"
+        }),
+    listLanguages: () =>
+        apiFetch<LanguageListResponse>(`core/languages/`, {
+            method: "GET"
+        }),
+    listEditors: () =>
+        apiFetch<EditorListResponse>(`users/users/?role=2`, {
+            method: "GET"
+        }),
+    listCurrency: () =>
+        apiFetch<CurrencyListResponse>(`core/currencies/`, {
+            method: "GET"
+        })
 }

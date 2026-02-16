@@ -87,7 +87,12 @@ class OrderListSerializer(serializers.ModelSerializer):
     status_name = serializers.CharField(source='status_id.name', default="-", read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
 
+
     history = OrderStatusHistorySerializer(source='history_logs', many=True, read_only=True)
+
+    source_language = serializers.CharField(source='language_pair_id.source_language.name', default="-", read_only=True)
+    target_language = serializers.CharField(source='language_pair_id.target_language.name', default="-", read_only=True)
+
 
     language_pair_name = serializers.SerializerMethodField()
 
@@ -104,6 +109,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'traffic_id', 'translator_traffic_id',
 
             'language_pair_id', 'language_pair_name',
+            'source_language',
+            'target_language',
 
             'priority', 'priority_display',
             'page_count', 'symbols_count',
