@@ -47,10 +47,13 @@ const SelectContent = React.forwardRef<
        position = "popper",
        searchable = false,
        searchPlaceholder = "Search...",
+       sideOffset = 5,
+       align = "start",
        ...props
    }, ref) => {
 
     const [search, setSearch] = React.useState("")
+    const contentRef = React.useRef<HTMLDivElement>(null)
 
     const filteredChildren = React.useMemo(() => {
         if (!searchable || !search) return children
@@ -68,25 +71,65 @@ const SelectContent = React.forwardRef<
         })
     }, [children, search, searchable])
 
+    // Функція для визначення оптимальної позиції
+    const updatePosition = React.useCallback(() => {
+        if (contentRef.current) {
+            const trigger = document.querySelector('[data-radix-select-trigger]')
+            if (trigger) {
+                const triggerRect = trigger.getBoundingClientRect()
+                const contentRect = contentRef.current.getBoundingClientRect()
+                const viewportHeight = window.innerHeight
+
+                // Перевіряємо чи випадає список за межі екрану
+                const spaceBelow = viewportHeight - triggerRect.bottom
+                const spaceAbove = triggerRect.top
+
+                if (spaceBelow < contentRect.height && spaceAbove > spaceBelow) {
+                    // Якщо знизу мало місця, а зверху більше - показуємо зверху
+                    contentRef.current.style.top = 'auto'
+                    contentRef.current.style.bottom = '100%'
+                } else {
+                    // Інакше показуємо знизу
+                    contentRef.current.style.top = '100%'
+                    contentRef.current.style.bottom = 'auto'
+                }
+            }
+        }
+    }, [])
+
+    React.useEffect(() => {
+        updatePosition()
+        window.addEventListener('resize', updatePosition)
+        return () => window.removeEventListener('resize', updatePosition)
+    }, [updatePosition])
+
     return (
         <SelectPrimitive.Portal>
             <SelectPrimitive.Content
                 ref={ref}
                 className={cn(
-                    "relative z-50 min-w-[8rem] overflow-hidden rounded-xl border bg-popover/95 backdrop-blur-xl text-popover-foreground",
-                    "shadow-2xl animate-in fade-in-0 zoom-in-95",
+                    "relative z-[9999] min-w-[8rem] overflow-hidden rounded-xl border bg-popover/95 backdrop-blur-xl text-popover-foreground",
+                    "shadow-2xl",
+                    "data-[side=bottom]:animate-slideUpAndFade",
+                    "data-[side=top]:animate-slideDownAndFade",
                     className
                 )}
                 position={position}
+                sideOffset={sideOffset}
+                align={align}
+                avoidCollisions={true}
+                collisionBoundary="viewport"
+                collisionPadding={10}
                 {...props}
             >
                 {searchable && (
-                    <div className="p-2 border-b">
+                    <div className="p-2 border-b sticky top-0 bg-popover/95 backdrop-blur-xl z-10">
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder={searchPlaceholder}
                             className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                            onClick={(e) => e.stopPropagation()}
                         />
                     </div>
                 )}
@@ -133,11 +176,11 @@ const SelectItem = React.forwardRef<
         )}
         {...props}
     >
-    <span className="absolute left-3 flex h-4 w-4 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4 animate-in zoom-in-50 fade-in-0 duration-200 text-primary" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
+        <span className="absolute left-3 flex h-4 w-4 items-center justify-center">
+            <SelectPrimitive.ItemIndicator>
+                <Check className="h-4 w-4 animate-in zoom-in-50 fade-in-0 duration-200 text-primary" />
+            </SelectPrimitive.ItemIndicator>
+        </span>
         <SelectPrimitive.ItemText className="flex-1">{children}</SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
 ))
@@ -172,7 +215,7 @@ const SelectScrollUpButton = React.forwardRef<
         )}
         {...props}
     >
-        <ChevronUp className="h-4 w-4 animate-bounce" />
+        <ChevronUp className="h-4 w-4" />
     </SelectPrimitive.ScrollUpButton>
 ))
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
@@ -191,7 +234,7 @@ const SelectScrollDownButton = React.forwardRef<
         )}
         {...props}
     >
-        <ChevronDown className="h-4 w-4 animate-bounce" />
+        <ChevronDown className="h-4 w-4" />
     </SelectPrimitive.ScrollDownButton>
 ))
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName
