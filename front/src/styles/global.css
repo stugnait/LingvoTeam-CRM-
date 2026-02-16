@@ -174,8 +174,8 @@
     * {
         border-color: var(--border);
         outline-color: var(--ring);
-        transition-property: color, background-color, border-color, box-shadow, transform, opacity;
-        transition-duration: 180ms;
+        /*transition-property: color, background-color, border-color, box-shadow, transform, opacity;*/
+        /*transition-duration: 180ms;*/
         transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -359,6 +359,9 @@
 
 
 @layer utilities {
+
+
+
 
     .scrollbar-thin::-webkit-scrollbar {
         width: 6px;

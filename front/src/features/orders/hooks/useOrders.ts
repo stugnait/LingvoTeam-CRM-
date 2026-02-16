@@ -8,7 +8,7 @@ import type {
     OrderListItem,
     Details,
     LanguagePair,
-    Translator
+    Translator, Client, Language, Editor, Currency
 } from "../types"
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -19,6 +19,12 @@ export function useOrders() {
     const router = useRouter()
     const [translators, setTranslators] = useState<Translator[]>([])
     const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
+
+    const [clients, setClients] = useState<Client[]>([])
+    const [languages, setLanguages] = useState<Language[]>([])
+    const [editors, setEditors] = useState<Editor[]>([])
+    const [currencies, setCurrencies] = useState<Currency[]>([])
+
 
     const [loading, setLoading] = useState(false)
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
@@ -123,6 +129,77 @@ export function useOrders() {
         }
     }, [])
 
+    const loadInitialData = useCallback(async () => {
+        try {
+            setLoading(true)
+
+            const [
+                translatorsRes,
+                ordersRes,
+                clientsRes,
+                languagesRes,
+                editorsRes,
+                currencyRes,
+            ] = await Promise.all([
+                ordersApi.list(),
+                ordersApi.listOrders(),
+                ordersApi.listClients(),
+                ordersApi.listLanguages(),
+                ordersApi.listEditors(),
+                ordersApi.listCurrency()
+            ])
+
+            // ---- Translators ----
+            setTranslators(translatorsRes.results)
+
+            const translatorsMap: Record<number, Translator> = {}
+            translatorsRes.results.forEach(t => {
+                translatorsMap[t.id] = t
+            })
+            setTranslatorsCache(translatorsMap)
+
+            // ---- Orders ----
+            setOrders(ordersRes.results)
+            setCurrencies(currencyRes.results)
+
+            // ---- Clients / Languages / Editors ----
+            // ⚠️ у тебе зараз нема state для них — треба додати
+            setClients(clientsRes.results)
+            setLanguages(languagesRes.results)
+            setEditors(editorsRes.results)
+
+            // ---- Language pairs (без дублювання) ----
+            const uniquePairIds = [
+                ...new Set(ordersRes.results.map(o => o.language_pair_id))
+            ]
+
+            const pairs = await Promise.all(
+                uniquePairIds.map(id => ordersApi.getLanguagePairById(id))
+            )
+
+            const pairsMap: Record<number, LanguagePair> = {}
+            pairs.forEach(pair => {
+                pairsMap[pair.id] = pair
+            })
+
+            setLanguagePairs(pairsMap)
+
+        } catch (e: any) {
+            toast({
+                title: "Error",
+                description: e?.detail || "Failed to load initial data",
+                variant: "error",
+            })
+        } finally {
+            setLoading(false)
+        }
+    }, [toast])
+
+    useEffect(() => {
+        loadInitialData()
+    }, [loadInitialData])
+
+
     const loadOrderDetails = async (orderId: number): Promise<Details> => {
         try {
             setLoading(true)
@@ -162,10 +239,10 @@ export function useOrders() {
         return translatorsCache[translatorId] || null
     }, [translatorsCache])
 
-    useEffect(() => {
-        loadTranslators()
-        loadOrders()
-    }, [loadTranslators, loadOrders])
+    // useEffect(() => {
+    //     loadTranslators()
+    //     loadOrders()
+    // }, [loadTranslators, loadOrders])
 
     return {
         // CREATE
@@ -178,9 +255,14 @@ export function useOrders() {
         loadOrderDetails,
         loadLanguagePair,
         languagePairs,
+        loadInitialData,
+        clients,
+        editors,
+        currencies,
 
         // UI
         loading,
+        languages,
 
         // TRANSLATORS
         translators,

@@ -81,7 +81,7 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
 
 
     const getStatusVariant = (status: string) =>
-        status === "completed" ? "default" : "secondary"
+        status === "completed" ? "default" : "warning"
 
     const getTranslatorName = (translatorId: number | null) => {
         if (!translatorId) {return "—"}
@@ -135,17 +135,33 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                 </TableCell>
 
                                 <TableCell className="align-middle h-16">
-                                    <div className="font-medium text-foreground">
-                                        {languagePairs[order.language_pair_id]?.pair_name ?? "—"}
+                                    <div className="flex items-center gap-2">
+
+                                        {/* Source */}
+                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
+      {order.source_language}
+    </span>
+
+                                        {/* Arrow */}
+                                        <span className="text-muted-foreground text-sm font-medium">
+      →
+    </span>
+
+                                        {/* Target */}
+                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+      {order.target_language}
+    </span>
+
                                     </div>
                                 </TableCell>
 
+
                                 <TableCell className="align-middle h-16">
                                     <Badge
-                                        variant={getStatusVariant(order.status_id)}
+                                        variant={getStatusVariant("some")}
                                         className="transition-smooth hover-lift"
                                     >
-                                        {order.status_id}
+                                        {order.status_name}
                                     </Badge>
                                 </TableCell>
 

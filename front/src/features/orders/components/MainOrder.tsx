@@ -7,6 +7,7 @@ import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
 import { Plus } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CreateOrderModal } from "./CreateOrderForm"
+import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
 
 export default function CreateOrderPage() {
     const {
@@ -20,8 +21,9 @@ export default function CreateOrderPage() {
         clients,
         languages,
         editors,
-        trafficTypes,
-        currencyList,
+        // trafficTypes,
+        // currencyList,
+        currencies,
         translators
     } = useOrders()
 
@@ -32,6 +34,7 @@ export default function CreateOrderPage() {
     const [clientId, setClientId] = useState<string>("")
     const [sourceLanguage, setSourceLanguage] = useState<string>("")
     const [targetLanguage, setTargetLanguage] = useState<string>("")
+    const [language, setLanguage] = useState<string>("")
     const [editor, setEditor] = useState<string>("")
     const [trafficId, setTrafficId] = useState<string>("")
     const [languagePairId, setLanguagePairId] = useState<string>("")
@@ -85,6 +88,7 @@ export default function CreateOrderPage() {
 
     return (
         <>
+            <DashboardHeader />
             <div className="fixed bottom-8 right-8 z-40">
                 <Button
                     onClick={() => setIsModalOpen(true)}
@@ -121,6 +125,8 @@ export default function CreateOrderPage() {
                 trafficId={trafficId}
                 setTrafficId={setTrafficId}
                 languagePairId={languagePairId}
+                language={language}
+                setLanguage={setLanguage}
                 setLanguagePairId={setLanguagePairId}
                 translatorTrafficId={translatorTrafficId}
                 setTranslatorTrafficId={setTranslatorTrafficId}
@@ -134,9 +140,9 @@ export default function CreateOrderPage() {
                 clients={clients || []}
                 languages={languages || []}
                 editors={editors || []}
-                trafficTypes={trafficTypes || []}
-                languagePairs={languagePairs || []}
-                currencies={currencyList || []}
+                // trafficTypes={trafficTypes || []}
+                // languagePairs={languagePairs || []}
+                currencies={currencies || []}
                 translators={translators || []}
             />
         </>
