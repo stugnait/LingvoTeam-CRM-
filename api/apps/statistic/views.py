@@ -202,6 +202,78 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         serializer = StatsSerializer(stats, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='top-clients-avg-check')
+    def top_clients_avg_check(self, request):
+        PAID_STATUS_ID = 5
+
+        limit = int(request.query_params.get('limit', 10))
+        qs = (
+        Client.objects
+        .annotate(
+            orders_count=Count(
+                'order',
+                filter=Q(order__client_status=PAID_STATUS_ID)
+            ),
+            revenue=Coalesce(
+                Sum(
+                    'order__total_amount',
+                    filter=Q(order__client_status=PAID_STATUS_ID)
+                ),
+                Decimal('0.00')
+            ),
+        )
+        .filter(orders_count__gt=0)
+        .annotate(
+            avg_check=ExpressionWrapper(
+                F('revenue') / F('orders_count'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+        .order_by('-revenue')[:limit]
+        )
+
+        data = [
+            {
+                "client_id": c.id,
+                "client_name": getattr(c, "full_name", None),
+                "orders_count": c.orders_count,
+                "revenue": c.revenue,
+                "avg_check": c.avg_check,
+            }
+            for c in qs
+        ]
+
+        return Response(data)
+    
+    @action(detail=False, methods=['get'], url_path='top-language-pairs')
+    def top_language_pairs(self, request):
+        PAID_STATUS_ID = 5
+
+        qs = (
+            Order.objects
+            .filter(client_status=PAID_STATUS_ID)
+            .annotate(
+                pair_name=Concat(
+                    F('language_pair_id__source_language__name'),
+                    Value(' -> '),
+                    F('language_pair_id__target_language__name'),
+                )
+            )
+            .values('pair_name')
+            .annotate(
+                orders_count=Count('id'),
+                revenue=Coalesce(Sum('total_amount'), Decimal('0.00')),
+            )
+            .annotate(
+                avg_check=ExpressionWrapper(
+                    F('revenue') / F('orders_count'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                )
+            )
+            .order_by('-revenue')
+        )
+        return Response(list(qs))
 
 
 
