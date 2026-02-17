@@ -54,6 +54,7 @@ from .serializers import (
     RejectTranslationSerializer, ApproveTranslationSerializer,
     OrderListSerializer, UploadFileSerializer
 )
+from .utils import analyze_file_content
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
 from ..notifications.models import Notification
@@ -271,6 +272,103 @@ class OrderViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_201_CREATED)
 
     # --- Actions ---
+    @extend_schema(
+        summary="Попередній розрахунок статистики файлів",
+        description="Приймає файли, повертає кількість сторінок та символів. Не створює замовлення.",
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'files': {
+                        'type': 'array',
+                        'items': {'type': 'string', 'format': 'binary'}
+                    }
+                }
+            }
+        },
+        tags=["Order Files"]
+    )
+    @action(detail=False, methods=['post'], url_path='calculate-stats', parser_classes=[MultiPartParser])
+    def calculate_stats(self, request):
+        files = request.FILES.getlist('files')
+
+        if not files:
+            return Response({"detail": "No files provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        total_stats = {
+            "chars_with_spaces": 0,
+            "chars_no_spaces": 0,
+            "images": 0,
+            "physical_pages": 0
+        }
+
+        file_results = []
+
+        for f in files:
+            stats = analyze_file_content(f)
+
+            total_stats["chars_with_spaces"] += stats["chars_with_spaces"]
+            total_stats["chars_no_spaces"] += stats["chars_no_spaces"]
+            total_stats["images"] += stats["images"]
+            total_stats["physical_pages"] += stats["pages"]
+
+            file_results.append({
+                "filename": f.name,
+                "stats": stats
+            })
+
+        return Response({
+            "total_stats": total_stats,
+            "files": file_results
+        })
+
+    def _analyze_and_upload_files(self, order, files):
+        total_stats = {
+            "chars_with_spaces": 0,
+            "chars_no_spaces": 0,
+            "images": 0,
+            "physical_pages": 0
+        }
+
+        if not files:
+            return {"total_stats": total_stats}
+
+        uploaded_paths = []
+
+        try:
+            base_path = create_order_folder(order)
+            for f in files:
+                f.seek(0)
+                path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+                _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target",
+                                                create_only_dir="target")
+                _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final", create_only_dir="final")
+                uploaded_paths.append(path)
+        except Exception as e:
+            logger.error(f"Upload failed: {e}")
+            uploaded_paths = [None] * len(files)
+
+
+        for i, f in enumerate(files):
+            stats = analyze_file_content(f)
+
+            total_stats["chars_with_spaces"] += stats["chars_with_spaces"]
+            total_stats["chars_no_spaces"] += stats["chars_no_spaces"]
+            total_stats["images"] += stats["images"]
+            total_stats["physical_pages"] += stats["pages"]
+
+            dropbox_url = (uploaded_paths[i] if i < len(uploaded_paths) else None) or "None"
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=dropbox_url,
+                detected_pages=stats["pages"],
+                detected_symbols=stats["chars_with_spaces"],
+            )
+
+        return {"total_stats": total_stats}
 
     @extend_schema(
         summary="Відхилити переклад",
@@ -783,116 +881,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         except (ValueError, LanguagePair.DoesNotExist):
             logger.warning(f"Error: Language pair with ID '{raw_lp_id}' not found.")
             return None
-
-    def _analyze_and_upload_files(self, order, files):
-        stats = {
-            "chars_with_spaces": 0,
-            "chars_no_spaces": 0,
-            "images": 0,
-            "physical_pages": 0
-        }
-
-        uploaded_paths = []
-
-        if files:
-            try:
-                base_path = create_order_folder(order)
-                for f in files:
-                    f.seek(0)
-                    path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
-                    _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target", create_only_dir="target")
-                    _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final", create_only_dir="final")
-                    uploaded_paths.append(path)
-            except Exception as e:
-                logger.error(f"Upload failed: {e}")
-                uploaded_paths = [None] * len(files)
-
-        chars_per_file = []
-        pages_per_file = []
-
-        for file in files:
-            file_name = file.name.lower()
-            text_parts = []
-            file_pages = 0
-            file_images = 0
-
-            file.seek(0)
-
-            try:
-                if file_name.endswith('.docx'):
-                    try:
-                        doc = docx.Document(file)
-                        text_parts.extend([p.text for p in doc.paragraphs])
-                        for table in doc.tables:
-                            text_parts.extend([cell.text for row in table.rows for cell in row.cells])
-                        # Headers/Footers
-                        for section in doc.sections:
-                            text_parts.extend([p.text for p in section.header.paragraphs])
-                            text_parts.extend([p.text for p in section.footer.paragraphs])
-                    except Exception:
-                        pass  # Ignore extraction errors
-
-                    # ZIP analysis for pages/images
-                    file.seek(0)
-                    try:
-                        with zipfile.ZipFile(file) as archive:
-                            namelist = archive.namelist()
-                            file_images = sum(1 for name in namelist if name.startswith('word/media/'))
-                            if 'docProps/app.xml' in namelist:
-                                app_xml = archive.read('docProps/app.xml').decode('utf-8')
-                                pages_match = re.search(r'<Pages>(\d+)</Pages>', app_xml)
-                                if pages_match:
-                                    file_pages = int(pages_match.group(1))
-                    except Exception:
-                        pass
-
-                elif file_name.endswith('.pdf'):
-                    try:
-                        reader = pypdf.PdfReader(file)
-                        file_pages = len(reader.pages)
-                        for page in reader.pages:
-                            extracted = page.extract_text()
-                            if extracted:
-                                text_parts.append(extracted)
-                            if hasattr(page, 'images'):
-                                file_images += len(page.images)
-                    except Exception:
-                        pass
-
-                full_text = "\n".join(text_parts)
-                cleaned_display = re.sub(r'[\ufeff\u200b]', '', full_text)
-                file_chars_ws = len(cleaned_display)
-                clean_text = re.sub(r'[\s\ufeff\u200b]+', '', full_text)
-                file_chars_ns = len(clean_text)
-
-                stats["chars_with_spaces"] += file_chars_ws
-                stats["chars_no_spaces"] += file_chars_ns
-                stats["images"] += file_images
-                stats["physical_pages"] += file_pages
-
-                chars_per_file.append(file_chars_ws)
-                pages_per_file.append(file_pages)
-
-            except Exception as e:
-                logger.error(f"Analysis error {file.name}: {e}")
-                chars_per_file.append(0)
-                pages_per_file.append(0)
-
-        # Створення записів File
-        if files:
-            for i, f in enumerate(files):
-                ext = os.path.splitext(f.name)[1].lstrip(".").lower()
-                dropbox_url = (uploaded_paths[i] if i < len(uploaded_paths) else None) or "None"
-
-        File.objects.create(
-            order=order,
-            file_type=ext,
-            dropbox_url=dropbox_url,
-            detected_pages=pages_per_file[i],
-            detected_symbols=chars_per_file[i],
-        )
-
-        return {"total_stats": stats}
 
     def perform_update(self, serializer):
         instance = serializer.instance
