@@ -69,15 +69,14 @@ from django_filters import rest_framework as filters
 logger = logging.getLogger(__name__)
 
 
-
 class OrderTrafficFilter(filters.FilterSet):
-    status = filters.AllValuesFilter(field_name='status')
-    client = filters.AllValuesFilter(field_name='client')
-    manager = filters.AllValuesFilter(field_name='manager')
+    currency = filters.AllValuesFilter(field_name='currency_id')
+    category = filters.AllValuesFilter(field_name='category')
+    language_pair = filters.AllValuesFilter(field_name='language_pair')
 
     class Meta:
         model = OrderTraffic
-        fields = ['status', 'client', 'manager']
+        fields = ['currency', 'category', 'language_pair']
 
 @extend_schema_view(
     list=extend_schema(summary="Список трафіку замовлень", tags=["Order Pricing"]),
@@ -100,10 +99,9 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
         SearchFilter
     ]
 
+    ordering_fields = ['price_per_page', 'id']
+    ordering = ['id']
     filterset_class = OrderTrafficFilter
-
-    ordering_fields = ['position', 'created_at', 'deadline']
-    ordering = ['position']
 
 
 @extend_schema_view(

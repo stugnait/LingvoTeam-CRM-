@@ -8,6 +8,7 @@ class Priority(models.TextChoices):
     LOW = 'low', 'Низький'
     MEDIUM = 'medium', 'Середній'
     HIGH = 'high', 'Високий'
+    CRITICAL = 'critical', 'Критичний'
 
 
 class OrderTrafficSerializer(serializers.ModelSerializer):
