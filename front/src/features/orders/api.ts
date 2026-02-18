@@ -12,6 +12,7 @@ import {
     LanguagePair,
     AnalyzeImagesResponse,
     OrderTraffic,
+    OrderTrafficListResponse,
     TranslatorTrafficListResponse,
     OrderMarginsResponse,
     Client,
@@ -77,5 +78,9 @@ export const ordersApi = {
     listCurrency: () =>
         apiFetch<CurrencyListResponse>(`core/currencies/`, {
             method: "GET"
-        })
+        }),
+    listTraffic: () =>
+        apiFetch<OrderTrafficListResponse>(`orders/order-traffic/`, {
+            method: "GET"
+        }),
 }

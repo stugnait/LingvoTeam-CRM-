@@ -8,7 +8,7 @@ import type {
     OrderListItem,
     Details,
     LanguagePair,
-    Translator, Client, Language, Editor, Currency
+    Translator, Client, Language, Editor, Currency, OrderTraffic
 } from "../types"
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -24,6 +24,7 @@ export function useOrders() {
     const [languages, setLanguages] = useState<Language[]>([])
     const [editors, setEditors] = useState<Editor[]>([])
     const [currencies, setCurrencies] = useState<Currency[]>([])
+    const [traffic, setTraffic] = useState<OrderTraffic[]>([])
 
 
     const [loading, setLoading] = useState(false)
@@ -140,13 +141,15 @@ export function useOrders() {
                 languagesRes,
                 editorsRes,
                 currencyRes,
+                orderTrafficRes
             ] = await Promise.all([
                 ordersApi.list(),
                 ordersApi.listOrders(),
                 ordersApi.listClients(),
                 ordersApi.listLanguages(),
                 ordersApi.listEditors(),
-                ordersApi.listCurrency()
+                ordersApi.listCurrency(),
+                ordersApi.listTraffic(),
             ])
 
             // ---- Translators ----
@@ -167,6 +170,7 @@ export function useOrders() {
             setClients(clientsRes.results)
             setLanguages(languagesRes.results)
             setEditors(editorsRes.results)
+            setTraffic(orderTrafficRes.results)
 
             // ---- Language pairs (без дублювання) ----
             const uniquePairIds = [

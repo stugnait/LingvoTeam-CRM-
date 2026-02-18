@@ -166,6 +166,7 @@ export interface TranslatorTrafficPayload {
     rate_per_action?: number | null
 }
 
+
 /* =========================================================
    COMMON API RESPONSES
    ========================================================= */
@@ -223,11 +224,18 @@ export interface AnalyzeImagesResponse {
 
 export interface OrderTraffic {
     id: number
-    language_pair_id: number
-    currency_id_id: number
-    category_id?: number | null
-    price_per_page: number | null
-    price_per_action?: number | null
+    language_pair: number,
+    language_pair_name: string,
+    currency_id: number,
+    currency_name: string,
+    category: number,
+    category_name: string,
+    price_per_page: number
+}
+
+export interface OrderTrafficListResponse {
+    results: OrderTraffic[]
+    total?: number
 }
 
 export interface TranslatorTraffic {

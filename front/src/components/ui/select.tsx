@@ -72,57 +72,57 @@ const SelectContent = React.forwardRef<
     }, [children, search, searchable])
 
     // Функція для визначення оптимальної позиції
-    const updatePosition = React.useCallback(() => {
-        if (contentRef.current) {
-            const trigger = document.querySelector('[data-radix-select-trigger]')
-            if (trigger) {
-                const triggerRect = trigger.getBoundingClientRect()
-                const contentRect = contentRef.current.getBoundingClientRect()
-                const viewportHeight = window.innerHeight
-
-                // Перевіряємо чи випадає список за межі екрану
-                const spaceBelow = viewportHeight - triggerRect.bottom
-                const spaceAbove = triggerRect.top
-
-                if (spaceBelow < contentRect.height && spaceAbove > spaceBelow) {
-                    // Якщо знизу мало місця, а зверху більше - показуємо зверху
-                    contentRef.current.style.top = 'auto'
-                    contentRef.current.style.bottom = '100%'
-                } else {
-                    // Інакше показуємо знизу
-                    contentRef.current.style.top = '100%'
-                    contentRef.current.style.bottom = 'auto'
-                }
-            }
-        }
-    }, [])
-
-    React.useEffect(() => {
-        updatePosition()
-        window.addEventListener('resize', updatePosition)
-        return () => window.removeEventListener('resize', updatePosition)
-    }, [updatePosition])
+    // const updatePosition = React.useCallback(() => {
+    //     if (contentRef.current) {
+    //         const trigger = document.querySelector('[data-radix-select-trigger]')
+    //         if (trigger) {
+    //             const triggerRect = trigger.getBoundingClientRect()
+    //             const contentRect = contentRef.current.getBoundingClientRect()
+    //             const viewportHeight = window.innerHeight
+    //
+    //             // Перевіряємо чи випадає список за межі екрану
+    //             const spaceBelow = viewportHeight - triggerRect.bottom
+    //             const spaceAbove = triggerRect.top
+    //
+    //             if (spaceBelow < contentRect.height && spaceAbove > spaceBelow) {
+    //                 // Якщо знизу мало місця, а зверху більше - показуємо зверху
+    //                 contentRef.current.style.top = 'auto'
+    //                 contentRef.current.style.bottom = '100%'
+    //             } else {
+    //                 // Інакше показуємо знизу
+    //                 contentRef.current.style.top = '100%'
+    //                 contentRef.current.style.bottom = 'auto'
+    //             }
+    //         }
+    //     }
+    // }, [])
+    //
+    // React.useEffect(() => {
+    //     updatePosition()
+    //     window.addEventListener('resize', updatePosition)
+    //     return () => window.removeEventListener('resize', updatePosition)
+    // }, [updatePosition])
 
     return (
         <SelectPrimitive.Portal>
             <SelectPrimitive.Content
                 ref={ref}
+                position="popper"
+                sideOffset={8}
+                align="start"
+                avoidCollisions
+                collisionPadding={12}
                 className={cn(
-                    "relative z-[9999] min-w-[8rem] overflow-hidden rounded-xl border bg-popover/95 backdrop-blur-xl text-popover-foreground",
-                    "shadow-2xl",
-                    "data-[side=bottom]:animate-slideUpAndFade",
-                    "data-[side=top]:animate-slideDownAndFade",
+                    "z-[1000] min-w-[var(--radix-select-trigger-width)]",
+                    "max-h-72 overflow-hidden",
+                    "rounded-2xl border bg-white shadow-2xl",
+                    "data-[side=bottom]:animate-in data-[side=bottom]:fade-in-0 data-[side=bottom]:zoom-in-95",
+                    "data-[side=top]:animate-in data-[side=top]:fade-in-0 data-[side=top]:zoom-in-95",
                     className
                 )}
-                position={position}
-                sideOffset={sideOffset}
-                align={align}
-                avoidCollisions={true}
-                collisionBoundary="viewport"
-                collisionPadding={10}
                 {...props}
             >
-                {searchable && (
+            {searchable && (
                     <div className="p-2 border-b sticky top-0 bg-popover/95 backdrop-blur-xl z-10">
                         <input
                             value={search}
@@ -134,8 +134,8 @@ const SelectContent = React.forwardRef<
                     </div>
                 )}
 
-                <SelectPrimitive.Viewport className="p-1.5 max-h-60 overflow-y-auto">
-                    {filteredChildren}
+                <SelectPrimitive.Viewport className="p-2 max-h-72">
+                {filteredChildren}
                 </SelectPrimitive.Viewport>
             </SelectPrimitive.Content>
         </SelectPrimitive.Portal>

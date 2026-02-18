@@ -7,7 +7,11 @@ import {
     User,
     Globe,
     Languages,
-    Edit,
+    FileText,
+    Tag,
+    Users,
+    CalendarClock,
+    MessageSquare,
     DollarSign,
     Check
 } from "lucide-react"
@@ -15,16 +19,10 @@ import {
 import { Combobox } from "@/src/components/ui/Combobox"
 import { TranslatorSelect } from "@/src/components/ui/TranslatorSelect"
 import { FileUpload } from "@/src/components/ui/FileUpload"
-import { TranslatorTrafficIdField } from "@/src/components/ui/TranslatorTrafficIdField"
-import { LanguageSelectorCard } from "@/src/components/ui/LanguageSelectorCard"
+import { LanguageSelectorCompact } from "@/src/components/ui/LanguageSelectorCard"
 import { SwapButton } from "@/src/components/ui/SwapButton"
-import {
-    Select,
-    SelectTrigger,
-    SelectValue,
-    SelectContent,
-    SelectItem
-} from "@/src/components/ui/select"
+import { DeadlineSelector } from "@/src/components/ui/DeadlineSelector"
+import {Priority, PrioritySelector} from "@/src/components/ui/PrioritySelector"
 
 interface CreateOrderModalProps {
     open: boolean
@@ -32,39 +30,48 @@ interface CreateOrderModalProps {
     onSubmit: () => void
     loading: boolean
 
+    // Step 1: Client, Files, Languages
     clientId: string
     setClientId: (value: string) => void
-
+    files: File[]
+    setFiles: (files: File[]) => void
     sourceLanguage: string
     setSourceLanguage: (value: string) => void
-
     targetLanguage: string
     setTargetLanguage: (value: string) => void
 
-    editor: string
-    setEditor: (value: string) => void
-
+    // Step 2: Traffic/Tariff
     trafficId: string
+    setTrafficId: (value: string) => void
+    currencyId: string
+    setCurrencyId: (value: string) => void
     language: string
     setLanguage: (value: string) => void
 
+    // Step 3: Translator & Editor
+    selectedTranslatorId: number | null
+    setSelectedTranslatorId: (id: number | null) => void
+    editor: string
+    setEditor: (value: string) => void
     translatorTrafficId: string
     setTranslatorTrafficId: (value: string) => void
 
-    currencyId: string
-    setCurrencyId: (value: string) => void
+    // Step 4: Deadline & Comment
 
-    selectedTranslatorId: number | null
-    setSelectedTranslatorId: (id: number | null) => void
-
-    files: File[]
-    setFiles: (files: File[]) => void
-
+    // Data
     clients: any[]
     languages: any[]
     editors: any[]
     currencies: any[]
     translators: any[]
+    tariffs: any[]
+
+    deadline: Date | undefined
+    setDeadline: (date: Date | undefined) => void
+    comment: string
+    setComment: (value: string) => void
+    priority: Priority | undefined  // Дозволяємо undefined
+    setPriority: (value: Priority) => void
 }
 
 export function CreateOrderModal(props: CreateOrderModalProps) {
@@ -75,31 +82,47 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         onSubmit,
         loading,
 
+        // Step 1
         clientId,
         setClientId,
+        files,
+        setFiles,
         sourceLanguage,
         setSourceLanguage,
         targetLanguage,
         setTargetLanguage,
-        editor,
-        setEditor,
+
+        // Step 2
         trafficId,
-        language,
-        setLanguage,
-        translatorTrafficId,
-        setTranslatorTrafficId,
+        setTrafficId,
         currencyId,
         setCurrencyId,
+        language,
+        setLanguage,
+
+        // Step 3
         selectedTranslatorId,
         setSelectedTranslatorId,
-        files,
-        setFiles,
+        editor,
+        setEditor,
+        translatorTrafficId,
+        setTranslatorTrafficId,
 
+        // Step 4
+        deadline,
+        setDeadline,
+        comment,
+        setComment,
+        priority,
+        setPriority,
+
+        // Data
         clients,
         languages,
         editors,
         currencies,
         translators,
+        tariffs,
     } = props
 
     return (
@@ -108,26 +131,24 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             onOpenChange={onOpenChange}
             title="Create New Order"
             steps={[
-                { title: "Languages" },
+                { title: "Client & Files" },
+                { title: "Tariff" },
                 { title: "Assignment" },
-                { title: "Files" },
+                { title: "Deadline" },
             ]}
             isLoading={loading}
-            submitLabel="Create Order"
             onSubmit={onSubmit}
         >
 
-            {/* STEP 1 — LANGUAGES */}
+            {/* STEP 1 — CLIENT, FILES & LANGUAGES */}
             <WizardStep>
-                <div className="space-y-4">
-
+                <div className="space-y-6">
                     {/* Client */}
-                    <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-xs font-medium">
-                            <User className="h-3.5 w-3.5 text-blue-600" />
-                            Client
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <User className="h-4 w-4 text-blue-600" />
+                            Client <span className="text-red-500">*</span>
                         </label>
-
                         <Combobox
                             value={clientId}
                             onChange={setClientId}
@@ -140,100 +161,230 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         />
                     </div>
 
-                    {/* Source Language */}
-                    <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-xs font-medium">
-                            <Globe className="h-3.5 w-3.5 text-blue-600" />
-                            Source Language
-                        </label>
+                    {/* Languages - Compact side by side */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Globe className="h-4 w-4 text-blue-600" />
+                                Source <span className="text-red-500">*</span>
+                            </label>
+                            <Combobox
+                                value={sourceLanguage}
+                                onChange={setSourceLanguage}
+                                placeholder="Select source language"
+                                searchPlaceholder="Search language..."
+                                options={languages.map(lang => ({
+                                    value: String(lang.id),
+                                    label: lang.name,
+                                }))}
+                            />
+                        </div>
 
-                        <Select value={sourceLanguage} onValueChange={setSourceLanguage}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select source language" />
-                            </SelectTrigger>
-                            <SelectContent searchable>
-                                {languages.map(lang => (
-                                    <SelectItem key={lang.id} value={String(lang.id)}>
-                                        {lang.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Languages className="h-4 w-4 text-blue-600" />
+                                Target <span className="text-red-500">*</span>
+                            </label>
+                            <Combobox
+                                value={targetLanguage}
+                                onChange={setTargetLanguage}
+                                placeholder="Select target language"
+                                searchPlaceholder="Search language..."
+                                options={languages.map(lang => ({
+                                    value: String(lang.id),
+                                    label: lang.name,
+                                }))}
+                            />
+                        </div>
                     </div>
 
-                    {/* Target Language */}
-                    <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-xs font-medium">
-                            <Languages className="h-3.5 w-3.5 text-blue-600" />
-                            Target Language
+                    {/* Files */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <FileText className="h-4 w-4 text-blue-600" />
+                            Files <span className="text-red-500">*</span>
                         </label>
-
-                        <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select target language" />
-                            </SelectTrigger>
-                            <SelectContent searchable>
-                                {languages.map(lang => (
-                                    <SelectItem key={lang.id} value={String(lang.id)}>
-                                        {lang.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <FileUpload
+                            files={files}
+                            onFilesChange={setFiles}
+                        />
                     </div>
+
+                    <p className="text-xs text-gray-500 mt-2">
+                        <span className="text-red-500">*</span> Required fields
+                    </p>
                 </div>
             </WizardStep>
 
-            {/* STEP 2 — ASSIGNMENT */}
+            {/* STEP 2 — TARIFF */}
             <WizardStep>
-                <div className="space-y-10">
-
-                    <div className="text-center">
-                        <h2 className="text-2xl font-semibold">
-                            Select Languages
-                        </h2>
-                        <p className="text-muted-foreground text-sm mt-2">
-                            Choose source and target language
-                        </p>
+                <div className="space-y-6">
+                    {/* Tariff Selection */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Tag className="h-4 w-4 text-blue-600" />
+                            Tariff <span className="text-red-500">*</span>
+                        </label>
+                        <Combobox
+                            value={trafficId}
+                            onChange={setTrafficId}
+                            placeholder="Select tariff"
+                            searchPlaceholder="Search tariff..."
+                            options={tariffs?.map(tariff => ({
+                                value: String(tariff.id),
+                                label: tariff.name,
+                                description: `${tariff.price_per_word} USD/word`
+                            }))}
+                            renderOption={(option) => (
+                                <div className="flex items-center justify-between w-full">
+                                    <span>{option.label}</span>
+                                    {/*<span className="text-sm text-gray-500 ml-4">*/}
+                                    {/*    {option.description}*/}
+                                    {/*</span>*/}
+                                </div>
+                            )}
+                        />
                     </div>
 
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6">
-
-                        <LanguageSelectorCard
-                            label="Source Language"
-                            value={sourceLanguage}
-                            onChange={setSourceLanguage}
-                            languages={languages}
+                    {/* Currency */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <DollarSign className="h-4 w-4 text-blue-600" />
+                            Currency
+                        </label>
+                        <Combobox
+                            value={currencyId}
+                            onChange={setCurrencyId}
+                            placeholder="Select currency"
+                            searchPlaceholder="Search currency..."
+                            options={currencies.map(currency => ({
+                                value: String(currency.id),
+                                label: `${currency.code} - ${currency.symbol}`,
+                            }))}
                         />
-
-                        <SwapButton
-                            source={sourceLanguage}
-                            target={targetLanguage}
-                            setSource={setSourceLanguage}
-                            setTarget={setTargetLanguage}
-                        />
-
-                        <LanguageSelectorCard
-                            label="Target Language"
-                            value={targetLanguage}
-                            onChange={setTargetLanguage}
-                            languages={languages}
-                        />
-
                     </div>
 
+                    {/* Language Pair Info (if needed) */}
+                    {/*{sourceLanguage && targetLanguage && (*/}
+                    {/*    <div className="bg-blue-50 p-4 rounded-lg">*/}
+                    {/*        <p className="text-sm text-blue-700">*/}
+                    {/*            Translation from {languages.find(l => String(l.id) === sourceLanguage)?.name}*/}
+                    {/*            {' '}to {languages.find(l => String(l.id) === targetLanguage)?.name}*/}
+                    {/*        </p>*/}
+                    {/*    </div>*/}
+                    {/*)}*/}
                 </div>
             </WizardStep>
 
-
-
-            {/* STEP 3 — FILES */}
+            {/* STEP 3 — ASSIGNMENT (Translator & Editor) */}
             <WizardStep>
-                <div className="space-y-4">
-                    <FileUpload
-                        files={files}
-                        onFilesChange={setFiles}
+                <div className="space-y-6">
+                    {/* Translator */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Users className="h-4 w-4 text-blue-600" />
+                            Translator
+                        </label>
+                        <TranslatorSelect
+                            value={selectedTranslatorId}
+                            onChange={setSelectedTranslatorId}
+                            translators={translators}
+                            sourceLanguage={sourceLanguage}
+                            targetLanguage={targetLanguage}
+                            placeholder="Select translator (optional)"
+                        />
+                    </div>
+
+                    {/* Editor */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Users className="h-4 w-4 text-green-600" />
+                            Editor
+                        </label>
+                        <Combobox
+                            value={editor}
+                            onChange={setEditor}
+                            placeholder="Select editor (optional)"
+                            searchPlaceholder="Search editor..."
+                            options={editors.map(ed => ({
+                                value: String(ed.id),
+                                label: ed.full_name,
+                            }))}
+                        />
+                    </div>
+
+                    {/* Translator Traffic ID (if needed) */}
+                    {selectedTranslatorId && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">
+                                Translator Traffic ID
+                            </label>
+                            <input
+                                type="text"
+                                value={translatorTrafficId}
+                                onChange={(e) => setTranslatorTrafficId(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-md"
+                                placeholder="Enter traffic ID"
+                            />
+                        </div>
+                    )}
+                </div>
+            </WizardStep>
+
+            {/* STEP 4 — DEADLINE, PRIORITY & COMMENT */}
+            <WizardStep>
+                <div className="space-y-6">
+                    {/* Priority */}
+                    <PrioritySelector
+                        value={priority}
+                        onChange={setPriority}
+                        required
                     />
+
+                    {/* Deadline */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <CalendarClock className="h-4 w-4 text-blue-600" />
+                            Deadline <span className="text-red-500">*</span>
+                        </label>
+                        <DeadlineSelector
+                            value={deadline}
+                            onChange={setDeadline}
+                            minDate={new Date()}
+                        />
+                    </div>
+
+                    {/* Comment */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <MessageSquare className="h-4 w-4 text-blue-600" />
+                            Comment
+                        </label>
+                        <textarea
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            placeholder="Add any additional notes or instructions..."
+                            className="w-full px-3 py-2 border rounded-md min-h-[120px] resize-y"
+                        />
+                    </div>
+
+                    {/* Summary Card */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium mb-2">Order Summary</h4>
+                        <div className="space-y-1 text-sm text-gray-600">
+                            <p>• Client: {clients.find(c => String(c.id) === clientId)?.full_name || 'Not selected'}</p>
+                            <p>• Files: {files.length} file(s)</p>
+                            <p>• Languages: {
+                                languages.find(l => String(l.id) === sourceLanguage)?.name || '?'} → {
+                                languages.find(l => String(l.id) === targetLanguage)?.name || '?'
+                            }</p>
+                            <p>• Tariff: {tariffs?.find(t => String(t.id) === trafficId)?.name || 'Not selected'}</p>
+                            <p>• Priority: {
+                                priority || 'none'
+                            }</p>
+                            <p>• Deadline: {deadline?.toLocaleDateString() || 'Not set'}</p>
+                        </div>
+                    </div>
                 </div>
             </WizardStep>
 

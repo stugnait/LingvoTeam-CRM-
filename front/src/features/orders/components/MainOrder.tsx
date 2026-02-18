@@ -8,6 +8,7 @@ import { Plus } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CreateOrderModal } from "./CreateOrderForm"
 import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
+import {Priority} from "@/src/components/ui/PrioritySelector";
 
 export default function CreateOrderPage() {
     const {
@@ -17,12 +18,9 @@ export default function CreateOrderPage() {
         loadOrderDetails,
         languagePairs,
         translatorsCache,
-        // Дані з хука
         clients,
         languages,
         editors,
-        // trafficTypes,
-        // currencyList,
         currencies,
         translators
     } = useOrders()
@@ -42,6 +40,11 @@ export default function CreateOrderPage() {
     const [currencyId, setCurrencyId] = useState<string>("")
     const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
     const [files, setFiles] = useState<File[]>([])
+
+    // Нові стани для 4-го кроку
+    const [deadline, setDeadline] = useState<Date | undefined>(undefined)  // ✅ змінено з deadlines на deadline
+    const [comment, setComment] = useState<string>("")  // ✅ додано comment
+    const [priority, setPriority] = useState<Priority | undefined>(undefined)  // ✅ змінено з null на undefined
 
     const searchParams = useSearchParams()
     const highlightId = Number(searchParams.get("highlight"))
@@ -70,6 +73,9 @@ export default function CreateOrderPage() {
             editor_id: Number(editor),
             translator_id: selectedTranslatorId ?? undefined,
             files,
+            deadline: deadline?.toISOString(), // ✅ додаємо deadline
+            priority, // ✅ додаємо priority
+            comment, // ✅ додаємо comment
         })
 
         // Reset form
@@ -83,6 +89,9 @@ export default function CreateOrderPage() {
         setCurrencyId("")
         setSelectedTranslatorId(null)
         setFiles([])
+        setDeadline(undefined)  // ✅ скидаємо deadline
+        setComment("")  // ✅ скидаємо comment
+        setPriority(undefined)  // ✅ скидаємо priority
         setIsModalOpen(false)
     }
 
@@ -113,37 +122,43 @@ export default function CreateOrderPage() {
                 onOpenChange={setIsModalOpen}
                 onSubmit={handleSubmit}
                 loading={loading}
-                // Form states
+                // Step 1
                 clientId={clientId}
                 setClientId={setClientId}
                 sourceLanguage={sourceLanguage}
                 setSourceLanguage={setSourceLanguage}
                 targetLanguage={targetLanguage}
                 setTargetLanguage={setTargetLanguage}
-                editor={editor}
-                setEditor={setEditor}
-                trafficId={trafficId}
-                setTrafficId={setTrafficId}
-                languagePairId={languagePairId}
-                language={language}
-                setLanguage={setLanguage}
-                setLanguagePairId={setLanguagePairId}
-                translatorTrafficId={translatorTrafficId}
-                setTranslatorTrafficId={setTranslatorTrafficId}
-                currencyId={currencyId}
-                setCurrencyId={setCurrencyId}
-                selectedTranslatorId={selectedTranslatorId}
-                setSelectedTranslatorId={setSelectedTranslatorId}
                 files={files}
                 setFiles={setFiles}
-                // Data from hooks
+                // Step 2
+                trafficId={trafficId}
+                setTrafficId={setTrafficId}
+                currencyId={currencyId}
+                setCurrencyId={setCurrencyId}
+                language={language}
+                setLanguage={setLanguage}
+                // Step 3
+                selectedTranslatorId={selectedTranslatorId}
+                setSelectedTranslatorId={setSelectedTranslatorId}
+                editor={editor}
+                setEditor={setEditor}
+                translatorTrafficId={translatorTrafficId}
+                setTranslatorTrafficId={setTranslatorTrafficId}
+                // Step 4 - ✅ виправлено назви
+                deadline={deadline}
+                setDeadline={setDeadline}
+                comment={comment}
+                setComment={setComment}
+                priority={priority}
+                setPriority={setPriority}
+                // Data
                 clients={clients || []}
                 languages={languages || []}
                 editors={editors || []}
-                // trafficTypes={trafficTypes || []}
-                // languagePairs={languagePairs || []}
                 currencies={currencies || []}
                 translators={translators || []}
+                tariffs={[]} // Потрібно буде додати з useOrders
             />
         </>
     )
