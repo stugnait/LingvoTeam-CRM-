@@ -340,6 +340,22 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             targetLanguage={targetLanguage}
                             placeholder="Select translator (optional)"
                         />
+                        {/* <TranslatorSelect
+                            value={selectedTranslatorId}
+                            translators={translators}
+                            sourceLanguage={sourceLanguage}
+                            targetLanguage={targetLanguage}
+                            placeholder="Select translator (optional)"
+                            orderTrafficId={trafficId ? Number(trafficId) : null}
+                            orderPricePerPage={selectedTariff?.price_per_page ?? null}
+                            onChange={(translatorId, translatorTrafficId) => {
+                                setSelectedTranslatorId(translatorId)
+                                setTranslatorTrafficId(
+                                translatorTrafficId ? String(translatorTrafficId) : ""
+                                )
+                            }}
+                            /> */}
+
                     </div>
 
                     {/* Editor */}
