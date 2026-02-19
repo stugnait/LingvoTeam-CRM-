@@ -12,23 +12,39 @@ class Priority(models.TextChoices):
 
 
 class OrderTrafficSerializer(serializers.ModelSerializer):
-    language_pair_name = serializers.StringRelatedField(source='language_pair', read_only=True)
     currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
-
+    currency_sign = serializers.CharField(source='currency_id.code_name', read_only=True, default="")
     category_name = serializers.CharField(source='category.name', read_only=True, default="Загальна")
+
+    source_language = serializers.CharField(source='language_pair.source_language.name', default="-", read_only=True)
+    target_language = serializers.CharField(source='language_pair.target_language.name', default="-", read_only=True)
+
+    language_pair_name = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderTraffic
         fields = [
             'id',
+            'name',
+
             'language_pair',
-            'language_pair_name',
             'currency_id',
-            'currency_name',
             'category',
-            'category_name',
             'price_per_page',
+            'price_per_action',
+
+            'language_pair_name',
+            'source_language',
+            'target_language',
+            'currency_name',
+            'currency_sign',
+            'category_name',
         ]
+
+    def get_language_pair_name(self, obj):
+        if obj.language_pair:
+            return str(obj.language_pair)
+        return "-"
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):

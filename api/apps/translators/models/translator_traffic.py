@@ -41,5 +41,9 @@ class TranslatorTraffic(models.Model):
         related_name='translator_tariffs'
     )
 
+
+
+    name = models.CharField(max_length=255, blank=True, default="")
+
     class Meta:
         db_table = 'translator_traffic'

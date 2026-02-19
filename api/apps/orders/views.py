@@ -99,9 +99,12 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
         SearchFilter
     ]
 
-    ordering_fields = ['price_per_page', 'id']
+    search_fields = ['name']
+    ordering_fields = ['price_per_page', 'id', 'name', 'position', 'created_at', 'deadline']
     ordering = ['id']
     filterset_class = OrderTrafficFilter
+
+    ordering = ['position']
 
 
 @extend_schema_view(
@@ -598,7 +601,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
         dbx = get_dbx()
         results = []
-        reader = easyocr.Reader([source_slug], gpu=True)
+        reader = easyocr.Reader([source_slug], gpu=False)
 
         for f in files:
             if not f.dropbox_url:
