@@ -208,18 +208,38 @@ export interface LanguagePair {
     pair_name: string
 }
 
-export interface AnalyzeImagesResultItem {
+export interface FileStats {
+    chars_with_spaces: number
+    chars_no_spaces: number
+    images: number
+    pages: number
+}
+
+export interface CalculateStatsResponse {
+    total_stats: {
+        chars_with_spaces: number
+        chars_no_spaces: number
+        images: number
+        physical_pages: number
+    }
+    files: {
+        filename: string
+        stats: FileStats
+    }[]
+}
+
+export interface AnalyzeImageFileResult {
     file_id: number
-    file_type?: string
-    images_found?: number
-    detected_symbols_from_images?: number
-    preview_text?: string
+    file_type: string
+    images_found: number
+    detected_symbols_from_images: number
+    preview_text: string
     error?: string
 }
 
 export interface AnalyzeImagesResponse {
     order_id: number
-    results: AnalyzeImagesResultItem[]
+    results: AnalyzeImageFileResult[]
 }
 
 export interface OrderTraffic {

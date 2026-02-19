@@ -1,6 +1,6 @@
 "use client"
 
-import {useCallback, useEffect, useState} from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ordersApi } from "../api"
 import type {
     CreateOrderPayload,
@@ -8,61 +8,88 @@ import type {
     OrderListItem,
     Details,
     LanguagePair,
-    Translator, Client, Language, Editor, Currency, OrderTraffic
+    Translator,
+    Client,
+    Language,
+    Editor,
+    Currency,
+    OrderTraffic,
 } from "../types"
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import {translatorsApi} from "@/src/features/translators/api";
 
 export function useOrders() {
     const { toast } = useToast()
     const router = useRouter()
-    const [translators, setTranslators] = useState<Translator[]>([])
-    const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
 
+    /* =========================
+       STATE
+    ========================= */
+
+    const [loading, setLoading] = useState(false)
+
+    const [orders, setOrders] = useState<OrderListItem[]>([])
+    const [order, setOrder] = useState<CreateOrderResponse | null>(null)
+    const [orderDetail, setOrderDetails] = useState<Details | null>(null)
+
+    const [translators, setTranslators] = useState<Translator[]>([])
     const [clients, setClients] = useState<Client[]>([])
     const [languages, setLanguages] = useState<Language[]>([])
     const [editors, setEditors] = useState<Editor[]>([])
     const [currencies, setCurrencies] = useState<Currency[]>([])
     const [traffics, setTraffics] = useState<OrderTraffic[]>([])
 
-
-    const [loading, setLoading] = useState(false)
-    const [order, setOrder] = useState<CreateOrderResponse | null>(null)
-    const [orderDetail, setOrderDetails] = useState<Details | null>(null)
     const [languagePairs, setLanguagePairs] = useState<Record<number, LanguagePair>>({})
     const [translatorsCache, setTranslatorsCache] = useState<Record<number, Translator>>({})
 
-    const [orders, setOrders] = useState<OrderListItem[]>([])
+    const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
+
+    const initialLoadedRef = useRef(false)
+
+    /* =========================
+       HELPERS
+    ========================= */
+
+    const handleError = (e: any, fallback: string) => {
+        toast({
+            title: "Error",
+            description: e?.detail || fallback,
+            variant: "error",
+        })
+    }
+
+
+
+
+    /* =========================
+       CREATE ORDER
+    ========================= */
 
     const createOrder = async (data: CreateOrderPayload) => {
-        setLoading(true)
-
         try {
+            setLoading(true)
+
             const formData = new FormData()
 
             formData.append("client_id", String(data.client_id))
             formData.append("source_language", String(data.source_language))
             formData.append("target_language", String(data.target_language))
             formData.append("traffic_id", String(data.traffic_id))
-            formData.append("translator_traffic_id", String(data.translator_traffic_id))
             formData.append("currency_id_id", String(data.currency_id_id))
-            formData.append("language_pair_id", String(data.language_pair_id))
             formData.append("editor_id", String(data.editor_id))
 
-            if (data.translator_id) {
-                formData.append("translator_id", String(data.translator_id))
-            }
+            if (data.translator_id)
+                {formData.append("translator_id", String(data.translator_id))}
 
-            if (data.translator_traffic_id) {
-                formData.append("translator_traffic_id", String(data.translator_traffic_id))
-            }
+            if (data.translator_traffic_id)
+                {formData.append("translator_traffic_id", String(data.translator_traffic_id))}
 
-            data.files?.forEach((file) => {
+            data.files?.forEach(file => {
                 formData.append("files", file)
             })
 
             const res = await ordersApi.create(formData)
+
             setOrder(res)
 
             toast({
@@ -72,65 +99,21 @@ export function useOrders() {
 
             router.push(`/orders/${res.order_id}`)
             return res
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.detail || "Failed to create order",
-                variant: "error",
-            })
+        } catch (e) {
+            handleError(e, "Failed to create order")
             throw e
         } finally {
             setLoading(false)
         }
     }
 
-    const loadTranslators = useCallback(async () => {
-        try {
-            setLoading(true)
-            const response = await ordersApi.list()
-            setTranslators(response.results)
-
-            // ✅ Кешуємо перекладачів одразу після завантаження
-            const cache: Record<number, Translator> = {}
-            response.results.forEach(translator => {
-                cache[translator.id] = translator
-            })
-            setTranslatorsCache(cache)
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to load translators",
-                variant: "error",
-            })
-        } finally {
-            setLoading(false)
-        }
-    }, [toast])
-
-    const loadOrders = useCallback(async () => {
-        try {
-            setLoading(true)
-            const response = await ordersApi.listOrders()
-            setOrders(response.results)
-
-            // ✅ Завантажуємо мовні пари
-            await Promise.all(
-                response.results.map(o =>
-                    loadLanguagePair(o.language_pair_id)
-                )
-            )
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to load orders",
-                variant: "error",
-            })
-        } finally {
-            setLoading(false)
-        }
-    }, [])
+    /* =========================
+       LOAD INITIAL DATA
+    ========================= */
 
     const loadInitialData = useCallback(async () => {
+        if (initialLoadedRef.current) {return}
+
         try {
             setLoading(true)
 
@@ -141,7 +124,7 @@ export function useOrders() {
                 languagesRes,
                 editorsRes,
                 currencyRes,
-                orderTrafficRes
+                orderTrafficRes,
             ] = await Promise.all([
                 ordersApi.list(),
                 ordersApi.listOrders(),
@@ -152,7 +135,7 @@ export function useOrders() {
                 ordersApi.listTraffic(),
             ])
 
-            // ---- Translators ----
+            // Translators
             setTranslators(translatorsRes.results)
 
             const translatorsMap: Record<number, Translator> = {}
@@ -161,39 +144,39 @@ export function useOrders() {
             })
             setTranslatorsCache(translatorsMap)
 
-            // ---- Orders ----
+            // Orders
             setOrders(ordersRes.results)
-            setCurrencies(currencyRes.results)
 
-            // ---- Clients / Languages / Editors ----
-            // ⚠️ у тебе зараз нема state для них — треба додати
+            // Dictionaries
             setClients(clientsRes.results)
             setLanguages(languagesRes.results)
             setEditors(editorsRes.results)
+            setCurrencies(currencyRes.results)
             setTraffics(orderTrafficRes.results)
 
-            // ---- Language pairs (без дублювання) ----
+            // Language pairs
             const uniquePairIds = [
-                ...new Set(ordersRes.results.map(o => o.language_pair_id))
+                ...new Set(ordersRes.results.map(o => o.language_pair_id)),
             ]
 
-            const pairs = await Promise.all(
-                uniquePairIds.map(id => ordersApi.getLanguagePairById(id))
-            )
+            if (uniquePairIds.length > 0) {
+                const pairs = await Promise.all(
+                    uniquePairIds.map(id =>
+                        ordersApi.getLanguagePairById(id)
+                    )
+                )
 
-            const pairsMap: Record<number, LanguagePair> = {}
-            pairs.forEach(pair => {
-                pairsMap[pair.id] = pair
-            })
+                const pairsMap: Record<number, LanguagePair> = {}
+                pairs.forEach(pair => {
+                    pairsMap[pair.id] = pair
+                })
 
-            setLanguagePairs(pairsMap)
+                setLanguagePairs(pairsMap)
+            }
 
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.detail || "Failed to load initial data",
-                variant: "error",
-            })
+            initialLoadedRef.current = true
+        } catch (e) {
+            handleError(e, "Failed to load initial data")
         } finally {
             setLoading(false)
         }
@@ -203,6 +186,9 @@ export function useOrders() {
         loadInitialData()
     }, [loadInitialData])
 
+    /* =========================
+       LOAD ORDER DETAILS
+    ========================= */
 
     const loadOrderDetails = async (orderId: number): Promise<Details> => {
         try {
@@ -210,67 +196,73 @@ export function useOrders() {
             const res = await ordersApi.getById(orderId)
             setOrderDetails(res)
             return res
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.detail || "Failed to load order details",
-                variant: "error",
-            })
+        } catch (e) {
+            handleError(e, "Failed to load order details")
             throw e
         } finally {
             setLoading(false)
         }
     }
 
-    const loadLanguagePair = useCallback(async (pairId: number) => {
-        if (languagePairs[pairId]) {
-            return languagePairs[pairId]
-        }
+    /* =========================
+       LANGUAGE PAIR CACHE
+    ========================= */
 
-        const pair = await ordersApi.getLanguagePairById(pairId)
+    const loadLanguagePair = useCallback(
+        async (pairId: number) => {
+            if (languagePairs[pairId]) {
+                return languagePairs[pairId]
+            }
 
-        setLanguagePairs(prev => ({
-            ...prev,
-            [pairId]: pair,
-        }))
+            const pair = await ordersApi.getLanguagePairById(pairId)
 
-        return pair
-    }, [languagePairs])
+            setLanguagePairs(prev => ({
+                ...prev,
+                [pairId]: pair,
+            }))
 
-    // ✅ Функція для отримання перекладача по ID
-    const getTranslatorById = useCallback((translatorId: number | null): Translator | null => {
-        if (!translatorId) {return null}
-        return translatorsCache[translatorId] || null
-    }, [translatorsCache])
+            return pair
+        },
+        [languagePairs]
+    )
 
-    // useEffect(() => {
-    //     loadTranslators()
-    //     loadOrders()
-    // }, [loadTranslators, loadOrders])
+    /* =========================
+       TRANSLATOR CACHE
+    ========================= */
+
+    const getTranslatorById = useCallback(
+        (translatorId: number | null): Translator | null => {
+            if (!translatorId) {return null}
+            return translatorsCache[translatorId] || null
+        },
+        [translatorsCache]
+    )
+
+    /* =========================
+       RETURN
+    ========================= */
 
     return {
-        // CREATE
-        createOrder,
-
-        // READ
+        // state
+        loading,
         orders,
         order,
-        loadOrders,
-        loadOrderDetails,
-        loadLanguagePair,
-        languagePairs,
-        loadInitialData,
+        orderDetail,
+        translators,
         clients,
+        languages,
         editors,
         currencies,
         traffics,
+        languagePairs,
 
-        // UI
-        loading,
-        languages,
+        // actions
+        createOrder,
+        loadOrderDetails,
+        loadLanguagePair,
+        loadInitialData,
 
-        // TRANSLATORS
-        translators,
+        // translators
         translatorsCache,
         getTranslatorById,
         selectedTranslatorId,

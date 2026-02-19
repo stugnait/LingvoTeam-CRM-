@@ -1,8 +1,8 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
 import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
-
 import {
     User,
     Globe,
@@ -13,17 +13,15 @@ import {
     CalendarClock,
     MessageSquare,
     DollarSign,
-    Check
 } from "lucide-react"
 
 import { Combobox } from "@/src/components/ui/Combobox"
 import { TranslatorSelect } from "@/src/components/ui/TranslatorSelect"
 import { FileUpload } from "@/src/components/ui/FileUpload"
-import { LanguageSelectorCompact } from "@/src/components/ui/LanguageSelectorCard"
-import { SwapButton } from "@/src/components/ui/SwapButton"
 import { DeadlineSelector } from "@/src/components/ui/DeadlineSelector"
-import {Priority, PrioritySelector} from "@/src/components/ui/PrioritySelector"
-import {useEffect} from "react";
+import { Priority, PrioritySelector } from "@/src/components/ui/PrioritySelector"
+import { useOrderAnalysis } from "@/src/features/orders/hooks/useOrderAnalysis"
+import {ordersApi} from "@/src/features/orders/api";
 
 interface CreateOrderModalProps {
     open: boolean
@@ -31,7 +29,6 @@ interface CreateOrderModalProps {
     onSubmit: () => void
     loading: boolean
 
-    // Step 1: Client, Files, Languages
     clientId: string
     setClientId: (value: string) => void
     files: File[]
@@ -41,15 +38,11 @@ interface CreateOrderModalProps {
     targetLanguage: string
     setTargetLanguage: (value: string) => void
 
-    // Step 2: Traffic/Tariff
     trafficId: string
     setTrafficId: (value: string) => void
     currencyId: string
     setCurrencyId: (value: string) => void
-    language: string
-    setLanguage: (value: string) => void
 
-    // Step 3: Translator & Editor
     selectedTranslatorId: number | null
     setSelectedTranslatorId: (id: number | null) => void
     editor: string
@@ -57,9 +50,6 @@ interface CreateOrderModalProps {
     translatorTrafficId: string
     setTranslatorTrafficId: (value: string) => void
 
-    // Step 4: Deadline & Comment
-
-    // Data
     clients: any[]
     languages: any[]
     editors: any[]
@@ -71,19 +61,16 @@ interface CreateOrderModalProps {
     setDeadline: (date: Date | undefined) => void
     comment: string
     setComment: (value: string) => void
-    priority: Priority | undefined  // Дозволяємо undefined
+    priority: Priority | undefined
     setPriority: (value: Priority) => void
 }
 
 export function CreateOrderModal(props: CreateOrderModalProps) {
-
     const {
         open,
         onOpenChange,
         onSubmit,
         loading,
-
-        // Step 1
         clientId,
         setClientId,
         files,
@@ -92,52 +79,63 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         setSourceLanguage,
         targetLanguage,
         setTargetLanguage,
-
-        // Step 2
         trafficId,
         setTrafficId,
         currencyId,
         setCurrencyId,
-        language,
-        setLanguage,
-
-        // Step 3
         selectedTranslatorId,
         setSelectedTranslatorId,
         editor,
         setEditor,
         translatorTrafficId,
         setTranslatorTrafficId,
-
-        // Step 4
-        deadline,
-        setDeadline,
-        comment,
-        setComment,
-        priority,
-        setPriority,
-
-        // Data
         clients,
         languages,
         editors,
         currencies,
         translators,
         tariffs,
+        deadline,
+        setDeadline,
+        comment,
+        setComment,
+        priority,
+        setPriority,
     } = props
+
+    const {
+        calculateStats,
+        statsResult,
+        statsLoading,
+        analyzeOrderFiles,
+        analysisResult,
+        analysisLoading,
+    } = useOrderAnalysis()
+
+    const [filesConfirmed, setFilesConfirmed] = useState(false)
+    const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
+
+    const handleConfirmFiles = async () => {
+        if (!files.length) {return}
+        await calculateStats(files)
+        setFilesConfirmed(true)
+    }
+
+    const handleAnalyzeImages = async () => {
+        if (!files.length) {return}
+
+        await analyzeOrderFiles(files)
+        setImagesAnalyzed(true)
+    }
+
 
     useEffect(() => {
         if (!trafficId) {return}
-
-        const selectedTariff = tariffs?.find(
-            t => String(t.id) === trafficId
-        )
-
+        const selectedTariff = tariffs?.find(t => String(t.id) === trafficId)
         if (selectedTariff?.currency_id) {
             setCurrencyId(String(selectedTariff.currency_id))
         }
     }, [trafficId, tariffs])
-
 
     return (
         <WizardModal
@@ -154,81 +152,116 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             onSubmit={onSubmit}
         >
 
-            {/* STEP 1 — CLIENT, FILES & LANGUAGES */}
+            {/* =========================
+   STEP 1
+========================= */}
             <WizardStep>
                 <div className="space-y-6">
+
                     {/* Client */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-medium">
                             <User className="h-4 w-4 text-blue-600" />
-                            Client <span className="text-red-500">*</span>
+                            Client *
                         </label>
                         <Combobox
                             value={clientId}
                             onChange={setClientId}
                             placeholder="Select client"
-                            searchPlaceholder="Search client..."
-                            options={clients.map(client => ({
-                                value: String(client.id),
-                                label: client.full_name,
+                            options={clients.map(c => ({
+                                value: String(c.id),
+                                label: c.full_name,
                             }))}
                         />
                     </div>
 
-                    {/* Languages - Compact side by side */}
+                    {/* Languages */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                <Globe className="h-4 w-4 text-blue-600" />
-                                Source <span className="text-red-500">*</span>
-                            </label>
-                            <Combobox
-                                value={sourceLanguage}
-                                onChange={setSourceLanguage}
-                                placeholder="Select source language"
-                                searchPlaceholder="Search language..."
-                                options={languages.map(lang => ({
-                                    value: String(lang.id),
-                                    label: lang.name,
-                                }))}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                <Languages className="h-4 w-4 text-blue-600" />
-                                Target <span className="text-red-500">*</span>
-                            </label>
-                            <Combobox
-                                value={targetLanguage}
-                                onChange={setTargetLanguage}
-                                placeholder="Select target language"
-                                searchPlaceholder="Search language..."
-                                options={languages.map(lang => ({
-                                    value: String(lang.id),
-                                    label: lang.name,
-                                }))}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Files */}
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <FileText className="h-4 w-4 text-blue-600" />
-                            Files <span className="text-red-500">*</span>
-                        </label>
-                        <FileUpload
-                            files={files}
-                            onFilesChange={setFiles}
+                        <Combobox
+                            value={sourceLanguage}
+                            onChange={setSourceLanguage}
+                            placeholder="Source language"
+                            options={languages.map(l => ({
+                                value: String(l.id),
+                                label: l.name,
+                            }))}
+                        />
+                        <Combobox
+                            value={targetLanguage}
+                            onChange={setTargetLanguage}
+                            placeholder="Target language"
+                            options={languages.map(l => ({
+                                value: String(l.id),
+                                label: l.name,
+                            }))}
                         />
                     </div>
 
-                    <p className="text-xs text-gray-500 mt-2">
-                        <span className="text-red-500">*</span> Required fields
-                    </p>
+                    {/* Files */}
+                    <FileUpload
+                        files={files}
+                        onFilesChange={(f) => {
+                            setFiles(f)
+                            setFilesConfirmed(false)
+                            setImagesAnalyzed(false)
+                        }}
+                    />
+
+                    {/* Confirm files button */}
+                    {!filesConfirmed && (
+                        <button
+                            type="button"
+                            onClick={handleConfirmFiles}
+                            disabled={!files.length || statsLoading}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                        >
+                            {statsLoading ? "Calculating..." : "Confirm files"}
+                        </button>
+                    )}
+
+                    {/* Stats result */}
+                    {statsResult && (
+                        <div className="bg-gray-100 p-4 rounded-lg text-sm">
+                            <p>Pages: {statsResult.total_stats.physical_pages}</p>
+                            <p>Chars (with spaces): {statsResult.total_stats.chars_with_spaces}</p>
+                            <p>Images: {statsResult.total_stats.images}</p>
+                        </div>
+                    )}
+
+                    {/* OCR button */}
+                    {filesConfirmed && !imagesAnalyzed && (
+                        <button
+                            type="button"
+                            onClick={handleAnalyzeImages}
+                            disabled={analysisLoading}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-md"
+                        >
+                            {analysisLoading ? "Analyzing images..." : "Analyze images (OCR)"}
+                        </button>
+                    )}
+
+                    {/* OCR result */}
+                    {analysisResult && (
+                        <div className="bg-purple-50 p-4 rounded-lg text-sm">
+                            <p className="text-purple-700 font-medium">
+                                OCR completed successfully
+                            </p>
+                            {analysisResult.total_words && (
+                                <p>Total words detected: {analysisResult.total_words}</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Success indicator */}
+                    {imagesAnalyzed && !analysisLoading && (
+                        <div className="text-green-600 text-sm font-medium">
+                            Images analysis completed
+                        </div>
+                    )}
                 </div>
             </WizardStep>
+
+
 
             {/* STEP 2 — TARIFF */}
             <WizardStep>

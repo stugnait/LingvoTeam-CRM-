@@ -18,7 +18,7 @@ import {
     Client,
     Language,
     Editor,
-    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse
+    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse
 } from "./types"
 
 
@@ -83,4 +83,23 @@ export const ordersApi = {
         apiFetch<OrderTrafficListResponse>(`orders/order-traffic/`, {
             method: "GET"
         }),
+    calculateStats: (files: File[]) => {
+        const formData = new FormData()
+        files.forEach(file => formData.append("files", file))
+
+        return apiFetch<CalculateStatsResponse>(
+            "orders/calculate-stats/",
+            {
+                method: "POST",
+                body: formData,
+            }
+        )
+    },
+    analyzeOrderFiles: (orderId: number) =>
+        apiFetch<AnalyzeImagesResponse>(
+            `orders/${orderId}/analyze-images/`,
+            {
+                method: "POST",
+            }
+        ),
 }

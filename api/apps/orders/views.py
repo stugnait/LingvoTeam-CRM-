@@ -598,7 +598,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
         dbx = get_dbx()
         results = []
-        reader = easyocr.Reader([source_slug], gpu=False)
+        reader = easyocr.Reader([source_slug], gpu=True)
 
         for f in files:
             if not f.dropbox_url:

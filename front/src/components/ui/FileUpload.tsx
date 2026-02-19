@@ -11,8 +11,17 @@ interface FileUploadProps {
 
 export function FileUpload({ files, onFilesChange }: FileUploadProps) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onFilesChange(e.target.files ? Array.from(e.target.files) : [])
+        if (!e.target.files) {return}
+
+        const newFiles = Array.from(e.target.files)
+
+        // Додаємо нові файли до вже існуючих
+        onFilesChange([...files, ...newFiles])
+
+        // Очищаємо input, щоб можна було вибрати ті ж файли повторно
+        e.target.value = ""
     }
+
 
     const removeFile = (indexToRemove: number) => {
         onFilesChange(files.filter((_, index) => index !== indexToRemove))
