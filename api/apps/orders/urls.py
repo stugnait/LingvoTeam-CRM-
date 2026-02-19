@@ -4,9 +4,9 @@ from .views import OrderViewSet, OrderTrafficViewSet
 
 router = DefaultRouter()
 
-router.register(r'', OrderViewSet, basename='orders')
-
 router.register(r'order-traffic', OrderTrafficViewSet, basename='order-traffic')
+
+router.register(r'', OrderViewSet, basename='orders')
 
 urlpatterns = [
     path('', include(router.urls)),

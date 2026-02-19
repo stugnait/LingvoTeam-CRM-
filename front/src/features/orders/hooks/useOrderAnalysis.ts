@@ -1,0 +1,90 @@
+"use client"
+
+import { useState } from "react"
+import { ordersApi } from "../api"
+import type {
+    CalculateStatsResponse,
+    AnalyzeImagesResponse,
+} from "../types"
+import { useToast } from "@/src/hooks/use-toast"
+
+export function useOrderAnalysis() {
+    const { toast } = useToast()
+
+    /* =========================
+       STATE
+    ========================= */
+
+    const [statsLoading, setStatsLoading] = useState(false)
+    const [analysisLoading, setAnalysisLoading] = useState(false)
+
+    const [statsResult, setStatsResult] =
+        useState<CalculateStatsResponse | null>(null)
+
+    const [analysisResult, setAnalysisResult] =
+        useState<AnalyzeImagesResponse | null>(null)
+
+    /* =========================
+       CALCULATE FILE STATS
+    ========================= */
+
+    const calculateStats = async (files: File[]) => {
+        try {
+            setStatsLoading(true)
+
+            const res = await ordersApi.calculateStats(files)
+
+            setStatsResult(res)
+            return res
+        } catch (e: any) {
+            toast({
+                title: "Error",
+                description: e?.detail || "Failed to calculate file stats",
+                variant: "error",
+            })
+            throw e
+        } finally {
+            setStatsLoading(false)
+        }
+    }
+
+    /* =========================
+       ANALYZE ORDER FILES (OCR)
+    ========================= */
+
+    const analyzeOrderFiles = async (orderId: number) => {
+        try {
+            setAnalysisLoading(true)
+
+            const res = await ordersApi.analyzeOrderFiles(orderId)
+
+            setAnalysisResult(res)
+            return res
+        } catch (e: any) {
+            toast({
+                title: "Error",
+                description: e?.detail || "Failed to analyze images",
+                variant: "error",
+            })
+            throw e
+        } finally {
+            setAnalysisLoading(false)
+        }
+    }
+
+    /* =========================
+       RETURN
+    ========================= */
+
+    return {
+        // stats
+        calculateStats,
+        statsResult,
+        statsLoading,
+
+        // analysis
+        analyzeOrderFiles,
+        analysisResult,
+        analysisLoading,
+    }
+}

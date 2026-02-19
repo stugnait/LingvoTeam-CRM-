@@ -54,6 +54,7 @@ from .serializers import (
     RejectTranslationSerializer, ApproveTranslationSerializer,
     OrderListSerializer, UploadFileSerializer
 )
+from .utils import analyze_file_content
 from ..core.models import LanguagePair, Language
 from ..core.serializers import LanguagePairSelectSerializer
 from ..notifications.models import Notification
@@ -68,15 +69,14 @@ from django_filters import rest_framework as filters
 logger = logging.getLogger(__name__)
 
 
-
 class OrderTrafficFilter(filters.FilterSet):
-    status = filters.AllValuesFilter(field_name='status')
-    client = filters.AllValuesFilter(field_name='client')
-    manager = filters.AllValuesFilter(field_name='manager')
+    currency = filters.AllValuesFilter(field_name='currency_id')
+    category = filters.AllValuesFilter(field_name='category')
+    language_pair = filters.AllValuesFilter(field_name='language_pair')
 
     class Meta:
         model = OrderTraffic
-        fields = ['status', 'client', 'manager']
+        fields = ['currency', 'category', 'language_pair']
 
 @extend_schema_view(
     list=extend_schema(summary="Список трафіку замовлень", tags=["Order Pricing"]),
@@ -99,10 +99,9 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
         SearchFilter
     ]
 
+    ordering_fields = ['price_per_page', 'id']
+    ordering = ['id']
     filterset_class = OrderTrafficFilter
-
-    ordering_fields = ['position', 'created_at', 'deadline']
-    ordering = ['position']
 
 
 @extend_schema_view(
@@ -178,50 +177,54 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        # 1. Обробка даних запиту
         data = request.data.dict() if hasattr(request.data, 'getlist') else request.data.copy()
-
         if hasattr(request.data, 'getlist'):
             files_list = request.data.getlist('files')
             if files_list:
                 data['files'] = files_list
 
-        raw_amount = data.get('total_amount')
-        try:
-            if raw_amount is not None and str(raw_amount).strip() != '':
-                final_total_amount = Decimal(str(raw_amount))
-            else:
-                final_total_amount = Decimal('0.00')
-        except (InvalidOperation, ValueError):
-            final_total_amount = Decimal('0.00')
-
-        # 2. Отримання мовної пари
-        raw_lp_id = data.get('language_pair_id') or data.get('language_pair')
-        language_pair_instance = self._get_language_pair(raw_lp_id)
-
-        # 3. Валідація
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
+
+        source_id = serializer.validated_data.pop('source_language')
+        target_id = serializer.validated_data.pop('target_language')
+
         serializer.validated_data.pop('files', None)
 
-        status_instance = get_object_or_404(Status, slug="in_translation")
+        try:
+            language_pair_instance, created = LanguagePair.objects.get_or_create(
+                source_language_id=source_id,
+                target_language_id=target_id
+            )
+        except Exception as e:
+            return Response({"detail": f"Помилка з мовною парою: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 4. Створення замовлення
+        raw_amount = data.get('total_amount')
+        final_total_amount = Decimal('0.00')
+        if raw_amount and str(raw_amount).strip():
+            try:
+                final_total_amount = Decimal(str(raw_amount))
+            except:
+                pass
+
+        status_in_progress = get_object_or_404(Status, slug="in_translation")
+
         order = serializer.save(
             manager_id=request.user,
-            editor_id_id=data.get('editor_id'),
-            status_id=status_instance,
-            client_status=status_instance,
-            translator_status=status_instance,
             language_pair_id=language_pair_instance,
-            client_id_id=data.get('client_id'),
+
+            status_id=status_in_progress,
+            client_status=status_in_progress,
+            translator_status=status_in_progress,
+
+            total_amount=final_total_amount,
+
+            editor_id_id=data.get('editor_id'),
             traffic_id_id=data.get('traffic_id'),
             translator_id_id=data.get('translator_id'),
             translator_traffic_id_id=data.get('translator_traffic_id'),
-            total_amount=final_total_amount
         )
 
-        # 5. Генерація посилань
         generated_link_slug = str(uuid.uuid4())
         generated_password = secrets.token_urlsafe(8)
         expire_date = timezone.now() + timedelta(days=45)
@@ -234,47 +237,136 @@ class OrderViewSet(viewsets.ModelViewSet):
             expire_at=expire_date
         )
 
-        # 6. Обробка файлів та статистика
         uploaded_files = request.FILES.getlist('files')
         stats_data = self._analyze_and_upload_files(order, uploaded_files)
 
         order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
         order.page_count = stats_data["total_stats"]["physical_pages"]
 
-        order.total_amount = order.page_count * order.traffic_id.price_per_page
+        if order.traffic_id:
+            order.total_amount = Decimal(order.page_count) * Decimal(order.traffic_id.price_per_page)
 
         order.save()
 
-        # 7. Відправка пошти
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         full_link = f"{base_url}/translator/{generated_link_slug}"
 
         if order.translator_id and order.translator_id.email:
             self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
 
-        # 8. Відповідь
-        lp_response_data = None
-        if language_pair_instance:
-            lp_response_data = LanguagePairSelectSerializer(language_pair_instance).data
-
         return Response({
             "message": "Замовлення успішно створено",
             "order_id": order.id,
-            "language_pair": lp_response_data,
-            "stats": {
-                "physical_pages": stats_data["total_stats"]["physical_pages"],
-                "chars_with_spaces": stats_data["total_stats"]["chars_with_spaces"],
-                "chars_no_spaces": stats_data["total_stats"]["chars_no_spaces"],
-                "images_count": stats_data["total_stats"]["images"]
+            "language_pair": {
+                "id": language_pair_instance.id,
+                "source": source_id,
+                "target": target_id
             },
+            "stats": stats_data["total_stats"],
             "translator_link": {
                 "slug": generated_link_slug,
-                "password": generated_password,
-                "expire_at": expire_date
+                "password": generated_password
             }
         }, status=status.HTTP_201_CREATED)
 
     # --- Actions ---
+    @extend_schema(
+        summary="Попередній розрахунок статистики файлів",
+        description="Приймає файли, повертає кількість сторінок та символів. Не створює замовлення.",
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'files': {
+                        'type': 'array',
+                        'items': {'type': 'string', 'format': 'binary'}
+                    }
+                }
+            }
+        },
+        tags=["Order Files"]
+    )
+    @action(detail=False, methods=['post'], url_path='calculate-stats', parser_classes=[MultiPartParser])
+    def calculate_stats(self, request):
+        files = request.FILES.getlist('files')
+
+        if not files:
+            return Response({"detail": "No files provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        total_stats = {
+            "chars_with_spaces": 0,
+            "chars_no_spaces": 0,
+            "images": 0,
+            "physical_pages": 0
+        }
+
+        file_results = []
+
+        for f in files:
+            stats = analyze_file_content(f)
+
+            total_stats["chars_with_spaces"] += stats["chars_with_spaces"]
+            total_stats["chars_no_spaces"] += stats["chars_no_spaces"]
+            total_stats["images"] += stats["images"]
+            total_stats["physical_pages"] += stats["pages"]
+
+            file_results.append({
+                "filename": f.name,
+                "stats": stats
+            })
+
+        return Response({
+            "total_stats": total_stats,
+            "files": file_results
+        })
+
+    def _analyze_and_upload_files(self, order, files):
+        total_stats = {
+            "chars_with_spaces": 0,
+            "chars_no_spaces": 0,
+            "images": 0,
+            "physical_pages": 0
+        }
+
+        if not files:
+            return {"total_stats": total_stats}
+
+        uploaded_paths = []
+
+        try:
+            base_path = create_order_folder(order)
+            for f in files:
+                f.seek(0)
+                path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+                _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target",
+                                                create_only_dir="target")
+                _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final", create_only_dir="final")
+                uploaded_paths.append(path)
+        except Exception as e:
+            logger.error(f"Upload failed: {e}")
+            uploaded_paths = [None] * len(files)
+
+
+        for i, f in enumerate(files):
+            stats = analyze_file_content(f)
+
+            total_stats["chars_with_spaces"] += stats["chars_with_spaces"]
+            total_stats["chars_no_spaces"] += stats["chars_no_spaces"]
+            total_stats["images"] += stats["images"]
+            total_stats["physical_pages"] += stats["pages"]
+
+            dropbox_url = (uploaded_paths[i] if i < len(uploaded_paths) else None) or "None"
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=dropbox_url,
+                detected_pages=stats["pages"],
+                detected_symbols=stats["chars_with_spaces"],
+            )
+
+        return {"total_stats": total_stats}
 
     @extend_schema(
         summary="Відхилити переклад",
@@ -506,7 +598,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
         dbx = get_dbx()
         results = []
-        reader = easyocr.Reader([source_slug], gpu=False)
+        reader = easyocr.Reader([source_slug], gpu=True)
 
         for f in files:
             if not f.dropbox_url:
@@ -787,116 +879,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         except (ValueError, LanguagePair.DoesNotExist):
             logger.warning(f"Error: Language pair with ID '{raw_lp_id}' not found.")
             return None
-
-    def _analyze_and_upload_files(self, order, files):
-        stats = {
-            "chars_with_spaces": 0,
-            "chars_no_spaces": 0,
-            "images": 0,
-            "physical_pages": 0
-        }
-
-        uploaded_paths = []
-
-        if files:
-            try:
-                base_path = create_order_folder(order)
-                for f in files:
-                    f.seek(0)
-                    path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
-                    _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target", create_only_dir="target")
-                    _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final", create_only_dir="final")
-                    uploaded_paths.append(path)
-            except Exception as e:
-                logger.error(f"Upload failed: {e}")
-                uploaded_paths = [None] * len(files)
-
-        chars_per_file = []
-        pages_per_file = []
-
-        for file in files:
-            file_name = file.name.lower()
-            text_parts = []
-            file_pages = 0
-            file_images = 0
-
-            file.seek(0)
-
-            try:
-                if file_name.endswith('.docx'):
-                    try:
-                        doc = docx.Document(file)
-                        text_parts.extend([p.text for p in doc.paragraphs])
-                        for table in doc.tables:
-                            text_parts.extend([cell.text for row in table.rows for cell in row.cells])
-                        # Headers/Footers
-                        for section in doc.sections:
-                            text_parts.extend([p.text for p in section.header.paragraphs])
-                            text_parts.extend([p.text for p in section.footer.paragraphs])
-                    except Exception:
-                        pass  # Ignore extraction errors
-
-                    # ZIP analysis for pages/images
-                    file.seek(0)
-                    try:
-                        with zipfile.ZipFile(file) as archive:
-                            namelist = archive.namelist()
-                            file_images = sum(1 for name in namelist if name.startswith('word/media/'))
-                            if 'docProps/app.xml' in namelist:
-                                app_xml = archive.read('docProps/app.xml').decode('utf-8')
-                                pages_match = re.search(r'<Pages>(\d+)</Pages>', app_xml)
-                                if pages_match:
-                                    file_pages = int(pages_match.group(1))
-                    except Exception:
-                        pass
-
-                elif file_name.endswith('.pdf'):
-                    try:
-                        reader = pypdf.PdfReader(file)
-                        file_pages = len(reader.pages)
-                        for page in reader.pages:
-                            extracted = page.extract_text()
-                            if extracted:
-                                text_parts.append(extracted)
-                            if hasattr(page, 'images'):
-                                file_images += len(page.images)
-                    except Exception:
-                        pass
-
-                full_text = "\n".join(text_parts)
-                cleaned_display = re.sub(r'[\ufeff\u200b]', '', full_text)
-                file_chars_ws = len(cleaned_display)
-                clean_text = re.sub(r'[\s\ufeff\u200b]+', '', full_text)
-                file_chars_ns = len(clean_text)
-
-                stats["chars_with_spaces"] += file_chars_ws
-                stats["chars_no_spaces"] += file_chars_ns
-                stats["images"] += file_images
-                stats["physical_pages"] += file_pages
-
-                chars_per_file.append(file_chars_ws)
-                pages_per_file.append(file_pages)
-
-            except Exception as e:
-                logger.error(f"Analysis error {file.name}: {e}")
-                chars_per_file.append(0)
-                pages_per_file.append(0)
-
-        # Створення записів File
-        if files:
-            for i, f in enumerate(files):
-                ext = os.path.splitext(f.name)[1].lstrip(".").lower()
-                dropbox_url = (uploaded_paths[i] if i < len(uploaded_paths) else None) or "None"
-
-        File.objects.create(
-            order=order,
-            file_type=ext,
-            dropbox_url=dropbox_url,
-            detected_pages=pages_per_file[i],
-            detected_symbols=chars_per_file[i],
-        )
-
-        return {"total_stats": stats}
 
     def perform_update(self, serializer):
         instance = serializer.instance

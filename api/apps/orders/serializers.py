@@ -8,6 +8,7 @@ class Priority(models.TextChoices):
     LOW = 'low', 'Низький'
     MEDIUM = 'medium', 'Середній'
     HIGH = 'high', 'Високий'
+    CRITICAL = 'critical', 'Критичний'
 
 
 class OrderTrafficSerializer(serializers.ModelSerializer):
@@ -31,33 +32,54 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
+    source_language = serializers.IntegerField(write_only=True, required=True)
+    target_language = serializers.IntegerField(write_only=True, required=True)
+
     files = serializers.ListField(child=serializers.FileField(), write_only=True, required=False)
 
     class Meta:
         model = Order
         fields = [
-            'id', 'client_id', 'language_pair_id', 'priority', 'deadline',
-            'flex_deadline', 'page_count', 'symbols_count', 'status_id', 'files', "translator_id", "total_amount",
+            'id',
+            'source_language',
+            'target_language',
+            'client_id',
+            'language_pair_id',
+            'priority',
+            'deadline',
+            'flex_deadline',
+            'page_count',
+            'symbols_count',
+            'status_id',
+            'files',
+            "translator_id",
+            "total_amount",
             'client_status',
             'translator_status',
+            'traffic_id',
+            'translator_traffic_id',
+            'editor_id',
+            'client_comment',
+            'translator_comment'
         ]
         read_only_fields = ['page_count', 'symbols_count']
+
         extra_kwargs = {
-            'status_id': {'required': False},
-            'client_status': {'required': False},
-            'translator_status': {'required': False},
+            'language_pair_id': {'read_only': True},
+            'status_id': {'read_only': True},
+            'client_status': {'read_only': True},
+            'translator_status': {'read_only': True},
         }
+
 
 class RejectTranslationSerializer(serializers.Serializer):
     review_comment = serializers.CharField(required=True)
+
 
 class ApproveTranslationSerializer(serializers.Serializer):
     score = serializers.IntegerField(min_value=1, max_value=5)
     comment = serializers.CharField(required=False, allow_blank=True)
 
-
-from rest_framework import serializers
-from apps.orders.models import Order, OrderTraffic
 
 class OrderStatusHistorySerializer(serializers.ModelSerializer):
     status_name = serializers.CharField(source='status.name', read_only=True, allow_null=True)
@@ -87,12 +109,10 @@ class OrderListSerializer(serializers.ModelSerializer):
     status_name = serializers.CharField(source='status_id.name', default="-", read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
 
-
     history = OrderStatusHistorySerializer(source='history_logs', many=True, read_only=True)
 
     source_language = serializers.CharField(source='language_pair_id.source_language.name', default="-", read_only=True)
     target_language = serializers.CharField(source='language_pair_id.target_language.name', default="-", read_only=True)
-
 
     language_pair_name = serializers.SerializerMethodField()
 
@@ -126,6 +146,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         s = lp.source_language.name if lp.source_language else "?"
         t = lp.target_language.name if lp.target_language else "?"
         return f"{s} -> {t}"
+
 
 class FileCreateSerializer(serializers.ModelSerializer):
     file_type = serializers.CharField(max_length=16)

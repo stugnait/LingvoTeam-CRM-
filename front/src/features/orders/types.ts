@@ -166,6 +166,7 @@ export interface TranslatorTrafficPayload {
     rate_per_action?: number | null
 }
 
+
 /* =========================================================
    COMMON API RESPONSES
    ========================================================= */
@@ -207,27 +208,54 @@ export interface LanguagePair {
     pair_name: string
 }
 
-export interface AnalyzeImagesResultItem {
+export interface FileStats {
+    chars_with_spaces: number
+    chars_no_spaces: number
+    images: number
+    pages: number
+}
+
+export interface CalculateStatsResponse {
+    total_stats: {
+        chars_with_spaces: number
+        chars_no_spaces: number
+        images: number
+        physical_pages: number
+    }
+    files: {
+        filename: string
+        stats: FileStats
+    }[]
+}
+
+export interface AnalyzeImageFileResult {
     file_id: number
-    file_type?: string
-    images_found?: number
-    detected_symbols_from_images?: number
-    preview_text?: string
+    file_type: string
+    images_found: number
+    detected_symbols_from_images: number
+    preview_text: string
     error?: string
 }
 
 export interface AnalyzeImagesResponse {
     order_id: number
-    results: AnalyzeImagesResultItem[]
+    results: AnalyzeImageFileResult[]
 }
 
 export interface OrderTraffic {
     id: number
-    language_pair_id: number
-    currency_id_id: number
-    category_id?: number | null
-    price_per_page: number | null
-    price_per_action?: number | null
+    language_pair: number,
+    language_pair_name: string,
+    currency_id: number,
+    currency_name: string,
+    category: number,
+    category_name: string,
+    price_per_page: number
+}
+
+export interface OrderTrafficListResponse {
+    results: OrderTraffic[]
+    total?: number
 }
 
 export interface TranslatorTraffic {

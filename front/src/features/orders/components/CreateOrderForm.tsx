@@ -1,14 +1,27 @@
 "use client"
 
-import { SideModal } from "@/src/components/modals/SideModal"
-import {User, Globe, Languages, Edit, Hash, Repeat, DollarSign, Check} from "lucide-react"
-import { CustomSelect } from "@/src/components/ui/CustomSelect"
+import { useState, useEffect } from "react"
+import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
+import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
+import {
+    User,
+    Globe,
+    Languages,
+    FileText,
+    Tag,
+    Users,
+    CalendarClock,
+    MessageSquare,
+    DollarSign,
+} from "lucide-react"
+
+import { Combobox } from "@/src/components/ui/Combobox"
 import { TranslatorSelect } from "@/src/components/ui/TranslatorSelect"
 import { FileUpload } from "@/src/components/ui/FileUpload"
-import { TranslatorTrafficIdField } from "@/src/components/ui/TranslatorTrafficIdField"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/src/components/ui/select"
-import { Combobox } from "@/src/components/ui/Combobox"
-
+import { DeadlineSelector } from "@/src/components/ui/DeadlineSelector"
+import { Priority, PrioritySelector } from "@/src/components/ui/PrioritySelector"
+import { useOrderAnalysis } from "@/src/features/orders/hooks/useOrderAnalysis"
+import {ordersApi} from "@/src/features/orders/api";
 
 interface CreateOrderModalProps {
     open: boolean
@@ -16,251 +29,428 @@ interface CreateOrderModalProps {
     onSubmit: () => void
     loading: boolean
 
-    // Form state
     clientId: string
     setClientId: (value: string) => void
+    files: File[]
+    setFiles: (files: File[]) => void
     sourceLanguage: string
-    language: string
     setSourceLanguage: (value: string) => void
     targetLanguage: string
     setTargetLanguage: (value: string) => void
-    setLanguage: (value: string) => void
-    editor: string
-    setEditor: (value: string) => void
+
     trafficId: string
     setTrafficId: (value: string) => void
-    languagePairId: string
-    setLanguagePairId: (value: string) => void
-    translatorTrafficId: string
-    setTranslatorTrafficId: (value: string) => void
     currencyId: string
     setCurrencyId: (value: string) => void
+
     selectedTranslatorId: number | null
     setSelectedTranslatorId: (id: number | null) => void
-    files: File[]
-    setFiles: (files: File[]) => void
+    editor: string
+    setEditor: (value: string) => void
+    translatorTrafficId: string
+    setTranslatorTrafficId: (value: string) => void
 
-    // Data
     clients: any[]
     languages: any[]
     editors: any[]
-    languagePairs: any[]
     currencies: any[]
     translators: any[]
+    tariffs: any[]
+
+    deadline: Date | undefined
+    setDeadline: (date: Date | undefined) => void
+    comment: string
+    setComment: (value: string) => void
+    priority: Priority | undefined
+    setPriority: (value: Priority) => void
 }
 
-export function CreateOrderModal({
-                                     open,
-                                     onOpenChange,
-                                     onSubmit,
-                                     loading,
+export function CreateOrderModal(props: CreateOrderModalProps) {
+    const {
+        open,
+        onOpenChange,
+        onSubmit,
+        loading,
+        clientId,
+        setClientId,
+        files,
+        setFiles,
+        sourceLanguage,
+        setSourceLanguage,
+        targetLanguage,
+        setTargetLanguage,
+        trafficId,
+        setTrafficId,
+        currencyId,
+        setCurrencyId,
+        selectedTranslatorId,
+        setSelectedTranslatorId,
+        editor,
+        setEditor,
+        translatorTrafficId,
+        setTranslatorTrafficId,
+        clients,
+        languages,
+        editors,
+        currencies,
+        translators,
+        tariffs,
+        deadline,
+        setDeadline,
+        comment,
+        setComment,
+        priority,
+        setPriority,
+    } = props
 
-                                     clientId,
-                                     setClientId,
-                                     sourceLanguage,
-                                     setSourceLanguage,
-                                     targetLanguage,
-                                     setTargetLanguage,
-                                     editor,
-                                     setEditor,
-                                     trafficId,
-    language,
-    setLanguage,
-                                     setTrafficId,
-                                     languagePairId,
-                                     setLanguagePairId,
-                                     translatorTrafficId,
-                                     setTranslatorTrafficId,
-                                     currencyId,
-                                     setCurrencyId,
-                                     selectedTranslatorId,
-                                     setSelectedTranslatorId,
-                                     files,
-                                     setFiles,
+    const {
+        calculateStats,
+        statsResult,
+        statsLoading,
+        analyzeOrderFiles,
+        analysisResult,
+        analysisLoading,
+    } = useOrderAnalysis()
 
-                                     clients,
-                                     languages,
-                                     editors,
-                                     languagePairs,
-                                     currencies,
-                                     translators,
-                                 }: CreateOrderModalProps) {
+    const [filesConfirmed, setFilesConfirmed] = useState(false)
+    const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
+
+    const handleConfirmFiles = async () => {
+        if (!files.length) {return}
+        await calculateStats(files)
+        setFilesConfirmed(true)
+    }
+
+    const handleAnalyzeImages = async () => {
+        if (!files.length) {return}
+
+        await analyzeOrderFiles(files)
+        setImagesAnalyzed(true)
+    }
+
+
+    useEffect(() => {
+        if (!trafficId) {return}
+        const selectedTariff = tariffs?.find(t => String(t.id) === trafficId)
+        if (selectedTariff?.currency_id) {
+            setCurrencyId(String(selectedTariff.currency_id))
+        }
+    }, [trafficId, tariffs])
 
     return (
-        <SideModal
+        <WizardModal
             open={open}
             onOpenChange={onOpenChange}
             title="Create New Order"
-            submitLabel="Create Order"
-            cancelLabel="Cancel"
+            steps={[
+                { title: "Client & Files" },
+                { title: "Tariff" },
+                { title: "Assignment" },
+                { title: "Deadline" },
+            ]}
             isLoading={loading}
             onSubmit={onSubmit}
         >
-            <div className="space-y-4">
 
-                {/* Client */}
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs font-medium">
-                        <User className="h-3.5 w-3.5 text-blue-600" />
-                        Client
-                    </label>
+            {/* =========================
+   STEP 1
+========================= */}
+            <WizardStep>
+                <div className="space-y-6">
+
                     {/* Client */}
-                    <Combobox
-                        value={clientId}
-                        onChange={setClientId}
-                        placeholder="Select client"
-                        searchPlaceholder="Search client..."
-                        options={clients.map(client => ({
-                            value: String(client.id),
-                            label: client.full_name
-                        }))}
-                    />
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                            <User className="h-4 w-4 text-blue-600" />
+                            Client *
+                        </label>
+                        <Combobox
+                            value={clientId}
+                            onChange={setClientId}
+                            placeholder="Select client"
+                            options={clients.map(c => ({
+                                value: String(c.id),
+                                label: c.full_name,
+                            }))}
+                        />
+                    </div>
 
-                </div>
+                    {/* Languages */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <Combobox
+                            value={sourceLanguage}
+                            onChange={setSourceLanguage}
+                            placeholder="Source language"
+                            options={languages.map(l => ({
+                                value: String(l.id),
+                                label: l.name,
+                            }))}
+                        />
+                        <Combobox
+                            value={targetLanguage}
+                            onChange={setTargetLanguage}
+                            placeholder="Target language"
+                            options={languages.map(l => ({
+                                value: String(l.id),
+                                label: l.name,
+                            }))}
+                        />
+                    </div>
 
-                {/* Source Language */}
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs font-medium">
-                        <Globe className="h-3.5 w-3.5 text-blue-600" />
-                        Source Language
-                    </label>
-                    {/* Source Language */}
-                    <Select value={sourceLanguage} onValueChange={setSourceLanguage}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select source language" />
-                        </SelectTrigger>
-                        <SelectContent searchable searchPlaceholder="Search language...">
-                            {languages.map((lang) => (
-                                <SelectItem key={lang.id} value={String(lang.id)}>
-                                    {lang.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {/* Target Language */}
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs font-medium">
-                        <Languages className="h-3.5 w-3.5 text-blue-600" />
-                        Target Language
-                    </label>
-                    {/* Target Language */}
-                    <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select target language" />
-                        </SelectTrigger>
-                        <SelectContent searchable searchPlaceholder="Search language...">
-                            {languages.map((lang) => (
-                                <SelectItem key={lang.id} value={String(lang.id)}>
-                                    {lang.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {/* Editor */}
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs font-medium">
-                        <Edit className="h-3.5 w-3.5 text-blue-600" />
-                        Editor
-                    </label>
-                    {/* Editor */}
-                    <Combobox
-                        value={editor}
-                        onChange={setEditor}
-                        searchable
-                        options={editors.map(e => ({
-                            value: String(e.id),
-                            label: e.full_name,
-                            searchText: `${e.full_name} ${e.email}`,
-                            meta: e
-                        }))}
-                        renderOption={(option, isSelected) => {
-                            const editor = option.meta
-
-                            return (
-                                <div className="flex items-center justify-between w-full">
-                                    <div>
-                                        <div className="font-medium">
-                                            {editor.full_name}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {editor.email}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                    <span className="text-xs">
-                        ⭐ {editor.rating}
-                    </span>
-                                        {isSelected && <Check className="h-4 w-4" />}
-                                    </div>
-                                </div>
-                            )
+                    {/* Files */}
+                    <FileUpload
+                        files={files}
+                        onFilesChange={(f) => {
+                            setFiles(f)
+                            setFilesConfirmed(false)
+                            setImagesAnalyzed(false)
                         }}
                     />
 
+                    {/* Confirm files button */}
+                    {!filesConfirmed && (
+                        <button
+                            type="button"
+                            onClick={handleConfirmFiles}
+                            disabled={!files.length || statsLoading}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                        >
+                            {statsLoading ? "Calculating..." : "Confirm files"}
+                        </button>
+                    )}
+
+                    {/* Stats result */}
+                    {statsResult && (
+                        <div className="bg-gray-100 p-4 rounded-lg text-sm">
+                            <p>Pages: {statsResult.total_stats.physical_pages}</p>
+                            <p>Chars (with spaces): {statsResult.total_stats.chars_with_spaces}</p>
+                            <p>Images: {statsResult.total_stats.images}</p>
+                        </div>
+                    )}
+
+                    {/* OCR button */}
+                    {filesConfirmed && !imagesAnalyzed && (
+                        <button
+                            type="button"
+                            onClick={handleAnalyzeImages}
+                            disabled={analysisLoading}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-md"
+                        >
+                            {analysisLoading ? "Analyzing images..." : "Analyze images (OCR)"}
+                        </button>
+                    )}
+
+                    {/* OCR result */}
+                    {analysisResult && (
+                        <div className="bg-purple-50 p-4 rounded-lg text-sm">
+                            <p className="text-purple-700 font-medium">
+                                OCR completed successfully
+                            </p>
+                            {analysisResult.total_words && (
+                                <p>Total words detected: {analysisResult.total_words}</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Success indicator */}
+                    {imagesAnalyzed && !analysisLoading && (
+                        <div className="text-green-600 text-sm font-medium">
+                            Images analysis completed
+                        </div>
+                    )}
                 </div>
+            </WizardStep>
 
-                {/* Language Pair */}
-                {/*<div className="space-y-1.5">*/}
-                {/*    <label className="flex items-center gap-1.5 text-xs font-medium">*/}
-                {/*        <Repeat className="h-3.5 w-3.5 text-blue-600" />*/}
-                {/*        Language Pair*/}
-                {/*    </label>*/}
-                {/*    <Select value={languagePairId} onValueChange={setLanguagePairId}>*/}
-                {/*        <SelectTrigger>*/}
-                {/*            <SelectValue placeholder="Select language pair" />*/}
-                {/*        </SelectTrigger>*/}
-                {/*        <SelectContent>*/}
-                {/*            {languagePairs.map((pair) => (*/}
-                {/*                <SelectItem key={pair.id} value={String(pair.id)}>*/}
-                {/*                    {pair.name}*/}
-                {/*                </SelectItem>*/}
-                {/*            ))}*/}
-                {/*        </SelectContent>*/}
-                {/*    </Select>*/}
-                {/*</div>*/}
 
-                {/* Currency */}
-                <div className="space-y-1.5">
-                    <label className="flex items-center gap-1.5 text-xs font-medium">
-                        <DollarSign className="h-3.5 w-3.5 text-blue-600" />
-                        Currency
-                    </label>
+
+            {/* STEP 2 — TARIFF */}
+            <WizardStep>
+                <div className="space-y-6">
+                    {/* Tariff Selection */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Tag className="h-4 w-4 text-blue-600" />
+                            Tariff <span className="text-red-500">*</span>
+                        </label>
+                        <Combobox
+                            value={trafficId}
+                            onChange={setTrafficId}
+                            placeholder="Select tariff"
+                            searchPlaceholder="Search tariff..."
+                            options={tariffs?.map(tariff => ({
+                                value: String(tariff.id),
+                                label: tariff.category_name,
+                                description: `${tariff.price_per_word} USD/word`
+                            }))}
+                            renderOption={(option) => (
+                                <div className="flex items-center justify-between w-full">
+                                    <span>{option.label}</span>
+                                    {/*<span className="text-sm text-gray-500 ml-4">*/}
+                                    {/*    {option.description}*/}
+                                    {/*</span>*/}
+                                </div>
+                            )}
+                        />
+                    </div>
+
                     {/* Currency */}
-                    <Select value={currencyId} onValueChange={setCurrencyId}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select currency" />
-                        </SelectTrigger>
-                        <SelectContent searchable searchPlaceholder="Search currency...">
-                            {currencies.map((currency) => (
-                                <SelectItem key={currency.id} value={String(currency.id)}>
-                                    {currency.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <DollarSign className="h-4 w-4 text-blue-600" />
+                            Currency
+                        </label>
+                        <Combobox
+                            value={currencyId}
+                            onChange={setCurrencyId}
+                            placeholder="Select currency"
+                            searchPlaceholder="Search currency..."
+                            options={currencies.map(currency => ({
+                                value: String(currency.id),
+                                label: `${currency.code} - ${currency.name}`,
+                            }))}
+                        />
+                    </div>
+
+                    {/* Language Pair Info (if needed) */}
+                    {/*{sourceLanguage && targetLanguage && (*/}
+                    {/*    <div className="bg-blue-50 p-4 rounded-lg">*/}
+                    {/*        <p className="text-sm text-blue-700">*/}
+                    {/*            Translation from {languages.find(l => String(l.id) === sourceLanguage)?.name}*/}
+                    {/*            {' '}to {languages.find(l => String(l.id) === targetLanguage)?.name}*/}
+                    {/*        </p>*/}
+                    {/*    </div>*/}
+                    {/*)}*/}
                 </div>
+            </WizardStep>
 
+            {/* STEP 3 — ASSIGNMENT (Translator & Editor) */}
+            <WizardStep>
+                <div className="space-y-6">
+                    {/* Translator */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Users className="h-4 w-4 text-blue-600" />
+                            Translator
+                        </label>
+                        <TranslatorSelect
+                            value={selectedTranslatorId}
+                            onChange={setSelectedTranslatorId}
+                            translators={translators}
+                            sourceLanguage={sourceLanguage}
+                            targetLanguage={targetLanguage}
+                            placeholder="Select translator (optional)"
+                        />
+                        {/* <TranslatorSelect
+                            value={selectedTranslatorId}
+                            translators={translators}
+                            sourceLanguage={sourceLanguage}
+                            targetLanguage={targetLanguage}
+                            placeholder="Select translator (optional)"
+                            orderTrafficId={trafficId ? Number(trafficId) : null}
+                            orderPricePerPage={selectedTariff?.price_per_page ?? null}
+                            onChange={(translatorId, translatorTrafficId) => {
+                                setSelectedTranslatorId(translatorId)
+                                setTranslatorTrafficId(
+                                translatorTrafficId ? String(translatorTrafficId) : ""
+                                )
+                            }}
+                            /> */}
 
+                    </div>
 
-                <TranslatorTrafficIdField value={translatorTrafficId} />
+                    {/* Editor */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <Users className="h-4 w-4 text-green-600" />
+                            Editor
+                        </label>
+                        <Combobox
+                            value={editor}
+                            onChange={setEditor}
+                            placeholder="Select editor (optional)"
+                            searchPlaceholder="Search editor..."
+                            options={editors.map(ed => ({
+                                value: String(ed.id),
+                                label: ed.full_name,
+                            }))}
+                        />
+                    </div>
 
-                <TranslatorSelect
-                    translators={translators}
-                    value={selectedTranslatorId}
-                    onChange={(translatorId, translatorTrafficId) => {
-                        setSelectedTranslatorId(translatorId)
-                        setTranslatorTrafficId(String(translatorTrafficId))
-                    }}
-                    orderTrafficId={trafficId ? Number(trafficId) : null}
-                />
+                    {/* Translator Traffic ID (if needed) */}
+                    {selectedTranslatorId && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">
+                                Translator Traffic ID
+                            </label>
+                            <input
+                                type="text"
+                                value={translatorTrafficId}
+                                onChange={(e) => setTranslatorTrafficId(e.target.value)}
+                                className="w-full px-3 py-2 border rounded-md"
+                                placeholder="Enter traffic ID"
+                            />
+                        </div>
+                    )}
+                </div>
+            </WizardStep>
 
-                <FileUpload files={files} onFilesChange={setFiles} />
-            </div>
-        </SideModal>
+            {/* STEP 4 — DEADLINE, PRIORITY & COMMENT */}
+            <WizardStep>
+                <div className="space-y-6">
+                    {/* Priority */}
+                    <PrioritySelector
+                        value={priority}
+                        onChange={setPriority}
+                        required
+                    />
+
+                    {/* Deadline */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <CalendarClock className="h-4 w-4 text-blue-600" />
+                            Deadline <span className="text-red-500">*</span>
+                        </label>
+                        <DeadlineSelector
+                            value={deadline}
+                            onChange={setDeadline}
+                            minDate={new Date()}
+                        />
+                    </div>
+
+                    {/* Comment */}
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <MessageSquare className="h-4 w-4 text-blue-600" />
+                            Comment
+                        </label>
+                        <textarea
+                            value={comment}
+                            onChange={(e) => setComment(e.target.value)}
+                            placeholder="Add any additional notes or instructions..."
+                            className="w-full px-3 py-2 border rounded-md min-h-[120px] resize-y"
+                        />
+                    </div>
+
+                    {/* Summary Card */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium mb-2">Order Summary</h4>
+                        <div className="space-y-1 text-sm text-gray-600">
+                            <p>• Client: {clients.find(c => String(c.id) === clientId)?.full_name || 'Not selected'}</p>
+                            <p>• Files: {files.length} file(s)</p>
+                            <p>• Languages: {
+                                languages.find(l => String(l.id) === sourceLanguage)?.name || '?'} → {
+                                languages.find(l => String(l.id) === targetLanguage)?.name || '?'
+                            }</p>
+                            <p>• Tariff: {tariffs?.find(t => String(t.id) === trafficId)?.name || 'Not selected'}</p>
+                            <p>• Priority: {
+                                priority || 'none'
+                            }</p>
+                            <p>• Deadline: {deadline?.toLocaleDateString() || 'Not set'}</p>
+                        </div>
+                    </div>
+                </div>
+            </WizardStep>
+
+        </WizardModal>
     )
 }
