@@ -22,7 +22,8 @@ export default function CreateOrderPage() {
         languages,
         editors,
         currencies,
-        translators
+        translators,
+        traffics,
     } = useOrders()
 
     // State for modal
@@ -158,7 +159,7 @@ export default function CreateOrderPage() {
                 editors={editors || []}
                 currencies={currencies || []}
                 translators={translators || []}
-                tariffs={[]} // Потрібно буде додати з useOrders
+                tariffs={traffics || []} // Потрібно буде додати з useOrders
             />
         </>
     )

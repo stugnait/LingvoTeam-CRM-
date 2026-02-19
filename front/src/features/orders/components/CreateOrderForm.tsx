@@ -23,6 +23,7 @@ import { LanguageSelectorCompact } from "@/src/components/ui/LanguageSelectorCar
 import { SwapButton } from "@/src/components/ui/SwapButton"
 import { DeadlineSelector } from "@/src/components/ui/DeadlineSelector"
 import {Priority, PrioritySelector} from "@/src/components/ui/PrioritySelector"
+import {useEffect} from "react";
 
 interface CreateOrderModalProps {
     open: boolean
@@ -124,6 +125,19 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         translators,
         tariffs,
     } = props
+
+    useEffect(() => {
+        if (!trafficId) {return}
+
+        const selectedTariff = tariffs?.find(
+            t => String(t.id) === trafficId
+        )
+
+        if (selectedTariff?.currency_id) {
+            setCurrencyId(String(selectedTariff.currency_id))
+        }
+    }, [trafficId, tariffs])
+
 
     return (
         <WizardModal
@@ -232,7 +246,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             searchPlaceholder="Search tariff..."
                             options={tariffs?.map(tariff => ({
                                 value: String(tariff.id),
-                                label: tariff.name,
+                                label: tariff.category_name,
                                 description: `${tariff.price_per_word} USD/word`
                             }))}
                             renderOption={(option) => (
@@ -259,7 +273,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             searchPlaceholder="Search currency..."
                             options={currencies.map(currency => ({
                                 value: String(currency.id),
-                                label: `${currency.code} - ${currency.symbol}`,
+                                label: `${currency.code} - ${currency.name}`,
                             }))}
                         />
                     </div>

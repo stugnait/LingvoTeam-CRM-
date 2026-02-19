@@ -24,7 +24,7 @@ export function useOrders() {
     const [languages, setLanguages] = useState<Language[]>([])
     const [editors, setEditors] = useState<Editor[]>([])
     const [currencies, setCurrencies] = useState<Currency[]>([])
-    const [traffic, setTraffic] = useState<OrderTraffic[]>([])
+    const [traffics, setTraffics] = useState<OrderTraffic[]>([])
 
 
     const [loading, setLoading] = useState(false)
@@ -170,7 +170,7 @@ export function useOrders() {
             setClients(clientsRes.results)
             setLanguages(languagesRes.results)
             setEditors(editorsRes.results)
-            setTraffic(orderTrafficRes.results)
+            setTraffics(orderTrafficRes.results)
 
             // ---- Language pairs (без дублювання) ----
             const uniquePairIds = [
@@ -263,6 +263,7 @@ export function useOrders() {
         clients,
         editors,
         currencies,
+        traffics,
 
         // UI
         loading,
