@@ -101,10 +101,9 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
 
     search_fields = ['name']
     ordering_fields = ['price_per_page', 'id', 'name', 'position', 'created_at', 'deadline']
-    ordering = ['id']
-    filterset_class = OrderTrafficFilter
 
-    ordering = ['position']
+    filterset_class = OrderTrafficFilter
+    ordering = ['id']
 
 
 @extend_schema_view(
