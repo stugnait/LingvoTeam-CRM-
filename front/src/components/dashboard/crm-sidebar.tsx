@@ -36,6 +36,11 @@ const navigation = [
         href: "/dashboard/editor",
         roles: ["editor"],
     },
+    {
+        name: "Tariffs",
+        href: "/dashboard/tariffs",
+        roles: ["admin", "editor"],
+    },
 ]
 
 export function CrmSidebar() {

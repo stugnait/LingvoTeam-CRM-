@@ -1,25 +1,32 @@
 import logging
 import os
 import secrets
+import os
 import tempfile
 import zipfile
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Count
-from django.shortcuts import get_object_or_404
+from django.http import FileResponse
 from django.utils import timezone
-
-from django_filters import rest_framework as django_filters
-from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 
 from rest_framework import filters, status as http_status, viewsets
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import FormParser, MultiPartParser
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
+from rest_framework import viewsets, filters
 from rest_framework.permissions import AllowAny
+from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as django_filters
+from django.db.models import Count  # 1. Імпортуємо Count для підрахунку
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import viewsets
+from rest_framework import status as http_status
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from apps.dropbox_services.dropbox_utils import get_dbx
 
@@ -134,8 +141,14 @@ class TranslatorTrafficViewSet(viewsets.ModelViewSet):
 
     serializer_class = TranslatorTrafficSerializer
 
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+
     filterset_fields = ['translator', 'language_pair', 'category']
+
+    search_fields = ['name']
+
+    ordering_fields = ['id', 'name']
+    ordering = ['id']
     permission_classes = [HasPermission]
     required_permissions = ['translator.traffic.manage']
 

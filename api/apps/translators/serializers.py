@@ -27,35 +27,43 @@ class TranslatorLanguagePairsSerializer(serializers.ModelSerializer):
 
 
 class TranslatorTrafficSerializer(serializers.ModelSerializer):
-    language_pair_id = serializers.IntegerField(source='language_pair.id', read_only=True)
-    language_pair_name = serializers.CharField(source='language_pair.__str__', read_only=True)
+    translator_name = serializers.CharField(source='translator.full_name', read_only=True, default="-")
 
-    currency_id = serializers.IntegerField(source='currency_id.id', read_only=True)
     currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
     currency_sign = serializers.CharField(source='currency_id.code_name', read_only=True, default="")
+    category_name = serializers.CharField(source='category.name', read_only=True, default="Загальна")
 
-    category_id = serializers.IntegerField(source='category.id', read_only=True)
-    category_name = serializers.CharField(source='category.name', read_only=True,
-                                          default="Загальна")
+    source_language = serializers.CharField(source='language_pair.source_language.name', default="-", read_only=True)
+    target_language = serializers.CharField(source='language_pair.target_language.name', default="-", read_only=True)
+
+    language_pair_name = serializers.SerializerMethodField()
 
     class Meta:
         model = TranslatorTraffic
         fields = [
             'id',
-            'language_pair_id',
-            'language_pair_name',
+            'name',
 
+            'translator',
+            'language_pair',
             'currency_id',
-            'currency_name',
-            'currency_sign',
-
-            'category_id',
-            'category_name',
-
+            'category',
             'rate_per_page',
             'rate_per_action',
+
+            'translator_name',
+            'language_pair_name',
+            'source_language',
+            'target_language',
+            'currency_name',
+            'currency_sign',
+            'category_name',
         ]
 
+    def get_language_pair_name(self, obj):
+        if obj.language_pair:
+            return str(obj.language_pair)
+        return "-"
 
 class TranslatorSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
