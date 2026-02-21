@@ -6,8 +6,8 @@ export interface Tariff {
     language_pair: number,
     currency_id: number,
     category: number,
-    price_per_page: number,
-    price_per_action: number,
+    price_per_page: string,
+    price_per_action: string,
     language_pair_name: string,
     source_language: string,
     target_language: string,
@@ -26,6 +26,17 @@ export interface TariffsFormData {
     language_pair: number,
     currency_id: number,
     category: number,
-    price_per_page: number,
-    price_per_action: number
+    price_per_page: string,
+    price_per_action: string
+}
+
+export interface Categories {
+    id: number,
+    name: string,
+    slug: string,
+}
+
+export interface CategoriesListResponse {
+    results: Categories[],
+    total: number,
 }

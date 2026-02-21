@@ -1,53 +1,158 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useToast } from "@/src/hooks/use-toast"
 import { tariffApi } from "../api"
+import { ordersApi } from "@/src/features/orders/api"
+
 import type {
     Tariff,
     TariffsFormData,
+    Categories
 } from "../types"
+
+import type {
+    Currency,
+    Language,
+} from "@/src/features/orders/types"
 
 export function useTariffs() {
     const { toast } = useToast()
 
     const [allTariffs, setAllTariffs] = useState<Tariff[]>([])
+    const [currencies, setCurrencies] = useState<Currency[]>([])
+    const [languages, setLanguages] = useState<Language[]>([])
+    const [categories, setCategories] = useState<Categories[]>([])
+
     const [loading, setLoading] = useState(false)
 
     const [selectedTariff, setSelectedTariff] = useState<Tariff | null>(null)
     const [isFormOpen, setIsFormOpen] = useState(false)
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
+
+
 
     const [form, setForm] = useState<TariffsFormData>({
         name: "",
         language_pair: 0,
         currency_id: 0,
         category: 0,
-        price_per_page: 0,
-        price_per_action: 0,
+        price_per_page: "",
+        price_per_action: "",
     })
+
+    const openDeleteTariff = (tariff: Tariff) => {
+        setSelectedTariff(tariff)
+        setIsDeleteOpen(true)
+    }
+
+    const closeModals = () => {
+        setIsFormOpen(false)
+        setIsDeleteOpen(false)
+        setSelectedTariff(null)
+    }
+
+    const confirmDelete = async () => {
+        if (!selectedTariff) {return}
+
+        try {
+            await tariffApi.deleteTariff(selectedTariff.id)
+
+            toast({
+                title: "Tariff deleted",
+                description: `${selectedTariff.name} removed`,
+            })
+
+            closeModals()
+            await loadTariffs()
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to delete tariff",
+                variant: "error",
+            })
+        }
+    }
 
     // -------------------------
     // Load tariffs
     // -------------------------
     const loadTariffs = useCallback(async () => {
         try {
-            setLoading(true)
             const response = await tariffApi.listTariff()
             setAllTariffs(response.results)
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to load tariffs",
                 variant: "error",
             })
-        } finally {
-            setLoading(false)
         }
     }, [toast])
 
+    // -------------------------
+    // Load currencies
+    // -------------------------
+    const loadCurrencies = useCallback(async () => {
+        try {
+            const response = await ordersApi.listCurrency()
+            setCurrencies(response.results)
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to load currencies",
+                variant: "error",
+            })
+        }
+    }, [toast])
+
+    const loadCategories = useCallback(async () => {
+        try {
+            const response = await tariffApi.listCategories()
+            setCategories(response.results)
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to load currencies",
+                variant: "error",
+            })
+        }
+    }, [toast])
+
+    // -------------------------
+    // Load languages
+    // -------------------------
+    const loadLanguages = useCallback(async () => {
+        try {
+            const response = await ordersApi.listLanguages()
+            setLanguages(response.results)
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to load languages",
+                variant: "error",
+            })
+        }
+    }, [toast])
+
+    // -------------------------
+    // Initial load
+    // -------------------------
     useEffect(() => {
-        loadTariffs()
-    }, [loadTariffs])
+        const init = async () => {
+            setLoading(true)
+            await Promise.all([
+                loadTariffs(),
+                loadCurrencies(),
+                loadLanguages(),
+                loadCategories()
+            ])
+            setLoading(false)
+        }
+
+        init()
+    }, [loadTariffs, loadCurrencies, loadLanguages, loadCategories])
 
     // -------------------------
     // Modal handlers
@@ -59,8 +164,8 @@ export function useTariffs() {
             language_pair: 0,
             currency_id: 0,
             category: 0,
-            price_per_page: 0,
-            price_per_action: 0,
+            price_per_page: "",
+            price_per_action: "",
         })
         setIsFormOpen(true)
     }
@@ -78,20 +183,58 @@ export function useTariffs() {
         setIsFormOpen(true)
     }
 
-    const closeModals = () => {
-        setIsFormOpen(false)
-        setSelectedTariff(null)
-    }
 
     // -------------------------
     // Submit
     // -------------------------
     const submitTariff = async (data: TariffsFormData) => {
         try {
+            // -------- Validation --------
+            if (!data.name.trim()) {
+                toast({
+                    title: "Validation error",
+                    description: "Tariff name is required",
+                    variant: "error",
+                })
+                return
+            }
+
+            if (
+                !data.price_per_page ||
+                Number(data.price_per_page) <= 0
+            ) {
+                toast({
+                    title: "Validation error",
+                    description: "Price per page must be greater than 0",
+                    variant: "error",
+                })
+                return
+            }
+
+            if (
+                !data.price_per_action ||
+                Number(data.price_per_action) <= 0
+            ) {
+                toast({
+                    title: "Validation error",
+                    description: "Price per action must be greater than 0",
+                    variant: "error",
+                })
+                return
+            }
+
+            // -------- Transform payload --------
+            const payload = {
+                ...data,
+                price_per_page: Number(data.price_per_page),
+                price_per_action: Number(data.price_per_action),
+            }
+
+            // -------- API --------
             if (selectedTariff) {
                 await tariffApi.updateTariff(
                     selectedTariff.id,
-                    JSON.stringify(data)
+                    JSON.stringify(payload)
                 )
 
                 toast({
@@ -100,7 +243,7 @@ export function useTariffs() {
                 })
             } else {
                 await tariffApi.createTariff(
-                    JSON.stringify(data)
+                    JSON.stringify(payload)
                 )
 
                 toast({
@@ -111,7 +254,7 @@ export function useTariffs() {
 
             closeModals()
             await loadTariffs()
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to save tariff",
@@ -122,7 +265,13 @@ export function useTariffs() {
 
     return {
         tariffs: allTariffs,
+        currencies,
+        categories,
+        languages,
         loading,
+        isDeleteOpen,
+        openDeleteTariff,
+        confirmDelete,
 
         form,
         setForm,

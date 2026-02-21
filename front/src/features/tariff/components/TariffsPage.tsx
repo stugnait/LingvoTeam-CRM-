@@ -14,7 +14,6 @@ import { TariffTable } from "./TariffTable"
 import { useTariffs } from "../hooks/useTariff"
 
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
-import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 import { Input } from "@/src/components/ui/input"
 import {
     Select,
@@ -25,10 +24,14 @@ import {
 } from "@/src/components/ui/select"
 
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
+import {ConfirmModal} from "@/src/components/modals/ConfirmModal";
 
 export function TariffsPage() {
     const {
         tariffs,
+        categories,
+        currencies,
+        languages,
         isFormOpen,
         selectedTariff,
         form,
@@ -37,6 +40,9 @@ export function TariffsPage() {
         openEditTariff,
         closeModals,
         submitTariff,
+        isDeleteOpen,
+        openDeleteTariff,
+        confirmDelete,
     } = useTariffs()
 
     return (
@@ -46,7 +52,6 @@ export function TariffsPage() {
             <main className="flex-1 overflow-y-auto p-6">
                 <div className="mx-auto max-w-6xl space-y-6">
 
-                    {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-2xl font-bold tracking-tight">
@@ -63,7 +68,6 @@ export function TariffsPage() {
                         </Button>
                     </div>
 
-                    {/* Table */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Tariffs List</CardTitle>
@@ -76,13 +80,13 @@ export function TariffsPage() {
                             <TariffTable
                                 tariffs={tariffs}
                                 onEdit={openEditTariff}
+                                onDelete={openDeleteTariff}
                             />
                         </CardContent>
                     </Card>
                 </div>
             </main>
 
-            {/* Add / Edit Modal */}
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
@@ -91,6 +95,8 @@ export function TariffsPage() {
                 onSubmit={() => submitTariff(form)}
             >
                 <div className="space-y-4">
+
+                    {/* Name */}
                     <Input
                         placeholder="Tariff name"
                         value={form.name}
@@ -102,37 +108,129 @@ export function TariffsPage() {
                         }
                     />
 
-                    <Input
-                        type="number"
-                        placeholder="Price"
-                        value={form.price}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                price: Number(e.target.value),
-                            }))
-                        }
-                    />
-
+                    {/* Language Pair (поки що просто по id, якщо нема pairs endpoint) */}
                     <Select
-                        value={String(form.is_active)}
+                        value={String(form.language_pair || "")}
                         onValueChange={(value) =>
                             setForm(prev => ({
                                 ...prev,
-                                is_active: value === "true",
+                                language_pair: Number(value),
                             }))
                         }
                     >
                         <SelectTrigger>
-                            <SelectValue placeholder="Status" />
+                            <SelectValue placeholder="Language" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="true">Active</SelectItem>
-                            <SelectItem value="false">Inactive</SelectItem>
+                            {languages.map(lang => (
+                                <SelectItem
+                                    key={lang.id}
+                                    value={String(lang.id)}
+                                >
+                                    {lang.name}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
+
+                    {/* Currency */}
+                    <Select
+                        value={String(form.currency_id || "")}
+                        onValueChange={(value) =>
+                            setForm(prev => ({
+                                ...prev,
+                                currency_id: Number(value),
+                            }))
+                        }
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {currencies.map(currency => (
+                                <SelectItem
+                                    key={currency.id}
+                                    value={String(currency.id)}
+                                >
+                                    {currency.code}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+
+                    {/* Category */}
+                    <Select
+                        value={String(form.category || "")}
+                        onValueChange={(value) =>
+                            setForm(prev => ({
+                                ...prev,
+                                category: Number(value),
+                            }))
+                        }
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {categories.map(category => (
+                                <SelectItem
+                                    key={category.id}
+                                    value={String(category.id)}
+                                >
+                                    {category.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Price per page */}
+                    <Input
+                        type="text"
+                        min="1"
+                        placeholder="Price per page"
+                        value={form.price_per_page}
+                        onChange={(e) => {
+                            const value = e.target.value
+
+                            // Дозволяємо тільки пусто або > 0
+                            if (value === "" || Number(value) > 0) {
+                                setForm(prev => ({
+                                    ...prev,
+                                    price_per_page: value,
+                                }))
+                            }
+                        }}
+                    />
+
+                    {/* Price per action */}
+                    <Input
+                        type="text"
+                        min="1"
+                        placeholder="Price per action"
+                        value={form.price_per_action}
+                        onChange={(e) => {
+                            const value = e.target.value
+
+                            // Дозволяємо тільки пусто або > 0
+                            if (value === "" || Number(value) > 0) {
+                                setForm(prev => ({
+                                    ...prev,
+                                    price_per_action: value,
+                                }))
+                            }
+                        }}
+                    />
+
                 </div>
             </BaseFormModal>
+            <ConfirmModal
+                open={isDeleteOpen}
+                onOpenChange={(open) => !open && closeModals()}
+                onConfirm={confirmDelete}
+                title="Delete Tariff"
+                description="Are you sure you want to delete this tariff?"
+            />
         </>
     )
 }

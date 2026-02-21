@@ -4,7 +4,8 @@ import { apiFetch } from "@/src/shared/api/client"
 import {
     Tariff,
     TariffsFormData,
-    TariffsListResponse
+    TariffsListResponse,
+    CategoriesListResponse
 } from "./types"
 
 
@@ -21,8 +22,18 @@ export const tariffApi = {
             body,
         }),
 
+    deleteTariff: (id: number) =>
+        apiFetch<Tariff>(`orders/order-traffic/${id}/`, {
+            method: "DELETE",
+        }),
+
     listTariff: () =>
         apiFetch<TariffsListResponse>("orders/order-traffic/", {
+            method: "GET",
+        }),
+
+    listCategories: () =>
+        apiFetch<CategoriesListResponse>("core/order-categories/", {
             method: "GET",
         }),
 }
