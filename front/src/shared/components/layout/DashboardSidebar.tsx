@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/src/lib/utils"
-import { LayoutDashboard, Users, Languages, Settings } from "lucide-react"
+import { LayoutDashboard, Users, Languages, Settings, DollarSign } from "lucide-react"
 
 const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Users", href: "/dashboard/users", icon: Users },
-    { name: "Translations", href: "/dashboard/translations", icon: Languages },
+    { name: "Translators", href: "/dashboard/translations", icon: Languages },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    { name: "Tariffs", href: "/dashboard/tariffs", icon: DollarSign },
 ]
 
 export function DashboardSidebar() {
