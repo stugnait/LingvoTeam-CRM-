@@ -229,6 +229,8 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         generated_link_slug = str(uuid.uuid4())
         generated_password = secrets.token_urlsafe(8)
+        client_generated_link_slug = str(uuid.uuid4())
+        client_generated_password = secrets.token_urlsafe(8)
         expire_date = timezone.now() + timedelta(days=45)
 
         OrderLink.objects.create(
@@ -239,6 +241,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             expire_at=expire_date
         )
 
+        OrderLink.objects.create(
+            order=order,
+            assignee=OrderLink.Assignee.CLIENT,
+            link=client_generated_link_slug,
+            password=client_generated_password,
+            expire_at=expire_date
+        )
+
+        # 6. Обробка файлів та статистика
         uploaded_files = request.FILES.getlist('files')
         stats_data = self._analyze_and_upload_files(order, uploaded_files)
 
@@ -252,9 +263,18 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         full_link = f"{base_url}/translator/{generated_link_slug}"
+        full_client_link = f"{base_url}/client/{client_generated_link_slug}"
 
         if order.translator_id and order.translator_id.email:
             self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
+
+        if order.client_id and order.client_id.email:
+            self._send_client_invite(order, full_client_link, client_generated_password, expire_date, order.client_id)
+
+        # 8. Відповідь
+        lp_response_data = None
+        if language_pair_instance:
+            lp_response_data = LanguagePairSelectSerializer(language_pair_instance).data
 
         return Response({
             "message": "Замовлення успішно створено",
@@ -267,8 +287,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             "stats": stats_data["total_stats"],
             "translator_link": {
                 "slug": generated_link_slug,
-                "password": generated_password
+                "password": generated_password,
+                "expire_at": expire_date
+            },
+            "client_link": {
+                "slug": client_generated_link_slug,
+                "password": client_generated_password,
+                "expire_at": expire_date
             }
+
         }, status=status.HTTP_201_CREATED)
 
     # --- Actions ---
@@ -936,6 +963,27 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 #TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
+        try:
+            subject = f"Нове замовлення - LingvoTeam"
+            message = (
+                f"Вітаємо, {recipient.full_name}!\n\n"
+                f"Посилання з роботою: {full_link}\n"
+                f"Пароль доступу: {password}\n\n"
+                f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
+                f"З повагою, команда LingvoTeam."
+            )
+
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            logger.error(f"Email error: {e}")
+    
+    def _send_client_invite(self, order, full_link, password, expire_date, recipient):
         try:
             subject = f"Нове замовлення - LingvoTeam"
             message = (
