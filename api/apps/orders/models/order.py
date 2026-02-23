@@ -9,6 +9,7 @@ class Priority(models.TextChoices):
     LOW = 'low', 'Низький'
     MEDIUM = 'medium', 'Середній'
     HIGH = 'high', 'Високий'
+    CRITICAL = 'critical', 'Критичний'
 
 
 class Order(models.Model):
