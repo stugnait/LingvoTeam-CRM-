@@ -251,6 +251,7 @@ class ExternalOrderAccessView(APIView):
                     "message": f"Перевищено ліміт спроб. Спробуйте через {ban_minutes} хв.",
                     "remaining_attempts": 0,
                     "ban_minutes": ban_minutes,
+                    "banned_to": link_obj.banned_to,
                 },)
 
             else:
