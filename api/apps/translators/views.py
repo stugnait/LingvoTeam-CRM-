@@ -237,10 +237,10 @@ class ExternalOrderAccessView(APIView):
                 )
 
                 return response
-
+#TODO час бану
             link_obj.attempts += 1
             max_attempts = 5
-            ban_minutes = 15
+            ban_minutes = 1
 
             if link_obj.attempts >= max_attempts:
                 link_obj.banned_to = now + timedelta(minutes=ban_minutes)
