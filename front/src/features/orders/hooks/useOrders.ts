@@ -78,7 +78,14 @@ export function useOrders() {
             formData.append("currency_id_id", String(data.currency_id_id))
             formData.append("editor_id", String(data.editor_id))
             formData.append("deadline", String(data.deadline))
-            formData.append("priority", String(data.priority))
+
+            if (data.priority) {
+                formData.append("priority", data.priority)
+            }
+
+            if (data.client_comment) {
+                formData.append("client_comment", data.client_comment)
+            }
 
             if (data.translator_id)
                 {formData.append("translator_id", String(data.translator_id))}

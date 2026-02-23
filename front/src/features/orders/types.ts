@@ -9,7 +9,8 @@ export interface CreateOrderPayload {
     translator_id?: number
     translator_traffic_id?: number
     deadline: number,
-    priority: number,
+    priority: string,
+    client_comment: string,
     files?: File[]
 }
 
