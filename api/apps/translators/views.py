@@ -220,6 +220,7 @@ class ExternalOrderAccessView(APIView):
                     "order_data": {
                         "id": order.id,
                         "language_pair": str(order.language_pair_id),
+                        "deadline": str(order.deadline),
                         "target_language": order.language_pair_id.target_language.name if order.language_pair_id and order.language_pair_id.target_language else "-",
                         "source_language": order.language_pair_id.source_language.name if order.language_pair_id and order.language_pair_id.source_language else "-",
                         "comment": getattr(order, 'client_comment', "Коментар відсутній")
