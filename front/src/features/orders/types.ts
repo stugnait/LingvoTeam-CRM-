@@ -8,6 +8,8 @@ export interface CreateOrderPayload {
     currency_id_id: number,
     translator_id?: number
     translator_traffic_id?: number
+    deadline: number,
+    priority: number,
     files?: File[]
 }
 
