@@ -204,7 +204,7 @@ class ExternalOrderAccessView(APIView):
                 display_time = remaining_time if remaining_time > 0 else 1
                 return Response({
                     "error": f"Забагато спроб. Доступ заблоковано. Спробуйте через {display_time} хв."
-                }, status=http_status.HTTP_429_TOO_MANY_REQUESTS)
+                }, status=http_status.HTTP_403_FORBIDDEN)
 
             input_password = request.data.get('password', '')
 
@@ -252,14 +252,16 @@ class ExternalOrderAccessView(APIView):
                     "remaining_attempts": 0,
                     "ban_minutes": ban_minutes,
                     "banned_to": link_obj.banned_to,
-                },)
+                },status=http_status.HTTP_403_FORBIDDEN
+    )
 
             else:
                 remaining_attempts = max_attempts - link_obj.attempts
                 response = Response({
                     "message": "Невірний пароль.",
                     "remaining_attempts": remaining_attempts,
-                },)
+                },status=http_status.HTTP_403_FORBIDDEN
+    )
 
             link_obj.save()
             return response
