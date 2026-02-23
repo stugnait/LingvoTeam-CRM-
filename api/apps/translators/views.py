@@ -247,14 +247,21 @@ class ExternalOrderAccessView(APIView):
             if link_obj.attempts >= max_attempts:
                 link_obj.banned_to = now + timedelta(minutes=ban_minutes)
                 link_obj.attempts = 0
-                message = f"Невірний пароль. Доступ заблоковано на {ban_minutes} хвилин."
+                response = Response({
+                    "message": f"Перевищено ліміт спроб. Спробуйте через {ban_minutes} хв.",
+                    "remaining_attempts": 0,
+                    "ban_minutes": ban_minutes,
+                },)
+
             else:
                 remaining_attempts = max_attempts - link_obj.attempts
-                message = f"Невірний пароль. Залишилося спроб: {remaining_attempts}"
+                response = Response({
+                    "message": "Невірний пароль.",
+                    "remaining_attempts": remaining_attempts,
+                },)
 
             link_obj.save()
-
-            return Response({"error": message}, status=http_status.HTTP_403_FORBIDDEN)
+            return response
 
 class TranslatorUploadView(APIView):
     permission_classes = [AllowAny]
