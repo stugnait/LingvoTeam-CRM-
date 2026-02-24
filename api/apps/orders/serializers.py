@@ -47,6 +47,7 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
         return "-"
 
 
+
 class OrderCreateSerializer(serializers.ModelSerializer):
     source_language = serializers.IntegerField(write_only=True, required=True)
     target_language = serializers.IntegerField(write_only=True, required=True)
@@ -76,16 +77,17 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'translator_traffic_id',
             'editor_id',
             'client_comment',
-            'translator_comment'
+            'translator_comment',
+            'status_id',
+            'client_status',
+            'translator_status',
         ]
         read_only_fields = ['page_count', 'symbols_count']
 
         extra_kwargs = {
             'language_pair_id': {'read_only': True},
-            'status_id': {'read_only': True},
-            'client_status': {'read_only': True},
-            'translator_status': {'read_only': True},
         }
+
 
 
 class RejectTranslationSerializer(serializers.Serializer):
