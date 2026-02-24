@@ -16,14 +16,15 @@ urlpatterns = [
     path("translator-upload/", TranslatorUploadView.as_view()),
 
     path(
-        'external/orders/<int:order_id>/download-files/',
+        "external/orders/<int:order_id>/download-files/<str:folder>/",
         ExternalTranslatorDownloadView.as_view(),
-        name='external-translator-download'
+        name="external-translator-download-folder",
     ),
+
     path(
-        'external/orders/<int:order_id>/download-files/<str:folder>/',
+        "external/orders/<int:order_id>/download-files/<str:folder>/<int:file_id>/",
         ExternalTranslatorDownloadView.as_view(),
-        name='external-translator-download-folder'
+        name="external-translator-download-file",
     ),
 
     path('', include(router.urls)),
