@@ -4,6 +4,7 @@ import secrets
 import os
 import tempfile
 import zipfile
+import zoneinfo
 from datetime import timedelta
 
 from django.db import transaction
@@ -247,11 +248,14 @@ class ExternalOrderAccessView(APIView):
             if link_obj.attempts >= max_attempts:
                 link_obj.banned_to = now + timedelta(minutes=ban_minutes)
                 link_obj.attempts = 0
+                kyiv_tz = zoneinfo.ZoneInfo("Europe/Kyiv")
+                banned_to_kyiv = link_obj.banned_to.astimezone(kyiv_tz)
+
                 response = Response({
                     "message": f"Перевищено ліміт спроб. Спробуйте через {ban_minutes} хв.",
                     "remaining_attempts": 0,
                     "ban_minutes": ban_minutes,
-                    "banned_to": link_obj.banned_to,
+                    "banned_to": banned_to_kyiv.isoformat(),
                 },status=http_status.HTTP_403_FORBIDDEN
     )
 

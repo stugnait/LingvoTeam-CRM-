@@ -896,6 +896,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         new_trans_obj = updated_instance.translator_status
         new_trans_int = updated_instance.translator_status_id
 
+        print(instance.status_id_id)
         DONE_SLUGS = ['Done']
 
         main_slug = new_status_obj.slug if new_status_obj else ""
