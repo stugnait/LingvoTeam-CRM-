@@ -70,26 +70,35 @@ export function ExternalOrderView({
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
         setSelectedFiles(prev => [...prev, ...files])
+
+        e.target.value = ""
     }
 
     const handleRemoveFile = (index: number) => {
         setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ""
+        }
     }
 
     const handleUpload = async () => {
-        if (selectedFiles.length === 0) return
+        if (selectedFiles.length === 0) {return}
 
         setShowConfirmModal(false)
         const success = await onUpload(selectedFiles)
         if (success) {
             setSelectedFiles([])
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ""
+            }
             setUploadSuccess(true)
             setTimeout(() => setUploadSuccess(false), 3000)
         }
     }
 
     const handleUploadClick = () => {
-        if (selectedFiles.length === 0) return
+        if (selectedFiles.length === 0) {return}
 
         setModalConfig({
             title: "Підтвердження завантаження",
@@ -104,7 +113,7 @@ export function ExternalOrderView({
     }
 
     const handleDeleteClick = () => {
-        if (!onDelete) return
+        if (!onDelete) {return}
 
         setModalConfig({
             title: "Видалення замовлення",
@@ -120,7 +129,7 @@ export function ExternalOrderView({
     }
 
     const handleArchiveClick = () => {
-        if (!onArchive) return
+        if (!onArchive) {return}
 
         setModalConfig({
             title: "Архівування замовлення",
@@ -153,7 +162,7 @@ export function ExternalOrderView({
     }
 
     const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return "0 Bytes"
+        if (bytes === 0) {return "0 Bytes"}
         const k = 1024
         const sizes = ["Bytes", "KB", "MB", "GB"]
         const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -197,7 +206,7 @@ export function ExternalOrderView({
                     <div>
                         <p className="text-xl font-bold mb-1">⛔ Термін виконання вийшов</p>
                         <p className="text-red-600/80">
-                            Будь ласка, зв'яжіться з менеджером для уточнення деталей
+                            Будь ласка, зв&#39;яжіться з менеджером для уточнення деталей
                         </p>
                     </div>
                 </div>
@@ -364,19 +373,7 @@ export function ExternalOrderView({
                         )}
                     </div>
                 </div>
-
-                <div className="flex items-center gap-2 text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <Clock className="h-4 w-4 text-blue-500" />
-                    <p className="text-sm text-blue-600">
-                        Створено: {new Date(order.created_at).toLocaleString("uk-UA", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit"
-                    })}
-                    </p>
-                </div>
+                
             </div>
 
             <div className="grid gap-6">
