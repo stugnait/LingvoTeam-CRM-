@@ -491,7 +491,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             review_status='approved'
         )
 
-        order.status_id_id = 4
+        order.status_id_id = 2
         order.save(update_fields=['status_id'])
 
         if order.translator_id:
@@ -867,15 +867,18 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="confirm-order")
     def confirm_order(self, request, pk=None):
         order = self.get_object()
-        order.status_id_id = 4
+        order.status_id_id = 2
+
+        print("meow")
 
         generated_link_slug = str(uuid.uuid4())
         generated_password = secrets.token_urlsafe(8)
         expire_date = timezone.now() + timedelta(days=45)
 
+        print("meow, meow")
         OrderLink.objects.create(
             order=order,
-            assignee=OrderLink.Assignee.TRANSLATOR,
+            assignee=OrderLink.Assignee.CLIENTS,
             link=generated_link_slug,
             password=generated_password,
             expire_at=expire_date
@@ -889,7 +892,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-        full_link = f"{base_url}/translator/{generated_link_slug}"
+        full_link = f"{base_url}/clients/{generated_link_slug}"
 
         self._send_translator_invite(order, full_link, generated_password, expire_date, order.client_id)
 
@@ -938,7 +941,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 translator_status=new_translator_status
             )
 
-        DONE_SLUGS = ['Done']
+        DONE_SLUGS = ['done']
 
         main_slug = new_status.slug if new_status else ""
         trans_slug = new_translator_status.slug if new_translator_status else ""
