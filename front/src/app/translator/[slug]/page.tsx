@@ -21,7 +21,8 @@ export default function TranslatorExternalOrderPage({
         uploadProgress,
         init,
         submitPassword,
-        uploadFiles
+        uploadFiles,
+        remainingAttempts
     } = useExternalOrder(slug)
 
     useEffect(() => {
@@ -37,7 +38,11 @@ export default function TranslatorExternalOrderPage({
     }
 
     if (step === "password") {
-        return <PasswordForm onSubmit={submitPassword} error={error} />
+        return <PasswordForm
+            onSubmit={submitPassword}
+            error={error}
+            attempts={remainingAttempts ?? 0}
+        />
     }
 
     return (

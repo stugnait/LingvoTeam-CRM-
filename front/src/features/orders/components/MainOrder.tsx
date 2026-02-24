@@ -76,7 +76,7 @@ export default function CreateOrderPage() {
             files,
             deadline: deadline?.toISOString(), // ✅ додаємо deadline
             priority, // ✅ додаємо priority
-            comment, // ✅ додаємо comment
+            client_comment: comment, // ✅ додаємо comment
         })
 
         // Reset form
