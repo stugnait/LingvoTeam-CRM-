@@ -878,7 +878,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         print("meow, meow")
         OrderLink.objects.create(
             order=order,
-            assignee=OrderLink.Assignee.CLIENTS,
+            assignee=OrderLink.Assignee.CLIENT,
             link=generated_link_slug,
             password=generated_password,
             expire_at=expire_date
