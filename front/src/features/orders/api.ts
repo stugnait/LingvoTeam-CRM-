@@ -102,4 +102,24 @@ export const ordersApi = {
                 method: "POST",
             }
         ),
+
+    downloadFilesSource: (orderId: number) =>
+        apiFetch<Blob>(`orders/${orderId}/download-files/source/`, {
+            method: 'GET',
+            responseType: 'blob',
+        }),
+
+    downloadFilesTarget: (orderId: number) =>
+        apiFetch<Blob>(`orders/${orderId}/download-files/target/`, {
+            method: 'GET',
+            responseType: 'blob',
+        }),
+
+    confirmOrder: (orderId: number) =>
+        apiFetch<{ message: string; slug: string }>(
+            `orders/${orderId}/confirm-order/`,
+            {
+                method: "GET",
+            }
+        ),
 }
