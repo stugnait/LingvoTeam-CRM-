@@ -491,7 +491,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             review_status='approved'
         )
 
-        order.status_id_id = 4
+        order.status_id_id = 2
         order.save(update_fields=['status_id'])
 
         if order.translator_id:
@@ -867,12 +867,15 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="confirm-order")
     def confirm_order(self, request, pk=None):
         order = self.get_object()
-        order.status_id_id = 4
+        order.status_id_id = 2
+
+        print("meow")
 
         generated_link_slug = str(uuid.uuid4())
         generated_password = secrets.token_urlsafe(8)
         expire_date = timezone.now() + timedelta(days=45)
 
+        print("meow, meow")
         OrderLink.objects.create(
             order=order,
             assignee=OrderLink.Assignee.CLIENT,
@@ -912,40 +915,45 @@ class OrderViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         instance = serializer.instance
 
+        old_status = instance.status_id
+        old_client_status = instance.client_status
+        old_translator_status = instance.translator_status
+
         old_status_int = instance.status_id_id
         old_translator_status_int = instance.translator_status_id
 
         updated_instance = serializer.save()
 
-        new_status_obj = updated_instance.status_id
-        new_status_int = updated_instance.status_id_id
+        new_status = updated_instance.status_id
+        new_client_status = updated_instance.client_status
+        new_translator_status = updated_instance.translator_status
 
-        new_trans_obj = updated_instance.translator_status
+        new_status_int = updated_instance.status_id_id
         new_trans_int = updated_instance.translator_status_id
 
         print(instance.status_id_id)
         DONE_SLUGS = ['Done']
 
-        main_slug = new_status_obj.slug if new_status_obj else ""
-        trans_slug = new_trans_obj.slug if new_trans_obj else ""
+        DONE_SLUGS = ['done']
+
+        main_slug = new_status.slug if new_status else ""
+        trans_slug = new_translator_status.slug if new_translator_status else ""
 
         main_became_done = (old_status_int != new_status_int) and (main_slug in DONE_SLUGS)
-
         trans_became_done = (old_translator_status_int != new_trans_int) and (trans_slug in DONE_SLUGS)
 
+        manager_obj = updated_instance.manager_id
+        current_user = self.request.user
 
         if main_became_done or trans_became_done:
-
-            manager_obj = updated_instance.manager_id
-            current_user_id = self.request.user.id
-            manager_id = manager_obj.id if manager_obj else None
-
-            if manager_obj:
+            if manager_obj and current_user != manager_obj:
 
                 if trans_became_done:
-                    msg_text = f"Статус перекладача змінено на {new_trans_obj.name}"
+                    msg_text = f"Статус перекладача змінено на {new_translator_status.name}"
+                    status_name = new_translator_status.name if new_translator_status else 'None'
                 else:
-                    msg_text = f"Статус замовлення змінено на {new_status_obj.name}"
+                    msg_text = f"Статус замовлення змінено на {new_status.name}"
+                    status_name = new_status.name if new_status else 'None'
 
                 try:
                     Notification.objects.create(
@@ -954,15 +962,30 @@ class OrderViewSet(viewsets.ModelViewSet):
                         title="Зміна статусу",
                         message=msg_text
                     )
-
-
                 except Exception as e:
                     print(f"DEBUG: ERROR creating notification: {e}")
+
+                try:
+                    subject = f"Замовлення #{updated_instance.id} перейшло на новий етап - LingvoTeam"
+                    message = (
+                        f"Вітаємо, {manager_obj.full_name}!\n\n"
+                        f"Користувач {current_user.full_name} змінив статус замовлення #{updated_instance.id} на {status_name}.\n\n"
+                        f"З повагою, команда LingvoTeam."
+                    )
+                    send_mail(
+                        subject=subject,
+                        message=message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[manager_obj.email],
+                        fail_silently=True
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send email to manager: {e}")
+
             else:
                 print("DEBUG: Notification SKIPPED (No manager or Self-update)")
 
-
-#TODO full_link to change order.translator_id
+    #TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
         try:
             subject = f"Нове замовлення - LingvoTeam"

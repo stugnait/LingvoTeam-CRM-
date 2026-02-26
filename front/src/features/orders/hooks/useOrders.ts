@@ -59,6 +59,59 @@ export function useOrders() {
     }
 
 
+    const downloadBlob = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+
+        URL.revokeObjectURL(url)
+    }
+
+
+    const downloadOrderSourceFiles = useCallback(async (orderId: number) => {
+        try {
+            const blob = await ordersApi.downloadFilesSource(orderId)
+            downloadBlob(blob, `order_${orderId}_source.zip`)
+        } catch (error) {
+            console.error('❌ Failed to download SOURCE files:', error)
+        }
+    }, [])
+
+    const downloadOrderTargetFiles = useCallback(async (orderId: number) => {
+        try {
+            const blob = await ordersApi.downloadFilesTarget(orderId)
+            downloadBlob(blob, `order_${orderId}_target.zip`)
+        } catch (error) {
+            console.error('❌ Failed to download TARGET files:', error)
+        }
+    }, [])
+
+    const confirmOrder = useCallback(async (orderId: number) => {
+        try {
+            const res = await ordersApi.confirmOrder(orderId)
+
+            toast({
+                title: "Order confirmed",
+                description: res.message,
+            })
+
+            // 🔥 оновлюємо список ордерів
+            const updated = await ordersApi.listOrders()
+            setOrders(updated.results)
+
+            return res
+        } catch (e) {
+            handleError(e, "Failed to confirm order")
+            throw e
+        }
+    }, [])
+
+
 
 
     /* =========================
@@ -270,6 +323,10 @@ export function useOrders() {
         loadOrderDetails,
         loadLanguagePair,
         loadInitialData,
+        downloadOrderSourceFiles,
+        downloadOrderTargetFiles,
+        confirmOrder,
+
 
         // translators
         translatorsCache,

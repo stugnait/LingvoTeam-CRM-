@@ -195,7 +195,7 @@ export interface OrderListItem {
     client_id: number
     source_language: number
     target_language: number
-    status_id: string
+    status_id: number
     created_at: string // ISO
     translator_id: string
     language_pair_id: number

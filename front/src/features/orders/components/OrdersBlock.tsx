@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState} from "react"
+import {Fragment, useEffect, useState} from "react"
 import {
     Table,
     TableBody,
@@ -29,9 +29,12 @@ interface OrdersTableProps {
     languagePairs: Record<number, LanguagePair>
     translatorsCache: Record<number, Translator>
     highlightId?: number
+    confirmOrder: (orderId: number) => Promise<any>
+    downloadOrderSourceFiles: (orderId: number) => Promise<void>
+    downloadOrderTargetFiles: (orderId: number) => Promise<void>
 }
 
-export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, highlightId }: OrdersTableProps) {
+export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, highlightId, confirmOrder, downloadOrderSourceFiles, downloadOrderTargetFiles }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<CreateOrderResponse | null>(null)
     const [loadingId, setLoadingId] = useState<number | null>(null)
@@ -91,31 +94,29 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
 
     return (
         <div className="border border-border rounded-lg bg-card mx-4 my-6 shadow-soft">
-            <Table>
+            <Table className="w-full">
                 <TableHeader>
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="font-semibold text-foreground h-14 pl-6">ID</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Client</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Languages</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Status</TableHead>
-                        <TableHead className="w-[60px] font-semibold text-foreground h-14 pr-6" />
+                        <TableHead className="font-semibold text-foreground h-14 pr-6">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
 
                 <TableBody>
                     {orders.map((order) => (
-                        <>
+                        <Fragment key={order.id}>
                             {/* MAIN ROW */}
                             <TableRow
-                                key={order.id}
                                 className={cn(
                                     "hover:bg-muted/30 transition-colors",
                                     order.id === highlightId &&
                                     "bg-primary/10 ring-2 ring-primary animate-pulse"
                                 )}
                             >
-
-                            <TableCell className="align-middle h-16 pl-6">
+                                <TableCell className="align-middle h-16 pl-6">
                                     <div className="font-medium text-foreground">
                                         #{order.id}
                                     </div>
@@ -136,25 +137,22 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
 
                                 <TableCell className="align-middle h-16">
                                     <div className="flex items-center gap-2">
-
                                         {/* Source */}
                                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
-      {order.source_language}
-    </span>
+                                            {order.source_language}
+                                        </span>
 
                                         {/* Arrow */}
                                         <span className="text-muted-foreground text-sm font-medium">
-      →
-    </span>
+                                            →
+                                        </span>
 
                                         {/* Target */}
                                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-      {order.target_language}
-    </span>
-
+                                            {order.target_language}
+                                        </span>
                                     </div>
                                 </TableCell>
-
 
                                 <TableCell className="align-middle h-16">
                                     <Badge
@@ -166,18 +164,96 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                 </TableCell>
 
                                 <TableCell className="align-middle h-16 pr-6">
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleToggle(order.id)}
-                                        className="transition-smooth hover:bg-muted/50 rounded-full w-8 h-8 p-0"
-                                    >
-                                        {expandedId === order.id ? (
-                                            <ChevronUp className="h-4 w-4 transition-spring" />
-                                        ) : (
-                                            <ChevronDown className="h-4 w-4 transition-spring" />
+                                    <div className="flex items-center justify-end gap-2">
+                                        {order.status_id === 9 && (
+                                            <>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => downloadOrderSourceFiles(order.id)}
+                                                    className="group relative overflow-hidden border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 h-8"
+                                                >
+                                                    <span className="flex items-center gap-1.5">
+                                                        <svg
+                                                            className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                                            />
+                                                        </svg>
+                                                        <span>Original</span>
+                                                    </span>
+                                                </Button>
+
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => downloadOrderTargetFiles(order.id)}
+                                                    className="group relative overflow-hidden border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/30 transition-all duration-300 h-8"
+                                                >
+                                                    <span className="flex items-center gap-1.5">
+                                                        <svg
+                                                            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                                                            />
+                                                        </svg>
+                                                        <span>Translation</span>
+                                                    </span>
+                                                </Button>
+
+                                                <Button
+                                                    size="sm"
+                                                    variant="default"
+                                                    onClick={() => confirmOrder(order.id)}
+                                                    className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary shadow-md hover:shadow-lg transition-all duration-300 h-8"
+                                                >
+                                                    <span className="flex items-center gap-1.5">
+                                                        <svg
+                                                            className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                                                            />
+                                                        </svg>
+                                                        <span>Send</span>
+                                                    </span>
+                                                </Button>
+                                            </>
                                         )}
-                                    </Button>
+
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => handleToggle(order.id)}
+                                            className="transition-smooth hover:bg-muted/50 rounded-full w-8 h-8 p-0 flex-shrink-0"
+                                        >
+                                            {expandedId === order.id ? (
+                                                <ChevronUp className="h-4 w-4 transition-spring" />
+                                            ) : (
+                                                <ChevronDown className="h-4 w-4 transition-spring" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
 
@@ -186,10 +262,10 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                 <TableRow className="bg-muted/30 border-b-0">
                                     <TableCell colSpan={5} className="p-0 border-b-0">
                                         <div
-                                            className="animate-expand-row"
+                                            className="animate-expand-row w-full"
                                             style={{ overflow: 'hidden' }}
                                         >
-                                            <div className="px-6 py-6">
+                                            <div className="px-6 py-6 w-full">
                                                 {loadingId === order.id ? (
                                                     <div className="flex items-center justify-center gap-3 py-8">
                                                         <div className="loading-spinner" />
@@ -199,9 +275,9 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                     </div>
                                                 ) : (
                                                     details && (
-                                                        <div className="space-y-6">
+                                                        <div className="space-y-6 w-full">
                                                             {/* Grid items */}
-                                                            <div className="grid grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-2 gap-4 w-full">
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                                         Pages
@@ -238,7 +314,8 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            <div className="pt-4 border-t border-border/50 space-y-3">
+
+                                                            <div className="pt-4 border-t border-border/50 space-y-3 w-full">
                                                                 <div className="flex items-center justify-between">
                                                                     <p className="text-sm font-medium text-foreground">Image OCR</p>
 
@@ -253,14 +330,14 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                 </div>
 
                                                                 {analyzeResult?.order_id === order.id && (
-                                                                    <div className="space-y-2">
+                                                                    <div className="space-y-2 w-full">
                                                                         {analyzeResult.results.length === 0 ? (
                                                                             <p className="text-sm text-muted-foreground">
                                                                                 No supported files (pdf/docx) found.
                                                                             </p>
                                                                         ) : (
                                                                             analyzeResult.results.map((r) => (
-                                                                                <div key={r.file_id} className="border rounded-md p-3 bg-background/50">
+                                                                                <div key={r.file_id} className="border rounded-md p-3 bg-background/50 w-full">
                                                                                     <div className="text-sm">
                                                                                         <b>file_id:</b> {r.file_id}{" "}
                                                                                         {r.file_type ? `(${r.file_type})` : ""}
@@ -285,40 +362,6 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                     </div>
                                                                 )}
                                                             </div>
-
-                                                            {/*<div className="pt-4 border-t border-border/50">*/}
-                                                            {/*    <div className="flex items-center justify-between">*/}
-                                                            {/*        <div className="space-y-1">*/}
-                                                            {/*            <p className="text-sm font-medium text-foreground">*/}
-                                                            {/*                Order Details*/}
-                                                            {/*            </p>*/}
-                                                            {/*            <p className="text-sm text-muted-foreground">*/}
-                                                            {/*                Complete order information*/}
-                                                            {/*            </p>*/}
-                                                            {/*        </div>*/}
-                                                            {/*        <a*/}
-                                                            {/*            href={details.full_url}*/}
-                                                            {/*            target="_blank"*/}
-                                                            {/*            rel="noopener noreferrer"*/}
-                                                            {/*            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/15 transition-smooth hover:gap-3"*/}
-                                                            {/*        >*/}
-                                                            {/*            <span>Open translator link</span>*/}
-                                                            {/*            <svg*/}
-                                                            {/*                className="h-4 w-4 transition-smooth group-hover:translate-x-0.5 group-hover:-translate-y-0.5"*/}
-                                                            {/*                fill="none"*/}
-                                                            {/*                stroke="currentColor"*/}
-                                                            {/*                viewBox="0 0 24 24"*/}
-                                                            {/*            >*/}
-                                                            {/*                <path*/}
-                                                            {/*                    strokeLinecap="round"*/}
-                                                            {/*                    strokeLinejoin="round"*/}
-                                                            {/*                    strokeWidth={2}*/}
-                                                            {/*                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"*/}
-                                                            {/*                />*/}
-                                                            {/*            </svg>*/}
-                                                            {/*        </a>*/}
-                                                            {/*    </div>*/}
-                                                            {/*</div>*/}
                                                         </div>
                                                     )
                                                 )}
@@ -327,7 +370,7 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                     </TableCell>
                                 </TableRow>
                             )}
-                        </>
+                        </Fragment>
                     ))}
                 </TableBody>
             </Table>

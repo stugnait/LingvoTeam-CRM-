@@ -24,6 +24,9 @@ export default function CreateOrderPage() {
         currencies,
         translators,
         traffics,
+        confirmOrder,
+        downloadOrderSourceFiles,
+        downloadOrderTargetFiles
     } = useOrders()
 
     // State for modal
@@ -115,6 +118,9 @@ export default function CreateOrderPage() {
                     languagePairs={languagePairs}
                     translatorsCache={translatorsCache}
                     highlightId={activeHighlightId}
+                    confirmOrder={confirmOrder}
+                    downloadOrderSourceFiles={downloadOrderSourceFiles}
+                    downloadOrderTargetFiles={downloadOrderTargetFiles}
                 />
             </div>
 

@@ -96,6 +96,7 @@ export const useEditor = () => {
             setIsLoading(true);
             setError(null);
 
+
             try {
                 console.log('🔍 Завантаження ордерів з API...');
                 const fetchedTasks = await fetchOrders();
