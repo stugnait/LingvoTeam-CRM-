@@ -32,13 +32,14 @@ from django_filters import OrderingFilter, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django.db.models import Q, Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 
 # DRF imports
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, request
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny
@@ -136,7 +137,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'create': ['order.create'],
             'list': ['order.view'],
             'retrieve': ['order.view'],
-            'update': ['order.update'],
+            'update': [AllowAny],
             'assign_translator': ['order.assign'],
             'reject_translation': ['order.reject_translation'],
             'approve_translation': ['order.approve_translation'],
@@ -913,6 +914,23 @@ class OrderViewSet(viewsets.ModelViewSet):
             return None
 
     def perform_update(self, serializer):
+        order = serializer.instance
+        request = self.request
+
+        is_editor = request.user.is_authenticated and (
+                request.user.is_staff or getattr(request.user, 'role_id', None) == 2
+        )
+
+        provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
+        link_obj = OrderLink.objects.filter(order=order).last()
+
+        is_password_valid = False
+        if provided_password and link_obj:
+            is_password_valid = secrets.compare_digest(link_obj.password, provided_password)
+
+        if not (is_editor or is_password_valid):
+            raise PermissionDenied("У вас немає доступу (потрібна роль Editor або вірний пароль).")
+
         instance = serializer.instance
 
         old_status = instance.status_id
