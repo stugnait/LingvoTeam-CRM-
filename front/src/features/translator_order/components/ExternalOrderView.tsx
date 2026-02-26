@@ -28,7 +28,7 @@ export function ExternalOrderView({ order, onUpload, isUploading, uploadProgress
     }
 
     const handleUpload = async () => {
-        if (selectedFiles.length === 0) return
+        if (selectedFiles.length === 0) {return}
 
         const success = await onUpload(selectedFiles)
         if (success) {
@@ -39,7 +39,7 @@ export function ExternalOrderView({ order, onUpload, isUploading, uploadProgress
     }
 
     const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return '0 Bytes'
+        if (bytes === 0) {return '0 Bytes'}
         const k = 1024
         const sizes = ['Bytes', 'KB', 'MB', 'GB']
         const i = Math.floor(Math.log(bytes) / Math.log(k))

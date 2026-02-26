@@ -18,7 +18,7 @@ export function PasswordForm({ onSubmit, error }: Props) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!password.trim()) return
+        if (!password.trim()) {return}
 
         setLoading(true)
         try {
