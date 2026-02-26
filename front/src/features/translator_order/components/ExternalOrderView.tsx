@@ -1,6 +1,7 @@
 "use client"
 
-import type { ExternalOrder } from "../types"
+import type { ExternalOrder, ExternalOrderFileItem } from "../types"
+import { translatorOrderApi } from "../api"
 import {
     Calendar,
     MessageSquare,
@@ -21,7 +22,7 @@ import {
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
 import { Progress } from "@/src/components/ui/progress"
-import { useState, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useCountdown } from "../hooks/useCountdown"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 
@@ -36,14 +37,14 @@ interface Props {
 }
 
 export function ExternalOrderView({
-                                      order,
-                                      onUpload,
-                                      onDelete,
-                                      onArchive,
-                                      isUploading,
-                                      uploadProgress,
-                                      error,
-                                  }: Props) {
+    order,
+    onUpload,
+    onDelete,
+    onArchive,
+    isUploading,
+    uploadProgress,
+    error,
+}: Props) {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([])
     const [uploadSuccess, setUploadSuccess] = useState(false)
     const [isDragging, setIsDragging] = useState(false)
@@ -64,46 +65,74 @@ export function ExternalOrderView({
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const countdown = useCountdown(order.deadline)
-
     const pad = (num: number) => String(num).padStart(2, "0")
 
+    // ----------------- SOURCE DOWNLOADS -----------------
+    const [sourceFiles, setSourceFiles] = useState<ExternalOrderFileItem[]>([])
+    const [filesLoading, setFilesLoading] = useState(false)
+    const [filesError, setFilesError] = useState<string | null>(null)
+
+    const refreshSourceFiles = async () => {
+        setFilesLoading(true)
+        setFilesError(null)
+        try {
+            const res = await translatorOrderApi.listDownloadFiles(order.id, "source")
+            setSourceFiles(res.files ?? [])
+        } catch (e: any) {
+            setFilesError(e?.message || "Не вдалося завантажити список файлів (source)")
+        } finally {
+            setFilesLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        void refreshSourceFiles()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [order?.id])
+
+    const downloadSourceFileUrl = (fileId: number) =>
+        translatorOrderApi.downloadSourceFileUrl(order.id, fileId)
+
+    const downloadAllSourceUrl = () =>
+        translatorOrderApi.downloadAllSourceUrl(order.id)
+
+    // ----------------- EXISTING HANDLERS -----------------
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
         setSelectedFiles(prev => [...prev, ...files])
-
         e.target.value = ""
     }
 
     const handleRemoveFile = (index: number) => {
         setSelectedFiles(prev => prev.filter((_, i) => i !== index))
-
         if (fileInputRef.current) {
             fileInputRef.current.value = ""
         }
     }
 
     const handleUpload = async () => {
-        if (selectedFiles.length === 0) {return}
+        if (selectedFiles.length === 0) return
 
         setShowConfirmModal(false)
         const success = await onUpload(selectedFiles)
         if (success) {
             setSelectedFiles([])
-            if (fileInputRef.current) {
-                fileInputRef.current.value = ""
-            }
+            if (fileInputRef.current) fileInputRef.current.value = ""
             setUploadSuccess(true)
             setTimeout(() => setUploadSuccess(false), 3000)
+
+            // після успішного upload — оновимо source список (на всяк)
+            void refreshSourceFiles()
         }
     }
 
     const handleUploadClick = () => {
-        if (selectedFiles.length === 0) {return}
+        if (selectedFiles.length === 0) return
 
         setModalConfig({
             title: "Підтвердження завантаження",
             description: `Ви впевнені, що хочете завантажити ${selectedFiles.length} ${
-                selectedFiles.length === 1 ? 'файл' : 'файлів'
+                selectedFiles.length === 1 ? "файл" : "файлів"
             }? Після завантаження ви не зможете його видалити.`,
             confirmLabel: "Завантажити",
             confirmVariant: "default",
@@ -113,7 +142,7 @@ export function ExternalOrderView({
     }
 
     const handleDeleteClick = () => {
-        if (!onDelete) {return}
+        if (!onDelete) return
 
         setModalConfig({
             title: "Видалення замовлення",
@@ -129,7 +158,7 @@ export function ExternalOrderView({
     }
 
     const handleArchiveClick = () => {
-        if (!onArchive) {return}
+        if (!onArchive) return
 
         setModalConfig({
             title: "Архівування замовлення",
@@ -162,15 +191,11 @@ export function ExternalOrderView({
     }
 
     const formatFileSize = (bytes: number) => {
-        if (bytes === 0) {return "0 Bytes"}
+        if (bytes === 0) return "0 Bytes"
         const k = 1024
         const sizes = ["Bytes", "KB", "MB", "GB"]
         const i = Math.floor(Math.log(bytes) / Math.log(k))
-        return (
-            Math.round((bytes / Math.pow(k, i)) * 100) / 100 +
-            " " +
-            sizes[i]
-        )
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i]
     }
 
     const getStatusColor = (status: string) => {
@@ -195,7 +220,6 @@ export function ExternalOrderView({
         }
     }
 
-    // Окремий компонент для таймера
     const CountdownTimer = () => {
         if (countdown.expired) {
             return (
@@ -226,89 +250,40 @@ export function ExternalOrderView({
                 </div>
 
                 <div className="grid grid-cols-4 gap-4">
-                    {/* Дні */}
                     <div className="relative group">
                         <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
-                            <div className="text-4xl font-bold text-blue-600 mb-1">
-                                {pad(countdown.days)}
-                            </div>
-                            <div className="text-sm text-blue-400 font-medium">
-                                Днів
-                            </div>
-                        </div>
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            D
+                            <div className="text-4xl font-bold text-blue-600 mb-1">{pad(countdown.days)}</div>
+                            <div className="text-sm text-blue-400 font-medium">Днів</div>
                         </div>
                     </div>
-
-                    {/* Години */}
                     <div className="relative group">
                         <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
-                            <div className="text-4xl font-bold text-blue-600 mb-1">
-                                {pad(countdown.hours)}
-                            </div>
-                            <div className="text-sm text-blue-400 font-medium">
-                                Годин
-                            </div>
-                        </div>
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            H
+                            <div className="text-4xl font-bold text-blue-600 mb-1">{pad(countdown.hours)}</div>
+                            <div className="text-sm text-blue-400 font-medium">Годин</div>
                         </div>
                     </div>
-
-                    {/* Хвилини */}
                     <div className="relative group">
                         <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
-                            <div className="text-4xl font-bold text-blue-600 mb-1">
-                                {pad(countdown.minutes)}
-                            </div>
-                            <div className="text-sm text-blue-400 font-medium">
-                                Хвилин
-                            </div>
-                        </div>
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            M
+                            <div className="text-4xl font-bold text-blue-600 mb-1">{pad(countdown.minutes)}</div>
+                            <div className="text-sm text-blue-400 font-medium">Хвилин</div>
                         </div>
                     </div>
-
-                    {/* Секунди */}
                     <div className="relative group">
                         <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
                             <div className="text-4xl font-bold text-blue-600 mb-1 relative">
                                 {pad(countdown.seconds)}
                                 <span className="absolute -top-1 -right-2 w-2 h-2 bg-blue-500 rounded-full animate-ping" />
                             </div>
-                            <div className="text-sm text-blue-400 font-medium">
-                                Секунд
-                            </div>
-                        </div>
-                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                            S
+                            <div className="text-sm text-blue-400 font-medium">Секунд</div>
                         </div>
                     </div>
                 </div>
-
-                {/* Текстове повідомлення про час */}
-                <div className="mt-6 text-center">
-                    <p className="text-sm text-blue-600 bg-blue-50 inline-block px-4 py-2 rounded-full">
-                        {countdown.days > 0
-                            ? `⏳ Залишилось ${countdown.days} ${countdown.days === 1 ? 'день' : 'днів'} та ${countdown.hours} ${countdown.hours === 1 ? 'година' : 'годин'}`
-                            : countdown.hours > 0
-                                ? `⏳ Залишилось ${countdown.hours} ${countdown.hours === 1 ? 'година' : 'годин'} та ${countdown.minutes} ${countdown.minutes === 1 ? 'хвилина' : 'хвилин'}`
-                                : `⏳ Залишилось ${countdown.minutes} ${countdown.minutes === 1 ? 'хвилина' : 'хвилин'} та ${countdown.seconds} ${countdown.seconds === 1 ? 'секунда' : 'секунд'}`
-                        }
-                    </p>
-                </div>
-
-                {/* Декоративна лінія */}
-                <div className="mt-4 h-1 bg-gradient-to-r from-blue-200 via-blue-400 to-blue-200 rounded-full w-3/4 mx-auto opacity-50" />
             </div>
         )
     }
 
     return (
         <div className="max-w-4xl mx-auto mt-8 p-6 animate-fade-in">
-            {/* Модалка підтвердження */}
             <ConfirmModal
                 open={showConfirmModal}
                 onOpenChange={setShowConfirmModal}
@@ -328,27 +303,23 @@ export function ExternalOrderView({
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                             Замовлення #{order.id}
                         </h1>
-                        <Badge
-                            variant="outline"
-                            className="text-sm border-blue-200 bg-blue-50 text-blue-700"
-                        >
+                        <Badge variant="outline" className="text-sm border-blue-200 bg-blue-50 text-blue-700">
                             Зовнішній доступ
                         </Badge>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {/* Статус з анімацією */}
+                        {/* статус */}
                         <div className="flex items-center gap-2 mr-4">
                             <div className="relative">
-                                <div className={`h-3 w-3 rounded-full ${getStatusColor(order.status)} animate-pulse`} />
-                                <div className={`absolute inset-0 h-3 w-3 rounded-full ${getStatusColor(order.status)} animate-ping opacity-75`} />
+                                <div className={`h-3 w-3 rounded-full ${getStatusColor((order as any).status)} animate-pulse`} />
+                                <div className={`absolute inset-0 h-3 w-3 rounded-full ${getStatusColor((order as any).status)} animate-ping opacity-75`} />
                             </div>
                             <span className="font-medium text-sm">
-                                {getStatusText(order.status)}
+                                {getStatusText((order as any).status)}
                             </span>
                         </div>
 
-                        {/* Додаткові дії */}
                         {onArchive && (
                             <Button
                                 variant="outline"
@@ -373,7 +344,6 @@ export function ExternalOrderView({
                         )}
                     </div>
                 </div>
-                
             </div>
 
             <div className="grid gap-6">
@@ -404,21 +374,17 @@ export function ExternalOrderView({
                             </div>
 
                             <p className="font-medium text-base mb-3 bg-blue-50 p-3 rounded-lg border border-blue-100 text-blue-800">
-                                {new Date(order.deadline).toLocaleString(
-                                    "uk-UA",
-                                    {
-                                        day: "numeric",
-                                        month: "long",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    }
-                                )}
+                                {new Date(order.deadline).toLocaleString("uk-UA", {
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                })}
                             </p>
                         </div>
                     </div>
 
-                    {/* Таймер */}
                     <CountdownTimer />
                 </div>
 
@@ -434,9 +400,7 @@ export function ExternalOrderView({
                     <div className="min-h-[150px] p-5 rounded-lg bg-gradient-to-br from-blue-50 to-white border-2 border-dashed border-blue-200 hover:border-blue-300 transition-colors">
                         {order.comment ? (
                             <div className="prose prose-sm max-w-none">
-                                <p className="whitespace-pre-line text-blue-900 leading-relaxed">
-                                    {order.comment}
-                                </p>
+                                <p className="whitespace-pre-line text-blue-900 leading-relaxed">{order.comment}</p>
                             </div>
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full text-blue-300 py-8">
@@ -445,6 +409,87 @@ export function ExternalOrderView({
                                 <p className="text-sm">Немає додаткових інструкцій</p>
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* ✅ Downloads: SOURCE ONLY */}
+                <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                        <h2 className="text-lg font-semibold flex items-center gap-2 text-blue-800">
+                            <div className="p-2 rounded-lg bg-blue-50">
+                                <Eye className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <span>Файли для завантаження</span>
+                        </h2>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={refreshSourceFiles}
+                            disabled={filesLoading}
+                            className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                        >
+                            Оновити
+                        </Button>
+                    </div>
+
+                    {filesError && (
+                        <div className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5" />
+                            <span className="text-sm">{filesError}</span>
+                        </div>
+                    )}
+
+                    <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="font-semibold text-blue-900">Source</p>
+                            <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
+                                {filesLoading ? "..." : sourceFiles.length}
+                            </Badge>
+                        </div>
+
+                        <div className="space-y-2">
+                            {filesLoading ? (
+                                <div className="text-sm text-blue-500">Завантаження…</div>
+                            ) : sourceFiles.length === 0 ? (
+                                <div className="text-sm text-blue-400">Файлів немає</div>
+                            ) : (
+                                sourceFiles.map(f => (
+                                    <div
+                                        key={f.id}
+                                        className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-blue-100"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
+                                            <p className="text-xs text-blue-400">ID: {f.id}</p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            asChild
+                                            className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                            >
+                                            <a href={downloadSourceFileUrl(f.id)} download>
+                                                Скачати
+                                            </a>
+                                        </Button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end">
+                        <Button
+                            asChild
+                            disabled={filesLoading}
+                            className="bg-blue-600 hover:bg-blue-700"
+                            >
+                            <a href={downloadAllSourceUrl()} download>
+                                <FileUp className="h-4 w-4 mr-2" />
+                                Скачати все (source)
+                            </a>
+                        </Button>
                     </div>
                 </div>
 
@@ -457,7 +502,6 @@ export function ExternalOrderView({
                         <span>Завантаження перекладу</span>
                     </h2>
 
-                    {/* Повідомлення про успіх */}
                     {uploadSuccess && (
                         <div className="mb-4 p-4 rounded-lg bg-green-50 border border-green-200 flex items-center gap-3 text-green-800 animate-slide-down">
                             <div className="p-1 rounded-full bg-green-200">
@@ -465,14 +509,11 @@ export function ExternalOrderView({
                             </div>
                             <div>
                                 <p className="font-semibold">Файли успішно завантажено!</p>
-                                <p className="text-sm text-green-600 mt-1">
-                                    Дякуємо, ваш переклад отримано
-                                </p>
+                                <p className="text-sm text-green-600 mt-1">Дякуємо, ваш переклад отримано</p>
                             </div>
                         </div>
                     )}
 
-                    {/* Помилка */}
                     {error && (
                         <div className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 flex items-center gap-3 text-red-800 animate-slide-down">
                             <div className="p-1 rounded-full bg-red-200">
@@ -485,7 +526,6 @@ export function ExternalOrderView({
                         </div>
                     )}
 
-                    {/* Зона завантаження */}
                     <div
                         onClick={() => fileInputRef.current?.click()}
                         onDragOver={handleDragOver}
@@ -495,10 +535,10 @@ export function ExternalOrderView({
                             border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
                             transition-all duration-200 relative overflow-hidden
                             ${isDragging
-                            ? 'border-blue-400 bg-blue-50 scale-[1.02]'
-                            : 'border-blue-200 hover:border-blue-300 hover:bg-blue-50'
-                        }
-                            ${isUploading ? 'pointer-events-none opacity-50' : ''}
+                                ? "border-blue-400 bg-blue-50 scale-[1.02]"
+                                : "border-blue-200 hover:border-blue-300 hover:bg-blue-50"
+                            }
+                            ${isUploading ? "pointer-events-none opacity-50" : ""}
                         `}
                     >
                         <input
@@ -511,31 +551,27 @@ export function ExternalOrderView({
                         />
 
                         <div className="relative z-10">
-                            <div className={`
+                            <div
+                                className={`
                                 p-4 rounded-full bg-blue-50 inline-block mb-4
                                 transition-transform duration-200
-                                ${isDragging ? 'scale-110 rotate-12' : ''}
-                            `}>
+                                ${isDragging ? "scale-110 rotate-12" : ""}
+                            `}
+                            >
                                 <FileUp className="h-8 w-8 text-blue-500" />
                             </div>
                             <p className="text-lg font-medium mb-2 text-blue-700">
-                                {isDragging ? 'Відпустіть файли для завантаження' : 'Перетягніть файли сюди'}
+                                {isDragging ? "Відпустіть файли для завантаження" : "Перетягніть файли сюди"}
                             </p>
-                            <p className="text-sm text-blue-500">
-                                або натисніть для вибору
-                            </p>
-                            <p className="text-xs text-blue-400 mt-2">
-                                Підтримуються будь-які формати файлів
-                            </p>
+                            <p className="text-sm text-blue-500">або натисніть для вибору</p>
+                            <p className="text-xs text-blue-400 mt-2">Підтримуються будь-які формати файлів</p>
                         </div>
 
-                        {/* Анімація фону при перетягуванні */}
                         {isDragging && (
                             <div className="absolute inset-0 bg-gradient-to-r from-blue-100/50 via-transparent to-blue-100/50 animate-shimmer" />
                         )}
                     </div>
 
-                    {/* Список вибраних файлів */}
                     {selectedFiles.length > 0 && (
                         <div className="mt-4 space-y-2">
                             <p className="text-sm font-medium flex items-center gap-2 text-blue-700">
@@ -551,12 +587,8 @@ export function ExternalOrderView({
                                         <div className="flex items-center gap-3 min-w-0">
                                             <FileText className="h-4 w-4 flex-shrink-0 text-blue-500" />
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-blue-700 truncate">
-                                                    {file.name}
-                                                </p>
-                                                <p className="text-xs text-blue-500">
-                                                    {formatFileSize(file.size)}
-                                                </p>
+                                                <p className="text-sm font-medium text-blue-700 truncate">{file.name}</p>
+                                                <p className="text-xs text-blue-500">{formatFileSize(file.size)}</p>
                                             </div>
                                         </div>
                                         <Button
@@ -576,7 +608,6 @@ export function ExternalOrderView({
                         </div>
                     )}
 
-                    {/* Прогрес завантаження */}
                     {isUploading && (
                         <div className="mt-4 space-y-2">
                             <div className="flex justify-between text-sm text-blue-600">
@@ -587,7 +618,6 @@ export function ExternalOrderView({
                         </div>
                     )}
 
-                    {/* Кнопка завантаження */}
                     <Button
                         onClick={handleUploadClick}
                         disabled={selectedFiles.length === 0 || isUploading}
@@ -621,21 +651,9 @@ export function ExternalOrderView({
 
                     <div className="grid sm:grid-cols-3 gap-4">
                         {[
-                            {
-                                step: 1,
-                                title: "Виберіть файли",
-                                description: "Перетягніть файли або натисніть на область завантаження"
-                            },
-                            {
-                                step: 2,
-                                title: "Перевірте",
-                                description: "Переконайтесь, що вибрали всі потрібні файли"
-                            },
-                            {
-                                step: 3,
-                                title: "Підтвердьте",
-                                description: "Натисніть кнопку та підтвердьте завантаження"
-                            }
+                            { step: 1, title: "Виберіть файли", description: "Перетягніть файли або натисніть на область завантаження" },
+                            { step: 2, title: "Перевірте", description: "Переконайтесь, що вибрали всі потрібні файли" },
+                            { step: 3, title: "Підтвердьте", description: "Натисніть кнопку та підтвердьте завантаження" },
                         ].map((item) => (
                             <div key={item.step} className="text-center p-4 rounded-lg bg-blue-50">
                                 <div className="w-8 h-8 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center mx-auto mb-3">
