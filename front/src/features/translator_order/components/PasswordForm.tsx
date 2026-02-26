@@ -9,9 +9,10 @@ import { Lock, Eye, EyeOff, KeyRound } from "lucide-react"
 interface Props {
     onSubmit: (password: string) => void
     error?: string | null
+    attempts: string
 }
 
-export function PasswordForm({ onSubmit, error }: Props) {
+export function PasswordForm({ onSubmit, error, attempts }: Props) {
     const [password, setPassword] = useState("")
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
@@ -22,7 +23,7 @@ export function PasswordForm({ onSubmit, error }: Props) {
 
         setLoading(true)
         try {
-            await onSubmit(password)
+            onSubmit(password)
         } finally {
             setLoading(false)
         }
@@ -79,10 +80,12 @@ export function PasswordForm({ onSubmit, error }: Props) {
                 {error && (
                     <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                         <p className="text-sm text-destructive flex items-center gap-2">
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
                             {error}
+                            {attempts && (
+                                <span className="ml-1">
+                    Залишилось спроб: {attempts}
+                </span>
+                            )}
                         </p>
                     </div>
                 )}

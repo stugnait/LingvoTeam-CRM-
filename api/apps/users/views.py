@@ -14,7 +14,7 @@ from .authentification import set_auth_cookies
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, \
-    UserSelfUpdateSerializer, UserListSerializer
+    UserSelfUpdateSerializer, UserListSerializer, EditorLanguagePairsSerializer
 from .serializers import RegistrationSerializer, UserUpdateSerializer, \
     CustomTokenObtainPairSerializer, UserSerializer
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -27,6 +27,47 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.core.mail import send_mail
 
+from rest_framework import serializers
+from .models import EditorLanguagePairs
+
+from rest_framework import viewsets
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Список мовних пар редакторів",
+        description="Отримати список усіх зв'язків між редакторами та їхніми мовними парами.",
+        tags=["Editor Language Pairs"]
+    ),
+    retrieve=extend_schema(
+        summary="Деталі мовної пари",
+        description="Отримати детальну інформацію про конкретну мовну пару за її ID.",
+        tags=["Editor Language Pairs"]
+    ),
+    create=extend_schema(
+        summary="Призначити мовну пару редактору",
+        description="Створює новий зв'язок між редактором (role_id=2) та мовною парою.",
+        tags=["Editor Language Pairs"]
+    ),
+    update=extend_schema(
+        summary="Повністю оновити мовну пару",
+        description="Оновлює всі поля існуючого запису.",
+        tags=["Editor Language Pairs"]
+    ),
+    partial_update=extend_schema(
+        summary="Частково оновити мовну пару",
+        description="Оновлює лише передані поля існуючого запису.",
+        tags=["Editor Language Pairs"]
+    ),
+    destroy=extend_schema(
+        summary="Видалити мовну пару",
+        description="Видаляє зв'язок між редактором та мовною парою.",
+        tags=["Editor Language Pairs"]
+    ),
+)
+
+class EditorLanguagePairViewSet(viewsets.ModelViewSet):
+    queryset = EditorLanguagePairs.objects.all()
+    serializer_class = EditorLanguagePairsSerializer
 
 access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
 refresh_lifetime = settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
@@ -92,10 +133,36 @@ class AdminToggleUserStatusView(APIView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
 
-
-
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['is_active', 'role', 'role__slug']
+
+    @action(detail=False, methods=['GET'], url_path='editors-by-language')
+    def get_editors_by_language(self, request):
+        language_pair_id = request.query_params.get('language_pair_id')
+
+        if not language_pair_id:
+            return Response(
+                {"error": "Будь ласка, передайте параметр language_pair_id."},
+                status=400
+            )
+
+        editor_ids = EditorLanguagePairs.objects.filter(
+            language_pair_id=language_pair_id
+        ).values_list('editor_id', flat=True)
+
+        editors = User.objects.filter(
+            id__in=editor_ids,
+            role_id=2
+        ).order_by('id')
+
+        page = self.paginate_queryset(editors)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(editors, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
@@ -398,8 +465,8 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
 
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
-    serializer_class = RegistrationSerializer
-    permission_classes = (AllowAny,)
+    queryset = EditorLanguagePairs.objects.all()
+    serializer_class = EditorLanguagePairsSerializer
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()

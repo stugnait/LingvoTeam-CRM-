@@ -858,7 +858,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         summary="Підтвердити та активувати замовлення",
         description=(
                 "Змінює статус замовлення на 'Виконано' (ID 4), генерує унікальне посилання з паролем "
-                "для перекладача, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
+                "для клієнта, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
         ),
         operation_id="confirm_order_with_files",
         responses={200: OpenApiTypes.OBJECT},
@@ -931,15 +931,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         new_status_int = updated_instance.status_id_id
         new_trans_int = updated_instance.translator_status_id
 
-        if (old_status != new_status or
-                old_client_status != new_client_status or
-                old_translator_status != new_translator_status):
-            OrderStatusHistory.objects.create(
-                order=updated_instance,
-                status=new_status,
-                client_status=new_client_status,
-                translator_status=new_translator_status
-            )
+        print(instance.status_id_id)
+        DONE_SLUGS = ['Done']
 
         DONE_SLUGS = ['done']
 

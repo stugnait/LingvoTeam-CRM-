@@ -130,6 +130,15 @@ export function useOrders() {
             formData.append("traffic_id", String(data.traffic_id))
             formData.append("currency_id_id", String(data.currency_id_id))
             formData.append("editor_id", String(data.editor_id))
+            formData.append("deadline", String(data.deadline))
+
+            if (data.priority) {
+                formData.append("priority", data.priority)
+            }
+
+            if (data.client_comment) {
+                formData.append("client_comment", data.client_comment)
+            }
 
             if (data.translator_id)
                 {formData.append("translator_id", String(data.translator_id))}
@@ -150,7 +159,7 @@ export function useOrders() {
                 description: `Order #${res.order_id} created successfully`,
             })
 
-            router.push(`/orders/${res.order_id}`)
+            router.push(`/dashboard/orders/`)
             return res
         } catch (e) {
             handleError(e, "Failed to create order")
