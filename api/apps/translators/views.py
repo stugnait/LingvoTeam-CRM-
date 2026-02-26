@@ -4,6 +4,8 @@ import secrets
 import os
 import tempfile
 import zipfile
+import zoneinfo
+import mimetypes
 from datetime import timedelta
 
 from django.db import transaction
@@ -204,7 +206,7 @@ class ExternalOrderAccessView(APIView):
                 display_time = remaining_time if remaining_time > 0 else 1
                 return Response({
                     "error": f"Забагато спроб. Доступ заблоковано. Спробуйте через {display_time} хв."
-                }, status=http_status.HTTP_429_TOO_MANY_REQUESTS)
+                }, status=http_status.HTTP_403_FORBIDDEN)
 
             input_password = request.data.get('password', '')
 
@@ -220,8 +222,10 @@ class ExternalOrderAccessView(APIView):
                     "order_data": {
                         "id": order.id,
                         "language_pair": str(order.language_pair_id),
-                        "deadline": order.deadline,
-                        "comment": getattr(order, 'translator_comment', "Коментар відсутній")
+                        "deadline": str(order.deadline),
+                        "target_language": order.language_pair_id.target_language.name if order.language_pair_id and order.language_pair_id.target_language else "-",
+                        "source_language": order.language_pair_id.source_language.name if order.language_pair_id and order.language_pair_id.source_language else "-",
+                        "comment": getattr(order, 'client_comment', "Коментар відсутній")
                     }
                 }, status=http_status.HTTP_200_OK)
 
@@ -237,22 +241,35 @@ class ExternalOrderAccessView(APIView):
                 )
 
                 return response
-
+#TODO час бану
             link_obj.attempts += 1
             max_attempts = 5
-            ban_minutes = 15
+            ban_minutes = 1
 
             if link_obj.attempts >= max_attempts:
                 link_obj.banned_to = now + timedelta(minutes=ban_minutes)
                 link_obj.attempts = 0
-                message = f"Невірний пароль. Доступ заблоковано на {ban_minutes} хвилин."
+                kyiv_tz = zoneinfo.ZoneInfo("Europe/Kyiv")
+                banned_to_kyiv = link_obj.banned_to.astimezone(kyiv_tz)
+
+                response = Response({
+                    "message": f"Перевищено ліміт спроб. Спробуйте через {ban_minutes} хв.",
+                    "remaining_attempts": 0,
+                    "ban_minutes": ban_minutes,
+                    "banned_to": banned_to_kyiv.isoformat(),
+                },status=http_status.HTTP_403_FORBIDDEN
+    )
+
             else:
                 remaining_attempts = max_attempts - link_obj.attempts
-                message = f"Невірний пароль. Залишилося спроб: {remaining_attempts}"
+                response = Response({
+                    "message": "Невірний пароль.",
+                    "remaining_attempts": remaining_attempts,
+                },status=http_status.HTTP_403_FORBIDDEN
+    )
 
             link_obj.save()
-
-            return Response({"error": message}, status=http_status.HTTP_403_FORBIDDEN)
+            return response
 
 class TranslatorUploadView(APIView):
     permission_classes = [AllowAny]
@@ -314,66 +331,128 @@ class TranslatorUploadView(APIView):
         
 
 class ExternalTranslatorDownloadView(APIView):
+    """
+    External access (SOURCE + TARGET):
+
+    Routes:
+      - /external/orders/<order_id>/download-files/<folder>/?list=1
+            -> list files in folder (id + name)
+
+      - /external/orders/<order_id>/download-files/<folder>/
+            -> download all files in folder as ZIP
+
+      - /external/orders/<order_id>/download-files/<folder>/<file_id>/
+            -> download single file by id (must be inside that folder)
+    """
     authentication_classes = []
     permission_classes = []
 
-    def get(self, request, order_id, folder=None):
-        order = get_object_or_404(Order, id=order_id)
+    ALLOWED_FOLDERS = {"source", "target"}
 
+    def _check_access(self, request, order: Order):
         provided_password = request.COOKIES.get(f"order_auth_{order.id}")
         link_obj = OrderLink.objects.filter(order=order).last()
 
         if not (provided_password and link_obj):
-            return Response({"detail": "Немає доступу."}, status=http_status.HTTP_403_FORBIDDEN)
+            return None, Response({"detail": "Немає доступу."}, status=http_status.HTTP_403_FORBIDDEN)
 
         expire_at = getattr(link_obj, "expire_at", None) or getattr(link_obj, "expire_date", None)
         if expire_at and expire_at < timezone.now():
-            return Response({"detail": "Посилання протерміноване."}, status=http_status.HTTP_403_FORBIDDEN)
+            return None, Response({"detail": "Посилання протерміноване."}, status=http_status.HTTP_403_FORBIDDEN)
 
         if not secrets.compare_digest(link_obj.password, provided_password):
-            return Response({"detail": "Невірний пароль."}, status=http_status.HTTP_403_FORBIDDEN)
+            return None, Response({"detail": "Невірний пароль."}, status=http_status.HTTP_403_FORBIDDEN)
 
-        files = File.objects.filter(order=order)
+        return link_obj, None
 
-        if folder:
-            folder = folder.lower()
-            if folder != "source":
-                return Response({"detail": "Недоступна папка."}, status=http_status.HTTP_403_FORBIDDEN)
+    def get(self, request, order_id: int, folder: str, file_id: int = None):
+        order = get_object_or_404(Order, id=order_id)
 
-            base = f"/orders/order_{order.id}/{folder}"
-            files = files.filter(dropbox_url__startswith=base)
+        _link, denied = self._check_access(request, order)
+        if denied:
+            return denied
 
-        if not files.exists():
-            return Response({"detail": "Файли відсутні."}, status=http_status.HTTP_404_NOT_FOUND)
+        folder = (folder or "").strip().lower()
+        if folder not in self.ALLOWED_FOLDERS:
+            return Response({"detail": "Недоступна папка."}, status=http_status.HTTP_403_FORBIDDEN)
+
+        folder_prefix = f"/orders/order_{order.id}/{folder}/"
+        files_qs = File.objects.filter(order=order, dropbox_url__startswith=folder_prefix)
+
+        if not files_qs.exists():
+            return Response({"detail": f"Файли {folder} відсутні."}, status=http_status.HTTP_404_NOT_FOUND)
+
+        if request.query_params.get("list") == "1":
+            items = []
+            for f in files_qs.order_by("id"):
+                dropbox_url = f.dropbox_url or ""
+                name = os.path.basename(dropbox_url) or f"file_{f.id}"
+                items.append({"id": f.id, "name": name})
+            return Response(
+                {"order_id": order.id, "folder": folder, "count": len(items), "files": items},
+                status=http_status.HTTP_200_OK,
+            )
+
+        if file_id is not None:
+            file_obj = get_object_or_404(
+                File,
+                id=file_id,
+                order=order,
+                dropbox_url__startswith=folder_prefix,
+            )
+
+            if not file_obj.dropbox_url:
+                return Response({"detail": "Файл недоступний."}, status=http_status.HTTP_404_NOT_FOUND)
+
+            try:
+                dbx = get_dbx()
+                _md, resp = dbx.files_download(file_obj.dropbox_url)
+
+                filename = os.path.basename(file_obj.dropbox_url) or f"file_{file_obj.id}"
+                content_type = getattr(resp, "headers", {}).get("Content-Type")
+                if not content_type:
+                    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+                tmp = tempfile.SpooledTemporaryFile(max_size=50 * 1024 * 1024, mode="w+b")
+                tmp.write(resp.content)
+                tmp.seek(0)
+
+                return FileResponse(tmp, as_attachment=True, filename=filename, content_type=content_type)
+
+            except Exception as e:
+                logger.exception("Помилка завантаження файлу з Dropbox")
+                return Response(
+                    {"detail": f"Помилка завантаження файлу: {str(e)}"},
+                    status=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
         try:
             dbx = get_dbx()
-            tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
-            zip_path = tmp.name
-            tmp.close()
+            zip_tmp = tempfile.SpooledTemporaryFile(max_size=200 * 1024 * 1024, mode="w+b")
 
-            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                for f in files:
+            with zipfile.ZipFile(zip_tmp, "w", zipfile.ZIP_DEFLATED) as zf:
+                for f in files_qs.order_by("id"):
                     if not f.dropbox_url:
                         continue
 
-                    filename = os.path.basename(f.dropbox_url)
-
+                    filename = os.path.basename(f.dropbox_url) or f"file_{f.id}"
                     try:
-                        md, resp = dbx.files_download(f.dropbox_url)
+                        _md, resp = dbx.files_download(f.dropbox_url)
                         zf.writestr(filename, resp.content)
                     except Exception as e:
                         logger.error(f"Dropbox error {filename}: {e}")
 
+            zip_tmp.seek(0)
             return FileResponse(
-                open(zip_path, "rb"),
+                zip_tmp,
                 as_attachment=True,
-                filename=f"order_{order.id}_files.zip",
-                content_type="application/zip"
+                filename=f"order_{order.id}_{folder}_files.zip",
+                content_type="application/zip",
             )
 
         except Exception as e:
+            logger.exception("Помилка створення ZIP")
             return Response(
                 {"detail": f"Помилка створення ZIP: {str(e)}"},
-                status=http_status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

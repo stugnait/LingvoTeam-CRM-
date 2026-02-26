@@ -8,6 +8,7 @@ export function useExternalOrder(slug: string) {
     const [step, setStep] = useState<Step>("loading")
     const [order, setOrder] = useState<ExternalOrder | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
     const [isUploading, setIsUploading] = useState(false)
     const [uploadProgress, setUploadProgress] = useState(0)
 
@@ -26,8 +27,19 @@ export function useExternalOrder(slug: string) {
             setOrder(res.order_data)
             setStep("order")
             setError(null)
+            setRemainingAttempts(null)
         } catch (e: any) {
-            setError(e?.message || "Невірний пароль")
+            const data = e  // ← просто e, без .response.data
+
+            if (!data?.message) {
+                setError("Помилка з'єднання")
+                return
+            }
+
+            setError(data.message ?? "Невірний пароль")
+            setRemainingAttempts(
+                typeof data.remaining_attempts === "number" ? data.remaining_attempts : null
+            )
         }
     }
 
@@ -78,5 +90,6 @@ export function useExternalOrder(slug: string) {
         init,
         submitPassword,
         uploadFiles,
+        remainingAttempts,
     }
 }

@@ -858,7 +858,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         summary="Підтвердити та активувати замовлення",
         description=(
                 "Змінює статус замовлення на 'Виконано' (ID 4), генерує унікальне посилання з паролем "
-                "для перекладача, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
+                "для клієнта, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
         ),
         operation_id="confirm_order_with_files",
         responses={200: OpenApiTypes.OBJECT},
@@ -875,7 +875,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         OrderLink.objects.create(
             order=order,
-            assignee=OrderLink.Assignee.TRANSLATOR,
+            assignee=OrderLink.Assignee.CLIENT,
             link=generated_link_slug,
             password=generated_password,
             expire_at=expire_date
@@ -889,7 +889,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-        full_link = f"{base_url}/translator/{generated_link_slug}"
+        full_link = f"{base_url}/clients/{generated_link_slug}"
 
         self._send_translator_invite(order, full_link, generated_password, expire_date, order.client_id)
 
@@ -923,6 +923,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         new_trans_obj = updated_instance.translator_status
         new_trans_int = updated_instance.translator_status_id
 
+        print(instance.status_id_id)
         DONE_SLUGS = ['Done']
 
         main_slug = new_status_obj.slug if new_status_obj else ""

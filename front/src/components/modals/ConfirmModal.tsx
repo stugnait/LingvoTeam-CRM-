@@ -17,8 +17,16 @@ interface ConfirmModalProps {
     description: string
     confirmLabel?: string
     cancelLabel?: string
+    confirmVariant?: "default" | "destructive" | "success" | "warning"
     isLoading?: boolean
     onConfirm: () => void
+}
+
+const variantStyles = {
+    default: "bg-blue-600 hover:bg-blue-700 text-white",
+    destructive: "bg-red-600 hover:bg-red-700 text-white",
+    success: "bg-green-600 hover:bg-green-700 text-white",
+    warning: "bg-yellow-600 hover:bg-yellow-700 text-white",
 }
 
 export function ConfirmModal({
@@ -26,8 +34,9 @@ export function ConfirmModal({
                                  onOpenChange,
                                  title,
                                  description,
-                                 confirmLabel = "Confirm",
-                                 cancelLabel = "Cancel",
+                                 confirmLabel = "Підтвердити",
+                                 cancelLabel = "Скасувати",
+                                 confirmVariant = "default",
                                  isLoading,
                                  onConfirm,
                              }: ConfirmModalProps) {
@@ -39,7 +48,7 @@ export function ConfirmModal({
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
 
-                <DialogFooter>
+                <DialogFooter className="gap-2 sm:gap-0">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
@@ -48,11 +57,18 @@ export function ConfirmModal({
                         {cancelLabel}
                     </Button>
                     <Button
-                        variant="destructive"
+                        className={variantStyles[confirmVariant]}
                         onClick={onConfirm}
                         disabled={isLoading}
                     >
-                        {confirmLabel}
+                        {isLoading ? (
+                            <>
+                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                Завантаження...
+                            </>
+                        ) : (
+                            confirmLabel
+                        )}
                     </Button>
                 </DialogFooter>
             </DialogContent>

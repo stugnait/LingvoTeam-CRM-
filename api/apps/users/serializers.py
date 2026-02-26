@@ -3,6 +3,8 @@ import secrets
 import string
 
 from django.core.validators import RegexValidator
+
+from .models.editor_language_pairs import EditorLanguagePairs
 from .models.user import User
 from .models import Role
 from rest_framework import serializers
@@ -51,19 +53,36 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
 
+from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
+from apps.users.models import EditorLanguagePairs
+
+
 class UserListSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
+    language_pairs = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = (
-            'id',
-            'email',
-            'phone',
-            'full_name',
-            'role',
-            'is_active'
-        )
+        fields = ('id', 'email', 'phone', 'full_name', 'role', 'is_active', 'language_pairs')
+
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
+    def get_language_pairs(self, obj):
+        if not obj.role or obj.role.id != 2:
+            return []
+
+        pairs = EditorLanguagePairs.objects.filter(editor_id=obj.id).select_related('language_pair')
+
+        return [
+            {
+                "id": pair.id,
+                "language_pair_id": pair.language_pair.id,
+                "name": str(pair.language_pair),
+                "source_language": pair.language_pair.source_language.name,
+                "target_language": pair.language_pair.target_language.name,
+            }
+            for pair in pairs
+        ]
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -185,3 +204,26 @@ class RegistrationSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+
+from rest_framework import serializers
+from .models import EditorLanguagePairs
+from apps.users.models import User # перевір шлях до моделі User
+
+class EditorLanguagePairsSerializer(serializers.ModelSerializer):
+    # Явно кажемо: це поле можна писати!
+    editor_id = serializers.IntegerField()
+    language_pair = serializers.IntegerField(source='language_pair_id')
+
+    class Meta:
+        model = EditorLanguagePairs
+        fields = ['id', 'language_pair', 'editor_id']
+
+    def validate_editor_id(self, value):
+        try:
+            user = User.objects.get(id=value)
+            if user.role_id != 2:
+                raise serializers.ValidationError("Користувач не є редактором (role_id має бути 2).")
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Користувача з таким ID не існує.")
+        return value
