@@ -314,11 +314,11 @@ class TranslatorUploadView(APIView):
                 detected_symbols=0,
             )
 
-        done_status = Status.objects.get(slug="Done")
+        # done_status = Status.objects.get(slug="Done")
 
-        if order.status_id != done_status:
-            order.status_id = done_status
-            order.save(update_fields=["status_id"])
+        # if order.status_id != done_status:
+        #     order.status_id = done_status
+        #     order.save(update_fields=["status_id"])
 
         return Response(
             {

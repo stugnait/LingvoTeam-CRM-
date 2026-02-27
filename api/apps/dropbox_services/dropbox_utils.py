@@ -205,3 +205,31 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_
     )
 
     return full_path
+
+def move_file_from_target_to_final(from_path):
+
+    if "/target/" not in from_path:
+        raise ValueError("Path must contain '/target/'")
+
+    dbx = get_dbx()
+
+    base_dir = from_path.split("/target/", 1)[0]
+    filename = from_path.split("/target/", 1)[1]
+
+    final_dir = f"{base_dir}/final"
+    ensure_folder(final_dir)
+
+    name, ext = os.path.splitext(filename)
+
+    # прибираємо будь-який останній суфікс після "_"
+    if "_" in name:
+        base_name = name.rsplit("_", 1)[0]
+    else:
+        base_name = name
+
+    new_name = f"{base_name}_final{ext}"
+    to_path = f"{final_dir}/{new_name}"
+
+    dbx.files_move_v2(from_path, to_path, autorename=True)
+
+    return to_path

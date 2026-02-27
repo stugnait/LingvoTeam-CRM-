@@ -62,7 +62,7 @@ from ..notifications.models import Notification
 from ..translators.models import Translator
 from ..users.permissions import HasPermission
 from ..dropbox_services.dropbox_utils import (
-    create_order_folder, upload_file_to_order_folder, get_dbx
+    create_order_folder, upload_file_to_order_folder, get_dbx, move_file_from_target_to_final
 )
 from ..translators.models import TranslatorTraffic
 from django_filters import rest_framework as filters
@@ -264,7 +264,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         full_link = f"{base_url}/translator/{generated_link_slug}"
-        full_client_link = f"{base_url}/client/{client_generated_link_slug}"
+        full_client_link = f"{base_url}/clients/{client_generated_link_slug}"
 
         if order.translator_id and order.translator_id.email:
             self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
@@ -867,38 +867,82 @@ class OrderViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["get"], url_path="confirm-order")
     def confirm_order(self, request, pk=None):
+        # order = self.get_object()
+        # order.status_id_id = 2
+
+        # print("meow")
+
+        # generated_link_slug = str(uuid.uuid4())
+        # generated_password = secrets.token_urlsafe(8)
+        # expire_date = timezone.now() + timedelta(days=45)
+
+        # print("meow, meow")
+        # OrderLink.objects.create(
+        #     order=order,
+        #     assignee=OrderLink.Assignee.CLIENT,
+        #     link=generated_link_slug,
+        #     password=generated_password,
+        #     expire_at=expire_date
+        # )
+
+        # uploaded_files = request.FILES.getlist('files')
+        # stats_data = self._analyze_and_upload_files(order, uploaded_files)
+
+        # order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
+        # order.page_count = stats_data["total_stats"]["physical_pages"]
+        # order.save()
+
+        # base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        # full_link = f"{base_url}/clients/{generated_link_slug}"
+
+        # self._send_translator_invite(order, full_link, generated_password, expire_date, order.client_id)
+
+        # order.save()
+        # return Response({"message": "Статус змінено на Виконано", "slug": generated_link_slug}, status=status.HTTP_200_OK)
         order = self.get_object()
-        order.status_id_id = 2
 
-        print("meow")
-
-        generated_link_slug = str(uuid.uuid4())
-        generated_password = secrets.token_urlsafe(8)
-        expire_date = timezone.now() + timedelta(days=45)
-
-        print("meow, meow")
-        OrderLink.objects.create(
-            order=order,
-            assignee=OrderLink.Assignee.CLIENT,
-            link=generated_link_slug,
-            password=generated_password,
-            expire_at=expire_date
+        qs = (
+            File.objects
+            .filter(order=order)
+            .exclude(dropbox_url__exact="None")
+            .filter(dropbox_url__contains="/target/")
         )
 
-        uploaded_files = request.FILES.getlist('files')
-        stats_data = self._analyze_and_upload_files(order, uploaded_files)
+        moved = []
+        errors = []
 
-        order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
-        order.page_count = stats_data["total_stats"]["physical_pages"]
-        order.save()
+        for f in qs:
+            from_path = (f.dropbox_url or "").strip()
+            if not from_path:
+                continue
 
-        base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-        full_link = f"{base_url}/clients/{generated_link_slug}"
+            try:
+                new_path = move_file_from_target_to_final(from_path)
 
-        self._send_translator_invite(order, full_link, generated_password, expire_date, order.client_id)
+                
+                f.dropbox_url = new_path
+                f.save(update_fields=["dropbox_url"])
 
-        order.save()
-        return Response({"message": "Статус змінено на Виконано", "slug": generated_link_slug}, status=status.HTTP_200_OK)
+                moved.append({"file_id": f.id, "from": from_path, "to": new_path})
+            except Exception as e:
+                errors.append({"file_id": f.id, "from": from_path, "error": str(e)})
+
+        done_status = Status.objects.get(slug="Done")
+
+        if order.status_id != done_status:
+            order.status_id = done_status
+            order.save(update_fields=["status_id"])
+
+        return Response(
+            {
+                "order_id": order.id,
+                "moved_count": len(moved),
+                "moved": moved,
+                "errors_count": len(errors),
+                "errors": errors,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     # --- Private Helpers ---
 
