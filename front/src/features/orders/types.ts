@@ -279,11 +279,13 @@ export interface TranslatorTrafficListResponse {
 export interface OrderMarginsRow {
     translator_id: number
     translator_name: string | null
-    translator_traffic_id: number
+    translator_traffic_id: number | null
     order_price_per_page: string
-    translator_rate_per_page: string
-    margin_percent: string
-    margin_label: string
+    translator_rate_per_page: string | null
+    margin_percent: string | null
+    margin_label: string | null
+    language_pair_label: string
+    category_label: string
 }
 
 export interface OrderMarginsResponse {

@@ -777,14 +777,6 @@ class OrderViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["get"], url_path="margins")
     def margins(self, request):
-        """
-        GET /api/orders/margins/?traffic_id=1
-
-        Повертає маржу (%) для кожного перекладача по:
-        - order_traffic.price_per_page (дохід за сторінку)
-        - translator_traffic.rate_per_page (витрата на сторінку)
-        """
-
         traffic_id = request.query_params.get("traffic_id")
         if not traffic_id:
             return Response({"detail": "traffic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -814,37 +806,66 @@ class OrderViewSet(viewsets.ModelViewSet):
         lp_id = ot.get("language_pair_id")
         category_id = ot.get("category_id")
 
-        qs = (TranslatorTraffic.objects
-            .filter(language_pair_id=lp_id))
+        traffics = (TranslatorTraffic.objects
+                    .filter(language_pair_id=lp_id)
+                    .select_related("translator"))
 
-        if category_id is not None:
-            qs = qs.filter(Q(category_id=category_id) | Q(category_id__isnull=True))
+        by_translator = {}
+        for tt in traffics:
+            by_translator.setdefault(tt.translator_id, []).append(tt)
 
-
-        qs = qs.select_related("translator")
-
+        translators = Translator.objects.all().only("id", "full_name")
         results = []
-        for tt in qs:
-            if tt.rate_per_page is None:
-                continue
+        for tr in translators:
+            lp_matches = by_translator.get(tr.id, [])
+            has_lp = bool(lp_matches)
 
-            tr_rate = Decimal(str(tt.rate_per_page))
-            margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
-            margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
+            best_tt = None
+            has_cat = False
+            if has_lp:
+                if category_id is None:
+                    has_cat = True
+                    best_tt = lp_matches[0]
+                else:
+                    cat_exact = [tt for tt in lp_matches if tt.category_id == category_id]
+                    if cat_exact:
+                        has_cat = True
+                        best_tt = cat_exact[0]
+                    else:
+                        cat_null = [tt for tt in lp_matches if tt.category_id is None]
+                        best_tt = cat_null[0] if cat_null else lp_matches[0]
 
-            tr = getattr(tt, "translator", None)
+            tr_rate = None
+            margin_percent = None
+            margin_label = None
+            translator_traffic_id = None
+            if best_tt and best_tt.rate_per_page is not None:
+                tr_rate = Decimal(str(best_tt.rate_per_page))
+                margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
+                margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
+                translator_traffic_id = best_tt.id
+
             results.append({
-                "translator_id": tr.id if tr else tt.translator_id,
+                "translator_id": tr.id,
                 "translator_name": getattr(tr, "full_name", None),
-                "translator_traffic_id": tt.id,
+                "translator_traffic_id": translator_traffic_id,
                 "order_price_per_page": str(order_price),
-                "translator_rate_per_page": str(tr_rate),
-                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))),
+                "translator_rate_per_page": str(tr_rate) if tr_rate is not None else None,
+                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))) if margin_percent is not None else None,
                 "margin_label": margin_label,
+                "language_pair_label": "Є" if has_lp else "Нема",
+                "category_label": "Є" if has_cat else "Нема",
             })
 
-        # краща маржа зверху
-        results.sort(key=lambda x: Decimal(x["margin_percent"]), reverse=True)
+        def sort_key(x):
+            mval = Decimal(x["margin_percent"]) if x["margin_percent"] is not None else Decimal("-Infinity")
+            return (
+                1 if x["language_pair_label"] == "Є" else 0,
+                1 if x["category_label"] == "Є" else 0,
+                mval,
+            )
+
+        results.sort(key=sort_key, reverse=True)
 
         return Response({
             "traffic_id": traffic_id_int,
