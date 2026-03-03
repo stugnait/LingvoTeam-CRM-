@@ -5,9 +5,7 @@ import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
 import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
 import {
     User,
-    Globe,
     Languages,
-    FileText,
     Tag,
     Users,
     CalendarClock,
@@ -21,7 +19,7 @@ import { FileUpload } from "@/src/components/ui/FileUpload"
 import { DeadlineSelector } from "@/src/components/ui/DeadlineSelector"
 import { Priority, PrioritySelector } from "@/src/components/ui/PrioritySelector"
 import { useOrderAnalysis } from "@/src/features/orders/hooks/useOrderAnalysis"
-import {ordersApi} from "@/src/features/orders/api";
+import { ordersApi } from "@/src/features/orders/api"
 
 interface CreateOrderModalProps {
     open: boolean
@@ -63,6 +61,12 @@ interface CreateOrderModalProps {
     setComment: (value: string) => void
     priority: Priority | undefined
     setPriority: (value: Priority) => void
+}
+
+type EditorOption = {
+    value: string
+    label: string
+    description?: string
 }
 
 export function CreateOrderModal(props: CreateOrderModalProps) {
@@ -115,27 +119,72 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
 
+    // NEW: editor options from endpoint (like margins)
+    const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
+
     const handleConfirmFiles = async () => {
-        if (!files.length) {return}
+        if (!files.length) return
         await calculateStats(files)
         setFilesConfirmed(true)
     }
 
     const handleAnalyzeImages = async () => {
-        if (!files.length) {return}
-
+        if (!files.length) return
         await analyzeOrderFiles(files)
         setImagesAnalyzed(true)
     }
 
-
     useEffect(() => {
-        if (!trafficId) {return}
-        const selectedTariff = tariffs?.find(t => String(t.id) === trafficId)
+        if (!trafficId) return
+        const selectedTariff = tariffs?.find((t) => String(t.id) === trafficId)
         if (selectedTariff?.currency_id) {
             setCurrencyId(String(selectedTariff.currency_id))
         }
-    }, [trafficId, tariffs])
+    }, [trafficId, tariffs, setCurrencyId])
+
+    useEffect(() => {
+        if (!sourceLanguage || !targetLanguage) {
+            setEditorOptions(
+                editors.map((ed) => ({
+                    value: String(ed.id),
+                    label: ed.full_name,
+                }))
+            )
+            return
+        }
+
+        let cancelled = false
+
+        ordersApi
+            .getEditorsByLanguagePair(Number(sourceLanguage), Number(targetLanguage))
+            .then((res: any) => {
+                if (cancelled) return
+                const results = Array.isArray(res?.results) ? res.results : []
+
+                setEditorOptions(
+                    results.map((r: any) => ({
+                        value: String(r.editor_id),
+                        label: `${r.editor_name ?? `Editor #${r.editor_id}`} (${r.language_pair_label})`,
+                        description: r.editor_language_pair_id
+                            ? `elp_id: ${r.editor_language_pair_id}`
+                            : "no pair",
+                    }))
+                )
+            })
+            .catch(() => {
+                if (cancelled) return
+                setEditorOptions(
+                    editors.map((ed) => ({
+                        value: String(ed.id),
+                        label: ed.full_name,
+                    }))
+                )
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [sourceLanguage, targetLanguage, editors])
 
     return (
         <WizardModal
@@ -151,7 +200,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             isLoading={loading}
             onSubmit={onSubmit}
         >
-
             <WizardStep>
                 <div className="space-y-6">
                     <div>
@@ -163,7 +211,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             value={clientId}
                             onChange={setClientId}
                             placeholder="Select client"
-                            options={clients.map(c => ({
+                            options={clients.map((c) => ({
                                 value: String(c.id),
                                 label: c.full_name,
                             }))}
@@ -175,7 +223,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             value={sourceLanguage}
                             onChange={setSourceLanguage}
                             placeholder="Source language"
-                            options={languages.map(l => ({
+                            options={languages.map((l) => ({
                                 value: String(l.id),
                                 label: l.name,
                             }))}
@@ -184,7 +232,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             value={targetLanguage}
                             onChange={setTargetLanguage}
                             placeholder="Target language"
-                            options={languages.map(l => ({
+                            options={languages.map((l) => ({
                                 value: String(l.id),
                                 label: l.name,
                             }))}
@@ -232,9 +280,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                     {analysisResult && (
                         <div className="bg-purple-50 p-4 rounded-lg text-sm">
-                            <p className="text-purple-700 font-medium">
-                                OCR completed successfully
-                            </p>
+                            <p className="text-purple-700 font-medium">OCR completed successfully</p>
                             {analysisResult.total_words && (
                                 <p>Total words detected: {analysisResult.total_words}</p>
                             )}
@@ -261,10 +307,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             onChange={setTrafficId}
                             placeholder="Select tariff"
                             searchPlaceholder="Search tariff..."
-                            options={tariffs?.map(tariff => ({
+                            options={tariffs?.map((tariff) => ({
                                 value: String(tariff.id),
                                 label: tariff.category_name,
-                                description: `${tariff.price_per_word} USD/word`
+                                description: `${tariff.price_per_word} USD/word`,
                             }))}
                             renderOption={(option) => (
                                 <div className="flex items-center justify-between w-full">
@@ -284,7 +330,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             onChange={setCurrencyId}
                             placeholder="Select currency"
                             searchPlaceholder="Search currency..."
-                            options={currencies.map(currency => ({
+                            options={currencies.map((currency) => ({
                                 value: String(currency.id),
                                 label: `${currency.code} - ${currency.name}`,
                             }))}
@@ -325,18 +371,23 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             onChange={setEditor}
                             placeholder="Select editor (optional)"
                             searchPlaceholder="Search editor..."
-                            options={editors.map(ed => ({
-                                value: String(ed.id),
-                                label: ed.full_name,
-                            }))}
+                            options={editorOptions}
+                            renderOption={(option) => (
+                                <div className="flex items-center justify-between w-full">
+                                    <div className="flex flex-col">
+                                        <span>{option.label}</span>
+                                        {option.description && (
+                                            <span className="text-xs text-gray-500">{option.description}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         />
                     </div>
 
                     {selectedTranslatorId && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
-                                Translator Traffic ID
-                            </label>
+                            <label className="text-sm font-medium text-gray-700">Translator Traffic ID</label>
                             <input
                                 type="text"
                                 value={translatorTrafficId}
@@ -351,22 +402,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
             <WizardStep>
                 <div className="space-y-6">
-                    <PrioritySelector
-                        value={priority}
-                        onChange={setPriority}
-                        required
-                    />
+                    <PrioritySelector value={priority} onChange={setPriority} required />
 
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <CalendarClock className="h-4 w-4 text-blue-600" />
                             Deadline <span className="text-red-500">*</span>
                         </label>
-                        <DeadlineSelector
-                            value={deadline}
-                            onChange={setDeadline}
-                            minDate={new Date()}
-                        />
+                        <DeadlineSelector value={deadline} onChange={setDeadline} minDate={new Date()} />
                     </div>
 
                     <div className="space-y-2">
@@ -385,20 +428,19 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <h4 className="text-sm font-medium mb-2">Order Summary</h4>
                         <div className="space-y-1 text-sm text-gray-600">
-                            <p>• Client: {clients.find(c => String(c.id) === clientId)?.full_name || 'Not selected'}</p>
+                            <p>• Client: {clients.find((c) => String(c.id) === clientId)?.full_name || "Not selected"}</p>
                             <p>• Files: {files.length} file(s)</p>
-                            <p>• Languages: {
-                                languages.find(l => String(l.id) === sourceLanguage)?.name || '?'} → {
-                                languages.find(l => String(l.id) === targetLanguage)?.name || '?'
-                            }</p>
-                            <p>• Tariff: {tariffs?.find(t => String(t.id) === trafficId)?.name || 'Not selected'}</p>
-                            <p>• Priority: {priority || 'none'}</p>
-                            <p>• Deadline: {deadline?.toLocaleDateString() || 'Not set'}</p>
+                            <p>
+                                • Languages: {languages.find((l) => String(l.id) === sourceLanguage)?.name || "?"} →{" "}
+                                {languages.find((l) => String(l.id) === targetLanguage)?.name || "?"}
+                            </p>
+                            <p>• Tariff: {tariffs?.find((t) => String(t.id) === trafficId)?.name || "Not selected"}</p>
+                            <p>• Priority: {priority || "none"}</p>
+                            <p>• Deadline: {deadline?.toLocaleDateString() || "Not set"}</p>
                         </div>
                     </div>
                 </div>
             </WizardStep>
-
         </WizardModal>
     )
 }

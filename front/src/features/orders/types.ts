@@ -295,3 +295,20 @@ export interface OrderMarginsResponse {
     category_id: number | null
     results: OrderMarginsRow[]
 }
+
+export interface EditorsByLanguagePairItem {
+  editor_id: number
+  editor_name: string | null
+  editor_language_pair_id: number | null
+  language_pair_label: string
+}
+
+export interface EditorsByLanguagePairResponse {
+  language_pair: {
+    id: number
+    source_language_id: number
+    target_language_id: number
+  }
+  count: number
+  results: EditorsByLanguagePairItem[]
+}

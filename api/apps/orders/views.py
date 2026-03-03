@@ -64,6 +64,7 @@ from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
 )
 from ..translators.models import TranslatorTraffic
+from ..users.models import EditorLanguagePairs, User
 from django_filters import rest_framework as filters
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'analyze_images': ['order.update'],
             'upload_files' : ['order.view'],
             'margins': ['order.view'],
+            'editors_by_language_pair': ['order.view'],
         }
 
         if self.action in ['update', 'partial_update']:
@@ -874,6 +876,94 @@ class OrderViewSet(viewsets.ModelViewSet):
             "category_id": category_id,
             "results": results,
         }, status=status.HTTP_200_OK)
+    
+    @extend_schema(
+        summary="Редактори по мовній парі (як margins)",
+        parameters=[
+            OpenApiParameter("source_language_id", int, required=True),
+            OpenApiParameter("target_language_id", int, required=True),
+        ],
+        tags=["Orders"]
+    )
+    @action(detail=False, methods=["get"], url_path="editors-by-language-pair")
+    def editors_by_language_pair(self, request):
+        source_language_id = request.query_params.get("source_language_id")
+        target_language_id = request.query_params.get("target_language_id")
+
+        if not source_language_id or not target_language_id:
+            return Response(
+                {"detail": "source_language_id and target_language_id are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            source_language_id = int(str(source_language_id).strip())
+            target_language_id = int(str(target_language_id).strip())
+        except ValueError:
+            return Response(
+                {"detail": "source_language_id and target_language_id must be int"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        lp = (LanguagePair.objects
+            .filter(source_language_id=source_language_id, target_language_id=target_language_id)
+            .values("id")
+            .first())
+        if not lp:
+            return Response(
+                {"detail": "LanguagePair not found for given source/target"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        language_pair_id = lp["id"]
+
+        # --- як в margins: зібрати відповідності і потім пройтись по всіх редакторах ---
+        elps = (EditorLanguagePairs.objects
+                .filter(language_pair_id=language_pair_id)
+                .values("id", "editor_id"))
+
+        by_editor = {}
+        for row in elps:
+            by_editor.setdefault(row["editor_id"], row["id"])  # якщо дубль — беремо перший
+
+        editors = (User.objects
+                .filter(role_id=2)
+                .only("id", "full_name")
+                .order_by("id"))
+
+        results = []
+        for ed in editors:
+            elp_id = by_editor.get(ed.id)
+            has_lp = elp_id is not None
+
+            results.append({
+                "editor_id": ed.id,
+                "editor_name": getattr(ed, "full_name", None),
+                "editor_language_pair_id": elp_id,
+                "language_pair_label": "Є" if has_lp else "Нема",
+            })
+
+        def sort_key(x):
+            return (
+                1 if x["language_pair_label"] == "Є" else 0,
+                (x["editor_name"] or "").lower(),
+                x["editor_id"],
+            )
+
+        results.sort(key=sort_key, reverse=True)
+
+        return Response(
+            {
+                "language_pair": {
+                    "id": language_pair_id,
+                    "source_language_id": source_language_id,
+                    "target_language_id": target_language_id,
+                },
+                "count": len(results),
+                "results": results,
+            },
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         summary="Підтвердити та активувати замовлення",

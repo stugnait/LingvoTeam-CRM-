@@ -18,7 +18,7 @@ import {
     Client,
     Language,
     Editor,
-    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse
+    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse, EditorsByLanguagePairResponse
 } from "./types"
 
 
@@ -121,5 +121,10 @@ export const ordersApi = {
             {
                 method: "GET",
             }
+        ),
+    getEditorsByLanguagePair: (sourceLanguageId: number, targetLanguageId: number) =>
+        apiFetch<EditorsByLanguagePairResponse>(
+            `orders/editors-by-language-pair/?source_language_id=${sourceLanguageId}&target_language_id=${targetLanguageId}`,
+            { method: "GET" }
         ),
 }
