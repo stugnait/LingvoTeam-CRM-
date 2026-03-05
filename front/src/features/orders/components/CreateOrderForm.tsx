@@ -119,7 +119,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
 
-    // NEW: editor options from endpoint (like margins)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
 
     const handleConfirmFiles = async () => {
@@ -166,8 +165,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         value: String(r.editor_id),
                         label: `${r.editor_name ?? `Editor #${r.editor_id}`} (${r.language_pair_label})`,
                         description: r.editor_language_pair_id
-                            ? `elp_id: ${r.editor_language_pair_id}`
-                            : "no pair",
+                            ? "Є мовна пара"
+                            : "Нема мовної пари",
                     }))
                 )
             })

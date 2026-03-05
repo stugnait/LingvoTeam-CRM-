@@ -855,15 +855,15 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "translator_rate_per_page": str(tr_rate) if tr_rate is not None else None,
                 "margin_percent": str(margin_percent.quantize(Decimal("0.01"))) if margin_percent is not None else None,
                 "margin_label": margin_label,
-                "language_pair_label": "Є" if has_lp else "Нема",
-                "category_label": "Є" if has_cat else "Нема",
+                "language_pair_label": "Є мовна пара" if has_lp else "Нема мовної пари",
+                "category_label": "Є категорія" if has_cat else "Нема категорії",
             })
 
         def sort_key(x):
             mval = Decimal(x["margin_percent"]) if x["margin_percent"] is not None else Decimal("-Infinity")
             return (
-                1 if x["language_pair_label"] == "Є" else 0,
-                1 if x["category_label"] == "Є" else 0,
+                1 if x["language_pair_label"] == "Є мовна пара" else 0,
+                1 if x["category_label"] == "Є категорія" else 0,
                 mval,
             )
 
@@ -878,7 +878,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
     
     @extend_schema(
-        summary="Редактори по мовній парі (як margins)",
+        summary="Редактори по мовній парі",
         parameters=[
             OpenApiParameter("source_language_id", int, required=True),
             OpenApiParameter("target_language_id", int, required=True),
@@ -905,26 +905,28 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        lp = (LanguagePair.objects
-            .filter(source_language_id=source_language_id, target_language_id=target_language_id)
-            .values("id")
-            .first())
-        if not lp:
+        lp_ids = list(
+            LanguagePair.objects
+            .filter(
+                Q(source_language_id=source_language_id, target_language_id=target_language_id) |
+                Q(source_language_id=target_language_id, target_language_id=source_language_id)
+            )
+            .values_list("id", flat=True)
+        )
+
+        if not lp_ids:
             return Response(
-                {"detail": "LanguagePair not found for given source/target"},
+                {"detail": "LanguagePair not found for given languages"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        language_pair_id = lp["id"]
-
-        # --- як в margins: зібрати відповідності і потім пройтись по всіх редакторах ---
         elps = (EditorLanguagePairs.objects
-                .filter(language_pair_id=language_pair_id)
+                .filter(language_pair_id__in=lp_ids)
                 .values("id", "editor_id"))
 
         by_editor = {}
         for row in elps:
-            by_editor.setdefault(row["editor_id"], row["id"])  # якщо дубль — беремо перший
+            by_editor.setdefault(row["editor_id"], row["id"])
 
         editors = (User.objects
                 .filter(role_id=2)
@@ -954,8 +956,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return Response(
             {
-                "language_pair": {
-                    "id": language_pair_id,
+                "languages": {
                     "source_language_id": source_language_id,
                     "target_language_id": target_language_id,
                 },
