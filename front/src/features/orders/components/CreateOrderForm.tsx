@@ -150,12 +150,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             isLoading={loading}
             onSubmit={onSubmit}
         >
-            {/* =========================
-          STEP 1
-      ========================= */}
+
             <WizardStep>
                 <div className="space-y-6">
-                    {/* Client */}
                     <div>
                         <label className="flex items-center gap-2 text-sm font-medium">
                             <User className="h-4 w-4 text-blue-600" />
@@ -172,7 +169,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         />
                     </div>
 
-                    {/* Languages */}
                     <div className="grid grid-cols-2 gap-4">
                         <Combobox
                             value={sourceLanguage}
@@ -194,7 +190,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         />
                     </div>
 
-                    {/* Files */}
                     <FileUpload
                         files={files}
                         onFilesChange={(f) => {
@@ -204,7 +199,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         }}
                     />
 
-                    {/* Confirm files button */}
                     {!filesConfirmed && (
                         <button
                             type="button"
@@ -216,7 +210,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         </button>
                     )}
 
-                    {/* Stats result */}
                     {statsResult && (
                         <div className="bg-gray-100 p-4 rounded-lg text-sm">
                             <p>Pages: {statsResult.total_stats.physical_pages}</p>
@@ -225,7 +218,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         </div>
                     )}
 
-                    {/* OCR button */}
                     {filesConfirmed && !imagesAnalyzed && (
                         <button
                             type="button"
@@ -237,7 +229,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         </button>
                     )}
 
-                    {/* OCR result (NEW SHAPE) */}
                     {analysisResult && (
                         <div className="bg-purple-50 p-4 rounded-lg text-sm">
                             <p className="text-purple-700 font-medium">OCR completed successfully</p>
@@ -266,19 +257,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         </div>
                     )}
 
-                    {/* Success indicator */}
                     {imagesAnalyzed && !analysisLoading && (
                         <div className="text-green-600 text-sm font-medium">Images analysis completed</div>
                     )}
                 </div>
             </WizardStep>
 
-            {/* =========================
-          STEP 2 — TARIFF
-      ========================= */}
             <WizardStep>
                 <div className="space-y-6">
-                    {/* Tariff Selection */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <Tag className="h-4 w-4 text-blue-600" />
@@ -302,7 +288,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         />
                     </div>
 
-                    {/* Currency */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <DollarSign className="h-4 w-4 text-blue-600" />
@@ -322,12 +307,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 </div>
             </WizardStep>
 
-            {/* =========================
-          STEP 3 — ASSIGNMENT
-      ========================= */}
             <WizardStep>
                 <div className="space-y-6">
-                    {/* Translator */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <Users className="h-4 w-4 text-blue-600" />
@@ -336,15 +317,18 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                         <TranslatorSelect
                             value={selectedTranslatorId}
-                            onChange={setSelectedTranslatorId}
                             translators={translators}
                             sourceLanguage={sourceLanguage}
                             targetLanguage={targetLanguage}
                             placeholder="Select translator (optional)"
+                            orderTrafficId={trafficId ? Number(trafficId) : null}
+                            onChange={(translatorId, translatorTrafficId) => {
+                                setSelectedTranslatorId(translatorId)
+                                setTranslatorTrafficId(translatorTrafficId ? String(translatorTrafficId) : "")
+                            }}
                         />
                     </div>
 
-                    {/* Editor */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <Users className="h-4 w-4 text-green-600" />
@@ -362,7 +346,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         />
                     </div>
 
-                    {/* Translator Traffic ID (if needed) */}
                     {selectedTranslatorId && (
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Translator Traffic ID</label>
@@ -378,15 +361,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 </div>
             </WizardStep>
 
-            {/* =========================
-          STEP 4 — DEADLINE, PRIORITY & COMMENT
-      ========================= */}
             <WizardStep>
                 <div className="space-y-6">
-                    {/* Priority */}
-                    <PrioritySelector value={priority} onChange={setPriority} required />
+                    <PrioritySelector
+                        value={priority}
+                        onChange={setPriority}
+                        required
+                    />
 
-                    {/* Deadline */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <CalendarClock className="h-4 w-4 text-blue-600" />
@@ -395,7 +377,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <DeadlineSelector value={deadline} onChange={setDeadline} minDate={new Date()} />
                     </div>
 
-                    {/* Comment */}
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                             <MessageSquare className="h-4 w-4 text-blue-600" />
@@ -409,19 +390,18 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         />
                     </div>
 
-                    {/* Summary Card */}
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <h4 className="text-sm font-medium mb-2">Order Summary</h4>
                         <div className="space-y-1 text-sm text-gray-600">
                             <p>• Client: {clients.find((c) => String(c.id) === clientId)?.full_name || "Not selected"}</p>
                             <p>• Files: {files.length} file(s)</p>
-                            <p>
-                                • Languages: {languages.find((l) => String(l.id) === sourceLanguage)?.name || "?"} →{" "}
-                                {languages.find((l) => String(l.id) === targetLanguage)?.name || "?"}
-                            </p>
-                            <p>• Tariff: {tariffs?.find((t) => String(t.id) === trafficId)?.name || "Not selected"}</p>
-                            <p>• Priority: {priority || "none"}</p>
-                            <p>• Deadline: {deadline?.toLocaleDateString() || "Not set"}</p>
+                            <p>• Languages: {
+                                languages.find(l => String(l.id) === sourceLanguage)?.name || '?'} → {
+                                languages.find(l => String(l.id) === targetLanguage)?.name || '?'
+                            }</p>
+                            <p>• Tariff: {tariffs?.find(t => String(t.id) === trafficId)?.name || 'Not selected'}</p>
+                            <p>• Priority: {priority || 'none'}</p>
+                            <p>• Deadline: {deadline?.toLocaleDateString() || 'Not set'}</p>
                         </div>
                     </div>
                 </div>
