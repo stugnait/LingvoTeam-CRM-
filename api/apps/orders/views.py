@@ -64,6 +64,7 @@ from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx
 )
 from ..translators.models import TranslatorTraffic
+from ..users.models import EditorLanguagePairs, User
 from django_filters import rest_framework as filters
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'analyze_images': ['order.update'],
             'upload_files' : ['order.view'],
             'margins': ['order.view'],
+            'editors_by_language_pair': ['order.view'],
         }
 
         if self.action in ['update', 'partial_update']:
@@ -845,15 +847,15 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "translator_rate_per_page": str(tr_rate) if tr_rate is not None else None,
                 "margin_percent": str(margin_percent.quantize(Decimal("0.01"))) if margin_percent is not None else None,
                 "margin_label": margin_label,
-                "language_pair_label": "Є" if has_lp else "Нема",
-                "category_label": "Є" if has_cat else "Нема",
+                "language_pair_label": "Є мовна пара" if has_lp else "Нема мовної пари",
+                "category_label": "Є категорія" if has_cat else "Нема категорії",
             })
 
         def sort_key(x):
             mval = Decimal(x["margin_percent"]) if x["margin_percent"] is not None else Decimal("-Infinity")
             return (
-                1 if x["language_pair_label"] == "Є" else 0,
-                1 if x["category_label"] == "Є" else 0,
+                1 if x["language_pair_label"] == "Є мовна пара" else 0,
+                1 if x["category_label"] == "Є категорія" else 0,
                 mval,
             )
 
@@ -866,6 +868,95 @@ class OrderViewSet(viewsets.ModelViewSet):
             "category_id": category_id,
             "results": results,
         }, status=status.HTTP_200_OK)
+    
+    @extend_schema(
+        summary="Редактори по мовній парі",
+        parameters=[
+            OpenApiParameter("source_language_id", int, required=True),
+            OpenApiParameter("target_language_id", int, required=True),
+        ],
+        tags=["Orders"]
+    )
+    @action(detail=False, methods=["get"], url_path="editors-by-language-pair")
+    def editors_by_language_pair(self, request):
+        source_language_id = request.query_params.get("source_language_id")
+        target_language_id = request.query_params.get("target_language_id")
+
+        if not source_language_id or not target_language_id:
+            return Response(
+                {"detail": "source_language_id and target_language_id are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            source_language_id = int(str(source_language_id).strip())
+            target_language_id = int(str(target_language_id).strip())
+        except ValueError:
+            return Response(
+                {"detail": "source_language_id and target_language_id must be int"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        lp_ids = list(
+            LanguagePair.objects
+            .filter(
+                Q(source_language_id=source_language_id, target_language_id=target_language_id) |
+                Q(source_language_id=target_language_id, target_language_id=source_language_id)
+            )
+            .values_list("id", flat=True)
+        )
+
+        if not lp_ids:
+            return Response(
+                {"detail": "LanguagePair not found for given languages"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        elps = (EditorLanguagePairs.objects
+                .filter(language_pair_id__in=lp_ids)
+                .values("id", "editor_id"))
+
+        by_editor = {}
+        for row in elps:
+            by_editor.setdefault(row["editor_id"], row["id"])
+
+        editors = (User.objects
+                .filter(role_id=2)
+                .only("id", "full_name")
+                .order_by("id"))
+
+        results = []
+        for ed in editors:
+            elp_id = by_editor.get(ed.id)
+            has_lp = elp_id is not None
+
+            results.append({
+                "editor_id": ed.id,
+                "editor_name": getattr(ed, "full_name", None),
+                "editor_language_pair_id": elp_id,
+                "language_pair_label": "Є" if has_lp else "Нема",
+            })
+
+        def sort_key(x):
+            return (
+                1 if x["language_pair_label"] == "Є" else 0,
+                (x["editor_name"] or "").lower(),
+                x["editor_id"],
+            )
+
+        results.sort(key=sort_key, reverse=True)
+
+        return Response(
+            {
+                "languages": {
+                    "source_language_id": source_language_id,
+                    "target_language_id": target_language_id,
+                },
+                "count": len(results),
+                "results": results,
+            },
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         summary="Підтвердити та активувати замовлення",

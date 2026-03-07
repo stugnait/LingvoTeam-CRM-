@@ -5,9 +5,7 @@ import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
 import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
 import {
     User,
-    Globe,
     Languages,
-    FileText,
     Tag,
     Users,
     CalendarClock,
@@ -21,7 +19,7 @@ import { FileUpload } from "@/src/components/ui/FileUpload"
 import { DeadlineSelector } from "@/src/components/ui/DeadlineSelector"
 import { Priority, PrioritySelector } from "@/src/components/ui/PrioritySelector"
 import { useOrderAnalysis } from "@/src/features/orders/hooks/useOrderAnalysis"
-import {ordersApi} from "@/src/features/orders/api";
+import { ordersApi } from "@/src/features/orders/api"
 
 interface CreateOrderModalProps {
     open: boolean
@@ -63,6 +61,12 @@ interface CreateOrderModalProps {
     setComment: (value: string) => void
     priority: Priority | undefined
     setPriority: (value: Priority) => void
+}
+
+type EditorOption = {
+    value: string
+    label: string
+    description?: string
 }
 
 export function CreateOrderModal(props: CreateOrderModalProps) {
@@ -115,6 +119,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
 
+    const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
+
     const handleConfirmFiles = async () => {
         if (!files.length) return
         await calculateStats(files)
@@ -123,7 +129,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const handleAnalyzeImages = async () => {
         if (!files.length) return
-
+      
         await analyzeOrderFiles(files, sourceLanguage ? Number(sourceLanguage) : undefined)
         setImagesAnalyzed(true)
     }
@@ -135,6 +141,50 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             setCurrencyId(String(selectedTariff.currency_id))
         }
     }, [trafficId, tariffs, setCurrencyId])
+
+    useEffect(() => {
+        if (!sourceLanguage || !targetLanguage) {
+            setEditorOptions(
+                editors.map((ed) => ({
+                    value: String(ed.id),
+                    label: ed.full_name,
+                }))
+            )
+            return
+        }
+
+        let cancelled = false
+
+        ordersApi
+            .getEditorsByLanguagePair(Number(sourceLanguage), Number(targetLanguage))
+            .then((res: any) => {
+                if (cancelled) return
+                const results = Array.isArray(res?.results) ? res.results : []
+
+                setEditorOptions(
+                    results.map((r: any) => ({
+                        value: String(r.editor_id),
+                        label: `${r.editor_name ?? `Editor #${r.editor_id}`} (${r.language_pair_label})`,
+                        description: r.editor_language_pair_id
+                            ? "Є мовна пара"
+                            : "Нема мовної пари",
+                    }))
+                )
+            })
+            .catch(() => {
+                if (cancelled) return
+                setEditorOptions(
+                    editors.map((ed) => ({
+                        value: String(ed.id),
+                        label: ed.full_name,
+                    }))
+                )
+            })
+
+        return () => {
+            cancelled = true
+        }
+    }, [sourceLanguage, targetLanguage, editors])
 
     return (
         <WizardModal
@@ -150,7 +200,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             isLoading={loading}
             onSubmit={onSubmit}
         >
-
             <WizardStep>
                 <div className="space-y-6">
                     <div>
@@ -232,6 +281,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     {analysisResult && (
                         <div className="bg-purple-50 p-4 rounded-lg text-sm">
                             <p className="text-purple-700 font-medium">OCR completed successfully</p>
+                            {analysisResult.total_words && (
+                                <p>Total words detected: {analysisResult.total_words}</p>
+                            )}
                             <p>Total images found: {analysisResult.total_images_found}</p>
                             <p>Total detected symbols: {analysisResult.total_detected_symbols_from_images}</p>
 
@@ -339,6 +391,17 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             onChange={setEditor}
                             placeholder="Select editor (optional)"
                             searchPlaceholder="Search editor..."
+                            options={editorOptions}
+                            renderOption={(option) => (
+                                <div className="flex items-center justify-between w-full">
+                                    <div className="flex flex-col">
+                                        <span>{option.label}</span>
+                                        {option.description && (
+                                            <span className="text-xs text-gray-500">{option.description}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                             options={editors.map((ed) => ({
                                 value: String(ed.id),
                                 label: ed.full_name,
@@ -363,11 +426,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
             <WizardStep>
                 <div className="space-y-6">
-                    <PrioritySelector
-                        value={priority}
-                        onChange={setPriority}
-                        required
-                    />
+                    <PrioritySelector value={priority} onChange={setPriority} required />
 
                     <div className="space-y-2">
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -395,13 +454,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div className="space-y-1 text-sm text-gray-600">
                             <p>• Client: {clients.find((c) => String(c.id) === clientId)?.full_name || "Not selected"}</p>
                             <p>• Files: {files.length} file(s)</p>
-                            <p>• Languages: {
-                                languages.find(l => String(l.id) === sourceLanguage)?.name || '?'} → {
-                                languages.find(l => String(l.id) === targetLanguage)?.name || '?'
-                            }</p>
-                            <p>• Tariff: {tariffs?.find(t => String(t.id) === trafficId)?.name || 'Not selected'}</p>
-                            <p>• Priority: {priority || 'none'}</p>
-                            <p>• Deadline: {deadline?.toLocaleDateString() || 'Not set'}</p>
+                            <p>
+                                • Languages: {languages.find((l) => String(l.id) === sourceLanguage)?.name || "?"} →{" "}
+                                {languages.find((l) => String(l.id) === targetLanguage)?.name || "?"}
+                            </p>
+                            <p>• Tariff: {tariffs?.find((t) => String(t.id) === trafficId)?.name || "Not selected"}</p>
+                            <p>• Priority: {priority || "none"}</p>
+                            <p>• Deadline: {deadline?.toLocaleDateString() || "Not set"}</p>
                         </div>
                     </div>
                 </div>
