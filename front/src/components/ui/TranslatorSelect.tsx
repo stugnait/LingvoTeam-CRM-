@@ -59,7 +59,7 @@ export function TranslatorSelect({
                             </div>
                             <div className="text-left">
                                 <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                    {selectedTranslator.full_name}
+                                    {selectedTranslator.name}
                                 </div>
                                 <div className="flex items-center gap-1 text-xs text-gray-500">
                                     <span>ID: {selectedTranslator.id}</span>

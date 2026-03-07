@@ -26,7 +26,7 @@ interface TaskModalProps {
     taskTitle: string
     taskDescription: string
     status: string
-    priority: string,
+    priority: "critical" | "high" | "medium" | "low" | string,
     manager: string
     translator: string,
     dueDate?: string
@@ -73,7 +73,8 @@ export function TaskModal({
             medium: "🟡",
             low: "🟢"
         }
-        return icons[priority] || "="
+
+        return icons[priority as keyof typeof icons] || "="
     }
 
     return (

@@ -27,10 +27,15 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
             return
         }
 
-        const ok = await submit(password, confirm)
+        try {
+            // Просто чекаємо виконання. Якщо буде помилка, код перерветься і стрибне в catch
+            await submit(password, confirm)
 
-        if (ok) {
+            // Якщо ми дійшли до цього рядка, значить submit пройшов успішно
             setSuccessOpen(true)
+        } catch (error) {
+            // Тут ви можете обробити помилку (наприклад, показати якесь повідомлення)
+            console.error("Помилка скидання пароля:", error)
         }
     }
 

@@ -41,7 +41,7 @@ export default function TranslatorExternalOrderPage({
         return <PasswordForm
             onSubmit={submitPassword}
             error={error}
-            attempts={remainingAttempts ?? 0}
+            attempts={remainingAttempts}
         />
     }
 

@@ -31,6 +31,7 @@ export const clientApi = {
             `clients/external/orders/${order_id}/download-files/`,
             {
                 method: "GET",
+                responseType: 'blob',
             }
         ),
 

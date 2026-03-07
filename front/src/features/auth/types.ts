@@ -53,8 +53,6 @@ export type RegisterResponse = {
 
 // Forgot Password
 export interface ForgotPasswordPayload {
-    uid: string
-    token: string
     email: string
 }
 

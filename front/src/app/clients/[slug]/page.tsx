@@ -20,6 +20,7 @@ export default function ClientExternalOrderPage({
         error,
         init,
         submitPassword,
+        remainingAttempts,
         downloadFiles
     } = useClients(slug)
 
@@ -40,6 +41,7 @@ export default function ClientExternalOrderPage({
             <PasswordForm
                 onSubmit={submitPassword}
                 error={error}
+                attempts={remainingAttempts}
             />
         )
     }

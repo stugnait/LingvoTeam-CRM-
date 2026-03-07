@@ -25,15 +25,15 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                                                               }) => {
     const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
 
-    const {
-        selectedTask,
-        openOrderById,
-        setSelectedTask,
-        isModalOpen,
-        isModalLoading,
-        closeModal,
-        downloadOrderFiles
-    } = useEditor()
+    // const {
+    //     selectedTask,
+    //     openOrderById,
+    //     setSelectedTask,
+    //     isModalOpen,
+    //     isModalLoading,
+    //     closeModal,
+    //     downloadOrderFiles
+    // } = useEditor()
 
     return (
         <div className="flex flex-col h-full w-[280px] flex-shrink-0 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
