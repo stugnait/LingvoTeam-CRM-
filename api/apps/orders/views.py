@@ -580,97 +580,86 @@ class OrderViewSet(viewsets.ModelViewSet):
         summary="Аналіз зображень",
         tags=["Order Files"]
     )
-    @action(detail=True, methods=["post"], url_path="analyze-images")
-    def analyze_images(self, request, pk=None):
-        """
-        Аналізує зображення всередині DOCX/PDF файлів замовлення за допомогою OCR (Tesseract).
-        Оновлює статистику символів у File.
-        """
-        order = self.get_object()
+    
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="analyze-uploaded-images",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def analyze_uploaded_images(self, request):
+        uploaded_files = request.FILES.getlist("files")
+        if not uploaded_files:
+            return Response({"detail": "files is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Визначаємо мову для Tesseract
-        # Tesseract використовує 3-літерні коди (eng, ukr, deu), а не slug мови (en, uk).
-        # Тут потрібен маппінг. Поки що спробуємо взяти slug, але краще мати окреме поле tesseract_code.
+        source_slug = (request.data.get("source_language_slug") or "").strip().lower()
 
-        source_slug = "en"
-        language_pair_val = (
-            getattr(order, "language_pair_id", None)
-            or getattr(order, "language_pair_id_id", None)
-            or getattr(order, "language_pair", None)
-        )
+        if not source_slug:
+            raw_source_language_id = request.data.get("source_language_id")
+            try:
+                source_language_id = int(str(raw_source_language_id).strip()) if raw_source_language_id else None
+            except ValueError:
+                return Response({"detail": "source_language_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
 
-        language_pair_id = getattr(language_pair_val, "id", language_pair_val)
+            if source_language_id:
+                lang_row = (
+                    Language.objects
+                    .filter(id=source_language_id)
+                    .values("slug")
+                    .first()
+                )
+                if lang_row and lang_row.get("slug"):
+                    source_slug = str(lang_row["slug"]).lower()
 
-        source_language_id = None
+        if not source_slug:
+            source_slug = "en"
 
-        if language_pair_id:
-            lp_row = (
-                LanguagePair.objects
-                .filter(id=language_pair_id)
-                .values("source_language_id")
-                .first()
-            )
-            if lp_row:
-                source_language_id = lp_row.get("source_language_id")
+        source_slug = {"ua": "uk"}.get(source_slug, source_slug)
 
-        source_slug = "src"
-        lang_row = None
-        if source_language_id:
-            lang_row = (
-                Language.objects
-                .filter(id=source_language_id)
-                .values("slug")
-                .first()
-            )
-        if lang_row and lang_row.get("slug"):
-            source_slug = lang_row["slug"]
-        
+        try:
+            reader = easyocr.Reader([source_slug], gpu=False)
+        except Exception:
+            source_slug = "en"
+            reader = easyocr.Reader(["en"], gpu=False)
 
-        files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
-        dbx = get_dbx()
         results = []
-        reader = easyocr.Reader([source_slug], gpu=False)
+        total_detected_symbols = 0
+        total_images_found = 0
 
-        for f in files:
-            if not f.dropbox_url:
-                continue
+        for f in uploaded_files:
+            filename = getattr(f, "name", "file")
+            ext = os.path.splitext(filename)[1].lstrip(".").lower()
 
-            dropbox_path = f.dropbox_url
-            ext = (f.file_type or os.path.splitext(dropbox_path)[1].lstrip(".")).lower()
-
-            if ext not in ['docx', 'pdf']:
+            if ext not in ["docx", "pdf"]:
+                results.append({"filename": filename, "file_type": ext, "error": "Only docx/pdf supported"})
                 continue
 
             try:
-                _, resp = dbx.files_download(dropbox_path)
-                data = resp.content
+                f.seek(0)
+                data = f.read()
             except Exception as e:
-                results.append({"file_id": f.id, "error": f"Dropbox download failed: {e}"})
+                results.append({"filename": filename, "file_type": ext, "error": f"Read failed: {e}"})
                 continue
 
             images_found = 0
             ocr_texts = []
 
             try:
-                # --- OCR для DOCX ---
                 if ext == "docx":
                     with zipfile.ZipFile(BytesIO(data)) as z:
                         media_files = [n for n in z.namelist() if n.startswith("word/media/")]
                         for name in media_files:
-                            img_bytes = z.read(name)
                             try:
+                                img_bytes = z.read(name)
                                 img = Image.open(BytesIO(img_bytes)).convert("RGB")
-                                # Використовуємо визначену мову, а не хардкод 'ukr'
                                 arr = np.array(img)
                                 text = "\n".join(reader.readtext(arr, detail=0, paragraph=True))
                                 if text.strip():
                                     ocr_texts.append(text)
-                                    images_found += 1
+                                images_found += 1
                             except Exception:
                                 pass
-
-                # --- OCR для PDF ---
-                elif ext == "pdf":
+                else:
                     doc = fitz.open(stream=data, filetype="pdf")
                     for page in doc:
                         for img_info in page.get_images(full=True):
@@ -685,37 +674,40 @@ class OrderViewSet(viewsets.ModelViewSet):
                                 text = "\n".join(reader.readtext(arr, detail=0, paragraph=True))
                                 if text.strip():
                                     ocr_texts.append(text)
-                                    images_found += 1
+                                images_found += 1
                             except Exception:
                                 pass
-
             except Exception as e:
-                results.append({"file_id": f.id, "error": f"Parse/OCR failed: {e}"})
+                results.append({"filename": filename, "file_type": ext, "error": f"Parse/OCR failed: {e}"})
                 continue
 
-            # Очищення та підрахунок
             full_text = "\n".join(ocr_texts)
-            # Базова очистка
-            full_text_clean = re.sub(r'[\ufeff\u200b\u200c\u200d]', '', full_text)
-            full_text_clean = re.sub(r'[ \t]+', ' ', full_text_clean)
-            full_text_clean = full_text_clean.strip()
+            full_text_clean = re.sub(r"[\ufeff\u200b\u200c\u200d]", "", full_text)
+            full_text_clean = re.sub(r"[ \t]+", " ", full_text_clean).strip()
 
             detected_symbols = len(full_text_clean)
 
-            # Оновлюємо файл
-            if detected_symbols > 0:
-                f.detected_symbols = (f.detected_symbols or 0) + detected_symbols
-                f.save(update_fields=["detected_symbols"])
+            total_detected_symbols += detected_symbols
+            total_images_found += images_found
 
             results.append({
-                "file_id": f.id,
+                "filename": filename,
                 "file_type": ext,
+                "ocr_language": source_slug,
                 "images_found": images_found,
                 "detected_symbols_from_images": detected_symbols,
-                "preview_text": full_text_clean[:100] + "...",
+                "preview_text": (full_text_clean[:200] + "...") if full_text_clean else "",
             })
 
-        return Response({"order_id": order.id, "results": results}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "ocr_language": source_slug,
+                "total_images_found": total_images_found,
+                "total_detected_symbols_from_images": total_detected_symbols,
+                "results": results,
+            },
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         summary="Завантаження файлів",

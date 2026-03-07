@@ -311,4 +311,19 @@ export interface EditorsByLanguagePairResponse {
   }
   count: number
   results: EditorsByLanguagePairItem[]
+export interface AnalyzeUploadedImageFileResult {
+    filename: string
+    file_type: string
+    ocr_language?: string
+    images_found?: number
+    detected_symbols_from_images?: number
+    preview_text?: string
+    error?: string
+}
+
+export interface AnalyzeUploadedImagesResponse {
+    ocr_language: string
+    total_images_found: number
+    total_detected_symbols_from_images: number
+    results: AnalyzeUploadedImageFileResult[]
 }

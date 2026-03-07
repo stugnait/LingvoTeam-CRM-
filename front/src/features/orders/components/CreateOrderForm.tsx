@@ -129,7 +129,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const handleAnalyzeImages = async () => {
         if (!files.length) return
-        await analyzeOrderFiles(files)
+      
+        await analyzeOrderFiles(files, sourceLanguage ? Number(sourceLanguage) : undefined)
         setImagesAnalyzed(true)
     }
 
@@ -283,13 +284,33 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             {analysisResult.total_words && (
                                 <p>Total words detected: {analysisResult.total_words}</p>
                             )}
+                            <p>Total images found: {analysisResult.total_images_found}</p>
+                            <p>Total detected symbols: {analysisResult.total_detected_symbols_from_images}</p>
+
+                            <div className="mt-3 space-y-2">
+                                {analysisResult.results?.map((r, idx) => (
+                                    <div key={idx} className="p-2 bg-white rounded border">
+                                        <div className="font-medium">
+                                            {r.filename} ({r.file_type})
+                                        </div>
+
+                                        {r.error ? (
+                                            <div className="text-red-600">{r.error}</div>
+                                        ) : (
+                                            <>
+                                                <div>Images: {r.images_found}</div>
+                                                <div>Symbols: {r.detected_symbols_from_images}</div>
+                                                {r.preview_text && <div className="text-gray-600">{r.preview_text}</div>}
+                                            </>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 
                     {imagesAnalyzed && !analysisLoading && (
-                        <div className="text-green-600 text-sm font-medium">
-                            Images analysis completed
-                        </div>
+                        <div className="text-green-600 text-sm font-medium">Images analysis completed</div>
                     )}
                 </div>
             </WizardStep>
@@ -381,6 +402,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     </div>
                                 </div>
                             )}
+                            options={editors.map((ed) => ({
+                                value: String(ed.id),
+                                label: ed.full_name,
+                            }))}
                         />
                     </div>
 
