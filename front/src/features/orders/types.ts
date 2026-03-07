@@ -208,6 +208,7 @@ export interface OrderListItem {
 
 export interface OrderListResponse {
     results: OrderListItem[]
+    count: number
     total: number
 }
 

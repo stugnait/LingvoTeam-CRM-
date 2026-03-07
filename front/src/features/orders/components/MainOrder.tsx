@@ -26,7 +26,10 @@ export default function CreateOrderPage() {
         traffics,
         confirmOrder,
         downloadOrderSourceFiles,
-        downloadOrderTargetFiles
+        downloadOrderTargetFiles,
+        page,
+        totalPages,
+        onPageChange
     } = useOrders()
 
     // State for modal
@@ -121,6 +124,9 @@ export default function CreateOrderPage() {
                     confirmOrder={confirmOrder}
                     downloadOrderSourceFiles={downloadOrderSourceFiles}
                     downloadOrderTargetFiles={downloadOrderTargetFiles}
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={onPageChange}
                 />
             </div>
 

@@ -27,6 +27,8 @@ export function useOrders() {
     ========================= */
 
     const [loading, setLoading] = useState(false)
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
 
     const [orders, setOrders] = useState<OrderListItem[]>([])
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
@@ -101,7 +103,7 @@ export function useOrders() {
             })
 
             // 🔥 оновлюємо список ордерів
-            const updated = await ordersApi.listOrders()
+            const updated = await ordersApi.listOrders(page)
             setOrders(updated.results)
 
             return res
@@ -110,6 +112,46 @@ export function useOrders() {
             throw e
         }
     }, [])
+
+    const loadOrders = useCallback(async (pageNumber: number = 1) => {
+        try {
+            setLoading(true)
+
+            const ordersRes = await ordersApi.listOrders(pageNumber)
+
+            setOrders(ordersRes.results)
+
+            const pages = Math.ceil(ordersRes.count / 10)
+            setTotalPages(pages)
+            setPage(pageNumber)
+
+            // language pairs
+            const uniquePairIds = [
+                ...new Set(ordersRes.results.map(o => o.language_pair_id)),
+            ]
+
+            const missingIds = uniquePairIds.filter(id => !languagePairs[id])
+
+            if (missingIds.length > 0) {
+                const pairs = await Promise.all(
+                    missingIds.map(id => ordersApi.getLanguagePairById(id))
+                )
+
+                setLanguagePairs(prev => {
+                    const updated = { ...prev }
+                    pairs.forEach(pair => {
+                        updated[pair.id] = pair
+                    })
+                    return updated
+                })
+            }
+
+        } catch (e) {
+            handleError(e, "Failed to load orders")
+        } finally {
+            setLoading(false)
+        }
+    }, [languagePairs, toast])
 
 
 
@@ -181,7 +223,6 @@ export function useOrders() {
 
             const [
                 translatorsRes,
-                ordersRes,
                 clientsRes,
                 languagesRes,
                 editorsRes,
@@ -189,7 +230,6 @@ export function useOrders() {
                 orderTrafficRes,
             ] = await Promise.all([
                 ordersApi.list(),
-                ordersApi.listOrders(),
                 ordersApi.listClients(),
                 ordersApi.listLanguages(),
                 ordersApi.listEditors(),
@@ -200,14 +240,12 @@ export function useOrders() {
             // Translators
             setTranslators(translatorsRes.results)
 
-            const translatorsMap: Record<number, Translator> = {}
-            translatorsRes.results.forEach(t => {
-                translatorsMap[t.id] = t
-            })
+            const translatorsMap = Object.fromEntries(
+                translatorsRes.results.map(t => [t.id, t])
+            )
             setTranslatorsCache(translatorsMap)
 
             // Orders
-            setOrders(ordersRes.results)
 
             // Dictionaries
             setClients(clientsRes.results)
@@ -217,24 +255,6 @@ export function useOrders() {
             setTraffics(orderTrafficRes.results)
 
             // Language pairs
-            const uniquePairIds = [
-                ...new Set(ordersRes.results.map(o => o.language_pair_id)),
-            ]
-
-            if (uniquePairIds.length > 0) {
-                const pairs = await Promise.all(
-                    uniquePairIds.map(id =>
-                        ordersApi.getLanguagePairById(id)
-                    )
-                )
-
-                const pairsMap: Record<number, LanguagePair> = {}
-                pairs.forEach(pair => {
-                    pairsMap[pair.id] = pair
-                })
-
-                setLanguagePairs(pairsMap)
-            }
 
             initialLoadedRef.current = true
         } catch (e) {
@@ -245,8 +265,17 @@ export function useOrders() {
     }, [toast])
 
     useEffect(() => {
-        loadInitialData()
-    }, [loadInitialData])
+        const init = async () => {
+            await loadInitialData()
+            await loadOrders(1)
+        }
+
+        init()
+    }, [loadInitialData, loadOrders])
+
+    const onPageChange = (newPage: number) => {
+        loadOrders(newPage)
+    }
 
     /* =========================
        LOAD ORDER DETAILS
@@ -326,6 +355,9 @@ export function useOrders() {
         downloadOrderSourceFiles,
         downloadOrderTargetFiles,
         confirmOrder,
+        page,
+        totalPages,
+        onPageChange,
 
 
         // translators

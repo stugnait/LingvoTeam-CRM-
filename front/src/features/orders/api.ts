@@ -36,8 +36,8 @@ export const ordersApi = {
             method: "GET",
         }),
 
-    listOrders: () =>
-        apiFetch<OrderListResponse>("orders/", {
+    listOrders: (page = 1) =>
+        apiFetch<OrderListResponse>(`orders/?page=${page}`, {
             method: "GET",
         }),
 

@@ -25,16 +25,32 @@ import {cn} from "@/src/lib/utils";
 
 interface OrdersTableProps {
     orders: OrderListItem[]
+    page: number
+    totalPages: number
+    onPageChange: (page: number) => void
+
     onOpen: (orderId: number) => Promise<Details>
     languagePairs: Record<number, LanguagePair>
     translatorsCache: Record<number, Translator>
-    highlightId?: number | null,
+    highlightId?: number | null
     confirmOrder: (orderId: number) => Promise<any>
     downloadOrderSourceFiles: (orderId: number) => Promise<void>
     downloadOrderTargetFiles: (orderId: number) => Promise<void>
 }
 
-export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, highlightId, confirmOrder, downloadOrderSourceFiles, downloadOrderTargetFiles }: OrdersTableProps) {
+export function OrdersTable({
+                                orders,
+                                page,
+                                totalPages,
+                                onPageChange,
+                                onOpen,
+                                languagePairs,
+                                translatorsCache,
+                                highlightId,
+                                confirmOrder,
+                                downloadOrderSourceFiles,
+                                downloadOrderTargetFiles
+                            }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<Details | null>(null)
     const [loadingId, setLoadingId] = useState<number | null>(null)
@@ -80,6 +96,11 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
 
         return () => clearTimeout(timer)
     }, [highlightId])
+
+    useEffect(() => {
+        setExpandedId(null)
+        setDetails(null)
+    }, [page])
 
 
 
@@ -138,7 +159,8 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                 <TableCell className="align-middle h-16">
                                     <div className="flex items-center gap-2">
                                         {/* Source */}
-                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
+                                        <span
+                                            className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
                                             {order.source_language}
                                         </span>
 
@@ -148,7 +170,8 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                         </span>
 
                                         {/* Target */}
-                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                                        <span
+                                            className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
                                             {order.target_language}
                                         </span>
                                     </div>
@@ -248,9 +271,9 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                             className="transition-smooth hover:bg-muted/50 rounded-full w-8 h-8 p-0 flex-shrink-0"
                                         >
                                             {expandedId === order.id ? (
-                                                <ChevronUp className="h-4 w-4 transition-spring" />
+                                                <ChevronUp className="h-4 w-4 transition-spring"/>
                                             ) : (
-                                                <ChevronDown className="h-4 w-4 transition-spring" />
+                                                <ChevronDown className="h-4 w-4 transition-spring"/>
                                             )}
                                         </Button>
                                     </div>
@@ -263,12 +286,12 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                     <TableCell colSpan={5} className="p-0 border-b-0">
                                         <div
                                             className="animate-expand-row w-full"
-                                            style={{ overflow: 'hidden' }}
+                                            style={{overflow: 'hidden'}}
                                         >
                                             <div className="px-6 py-6 w-full">
                                                 {loadingId === order.id ? (
                                                     <div className="flex items-center justify-center gap-3 py-8">
-                                                        <div className="loading-spinner" />
+                                                        <div className="loading-spinner"/>
                                                         <p className="text-sm text-muted-foreground">
                                                             Loading details...
                                                         </p>
@@ -278,8 +301,10 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                         <div className="space-y-6 w-full">
                                                             {/* Grid items */}
                                                             <div className="grid grid-cols-2 gap-4 w-full">
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                                <div
+                                                                    className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
+                                                                    <span
+                                                                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                                         Pages
                                                                     </span>
                                                                     <span className="text-xl font-bold text-foreground">
@@ -287,8 +312,10 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                     </span>
                                                                 </div>
 
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                                <div
+                                                                    className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
+                                                                    <span
+                                                                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                                         Images
                                                                     </span>
                                                                     <span className="text-xl font-bold text-foreground">
@@ -296,8 +323,10 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                     </span>
                                                                 </div>
 
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                                <div
+                                                                    className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
+                                                                    <span
+                                                                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                                         Chars (with spaces)
                                                                     </span>
                                                                     <span className="text-xl font-bold text-foreground">
@@ -305,8 +334,10 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                     </span>
                                                                 </div>
 
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                                <div
+                                                                    className="flex flex-col gap-1.5 p-4 rounded-lg bg-background/50 hover-lift transition-smooth">
+                                                                    <span
+                                                                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                                         Chars (no spaces)
                                                                     </span>
                                                                     <span className="text-xl font-bold text-foreground">
@@ -315,9 +346,11 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                 </div>
                                                             </div>
 
-                                                            <div className="pt-4 border-t border-border/50 space-y-3 w-full">
+                                                            <div
+                                                                className="pt-4 border-t border-border/50 space-y-3 w-full">
                                                                 <div className="flex items-center justify-between">
-                                                                    <p className="text-sm font-medium text-foreground">Image OCR</p>
+                                                                    <p className="text-sm font-medium text-foreground">Image
+                                                                        OCR</p>
 
                                                                     <Button
                                                                         size="sm"
@@ -337,22 +370,27 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                                                                             </p>
                                                                         ) : (
                                                                             analyzeResult.results.map((r) => (
-                                                                                <div key={r.file_id} className="border rounded-md p-3 bg-background/50 w-full">
+                                                                                <div key={r.file_id}
+                                                                                     className="border rounded-md p-3 bg-background/50 w-full">
                                                                                     <div className="text-sm">
                                                                                         <b>file_id:</b> {r.file_id}{" "}
                                                                                         {r.file_type ? `(${r.file_type})` : ""}
                                                                                     </div>
 
                                                                                     {r.error ? (
-                                                                                        <div className="text-sm text-destructive mt-1">{r.error}</div>
+                                                                                        <div
+                                                                                            className="text-sm text-destructive mt-1">{r.error}</div>
                                                                                     ) : (
-                                                                                        <div className="text-sm mt-1 space-y-1">
+                                                                                        <div
+                                                                                            className="text-sm mt-1 space-y-1">
                                                                                             <div>
-                                                                                                images: {r.images_found ?? 0} • symbols:{" "}
+                                                                                                images: {r.images_found ?? 0} •
+                                                                                                symbols:{" "}
                                                                                                 {r.detected_symbols_from_images ?? 0}
                                                                                             </div>
                                                                                             {r.preview_text && (
-                                                                                                <div className="whitespace-pre-wrap">{r.preview_text}</div>
+                                                                                                <div
+                                                                                                    className="whitespace-pre-wrap">{r.preview_text}</div>
                                                                                             )}
                                                                                         </div>
                                                                                     )}
@@ -374,6 +412,43 @@ export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, h
                     ))}
                 </TableBody>
             </Table>
+            <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => onPageChange(page - 1)}
+                >
+                    Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                    {Array.from({length: totalPages}).map((_, i) => {
+                        const pageNumber = i + 1
+
+                        return (
+                            <Button
+                                key={pageNumber}
+                                size="sm"
+                                variant={page === pageNumber ? "default" : "outline"}
+                                onClick={() => onPageChange(pageNumber)}
+                                className="w-9"
+                            >
+                                {pageNumber}
+                            </Button>
+                        )
+                    })}
+                </div>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages}
+                    onClick={() => onPageChange(page + 1)}
+                >
+                    Next
+                </Button>
+            </div>
         </div>
     )
 }
