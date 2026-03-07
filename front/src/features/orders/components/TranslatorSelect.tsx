@@ -34,11 +34,14 @@ export function TranslatorSelect({
     const [loading, setLoading] = React.useState(false)
 
     // translator_id -> "40.00"
-    type MarginInfo = { percent: string; label: string }
+    type MarginInfo = {
+        percent: string | null
+        label: string | null
+    }
 
     // translator_id -> { percent, label }
     const [marginByTranslator, setMarginByTranslator] = React.useState<Record<number, MarginInfo>>({})    // translator_id -> translator_traffic_id
-    const [ttByTranslator, setTtByTranslator] = React.useState<Record<number, number>>({})
+    const [ttByTranslator, setTtByTranslator] = React.useState<Record<number, number | null>>({})
 
     React.useEffect(() => {
         let cancelled = false
@@ -55,7 +58,7 @@ export function TranslatorSelect({
                 const res: OrderMarginsResponse = await ordersApi.getOrderMargins(orderTrafficId)
 
                 const m: Record<number, MarginInfo> = {}
-                const tt: Record<number, number> = {}
+                const tt: Record<number, number | null> = {}
 
                 for (const row of res.results ?? []) {
                     m[row.translator_id] = {
@@ -104,9 +107,9 @@ export function TranslatorSelect({
                     const marginInfo = marginByTranslator[translator.id]
 
                     let label = "—"
-                    if (!orderTrafficId) label = "—"
-                    else if (loading) label = "…"
-                    else if (marginInfo) label = `${Number(marginInfo.percent).toFixed(0)}% ${marginInfo.label}`
+                    if (!orderTrafficId) {label = "—"}
+                    else if (loading) {label = "…"}
+                    else if (marginInfo) {label = `${Number(marginInfo.percent).toFixed(0)}% ${marginInfo.label}`}
 
                     return (
                         <SelectItem key={translator.id} value={translator.id.toString()}>

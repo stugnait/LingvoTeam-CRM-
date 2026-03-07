@@ -102,7 +102,7 @@ export default function TranslatorsPage() {
                             onChange={(e) =>
                                 setForm(prev => ({
                                     ...prev,
-                                    work_type: e.target.value,
+                                    work_type: Number(e.target.value),
                                 }))
                             }
                         />
@@ -112,10 +112,10 @@ export default function TranslatorsPage() {
                             type="number"
                             value={form.currency_id}
                             onChange={(e) =>
-                                setForm({
-                                    ...form,
-                                    currency_id: Number(e.target.value),
-                                })
+                                setForm(prev => ({
+                                    ...prev,
+                                    phone: e.target.value,
+                                }))
                             }
                         />
 

@@ -1,3 +1,10 @@
+export type RoleFilter =
+    | "all"
+    | "admin"
+    | "manager"
+    | "editor"
+    | "finance"
+
 export interface UserRole {
     id: number
     name: string
@@ -9,17 +16,16 @@ export interface User {
     full_name: string
     email: string
     phone: string
-    role: UserRole      // ← ОБʼЄКТ
-    is_active: boolean     // ← BOOLEAN
+    role: UserRole
+    is_active: boolean
     date_joined: string
 }
 
 export interface UsersFilters {
     search: string
-    role: "all" | "admin" | "manager" | "editor" | "finance"
+    role: RoleFilter
     status: boolean | null
 }
-
 
 export interface UsersListResponse {
     results: User[]
@@ -31,14 +37,10 @@ export interface UsersQueryParams extends UsersFilters {
     page_size?: number
 }
 
-/**
- * Дані, які відправляємо у форму / API
- * (НЕ весь User)
- */
 export interface UserFormData {
     full_name: string
     email: string
     phone: string
-    role: number      // role.id
-    is_active: boolean    // status.id
+    role: number
+    is_active: boolean
 }

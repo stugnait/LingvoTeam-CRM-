@@ -1,15 +1,15 @@
 "use client"
 
 import { Input } from "@/src/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/src/components/ui/select"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/src/components/ui/select"
 import { Search } from "lucide-react"
-import type { UsersFilters } from "../types"
-
-// interface Filters {
-//     search: string
-//     role: string
-//     status: string
-// }
+import type { UsersFilters, RoleFilter } from "../types"
 
 interface UserFiltersProps {
     filters: UsersFilters
@@ -17,26 +17,41 @@ interface UserFiltersProps {
 }
 
 export function UserFilters({ filters, setFilters }: UserFiltersProps) {
+
     return (
         <div className="flex flex-col sm:flex-row gap-4">
+
+            {/* SEARCH */}
             <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
                 <Input
                     placeholder="Search users..."
                     value={filters.search}
-                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                    onChange={(e) =>
+                        setFilters({
+                            ...filters,
+                            search: e.target.value
+                        })
+                    }
                     className="pl-9"
                 />
             </div>
+
+            {/* ROLE FILTER */}
             <Select
                 value={filters.role}
-                onValueChange={(value) =>
-                    setFilters({ ...filters, role: value })
+                onValueChange={(value: RoleFilter) =>
+                    setFilters({
+                        ...filters,
+                        role: value
+                    })
                 }
             >
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="All roles" />
                 </SelectTrigger>
+
                 <SelectContent>
                     <SelectItem value="all">All roles</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
@@ -45,6 +60,8 @@ export function UserFilters({ filters, setFilters }: UserFiltersProps) {
                     <SelectItem value="finance">Finance</SelectItem>
                 </SelectContent>
             </Select>
+
+            {/* STATUS FILTER */}
             <Select
                 value={
                     filters.status === null
@@ -59,20 +76,20 @@ export function UserFilters({ filters, setFilters }: UserFiltersProps) {
                         status:
                             value === "all"
                                 ? null
-                                : value === "active",
+                                : value === "active"
                     })
                 }
             >
                 <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="All status" />
                 </SelectTrigger>
+
                 <SelectContent>
                     <SelectItem value="all">All status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                 </SelectContent>
             </Select>
-
 
         </div>
     )

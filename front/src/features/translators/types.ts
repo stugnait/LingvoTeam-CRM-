@@ -28,7 +28,7 @@ export interface TranslatorPayload {
     full_name: string
     email: string
     phone: string
-    work_type: string
+    work_type: number
     currency_id?: number
 }
 

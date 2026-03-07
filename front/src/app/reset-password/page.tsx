@@ -1,13 +1,14 @@
-"use client"
-
-import { useSearchParams } from "next/navigation"
 import { ResetPasswordForm } from "@/src/features/auth/components/ResetPasswordForm"
 
-export default function ResetPasswordPage() {
-    const searchParams = useSearchParams()
+interface PageProps {
+    searchParams: {
+        uid?: string
+        token?: string
+    }
+}
 
-    const uid = searchParams.get("uid")
-    const token = searchParams.get("token")
+export default function ResetPasswordPage({ searchParams }: PageProps) {
+    const { uid, token } = searchParams
 
     if (!uid || !token) {
         return <p>Invalid or expired reset link</p>

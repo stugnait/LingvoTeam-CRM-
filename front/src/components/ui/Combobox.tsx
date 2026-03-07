@@ -11,6 +11,7 @@ interface ComboboxOption {
     label: string
     searchText?: string
     meta?: any
+    description?: string
 }
 
 interface ComboboxProps {
@@ -43,14 +44,14 @@ export function Combobox({
 
     // Безпечний пошук вибраної опції
     const selected = React.useMemo(() => {
-        if (!options || !Array.isArray(options)) return undefined
+        if (!options || !Array.isArray(options)) {return undefined}
         return options.find(o => o.value === value)
     }, [options, value])
 
     // Фільтрація опцій
     const filteredOptions = React.useMemo(() => {
-        if (!options || !Array.isArray(options)) return []
-        if (!searchQuery) return options
+        if (!options || !Array.isArray(options)) {return []}
+        if (!searchQuery) {return options}
 
         return options.filter(option => {
             const searchText = (option.searchText || option.label).toLowerCase()

@@ -18,17 +18,17 @@ import type {
     CreateOrderResponse,
     LanguagePair,
     Translator,
-    AnalyzeImagesResponse
+    AnalyzeImagesResponse, Details
 } from "@/src/features/orders/types"
 import { ordersApi } from "@/src/features/orders/api"
 import {cn} from "@/src/lib/utils";
 
 interface OrdersTableProps {
     orders: OrderListItem[]
-    onOpen: (orderId: number) => Promise<CreateOrderResponse>
+    onOpen: (orderId: number) => Promise<Details>
     languagePairs: Record<number, LanguagePair>
     translatorsCache: Record<number, Translator>
-    highlightId?: number
+    highlightId?: number | null,
     confirmOrder: (orderId: number) => Promise<any>
     downloadOrderSourceFiles: (orderId: number) => Promise<void>
     downloadOrderTargetFiles: (orderId: number) => Promise<void>
@@ -36,7 +36,7 @@ interface OrdersTableProps {
 
 export function OrdersTable({ orders, onOpen, languagePairs, translatorsCache, highlightId, confirmOrder, downloadOrderSourceFiles, downloadOrderTargetFiles }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
-    const [details, setDetails] = useState<CreateOrderResponse | null>(null)
+    const [details, setDetails] = useState<Details | null>(null)
     const [loadingId, setLoadingId] = useState<number | null>(null)
     const [analyzeLoadingId, setAnalyzeLoadingId] = useState<number | null>(null)
     const [analyzeResult, setAnalyzeResult] = useState<AnalyzeImagesResponse | null>(null)
