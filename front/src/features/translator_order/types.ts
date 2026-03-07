@@ -11,6 +11,7 @@ export interface ExternalOrder {
     language_pair: string
     deadline: string
     comment: string
+    status: string
 }
 
 export interface ExternalOrderLoginResponse {

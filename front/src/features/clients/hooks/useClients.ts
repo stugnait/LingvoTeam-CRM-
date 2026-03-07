@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { clientApi } from "../api"
 import type { ExternalOrder } from "../types"
+import {translatorOrderApi} from "@/src/features/translator_order/api";
 
 type Step = "loading" | "password" | "order" | "expired"
 
@@ -8,84 +9,83 @@ export function useClients(slug: string) {
     const [step, setStep] = useState<Step>("loading")
     const [order, setOrder] = useState<ExternalOrder | null>(null)
     const [error, setError] = useState<string | null>(null)
-    const [isUploading, setIsUploading] = useState(false)
-    const [uploadProgress, setUploadProgress] = useState(0)
+    const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
 
-    // 1️⃣ Перевірка slug
+    // ---------------- INIT ----------------
+
     async function init() {
         try {
             await clientApi.check(slug)
             setStep("password")
-        } catch (e: any) {
+        } catch {
             setStep("expired")
         }
     }
 
-    // 2️⃣ Логін по паролю
     async function submitPassword(password: string) {
         try {
-            const res = await clientApi.login(slug, { password })
-
-            // 👇 ВАЖЛИВО: залежить від структури відповіді
+            const res = await translatorOrderApi.login(slug, { password })
             setOrder(res.order_data)
             setStep("order")
             setError(null)
-
+            setRemainingAttempts(null)
         } catch (e: any) {
-            setError(e?.message || "Невірний пароль")
+            const data = e  // ← просто e, без .response.data
+
+            if (!data?.message) {
+                setError("Помилка з'єднання")
+                return
+            }
+
+            setError(data.message ?? "Невірний пароль")
+            setRemainingAttempts(
+                typeof data.remaining_attempts === "number" ? data.remaining_attempts : null
+            )
         }
     }
 
-    // 4️⃣ Завантаження файлів (download)
-    async function downloadFiles() {
+    // ---------------- DOWNLOAD ----------------
+
+    const downloadBlob = (blob: Blob, filename: string) => {
+        const url = window.URL.createObjectURL(blob)
+
+        const link = document.createElement("a")
+        link.href = url
+        link.download = filename
+
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        window.URL.revokeObjectURL(url)
+    }
+
+    const downloadFiles = useCallback(async () => {
         if (!order) {
             setError("Замовлення не знайдено")
             return
         }
 
         try {
-            const response = await clientApi.downloadFiles(order.id)
+            setError(null)
 
-            if (!response.ok) {
-                throw new Error("Помилка завантаження")
-            }
+            // clientApi має повертати Blob
+            const blob = await clientApi.downloadFiles(order.id)
 
-            const blob = await response.blob()
-
-            // 👉 пробуємо витягнути ім'я файлу з header
-            const contentDisposition = response.headers.get("Content-Disposition")
-            let fileName = `order_${order.id}`
-
-            if (contentDisposition) {
-                const match = contentDisposition.match(/filename="?(.+)"?/)
-                if (match?.[1]) {
-                    fileName = match[1]
-                }
-            }
-
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = fileName
-            document.body.appendChild(a)
-            a.click()
-            a.remove()
-
-            window.URL.revokeObjectURL(url)
+            downloadBlob(blob, `order_${order.id}_files.zip`)
 
         } catch (e: any) {
             setError(e?.message || "Помилка завантаження файлів")
         }
-    }
+    }, [order])
 
     return {
         step,
         order,
         error,
-        isUploading,
-        uploadProgress,
         init,
         submitPassword,
+        remainingAttempts,
         downloadFiles,
     }
 }

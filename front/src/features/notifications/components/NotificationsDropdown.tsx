@@ -50,7 +50,7 @@ export function NotificationsDropdown() {
                         >
                             <span className="font-medium">{n.title}</span>
                             <span className="text-xs text-muted-foreground">
-                                Order #{n.order_id}
+                                Order #{n.id}
                             </span>
                         </DropdownMenuItem>
                     ))

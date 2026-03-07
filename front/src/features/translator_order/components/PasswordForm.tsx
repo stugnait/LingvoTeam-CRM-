@@ -9,7 +9,7 @@ import { Lock, Eye, EyeOff, KeyRound } from "lucide-react"
 interface Props {
     onSubmit: (password: string) => void
     error?: string | null
-    attempts: string
+    attempts: number | null
 }
 
 export function PasswordForm({ onSubmit, error, attempts }: Props) {
