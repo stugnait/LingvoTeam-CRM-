@@ -8,8 +8,8 @@ export interface CreateOrderPayload {
     currency_id_id: number,
     translator_id?: number
     translator_traffic_id?: number
-    deadline: number,
-    priority: string,
+    deadline: Date | undefined,
+    priority: string | undefined,
     client_comment: string,
     files?: File[]
 }
@@ -30,6 +30,10 @@ export interface CreateOrderResponse {
 export interface Details {
     translator_id: number
     client_id: number
+    page_count: number
+    images_count: number
+    chars_with_spaces: number
+    chars_no_spaces: number
 }
 
 /* =========================================================
@@ -196,8 +200,9 @@ export interface OrderListItem {
     source_language: number
     target_language: number
     status_id: number
+    status_name: string
     created_at: string // ISO
-    translator_id: string
+    translator_id: number
     language_pair_id: number
 }
 
@@ -304,13 +309,15 @@ export interface EditorsByLanguagePairItem {
 }
 
 export interface EditorsByLanguagePairResponse {
-  language_pair: {
-    id: number
-    source_language_id: number
-    target_language_id: number
-  }
-  count: number
-  results: EditorsByLanguagePairItem[]
+    language_pair: {
+        id: number
+        source_language_id: number
+        target_language_id: number
+    }
+    count: number
+    results: EditorsByLanguagePairItem[]
+}
+
 export interface AnalyzeUploadedImageFileResult {
     filename: string
     file_type: string
@@ -323,6 +330,7 @@ export interface AnalyzeUploadedImageFileResult {
 
 export interface AnalyzeUploadedImagesResponse {
     ocr_language: string
+    total_words: string
     total_images_found: number
     total_detected_symbols_from_images: number
     results: AnalyzeUploadedImageFileResult[]

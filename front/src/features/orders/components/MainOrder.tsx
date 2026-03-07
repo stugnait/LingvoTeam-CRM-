@@ -56,7 +56,7 @@ export default function CreateOrderPage() {
     const router = useRouter()
 
     useEffect(() => {
-        if (!highlightId) return
+        if (!highlightId) {return}
         setActiveHighlightId(highlightId)
         const timer = setTimeout(() => {
             setActiveHighlightId(null)
@@ -77,7 +77,7 @@ export default function CreateOrderPage() {
             editor_id: Number(editor),
             translator_id: selectedTranslatorId ?? undefined,
             files,
-            deadline: deadline?.toISOString(), // ✅ додаємо deadline
+            deadline: deadline, // ✅ додаємо deadline
             priority, // ✅ додаємо priority
             client_comment: comment, // ✅ додаємо comment
         })
@@ -143,8 +143,8 @@ export default function CreateOrderPage() {
                 setTrafficId={setTrafficId}
                 currencyId={currencyId}
                 setCurrencyId={setCurrencyId}
-                language={language}
-                setLanguage={setLanguage}
+                // language={language}
+                // setLanguage={setLanguage}
                 // Step 3
                 selectedTranslatorId={selectedTranslatorId}
                 setSelectedTranslatorId={setSelectedTranslatorId}

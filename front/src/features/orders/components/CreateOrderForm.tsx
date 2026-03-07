@@ -122,20 +122,20 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
 
     const handleConfirmFiles = async () => {
-        if (!files.length) return
+        if (!files.length) {return}
         await calculateStats(files)
         setFilesConfirmed(true)
     }
 
     const handleAnalyzeImages = async () => {
-        if (!files.length) return
-      
+        if (!files.length) {return}
+
         await analyzeOrderFiles(files, sourceLanguage ? Number(sourceLanguage) : undefined)
         setImagesAnalyzed(true)
     }
 
     useEffect(() => {
-        if (!trafficId) return
+        if (!trafficId) {return}
         const selectedTariff = tariffs?.find((t) => String(t.id) === trafficId)
         if (selectedTariff?.currency_id) {
             setCurrencyId(String(selectedTariff.currency_id))
@@ -158,7 +158,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         ordersApi
             .getEditorsByLanguagePair(Number(sourceLanguage), Number(targetLanguage))
             .then((res: any) => {
-                if (cancelled) return
+                if (cancelled) {return}
                 const results = Array.isArray(res?.results) ? res.results : []
 
                 setEditorOptions(
@@ -172,7 +172,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 )
             })
             .catch(() => {
-                if (cancelled) return
+                if (cancelled) {return}
                 setEditorOptions(
                     editors.map((ed) => ({
                         value: String(ed.id),
@@ -393,19 +393,15 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             searchPlaceholder="Search editor..."
                             options={editorOptions}
                             renderOption={(option) => (
-                                <div className="flex items-center justify-between w-full">
-                                    <div className="flex flex-col">
-                                        <span>{option.label}</span>
-                                        {option.description && (
-                                            <span className="text-xs text-gray-500">{option.description}</span>
-                                        )}
-                                    </div>
+                                <div className="flex flex-col">
+                                    <span>{option.label}</span>
+                                    {option.description && (
+                                        <span className="text-xs text-gray-500">
+                    {option.description}
+                </span>
+                                    )}
                                 </div>
                             )}
-                            options={editors.map((ed) => ({
-                                value: String(ed.id),
-                                label: ed.full_name,
-                            }))}
                         />
                     </div>
 

@@ -77,7 +77,7 @@ export function useTranslators() {
             full_name: translator.full_name,
             email: translator.email,
             phone: translator.phone,
-            work_type: translator.work_type,
+            work_type: Number(translator.work_type),
             currency_id: translator.currency_id,
         })
         setIsFormOpen(true)

@@ -18,7 +18,7 @@ import {
     Client,
     Language,
     Editor,
-    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse, EditorsByLanguagePairResponse
+    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse, EditorsByLanguagePairResponse,
     AnalyzeUploadedImagesResponse
 } from "./types"
 
