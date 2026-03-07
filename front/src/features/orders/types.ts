@@ -279,11 +279,13 @@ export interface TranslatorTrafficListResponse {
 export interface OrderMarginsRow {
     translator_id: number
     translator_name: string | null
-    translator_traffic_id: number
+    translator_traffic_id: number | null
     order_price_per_page: string
-    translator_rate_per_page: string
-    margin_percent: string
-    margin_label: string
+    translator_rate_per_page: string | null
+    margin_percent: string | null
+    margin_label: string | null
+    language_pair_label: string
+    category_label: string
 }
 
 export interface OrderMarginsResponse {
@@ -292,4 +294,36 @@ export interface OrderMarginsResponse {
     currency_id: number
     category_id: number | null
     results: OrderMarginsRow[]
+}
+
+export interface EditorsByLanguagePairItem {
+  editor_id: number
+  editor_name: string | null
+  editor_language_pair_id: number | null
+  language_pair_label: string
+}
+
+export interface EditorsByLanguagePairResponse {
+  language_pair: {
+    id: number
+    source_language_id: number
+    target_language_id: number
+  }
+  count: number
+  results: EditorsByLanguagePairItem[]
+export interface AnalyzeUploadedImageFileResult {
+    filename: string
+    file_type: string
+    ocr_language?: string
+    images_found?: number
+    detected_symbols_from_images?: number
+    preview_text?: string
+    error?: string
+}
+
+export interface AnalyzeUploadedImagesResponse {
+    ocr_language: string
+    total_images_found: number
+    total_detected_symbols_from_images: number
+    results: AnalyzeUploadedImageFileResult[]
 }

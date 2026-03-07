@@ -65,6 +65,7 @@ from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx, move_file_from_target_to_final
 )
 from ..translators.models import TranslatorTraffic
+from ..users.models import EditorLanguagePairs, User
 from django_filters import rest_framework as filters
 
 logger = logging.getLogger(__name__)
@@ -145,6 +146,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'analyze_images': ['order.update'],
             'upload_files' : ['order.view'],
             'margins': ['order.view'],
+            'editors_by_language_pair': ['order.view'],
         }
 
         if self.action in ['update', 'partial_update']:
@@ -579,97 +581,86 @@ class OrderViewSet(viewsets.ModelViewSet):
         summary="Аналіз зображень",
         tags=["Order Files"]
     )
-    @action(detail=True, methods=["post"], url_path="analyze-images")
-    def analyze_images(self, request, pk=None):
-        """
-        Аналізує зображення всередині DOCX/PDF файлів замовлення за допомогою OCR (Tesseract).
-        Оновлює статистику символів у File.
-        """
-        order = self.get_object()
+    
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="analyze-uploaded-images",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def analyze_uploaded_images(self, request):
+        uploaded_files = request.FILES.getlist("files")
+        if not uploaded_files:
+            return Response({"detail": "files is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Визначаємо мову для Tesseract
-        # Tesseract використовує 3-літерні коди (eng, ukr, deu), а не slug мови (en, uk).
-        # Тут потрібен маппінг. Поки що спробуємо взяти slug, але краще мати окреме поле tesseract_code.
+        source_slug = (request.data.get("source_language_slug") or "").strip().lower()
 
-        source_slug = "en"
-        language_pair_val = (
-            getattr(order, "language_pair_id", None)
-            or getattr(order, "language_pair_id_id", None)
-            or getattr(order, "language_pair", None)
-        )
+        if not source_slug:
+            raw_source_language_id = request.data.get("source_language_id")
+            try:
+                source_language_id = int(str(raw_source_language_id).strip()) if raw_source_language_id else None
+            except ValueError:
+                return Response({"detail": "source_language_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
 
-        language_pair_id = getattr(language_pair_val, "id", language_pair_val)
+            if source_language_id:
+                lang_row = (
+                    Language.objects
+                    .filter(id=source_language_id)
+                    .values("slug")
+                    .first()
+                )
+                if lang_row and lang_row.get("slug"):
+                    source_slug = str(lang_row["slug"]).lower()
 
-        source_language_id = None
+        if not source_slug:
+            source_slug = "en"
 
-        if language_pair_id:
-            lp_row = (
-                LanguagePair.objects
-                .filter(id=language_pair_id)
-                .values("source_language_id")
-                .first()
-            )
-            if lp_row:
-                source_language_id = lp_row.get("source_language_id")
+        source_slug = {"ua": "uk"}.get(source_slug, source_slug)
 
-        source_slug = "src"
-        lang_row = None
-        if source_language_id:
-            lang_row = (
-                Language.objects
-                .filter(id=source_language_id)
-                .values("slug")
-                .first()
-            )
-        if lang_row and lang_row.get("slug"):
-            source_slug = lang_row["slug"]
-        
+        try:
+            reader = easyocr.Reader([source_slug], gpu=False)
+        except Exception:
+            source_slug = "en"
+            reader = easyocr.Reader(["en"], gpu=False)
 
-        files = File.objects.filter(order=order).exclude(dropbox_url__exact='None')
-        dbx = get_dbx()
         results = []
-        reader = easyocr.Reader([source_slug], gpu=False)
+        total_detected_symbols = 0
+        total_images_found = 0
 
-        for f in files:
-            if not f.dropbox_url:
-                continue
+        for f in uploaded_files:
+            filename = getattr(f, "name", "file")
+            ext = os.path.splitext(filename)[1].lstrip(".").lower()
 
-            dropbox_path = f.dropbox_url
-            ext = (f.file_type or os.path.splitext(dropbox_path)[1].lstrip(".")).lower()
-
-            if ext not in ['docx', 'pdf']:
+            if ext not in ["docx", "pdf"]:
+                results.append({"filename": filename, "file_type": ext, "error": "Only docx/pdf supported"})
                 continue
 
             try:
-                _, resp = dbx.files_download(dropbox_path)
-                data = resp.content
+                f.seek(0)
+                data = f.read()
             except Exception as e:
-                results.append({"file_id": f.id, "error": f"Dropbox download failed: {e}"})
+                results.append({"filename": filename, "file_type": ext, "error": f"Read failed: {e}"})
                 continue
 
             images_found = 0
             ocr_texts = []
 
             try:
-                # --- OCR для DOCX ---
                 if ext == "docx":
                     with zipfile.ZipFile(BytesIO(data)) as z:
                         media_files = [n for n in z.namelist() if n.startswith("word/media/")]
                         for name in media_files:
-                            img_bytes = z.read(name)
                             try:
+                                img_bytes = z.read(name)
                                 img = Image.open(BytesIO(img_bytes)).convert("RGB")
-                                # Використовуємо визначену мову, а не хардкод 'ukr'
                                 arr = np.array(img)
                                 text = "\n".join(reader.readtext(arr, detail=0, paragraph=True))
                                 if text.strip():
                                     ocr_texts.append(text)
-                                    images_found += 1
+                                images_found += 1
                             except Exception:
                                 pass
-
-                # --- OCR для PDF ---
-                elif ext == "pdf":
+                else:
                     doc = fitz.open(stream=data, filetype="pdf")
                     for page in doc:
                         for img_info in page.get_images(full=True):
@@ -684,37 +675,40 @@ class OrderViewSet(viewsets.ModelViewSet):
                                 text = "\n".join(reader.readtext(arr, detail=0, paragraph=True))
                                 if text.strip():
                                     ocr_texts.append(text)
-                                    images_found += 1
+                                images_found += 1
                             except Exception:
                                 pass
-
             except Exception as e:
-                results.append({"file_id": f.id, "error": f"Parse/OCR failed: {e}"})
+                results.append({"filename": filename, "file_type": ext, "error": f"Parse/OCR failed: {e}"})
                 continue
 
-            # Очищення та підрахунок
             full_text = "\n".join(ocr_texts)
-            # Базова очистка
-            full_text_clean = re.sub(r'[\ufeff\u200b\u200c\u200d]', '', full_text)
-            full_text_clean = re.sub(r'[ \t]+', ' ', full_text_clean)
-            full_text_clean = full_text_clean.strip()
+            full_text_clean = re.sub(r"[\ufeff\u200b\u200c\u200d]", "", full_text)
+            full_text_clean = re.sub(r"[ \t]+", " ", full_text_clean).strip()
 
             detected_symbols = len(full_text_clean)
 
-            # Оновлюємо файл
-            if detected_symbols > 0:
-                f.detected_symbols = (f.detected_symbols or 0) + detected_symbols
-                f.save(update_fields=["detected_symbols"])
+            total_detected_symbols += detected_symbols
+            total_images_found += images_found
 
             results.append({
-                "file_id": f.id,
+                "filename": filename,
                 "file_type": ext,
+                "ocr_language": source_slug,
                 "images_found": images_found,
                 "detected_symbols_from_images": detected_symbols,
-                "preview_text": full_text_clean[:100] + "...",
+                "preview_text": (full_text_clean[:200] + "...") if full_text_clean else "",
             })
 
-        return Response({"order_id": order.id, "results": results}, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "ocr_language": source_slug,
+                "total_images_found": total_images_found,
+                "total_detected_symbols_from_images": total_detected_symbols,
+                "results": results,
+            },
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         summary="Завантаження файлів",
@@ -778,14 +772,6 @@ class OrderViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=["get"], url_path="margins")
     def margins(self, request):
-        """
-        GET /api/orders/margins/?traffic_id=1
-
-        Повертає маржу (%) для кожного перекладача по:
-        - order_traffic.price_per_page (дохід за сторінку)
-        - translator_traffic.rate_per_page (витрата на сторінку)
-        """
-
         traffic_id = request.query_params.get("traffic_id")
         if not traffic_id:
             return Response({"detail": "traffic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -815,37 +801,66 @@ class OrderViewSet(viewsets.ModelViewSet):
         lp_id = ot.get("language_pair_id")
         category_id = ot.get("category_id")
 
-        qs = (TranslatorTraffic.objects
-            .filter(language_pair_id=lp_id))
+        traffics = (TranslatorTraffic.objects
+                    .filter(language_pair_id=lp_id)
+                    .select_related("translator"))
 
-        if category_id is not None:
-            qs = qs.filter(Q(category_id=category_id) | Q(category_id__isnull=True))
+        by_translator = {}
+        for tt in traffics:
+            by_translator.setdefault(tt.translator_id, []).append(tt)
 
-
-        qs = qs.select_related("translator")
-
+        translators = Translator.objects.all().only("id", "full_name")
         results = []
-        for tt in qs:
-            if tt.rate_per_page is None:
-                continue
+        for tr in translators:
+            lp_matches = by_translator.get(tr.id, [])
+            has_lp = bool(lp_matches)
 
-            tr_rate = Decimal(str(tt.rate_per_page))
-            margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
-            margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
+            best_tt = None
+            has_cat = False
+            if has_lp:
+                if category_id is None:
+                    has_cat = True
+                    best_tt = lp_matches[0]
+                else:
+                    cat_exact = [tt for tt in lp_matches if tt.category_id == category_id]
+                    if cat_exact:
+                        has_cat = True
+                        best_tt = cat_exact[0]
+                    else:
+                        cat_null = [tt for tt in lp_matches if tt.category_id is None]
+                        best_tt = cat_null[0] if cat_null else lp_matches[0]
 
-            tr = getattr(tt, "translator", None)
+            tr_rate = None
+            margin_percent = None
+            margin_label = None
+            translator_traffic_id = None
+            if best_tt and best_tt.rate_per_page is not None:
+                tr_rate = Decimal(str(best_tt.rate_per_page))
+                margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
+                margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
+                translator_traffic_id = best_tt.id
+
             results.append({
-                "translator_id": tr.id if tr else tt.translator_id,
+                "translator_id": tr.id,
                 "translator_name": getattr(tr, "full_name", None),
-                "translator_traffic_id": tt.id,
+                "translator_traffic_id": translator_traffic_id,
                 "order_price_per_page": str(order_price),
-                "translator_rate_per_page": str(tr_rate),
-                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))),
+                "translator_rate_per_page": str(tr_rate) if tr_rate is not None else None,
+                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))) if margin_percent is not None else None,
                 "margin_label": margin_label,
+                "language_pair_label": "Є мовна пара" if has_lp else "Нема мовної пари",
+                "category_label": "Є категорія" if has_cat else "Нема категорії",
             })
 
-        # краща маржа зверху
-        results.sort(key=lambda x: Decimal(x["margin_percent"]), reverse=True)
+        def sort_key(x):
+            mval = Decimal(x["margin_percent"]) if x["margin_percent"] is not None else Decimal("-Infinity")
+            return (
+                1 if x["language_pair_label"] == "Є мовна пара" else 0,
+                1 if x["category_label"] == "Є категорія" else 0,
+                mval,
+            )
+
+        results.sort(key=sort_key, reverse=True)
 
         return Response({
             "traffic_id": traffic_id_int,
@@ -854,6 +869,95 @@ class OrderViewSet(viewsets.ModelViewSet):
             "category_id": category_id,
             "results": results,
         }, status=status.HTTP_200_OK)
+    
+    @extend_schema(
+        summary="Редактори по мовній парі",
+        parameters=[
+            OpenApiParameter("source_language_id", int, required=True),
+            OpenApiParameter("target_language_id", int, required=True),
+        ],
+        tags=["Orders"]
+    )
+    @action(detail=False, methods=["get"], url_path="editors-by-language-pair")
+    def editors_by_language_pair(self, request):
+        source_language_id = request.query_params.get("source_language_id")
+        target_language_id = request.query_params.get("target_language_id")
+
+        if not source_language_id or not target_language_id:
+            return Response(
+                {"detail": "source_language_id and target_language_id are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            source_language_id = int(str(source_language_id).strip())
+            target_language_id = int(str(target_language_id).strip())
+        except ValueError:
+            return Response(
+                {"detail": "source_language_id and target_language_id must be int"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        lp_ids = list(
+            LanguagePair.objects
+            .filter(
+                Q(source_language_id=source_language_id, target_language_id=target_language_id) |
+                Q(source_language_id=target_language_id, target_language_id=source_language_id)
+            )
+            .values_list("id", flat=True)
+        )
+
+        if not lp_ids:
+            return Response(
+                {"detail": "LanguagePair not found for given languages"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        elps = (EditorLanguagePairs.objects
+                .filter(language_pair_id__in=lp_ids)
+                .values("id", "editor_id"))
+
+        by_editor = {}
+        for row in elps:
+            by_editor.setdefault(row["editor_id"], row["id"])
+
+        editors = (User.objects
+                .filter(role_id=2)
+                .only("id", "full_name")
+                .order_by("id"))
+
+        results = []
+        for ed in editors:
+            elp_id = by_editor.get(ed.id)
+            has_lp = elp_id is not None
+
+            results.append({
+                "editor_id": ed.id,
+                "editor_name": getattr(ed, "full_name", None),
+                "editor_language_pair_id": elp_id,
+                "language_pair_label": "Є" if has_lp else "Нема",
+            })
+
+        def sort_key(x):
+            return (
+                1 if x["language_pair_label"] == "Є" else 0,
+                (x["editor_name"] or "").lower(),
+                x["editor_id"],
+            )
+
+        results.sort(key=sort_key, reverse=True)
+
+        return Response(
+            {
+                "languages": {
+                    "source_language_id": source_language_id,
+                    "target_language_id": target_language_id,
+                },
+                "count": len(results),
+                "results": results,
+            },
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(
         summary="Підтвердити та активувати замовлення",

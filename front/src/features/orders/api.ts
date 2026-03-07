@@ -18,7 +18,8 @@ import {
     Client,
     Language,
     Editor,
-    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse
+    Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse, EditorsByLanguagePairResponse
+    AnalyzeUploadedImagesResponse
 } from "./types"
 
 
@@ -122,4 +123,22 @@ export const ordersApi = {
                 method: "GET",
             }
         ),
+    getEditorsByLanguagePair: (sourceLanguageId: number, targetLanguageId: number) =>
+        apiFetch<EditorsByLanguagePairResponse>(
+            `orders/editors-by-language-pair/?source_language_id=${sourceLanguageId}&target_language_id=${targetLanguageId}`,
+            { method: "GET" }
+        ),
+    analyzeUploadedImages: (files: File[], sourceLanguageId?: number) => {
+        const formData = new FormData()
+        files.forEach((file) => formData.append("files", file))
+        if (sourceLanguageId) formData.append("source_language_id", String(sourceLanguageId))
+
+        return apiFetch<AnalyzeUploadedImagesResponse>(
+            "orders/analyze-uploaded-images/",
+            {
+            method: "POST",
+            body: formData,
+            }
+        )
+    },
 }
