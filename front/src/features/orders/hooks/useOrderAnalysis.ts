@@ -2,89 +2,86 @@
 
 import { useState } from "react"
 import { ordersApi } from "../api"
-import type {
-    CalculateStatsResponse,
-    AnalyzeImagesResponse,
-} from "../types"
+import type { CalculateStatsResponse, AnalyzeUploadedImagesResponse } from "../types"
 import { useToast } from "@/src/hooks/use-toast"
 
 export function useOrderAnalysis() {
-    const { toast } = useToast()
+  const { toast } = useToast()
 
-    /* =========================
-       STATE
-    ========================= */
+  /* =========================
+     STATE
+  ========================= */
 
-    const [statsLoading, setStatsLoading] = useState(false)
-    const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [analysisLoading, setAnalysisLoading] = useState(false)
 
-    const [statsResult, setStatsResult] =
-        useState<CalculateStatsResponse | null>(null)
+  const [statsResult, setStatsResult] = useState<CalculateStatsResponse | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeUploadedImagesResponse | null>(
+    null
+  )
 
-    const [analysisResult, setAnalysisResult] =
-        useState<AnalyzeImagesResponse | null>(null)
+  /* =========================
+     CALCULATE FILE STATS
+  ========================= */
 
-    /* =========================
-       CALCULATE FILE STATS
-    ========================= */
+  const calculateStats = async (files: File[]) => {
+    try {
+      setStatsLoading(true)
 
-    const calculateStats = async (files: File[]) => {
-        try {
-            setStatsLoading(true)
+      const res = await ordersApi.calculateStats(files)
 
-            const res = await ordersApi.calculateStats(files)
-
-            setStatsResult(res)
-            return res
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.detail || "Failed to calculate file stats",
-                variant: "error",
-            })
-            throw e
-        } finally {
-            setStatsLoading(false)
-        }
+      setStatsResult(res)
+      return res
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.detail || "Failed to calculate file stats",
+        variant: "error",
+      })
+      throw e
+    } finally {
+      setStatsLoading(false)
     }
+  }
 
-    /* =========================
-       ANALYZE ORDER FILES (OCR)
-    ========================= */
+  /* =========================
+     ANALYZE UPLOADED FILES (OCR)
+     sends local uploaded files (FormData) to backend
+  ========================= */
 
-    const analyzeOrderFiles = async (orderId: number) => {
-        try {
-            setAnalysisLoading(true)
+  const analyzeOrderFiles = async (files: File[], sourceLanguageId?: number) => {
+    try {
+      setAnalysisLoading(true)
 
-            const res = await ordersApi.analyzeOrderFiles(orderId)
+      const res = await ordersApi.analyzeUploadedImages(files, sourceLanguageId)
 
-            setAnalysisResult(res)
-            return res
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.detail || "Failed to analyze images",
-                variant: "error",
-            })
-            throw e
-        } finally {
-            setAnalysisLoading(false)
-        }
+      setAnalysisResult(res)
+      return res
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.detail || "Failed to analyze images",
+        variant: "error",
+      })
+      throw e
+    } finally {
+      setAnalysisLoading(false)
     }
+  }
 
-    /* =========================
-       RETURN
-    ========================= */
+  /* =========================
+     RETURN
+  ========================= */
 
-    return {
-        // stats
-        calculateStats,
-        statsResult,
-        statsLoading,
+  return {
+    // stats
+    calculateStats,
+    statsResult,
+    statsLoading,
 
-        // analysis
-        analyzeOrderFiles,
-        analysisResult,
-        analysisLoading,
-    }
+    // analysis
+    analyzeOrderFiles,
+    analysisResult,
+    analysisLoading,
+  }
 }
