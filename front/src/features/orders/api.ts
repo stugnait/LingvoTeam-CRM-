@@ -41,6 +41,17 @@ export const ordersApi = {
             method: "GET",
         }),
 
+    deleteOrder: (id: number) =>
+        apiFetch<void>(`orders/${id}/`, {
+            method: "DELETE"
+        }),
+
+    updateOrder: (id: number, body: BodyInit) =>
+        apiFetch<CreateOrderResponse>(`orders/${id}/`, {
+            method: "PATCH",
+            body
+        }),
+
     // GET /translators/:id/
     getById: (id: number) =>
         apiFetch<Details>(`orders/${id}/`, {

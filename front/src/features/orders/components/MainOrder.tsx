@@ -7,12 +7,13 @@ import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
 import { Plus } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CreateOrderModal } from "./CreateOrderForm"
-import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
-import {Priority} from "@/src/components/ui/PrioritySelector";
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
+import { Priority } from "@/src/components/ui/PrioritySelector"
 
-export default function CreateOrderPage() {
+export default function OrdersPage() {
     const {
         createOrder,
+        updateOrder,
         loading,
         orders,
         loadOrderDetails,
@@ -25,6 +26,7 @@ export default function CreateOrderPage() {
         translators,
         traffics,
         confirmOrder,
+        deleteOrder,
         downloadOrderSourceFiles,
         downloadOrderTargetFiles,
         page,
@@ -32,26 +34,27 @@ export default function CreateOrderPage() {
         onPageChange
     } = useOrders()
 
-    // State for modal
+    // Modal
     const [isModalOpen, setIsModalOpen] = useState(false)
 
-    // Form states
-    const [clientId, setClientId] = useState<string>("")
-    const [sourceLanguage, setSourceLanguage] = useState<string>("")
-    const [targetLanguage, setTargetLanguage] = useState<string>("")
-    const [language, setLanguage] = useState<string>("")
-    const [editor, setEditor] = useState<string>("")
-    const [trafficId, setTrafficId] = useState<string>("")
-    const [languagePairId, setLanguagePairId] = useState<string>("")
-    const [translatorTrafficId, setTranslatorTrafficId] = useState<string>("")
-    const [currencyId, setCurrencyId] = useState<string>("")
+    // Edit mode
+    const [editingOrder, setEditingOrder] = useState<any | null>(null)
+
+    // Form state
+    const [clientId, setClientId] = useState("")
+    const [sourceLanguage, setSourceLanguage] = useState("")
+    const [targetLanguage, setTargetLanguage] = useState("")
+    const [editor, setEditor] = useState("")
+    const [trafficId, setTrafficId] = useState("")
+    const [languagePairId, setLanguagePairId] = useState("")
+    const [translatorTrafficId, setTranslatorTrafficId] = useState("")
+    const [currencyId, setCurrencyId] = useState("")
     const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
     const [files, setFiles] = useState<File[]>([])
 
-    // Нові стани для 4-го кроку
-    const [deadline, setDeadline] = useState<Date | undefined>(undefined)  // ✅ змінено з deadlines на deadline
-    const [comment, setComment] = useState<string>("")  // ✅ додано comment
-    const [priority, setPriority] = useState<Priority | undefined>(undefined)  // ✅ змінено з null на undefined
+    const [deadline, setDeadline] = useState<Date | undefined>(undefined)
+    const [comment, setComment] = useState("")
+    const [priority, setPriority] = useState<Priority | undefined>(undefined)
 
     const searchParams = useSearchParams()
     const highlightId = Number(searchParams.get("highlight"))
@@ -60,32 +63,18 @@ export default function CreateOrderPage() {
 
     useEffect(() => {
         if (!highlightId) {return}
+
         setActiveHighlightId(highlightId)
+
         const timer = setTimeout(() => {
             setActiveHighlightId(null)
             router.replace("/dashboard/orders", { scroll: false })
         }, 5000)
+
         return () => clearTimeout(timer)
     }, [highlightId, router])
 
-    const handleSubmit = async () => {
-        await createOrder({
-            client_id: Number(clientId),
-            source_language: Number(sourceLanguage),
-            target_language: Number(targetLanguage),
-            traffic_id: Number(trafficId),
-            translator_traffic_id: Number(translatorTrafficId),
-            currency_id_id: Number(currencyId),
-            language_pair_id: Number(languagePairId),
-            editor_id: Number(editor),
-            translator_id: selectedTranslatorId ?? undefined,
-            files,
-            deadline: deadline, // ✅ додаємо deadline
-            priority, // ✅ додаємо priority
-            client_comment: comment, // ✅ додаємо comment
-        })
-
-        // Reset form
+    const resetForm = () => {
         setClientId("")
         setSourceLanguage("")
         setTargetLanguage("")
@@ -96,18 +85,72 @@ export default function CreateOrderPage() {
         setCurrencyId("")
         setSelectedTranslatorId(null)
         setFiles([])
-        setDeadline(undefined)  // ✅ скидаємо deadline
-        setComment("")  // ✅ скидаємо comment
-        setPriority(undefined)  // ✅ скидаємо priority
+        setDeadline(undefined)
+        setComment("")
+        setPriority(undefined)
+        setEditingOrder(null)
+    }
+
+    const handleCreateClick = () => {
+        resetForm()
+        setIsModalOpen(true)
+    }
+
+    const handleEdit = (order: any) => {
+        setEditingOrder(order)
+
+        setClientId(String(order.client_id ?? ""))
+        setSourceLanguage(String(order.source_language ?? ""))
+        setTargetLanguage(String(order.target_language ?? ""))
+        setTrafficId(String(order.traffic_id ?? ""))
+        setCurrencyId(String(order.currency_id ?? ""))
+        setEditor(String(order.editor_id ?? ""))
+        setLanguagePairId(String(order.language_pair_id ?? ""))
+        setTranslatorTrafficId(String(order.translator_traffic_id ?? ""))
+
+        setSelectedTranslatorId(order.translator_id ?? null)
+
+        setDeadline(order.deadline ? new Date(order.deadline) : undefined)
+        setComment(order.client_comment ?? "")
+        setPriority(order.priority ?? undefined)
+
+        setIsModalOpen(true)
+    }
+
+    const handleSubmit = async () => {
+        const payload = {
+            client_id: Number(clientId),
+            source_language: Number(sourceLanguage),
+            target_language: Number(targetLanguage),
+            traffic_id: Number(trafficId),
+            translator_traffic_id: Number(translatorTrafficId),
+            currency_id_id: Number(currencyId),
+            language_pair_id: Number(languagePairId),
+            editor_id: Number(editor),
+            translator_id: selectedTranslatorId ?? undefined,
+            files,
+            deadline: deadline ? deadline.toISOString() : undefined,
+            priority,
+            client_comment: comment,
+        }
+
+        if (editingOrder) {
+            await updateOrder(editingOrder.id, payload)
+        } else {
+            await createOrder(payload)
+        }
+
+        resetForm()
         setIsModalOpen(false)
     }
 
     return (
         <>
             <DashboardHeader />
+
             <div className="fixed bottom-8 right-8 z-40">
                 <Button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={handleCreateClick}
                     className="rounded-full w-14 h-14 p-0 shadow-lg bg-blue-600 hover:bg-blue-700 text-white transition-all hover:scale-110 active:scale-95"
                 >
                     <Plus className="h-6 w-6" />
@@ -117,6 +160,9 @@ export default function CreateOrderPage() {
             <div className="space-y-8">
                 <OrdersTable
                     orders={orders}
+                    page={page}
+                    totalPages={totalPages}
+                    onPageChange={onPageChange}
                     onOpen={loadOrderDetails}
                     languagePairs={languagePairs}
                     translatorsCache={translatorsCache}
@@ -124,9 +170,9 @@ export default function CreateOrderPage() {
                     confirmOrder={confirmOrder}
                     downloadOrderSourceFiles={downloadOrderSourceFiles}
                     downloadOrderTargetFiles={downloadOrderTargetFiles}
-                    page={page}
-                    totalPages={totalPages}
-                    onPageChange={onPageChange}
+
+                    onEdit={handleEdit}
+                    onDelete={(id) => deleteOrder(id)}
                 />
             </div>
 
@@ -135,43 +181,52 @@ export default function CreateOrderPage() {
                 onOpenChange={setIsModalOpen}
                 onSubmit={handleSubmit}
                 loading={loading}
-                // Step 1
+
+                mode={editingOrder ? "edit" : "create"}
+                orderId={editingOrder?.id}
+
                 clientId={clientId}
                 setClientId={setClientId}
+
                 sourceLanguage={sourceLanguage}
                 setSourceLanguage={setSourceLanguage}
+
                 targetLanguage={targetLanguage}
                 setTargetLanguage={setTargetLanguage}
+
                 files={files}
                 setFiles={setFiles}
-                // Step 2
+
                 trafficId={trafficId}
                 setTrafficId={setTrafficId}
+
                 currencyId={currencyId}
                 setCurrencyId={setCurrencyId}
-                // language={language}
-                // setLanguage={setLanguage}
-                // Step 3
+
                 selectedTranslatorId={selectedTranslatorId}
                 setSelectedTranslatorId={setSelectedTranslatorId}
+
                 editor={editor}
                 setEditor={setEditor}
+
                 translatorTrafficId={translatorTrafficId}
                 setTranslatorTrafficId={setTranslatorTrafficId}
-                // Step 4 - ✅ виправлено назви
+
                 deadline={deadline}
                 setDeadline={setDeadline}
+
                 comment={comment}
                 setComment={setComment}
+
                 priority={priority}
                 setPriority={setPriority}
-                // Data
+
                 clients={clients || []}
                 languages={languages || []}
                 editors={editors || []}
                 currencies={currencies || []}
                 translators={translators || []}
-                tariffs={traffics || []} // Потрібно буде додати з useOrders
+                tariffs={traffics || []}
             />
         </>
     )
