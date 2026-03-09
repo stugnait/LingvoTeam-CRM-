@@ -5,6 +5,7 @@ import string
 from django.contrib.auth import get_user_model
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import generics, viewsets, status
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -133,7 +134,10 @@ class AdminToggleUserStatusView(APIView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
 
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+
+    search_fields = ['first_name', 'last_name', 'email', 'phone', 'full_name']
+    ordering_fields = ['id', 'email', 'first_name', 'last_name']
     filterset_fields = ['is_active', 'role', 'role__slug']
 
     @action(detail=False, methods=['GET'], url_path='editors-by-language')

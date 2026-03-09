@@ -94,6 +94,7 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
     ).all()
     serializer_class = OrderTrafficSerializer
     permission_classes = [HasPermission]
+
     required_permissions = ['order.traffic.manage']
     filter_backends = [
         DjangoFilterBackend,
