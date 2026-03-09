@@ -12,23 +12,33 @@ const navigation = [
         roles: ["admin", "manager"],
     },
     {
-        name: "Users",
-        href: "/dashboard/users",
-        roles: ["admin"],
-    },
-    {
-        name: "Translations",
-        href: "/dashboard/translations",
-        roles: ["admin", "manager"],
-    },
-    {
         name: "Orders",
         href: "/dashboard/orders",
         roles: ["admin", "manager"],
     },
     {
-        name: "Settings",
-        href: "/dashboard/settings",
+        name: "Tariffs",
+        href: "/dashboard/tariffs",
+        roles: ["admin"],
+    },
+    {
+        name: "Translators",
+        href: "/dashboard/translations",
+        roles: ["admin", "manager"],
+    },
+    {
+        name: "Clients",
+        href: "/dashboard/clients",
+        roles: ["admin", "manager"],
+    },
+    {
+        name: "Users",
+        href: "/dashboard/users",
+        roles: ["admin"],
+    },
+    {
+        name: "Profile",
+        href: "/dashboard/profile",
         roles: ["admin", "editor"],
     },
     {
@@ -36,16 +46,8 @@ const navigation = [
         href: "/dashboard/editor",
         roles: ["editor"],
     },
-    {
-        name: "Tariffs",
-        href: "/dashboard/tariffs",
-        roles: ["admin", "editor"],
-    },
-    {
-        name: "Clients",
-        href: "/dashboard/clients",
-        roles: ["admin", "manager"],
-    },
+
+
 ]
 
 export function CrmSidebar() {
