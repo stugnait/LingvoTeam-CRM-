@@ -23,6 +23,7 @@ import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 
 import { useClientsCreation } from "@/src/features/clients-creation/hooks/useClientsCreation"
 import { useClientsCategories } from "@/src/features/clients-creation/hooks/useClientsCategories"
+import {ClientFilters} from "@/src/features/clients-creation/components/ClientFilter";
 
 export function ClientPage() {
 
@@ -31,6 +32,9 @@ export function ClientPage() {
         createClient,
         updateClient,
         deleteClient,
+
+        search,
+        setSearch,
 
         isFormOpen,
         isDeleteOpen,
@@ -82,6 +86,21 @@ export function ClientPage() {
                         </Button>
 
                     </div>
+
+                    <Card>
+
+                        <CardHeader>
+                            <CardTitle>Search</CardTitle>
+                        </CardHeader>
+
+                        <CardContent>
+                            <ClientFilters
+                                search={search}
+                                setSearch={setSearch}
+                            />
+                        </CardContent>
+
+                    </Card>
 
                     {/* Clients Table */}
                     <Card>

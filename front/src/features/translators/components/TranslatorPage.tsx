@@ -1,14 +1,27 @@
 "use client"
 
 import { useTranslators } from "../hooks/useTranslators"
+
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
+
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/src/components/ui/card"
+
 import { TranslatorsTable } from "./TranslatorsTable"
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/src/components/ui/select";
-import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
+
+import { Plus } from "lucide-react"
+
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
+import {TranslatorsFilters} from "@/src/features/translators/components/TranslatorFilter";
 
 export default function TranslatorsPage() {
     const {
@@ -18,15 +31,16 @@ export default function TranslatorsPage() {
         form,
         setForm,
 
+        search,
+        setSearch,
+
         isFormOpen,
         isConfirmOpen,
-        confirmAction,
         selectedTranslator,
 
         openAddTranslator,
         openEditTranslator,
         openDeleteTranslator,
-        openDeactivateTranslator,
 
         submitTranslator,
         confirmActionHandler,
@@ -36,110 +50,149 @@ export default function TranslatorsPage() {
     return (
         <>
             <DashboardHeader />
-            <div className="p-6 space-y-6">
-                {/* Header */}
-                <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-semibold">Translators</h1>
 
-                    <Button onClick={openAddTranslator}>
-                        Add translator
-                    </Button>
-                </div>
+            <main className="flex-1 overflow-y-auto p-6">
+                <div className="mx-auto max-w-6xl space-y-6">
 
-                {/* Table */}
-                <TranslatorsTable
-                    translators={translators}
-                    onEdit={openEditTranslator}
-                    onDelete={openDeleteTranslator}
-                    onDeactivate={openDeactivateTranslator}
-                />
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-bold tracking-tight">
+                                Translators
+                            </h2>
 
-                {/* FORM MODAL */}
-                <BaseFormModal
-                    open={isFormOpen}
-                    onOpenChange={(open) => !open && closeModals()}
-                    title={selectedTranslator ? "Edit translator" : "Create translator"}
-                    submitLabel="Save"
-                    onSubmit={() => submitTranslator(form)}
-                >
-                    <div className="space-y-4">
-                        <Input
-                            placeholder="Full name"
-                            value={form.full_name}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    full_name: e.target.value,
-                                }))
-                            }
-                        />
+                            <p className="text-muted-foreground">
+                                Manage translators and their contact details
+                            </p>
+                        </div>
 
-                        <Input
-                            placeholder="Email"
-                            value={form.email}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    email: e.target.value,
-                                }))
-                            }
-                        />
-
-                        <Input
-                            placeholder="Phone"
-                            value={form.phone}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    phone: e.target.value,
-                                }))
-                            }
-                        />
-
-                        <Input
-                            placeholder="Phone"
-                            value={form.work_type}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    work_type: Number(e.target.value),
-                                }))
-                            }
-                        />
-
-                        <Input
-                            placeholder="Currency"
-                            type="number"
-                            value={form.currency_id}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    phone: e.target.value,
-                                }))
-                            }
-                        />
-
+                        <Button onClick={openAddTranslator}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Translator
+                        </Button>
                     </div>
-                </BaseFormModal>
 
-                {/* CONFIRM MODAL */}
-                <ConfirmModal
-                    open={isConfirmOpen}
-                    onOpenChange={(open) => !open && closeModals()}
-                    title={
-                        confirmAction === "delete"
-                            ? "Delete translator"
-                            : "Deactivate translator"
-                    }
-                    description={
-                        selectedTranslator
-                            ? `Are you sure you want to ${confirmAction} "${selectedTranslator.full_name}"?`
-                            : ""
-                    }
-                    confirmLabel="Confirm"
-                    onConfirm={confirmActionHandler}
-                />
-            </div>
+                    {/* Filters */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Filters</CardTitle>
+                            <CardDescription>
+                                Search translators by name or email
+                            </CardDescription>
+                        </CardHeader>
+
+                        <CardContent>
+                            <TranslatorsFilters
+                                search={search}
+                                setSearch={setSearch}
+                            />
+                        </CardContent>
+                    </Card>
+
+                    {/* Table */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Translators List</CardTitle>
+                            <CardDescription>
+                                All translators registered in the system
+                            </CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="p-0">
+                            <TranslatorsTable
+                                translators={translators}
+                                onEdit={openEditTranslator}
+                                onDelete={openDeleteTranslator}
+                            />
+                        </CardContent>
+                    </Card>
+                </div>
+            </main>
+
+            {/* FORM MODAL */}
+            <BaseFormModal
+                open={isFormOpen}
+                onOpenChange={(open) => !open && closeModals()}
+                title={
+                    selectedTranslator
+                        ? "Edit Translator"
+                        : "Create Translator"
+                }
+                submitLabel="Save"
+                onSubmit={() => submitTranslator(form)}
+            >
+                <div className="space-y-4">
+                    <Input
+                        placeholder="Full name"
+                        value={form.full_name}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                full_name: e.target.value,
+                            }))
+                        }
+                    />
+
+                    <Input
+                        placeholder="Email"
+                        value={form.email}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                email: e.target.value,
+                            }))
+                        }
+                    />
+
+                    <Input
+                        placeholder="Phone"
+                        value={form.phone}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                phone: e.target.value,
+                            }))
+                        }
+                    />
+
+                    <Input
+                        placeholder="Work type"
+                        value={form.work_type}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                work_type: Number(e.target.value),
+                            }))
+                        }
+                    />
+
+                    <Input
+                        placeholder="Currency ID"
+                        type="number"
+                        value={form.currency_id}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                currency_id: Number(e.target.value),
+                            }))
+                        }
+                    />
+                </div>
+            </BaseFormModal>
+
+            {/* DELETE CONFIRM */}
+            <ConfirmModal
+                open={isConfirmOpen}
+                onOpenChange={(open) => !open && closeModals()}
+                title="Delete translator"
+                description={
+                    selectedTranslator
+                        ? `Are you sure you want to delete "${selectedTranslator.full_name}"?`
+                        : ""
+                }
+                confirmLabel="Delete"
+                onConfirm={confirmActionHandler}
+            />
         </>
     )
 }
