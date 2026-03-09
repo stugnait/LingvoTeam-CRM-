@@ -145,7 +145,7 @@ class TranslatorTrafficViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
-    filterset_fields = ['translator', 'language_pair', 'category']
+    filterset_fields = ['translator', 'language_pair', 'category', 'name']
 
     search_fields = ['name']
 
@@ -158,20 +158,66 @@ class TranslatorTrafficViewSet(viewsets.ModelViewSet):
 class ExternalOrderAccessView(APIView):
     permission_classes = [AllowAny]
 
+    def _set_assignee_active(self, link_obj):
+        order = link_obj.order
+
+        if link_obj.assignee == 'translator' and order.translator_id:
+            translator = order.translator_id
+            if hasattr(translator, 'is_active') and not translator.is_active:
+                translator.is_active = True
+                translator.save(update_fields=['is_active'])
+
+        elif link_obj.assignee == 'client' and order.client_id:
+            client = order.client_id
+            if hasattr(client, 'is_active') and not client.is_active:
+                client.is_active = True
+                client.save(update_fields=['is_active'])
+
     @extend_schema(
-        summary="Перевірка валідності посилання",
-        description="Перевіряє, чи не закінчився термін дії UUID-посилання для зовнішнього доступу.",
+        summary="Перевірка валідності посилання та наявності кукі",
+        description="Якщо кука вже є і валідна — оновлює її, робить користувача онлайн і пускає. Якщо ні — просить пароль.",
         responses={200: OpenApiTypes.OBJECT, 410: OpenApiTypes.OBJECT},
         tags=["External Access"]
     )
     def get(self, request, slug):
         link_obj = get_object_or_404(OrderLink, link=slug)
+        now = timezone.now()
 
-        if link_obj.expire_at < timezone.now():
+        if link_obj.expire_at < now:
             return Response(
                 {"error": "Термін дії посилання закінчився"},
                 status=http_status.HTTP_410_GONE
             )
+
+        order = link_obj.order
+        provided_password = request.COOKIES.get(f'order_auth_{order.id}')
+
+        if provided_password and secrets.compare_digest(link_obj.password, provided_password):
+            self._set_assignee_active(link_obj)
+
+            response = Response({
+                "access": "granted",
+                "status": "granted",
+                "order_data": {
+                    "id": order.id,
+                    "language_pair": str(order.language_pair_id),
+                    "deadline": str(order.deadline),
+                    "target_language": order.language_pair_id.target_language.name if order.language_pair_id and order.language_pair_id.target_language else "-",
+                    "source_language": order.language_pair_id.source_language.name if order.language_pair_id and order.language_pair_id.source_language else "-",
+                    "comment": getattr(order, 'client_comment', "Коментар відсутній")
+                }
+            }, status=http_status.HTTP_200_OK)
+
+            max_age = int((link_obj.expire_at - now).total_seconds())
+            response.set_cookie(
+                key=f'order_auth_{order.id}',
+                value=provided_password,
+                max_age=max_age,
+                httponly=True,
+                samesite='Lax',
+                secure=False
+            )
+            return response
 
         return Response({
             "message": "URL валідний. Очікується пароль.",
@@ -180,14 +226,8 @@ class ExternalOrderAccessView(APIView):
 
     @extend_schema(
         summary="Авторизація за паролем",
-        description="Перевірка пароля для доступу до замовлення. Реалізовано захист від brute-force (бан на 15 хв після 5 спроб).",
-        request={
-            "application/json": {
-                "type": "object",
-                "properties": {"password": {"type": "string"}},
-                "required": ["password"]
-            }
-        }
+        description="Перевірка пароля. При успіху — видає куку і робить користувача онлайн.",
+        tags=["External Access"]
     )
     def post(self, request, slug):
         with transaction.atomic():
@@ -199,7 +239,6 @@ class ExternalOrderAccessView(APIView):
                     {"error": "Термін дії посилання закінчився"},
                     status=http_status.HTTP_410_GONE
                 )
-
 
             if link_obj.banned_to and link_obj.banned_to > now:
                 remaining_time = int((link_obj.banned_to - now).total_seconds() / 60)
@@ -214,6 +253,8 @@ class ExternalOrderAccessView(APIView):
                 link_obj.attempts = 0
                 link_obj.banned_to = None
                 link_obj.save()
+
+                self._set_assignee_active(link_obj)
 
                 order = link_obj.order
 
@@ -230,7 +271,6 @@ class ExternalOrderAccessView(APIView):
                 }, status=http_status.HTTP_200_OK)
 
                 max_age = int((link_obj.expire_at - now).total_seconds())
-
                 response.set_cookie(
                     key=f'order_auth_{order.id}',
                     value=input_password,
@@ -241,10 +281,10 @@ class ExternalOrderAccessView(APIView):
                 )
 
                 return response
-#TODO час бану
+
             link_obj.attempts += 1
             max_attempts = 5
-            ban_minutes = 1
+            ban_minutes = 15
 
             if link_obj.attempts >= max_attempts:
                 link_obj.banned_to = now + timedelta(minutes=ban_minutes)
@@ -257,16 +297,14 @@ class ExternalOrderAccessView(APIView):
                     "remaining_attempts": 0,
                     "ban_minutes": ban_minutes,
                     "banned_to": banned_to_kyiv.isoformat(),
-                },status=http_status.HTTP_403_FORBIDDEN
-    )
+                }, status=http_status.HTTP_403_FORBIDDEN)
 
             else:
                 remaining_attempts = max_attempts - link_obj.attempts
                 response = Response({
                     "message": "Невірний пароль.",
                     "remaining_attempts": remaining_attempts,
-                },status=http_status.HTTP_403_FORBIDDEN
-    )
+                }, status=http_status.HTTP_403_FORBIDDEN)
 
             link_obj.save()
             return response
