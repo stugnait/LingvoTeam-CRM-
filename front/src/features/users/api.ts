@@ -1,26 +1,41 @@
 import { apiFetch } from "@/src/shared/api/client"
-import type {
-    User,
-    UserFormData,
-    UsersListResponse,
-    // UsersQueryParams,
-} from "./types"
-import type {RegisterPayload, RegisterResponse} from "@/src/features/auth/types";
+import type { User, UserFormData, UsersListResponse } from "./types"
 
 export const usersApi = {
+
     // GET /users/?search=&role=&status=
-    list: () =>
-        apiFetch<UsersListResponse>("users/users/", {
-            method: "GET",
-        }),
+    list: (params?: {
+        search?: string
+        role?: string
+        status?: boolean | null
+    }) => {
 
-    // GET /users/:id/
+        const query = new URLSearchParams()
+
+        if (params?.search) {
+            query.append("search", params.search)
+        }
+
+        if (params?.role && params.role !== "all") {
+            query.append("role__slug", params.role)
+        }
+
+        if (params?.status !== null && params?.status !== undefined) {
+            query.append("is_active", String(params.status))
+        }
+
+        const url = query.toString()
+            ? `users/users/?${query.toString()}`
+            : "users/users/"
+
+        return apiFetch<UsersListResponse>(url, {
+            method: "GET",
+        })
+    },
+
     getById: (id: string) =>
-        apiFetch<User>(`users/${id}/`, {
-            method: "GET",
-        }),
+        apiFetch<User>(`users/${id}/`, { method: "GET" }),
 
-    // POST /users/
     create: (data: UserFormData) =>
         apiFetch<User>("users/", {
             method: "POST",
@@ -28,23 +43,19 @@ export const usersApi = {
         }),
 
     register: (data: UserFormData) =>
-        apiFetch<RegisterResponse>("users/auth/register/", {
+        apiFetch("users/auth/register/", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
-    // PATCH /users/:id/
     update: (id: string, data: UserFormData) =>
         apiFetch<User>(`users/${id}/`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
 
-    // DELETE /users/:id/
     remove: (id: string) =>
-        apiFetch<void>(`users/${id}/`, {
-            method: "DELETE",
-        }),
+        apiFetch<void>(`users/${id}/`, { method: "DELETE" }),
 
     deactivate: (id: string) =>
         apiFetch<void>(`admin/users/${id}/toggle-status/`, {

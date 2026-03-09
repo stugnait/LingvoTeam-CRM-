@@ -27,6 +27,9 @@ interface CreateOrderModalProps {
     onSubmit: () => void
     loading: boolean
 
+    mode?: "create" | "edit"
+    orderId?: number
+
     clientId: string
     setClientId: (value: string) => void
     files: File[]
@@ -78,6 +81,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         clientId,
         setClientId,
         files,
+        mode = "create",
+        orderId,
         setFiles,
         sourceLanguage,
         setSourceLanguage,
@@ -119,6 +124,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
 
+    const [editingOrder, setEditingOrder] = useState<Order | null>(null)
+    const [modalOpen, setModalOpen] = useState(false)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
 
     const handleConfirmFiles = async () => {
@@ -190,7 +197,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         <WizardModal
             open={open}
             onOpenChange={onOpenChange}
-            title="Create New Order"
+            title={mode === "edit" ? "Edit Order" : "Create New Order"}
             steps={[
                 { title: "Client & Files" },
                 { title: "Tariff" },
@@ -198,7 +205,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 { title: "Deadline" },
             ]}
             isLoading={loading}
-            onSubmit={onSubmit}
+            onSubmit={() => onSubmit()}
         >
             <WizardStep>
                 <div className="space-y-6">

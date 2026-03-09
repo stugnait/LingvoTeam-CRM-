@@ -1,3 +1,4 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 
@@ -14,6 +15,7 @@ from django.utils import timezone
 from django.db import transaction
 
 from rest_framework import status as http_status, viewsets
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -66,6 +68,11 @@ class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.select_related('category').all()
     serializer_class = ClientSerializer
     permission_classes = [HasPermission]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+
+    search_fields = ['full_name', 'email']
+
+    ordering_fields = ['full_name', 'created_at']
 
     def get_required_permissions(self, request):
         if self.action in ['list', 'retrieve']:

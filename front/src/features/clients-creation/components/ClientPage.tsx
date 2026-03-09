@@ -1,134 +1,162 @@
 "use client"
 
-import { useTranslators } from "../hooks/useTranslators"
-
-import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
-import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
-
-import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
-
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
-    CardTitle,
+    CardTitle
 } from "@/src/components/ui/card"
-
-import { TranslatorsTable } from "./TranslatorsTable"
 
 import { Plus } from "lucide-react"
 
+import { ClientTable } from "./ClientTable"
+
+import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
+import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
+
+import { Input } from "@/src/components/ui/input"
+import { Combobox } from "@/src/components/ui/Combobox"
+
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
-import {TranslatorsFilters} from "@/src/features/translators/components/TranslatorFilter";
 
-export default function TranslatorsPage() {
+import { useClientsCreation } from "@/src/features/clients-creation/hooks/useClientsCreation"
+import { useClientsCategories } from "@/src/features/clients-creation/hooks/useClientsCategories"
+import {ClientFilters} from "@/src/features/clients-creation/components/ClientFilter";
+
+export function ClientPage() {
+
     const {
-        translators,
-        loading,
-
-        form,
-        setForm,
+        clients,
+        createClient,
+        updateClient,
+        deleteClient,
 
         search,
         setSearch,
 
         isFormOpen,
-        isConfirmOpen,
-        selectedTranslator,
+        isDeleteOpen,
+        selectedClient,
 
-        openAddTranslator,
-        openEditTranslator,
-        openDeleteTranslator,
+        form,
+        setForm,
 
-        submitTranslator,
-        confirmActionHandler,
+        openAddClient,
+        openEditClient,
+        openDeleteClient,
+
+        submitClient,
+        handleConfirm,
         closeModals,
-    } = useTranslators()
+    } = useClientsCreation()
+
+    const { categories } = useClientsCategories()
+
+    const categoryOptions = categories?.map(cat => ({
+        value: String(cat.id),
+        label: cat.name,
+    }))
 
     return (
         <>
             <DashboardHeader />
 
             <main className="flex-1 overflow-y-auto p-6">
+
                 <div className="mx-auto max-w-6xl space-y-6">
 
                     {/* Header */}
                     <div className="flex items-center justify-between">
+
                         <div>
                             <h2 className="text-2xl font-bold tracking-tight">
-                                Translators
+                                Clients
                             </h2>
 
                             <p className="text-muted-foreground">
-                                Manage translators and their contact details
+                                Manage clients and categories
                             </p>
                         </div>
 
-                        <Button onClick={openAddTranslator}>
+                        <Button onClick={openAddClient}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Translator
+                            Add Client
                         </Button>
+
                     </div>
 
-                    {/* Filters */}
                     <Card>
+
                         <CardHeader>
-                            <CardTitle>Filters</CardTitle>
-                            <CardDescription>
-                                Search translators by name or email
-                            </CardDescription>
+                            <CardTitle>Search</CardTitle>
                         </CardHeader>
 
                         <CardContent>
-                            <TranslatorsFilters
+                            <ClientFilters
                                 search={search}
                                 setSearch={setSearch}
                             />
                         </CardContent>
+
                     </Card>
 
-                    {/* Table */}
+                    {/* Clients Table */}
                     <Card>
+
                         <CardHeader>
-                            <CardTitle>Translators List</CardTitle>
+
+                            <CardTitle>
+                                Clients List
+                            </CardTitle>
+
                             <CardDescription>
-                                All translators registered in the system
+                                All registered clients in the system
                             </CardDescription>
+
                         </CardHeader>
 
                         <CardContent className="p-0">
-                            <TranslatorsTable
-                                translators={translators}
-                                onEdit={openEditTranslator}
-                                onDelete={openDeleteTranslator}
+
+                            <ClientTable
+                                clients={clients}
+                                onEdit={openEditClient}
+                                onDelete={(id) => {
+                                    const client = clients.find(c => c.id === id)
+                                    if (client) {
+                                        openDeleteClient(client)
+                                    }
+                                }}
                             />
+
                         </CardContent>
+
                     </Card>
+
                 </div>
+
             </main>
 
-            {/* FORM MODAL */}
+            {/* Create / Edit Modal */}
+
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={
-                    selectedTranslator
-                        ? "Edit Translator"
-                        : "Create Translator"
-                }
-                submitLabel="Save"
-                onSubmit={() => submitTranslator(form)}
+                title={selectedClient ? "Edit Client" : "Add Client"}
+                submitLabel={selectedClient ? "Update" : "Create"}
+                onSubmit={() => submitClient(form)}
             >
+
                 <div className="space-y-4">
+
                     <Input
-                        placeholder="Full name"
-                        value={form.full_name}
+                        placeholder="Client name"
+                        value={form.name}
                         onChange={(e) =>
                             setForm(prev => ({
                                 ...prev,
-                                full_name: e.target.value,
+                                name: e.target.value,
                             }))
                         }
                     />
@@ -155,43 +183,31 @@ export default function TranslatorsPage() {
                         }
                     />
 
-                    <Input
-                        placeholder="Work type"
-                        value={form.work_type}
-                        onChange={(e) =>
+                    <Combobox
+                        options={categoryOptions}
+                        value={String(form.category || "")}
+                        onChange={(value) =>
                             setForm(prev => ({
                                 ...prev,
-                                work_type: Number(e.target.value),
+                                category: Number(value),
                             }))
                         }
+                        placeholder="Select category"
                     />
 
-                    <Input
-                        placeholder="Currency ID"
-                        type="number"
-                        value={form.currency_id}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                currency_id: Number(e.target.value),
-                            }))
-                        }
-                    />
                 </div>
+
             </BaseFormModal>
 
-            {/* DELETE CONFIRM */}
+            {/* Delete Modal */}
+
             <ConfirmModal
-                open={isConfirmOpen}
+                open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Delete translator"
-                description={
-                    selectedTranslator
-                        ? `Are you sure you want to delete "${selectedTranslator.full_name}"?`
-                        : ""
-                }
+                title="Delete client"
+                description={`Are you sure you want to delete ${selectedClient?.full_name}? This action cannot be undone.`}
                 confirmLabel="Delete"
-                onConfirm={confirmActionHandler}
+                onConfirm={handleConfirm}
             />
         </>
     )

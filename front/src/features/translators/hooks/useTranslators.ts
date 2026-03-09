@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { useToast } from "@/src/hooks/use-toast"
 import { translatorsApi } from "../api"
-import type {
-    Translator,
-    TranslatorPayload,
-} from "../types"
+import type { Translator, TranslatorPayload } from "../types"
 
 export function useTranslators() {
     const { toast } = useToast()
@@ -16,6 +13,10 @@ export function useTranslators() {
     // -------------------------
     const [translators, setTranslators] = useState<Translator[]>([])
     const [loading, setLoading] = useState(false)
+
+    const [search, setSearch] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
+
     const [confirmAction, setConfirmAction] =
         useState<"delete" | "deactivate" | null>(null)
 
@@ -34,12 +35,27 @@ export function useTranslators() {
         useState<Translator | null>(null)
 
     // -------------------------
+    // Debounce search
+    // -------------------------
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search)
+        }, 400)
+
+        return () => clearTimeout(timer)
+    }, [search])
+
+    // -------------------------
     // Load translators
     // -------------------------
     const loadTranslators = useCallback(async () => {
         try {
             setLoading(true)
-            const response = await translatorsApi.list()
+
+            const response = await translatorsApi.list({
+                search: debouncedSearch,
+            })
+
             setTranslators(response.results)
         } catch {
             toast({
@@ -50,7 +66,7 @@ export function useTranslators() {
         } finally {
             setLoading(false)
         }
-    }, [toast])
+    }, [debouncedSearch, toast])
 
     useEffect(() => {
         loadTranslators()
@@ -109,12 +125,14 @@ export function useTranslators() {
         try {
             if (selectedTranslator) {
                 await translatorsApi.update(selectedTranslator.id, data)
+
                 toast({
                     title: "Translator updated",
                     description: `${data.full_name} updated successfully`,
                 })
             } else {
                 await translatorsApi.create(data)
+
                 toast({
                     title: "Translator created",
                     description: `${data.full_name} created successfully`,
@@ -163,6 +181,9 @@ export function useTranslators() {
     return {
         translators,
         loading,
+
+        search,
+        setSearch,
 
         form,
         setForm,

@@ -9,7 +9,14 @@ import {
     TableRow,
 } from "@/src/components/ui/table"
 
+import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
+
+import {
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+} from "lucide-react"
 
 import {
     DropdownMenu,
@@ -18,89 +25,95 @@ import {
     DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu"
 
-import {
-    MoreHorizontal,
-    Pencil,
-    Trash2,
-    UserX,
-} from "lucide-react"
+import type { Client } from "../types"
 
-import type { Translator } from "../types"
-
-interface Props {
-    translators: Translator[]
-    onEdit: (t: Translator) => void
-    onDelete: (t: Translator) => void
+interface ClientTableProps {
+    clients: Client[]
+    onEdit: (client: Client) => void
+    onDelete: (id: number) => void
 }
 
-export function TranslatorsTable({
-                                     translators,
-                                     onEdit,
-                                     onDelete,
-                                 }: Props) {
+export function ClientTable({
+                                clients,
+                                onEdit,
+                                onDelete
+                            }: ClientTableProps) {
+
     return (
         <div className="border border-border rounded-lg bg-card">
             <Table>
+
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Translator</TableHead>
-                        <TableHead>Contacts</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
                         <TableHead className="w-[70px]" />
                     </TableRow>
                 </TableHeader>
 
                 <TableBody>
-                    {translators.map((t) => (
-                        <TableRow key={t.id}>
-                            <TableCell>
-                                <p className="font-medium">
-                                    {t.full_name}
-                                </p>
+
+                    {clients.map((client) => (
+                        <TableRow key={client.id}>
+
+                            <TableCell className="font-medium">
+                                {client.full_name}
                             </TableCell>
 
                             <TableCell>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t.email}
-                                    </p>
-
-                                    <p className="text-sm text-muted-foreground">
-                                        {t.phone || "—"}
-                                    </p>
-                                </div>
+                                {client.category && (
+                                    <Badge variant="secondary">
+                                        {client.category_name}
+                                    </Badge>
+                                )}
                             </TableCell>
 
                             <TableCell>
+                                {client.email || "—"}
+                            </TableCell>
+
+                            <TableCell>
+                                {client.phone_number || "—"}
+                            </TableCell>
+
+                            <TableCell>
+
                                 <DropdownMenu>
+
                                     <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                        >
-                                            <MoreHorizontal className="h-4 w-4" />
+                                        <Button variant="ghost" size="sm">
+                                            <MoreHorizontal className="h-4 w-4"/>
                                         </Button>
                                     </DropdownMenuTrigger>
 
                                     <DropdownMenuContent align="end">
+
                                         <DropdownMenuItem
-                                            onClick={() => onEdit(t)}
+                                            onClick={() => onEdit(client)}
                                         >
-                                            <Pencil className="h-4 w-4 mr-2" />
+                                            <Pencil className="h-4 w-4 mr-2"/>
                                             Edit
                                         </DropdownMenuItem>
 
                                         <DropdownMenuItem
-                                            onClick={() => onDelete(t)}
+                                            onClick={() => onDelete(client.id)}
                                             className="text-destructive"
                                         >
-                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            <Trash2 className="h-4 w-4 mr-2"/>
                                             Delete
                                         </DropdownMenuItem>
+
                                     </DropdownMenuContent>
+
                                 </DropdownMenu>
+
                             </TableCell>
+
                         </TableRow>
                     ))}
+
                 </TableBody>
             </Table>
         </div>

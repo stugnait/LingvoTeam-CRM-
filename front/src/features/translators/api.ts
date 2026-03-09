@@ -4,16 +4,26 @@ import type {
     TranslatorFilters,
     TranslatorPayload,
     TranslatorListResponse
-    // UsersQueryParams,
 } from "./types"
-import type {RegisterPayload, RegisterResponse} from "@/src/features/auth/types";
 
 export const translatorsApi = {
-    // GET /translators/?search=&work_type=&source_language=&target_language=
-    list: () =>
-        apiFetch<TranslatorListResponse>("translators/", {
+
+    // GET /translators/?search=
+    list: (params?: { search?: string }) => {
+
+        const query = new URLSearchParams()
+
+        if (params?.search) {
+            query.append("search", params.search)
+        }
+
+        const qs = query.toString()
+        const url = qs ? `translators/?${qs}` : "translators/"
+
+        return apiFetch<TranslatorListResponse>(url, {
             method: "GET",
-        }),
+        })
+    },
 
     // GET /translators/:id/
     getById: (id: number) =>
@@ -41,4 +51,3 @@ export const translatorsApi = {
             method: "DELETE",
         }),
 }
-
