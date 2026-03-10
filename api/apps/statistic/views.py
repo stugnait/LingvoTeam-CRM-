@@ -1,8 +1,11 @@
 from datetime import timezone, timedelta
 from decimal import Decimal
 
-from django.db.models import Q, Count, Sum, Value, F, ExpressionWrapper, DecimalField
-from django.db.models.functions import Coalesce, Concat, TruncDay
+from django.db.models import (
+    Q, Count, Sum, Value, F, ExpressionWrapper,
+    DecimalField, Case, When, Avg, DurationField
+)
+from django.db.models.functions import Coalesce, Concat, TruncDay, TruncMonth
 from django.utils import timezone
 
 from rest_framework import viewsets, filters
@@ -72,31 +75,27 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
             'translator_stats': ['statistic.translator.view'],
             'conversion_stats': ['statistic.order.view'],
             'sales_chart': ['statistic.order.view'],
+            'language_pairs_stats': ['statistic.order.view'],
+            'kpi_translators': ['statistic.translator.view'],
+            'kpi_editors': ['statistic.manager.view'],
+            'volume_by_month': ['statistic.order.view'],
+            'volume_by_language': ['statistic.order.view'],
+            'volume_by_category': ['statistic.order.view'],
         }
         return mapping.get(self.action, [])
 
     def get_queryset(self):
         return Order.objects.none()
 
-    @extend_schema(
-        summary="Неоплачені замовлення",
-        description="Список замовлень, де клієнт ще не здійснив оплату.",
-        responses={200: OwnerOrderListSerializer(many=True)},
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Неоплачені замовлення", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='unpaid-orders')
     def unpaid_orders(self, request):
-        PAID_STATUS_ID = 5  # Уточніть, чи відповідає це ID у вашій системі оплат
+        PAID_STATUS_ID = 5
         queryset = Order.objects.filter(~Q(client_status=PAID_STATUS_ID)).order_by('deadline')
         serializer = OwnerOrderListSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    @extend_schema(
-        summary="Протерміновані виплати",
-        description="Замовлення, де дедлайн вже минув, а оплата від клієнта ще не надійшла.",
-        responses={200: OwnerOrderListSerializer(many=True)},
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Протерміновані виплати", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='overdue-payments')
     def overdue_payments(self, request):
         PAID_STATUS_ID = 5
@@ -106,35 +105,19 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         serializer = OwnerOrderListSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    @extend_schema(
-        summary="Замовлення з наближенням дедлайну",
-        description="Замовлення, дедлайн яких настане протягом наступних 2 днів, але вони ще не виконані.",
-        responses={200: OwnerOrderListSerializer(many=True)},
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Замовлення з наближенням дедлайну", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='high-risk')
     def high_risk_orders(self, request):
         critical_time = timezone.now() + timedelta(days=2)
-        DONE_STATUS_ID = 2  # ID 2 = Done (згідно бази)
-
+        DONE_STATUS_ID = 2
         queryset = Order.objects.filter(
             deadline__lte=critical_time,
             deadline__gt=timezone.now(),
         ).exclude(status_id=DONE_STATUS_ID).order_by('deadline')
-
         serializer = OwnerOrderListSerializer(queryset, many=True)
         return Response(serializer.data)
 
-
-    @extend_schema(
-        summary="Коефіцієнт конверсії (Воронка продажів)",
-        description="Скільки клієнтів взяли послуги (в роботі або виконані), скільки відмовились (Rejected), і % конверсії.",
-        parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
-        ],
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Коефіцієнт конверсії (Воронка продажів)", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='conversion')
     def conversion_stats(self, request):
         start_date = request.query_params.get('start_date')
@@ -156,7 +139,6 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         total = stats['total_requests'] or 0
         accepted = stats['accepted'] or 0
         refused = stats['refused'] or 0
-
         conversion_percent = (accepted / total * 100) if total > 0 else 0
 
         return Response({
@@ -166,22 +148,12 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
             "conversion_percent": round(conversion_percent, 2)
         })
 
-    @extend_schema(
-        summary="Дані для графіка продажів",
-        description="Групує дохід по днях для побудови графіка на дашборді.",
-        parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
-        ],
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Дані для графіка продажів", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='sales-chart')
     def sales_chart(self, request):
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
-
         qs = Order.objects.filter(status_id__in=[2, 9])
-
         if start_date and end_date:
             qs = qs.filter(created_at__date__range=[start_date, end_date])
 
@@ -190,18 +162,9 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         ).values('date').annotate(
             daily_revenue=Coalesce(Sum('total_amount'), Decimal('0.00'))
         ).order_by('date')
-
         return Response(chart_data)
 
-    @extend_schema(
-        summary="Статистика по менеджерах",
-        parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE),
-            OpenApiParameter("end_date", OpenApiTypes.DATE),
-        ],
-        responses={200: StatsSerializer(many=True)},
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Топ-10 менеджерів за доходом та % вчасних", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='managers-stats')
     def manager_stats(self, request):
         start_date = request.query_params.get('start_date')
@@ -214,25 +177,35 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         stats = User.objects.filter(role__slug='manager').annotate(
             total_orders=Count('managed_orders', filter=order_filters),
-            total_revenue=Coalesce(Sum('managed_orders__page_count', filter=order_filters), Decimal('0.0')),
+            total_revenue=Coalesce(Sum('managed_orders__total_amount', filter=order_filters), Decimal('0.0')),
             unpaid_orders_count=Count(
                 'managed_orders',
                 filter=order_filters & ~Q(managed_orders__client_status=PAID_STATUS_ID)
+            ),
+            completed_orders=Count(
+                'managed_orders', filter=order_filters & Q(managed_orders__status_id__in=[2, 9])
+            ),
+            on_time_orders=Count(
+                'managed_orders',
+                filter=order_filters & Q(managed_orders__status_id__in=[2, 9]) & Q(managed_orders__completed_at__lte=F('managed_orders__deadline'))
             )
-        ).order_by('-total_orders')
+        ).annotate(
+            on_time_percent=Case(
+                When(completed_orders=0, then=Value(Decimal('0.00'))),
+                default=ExpressionWrapper(
+                    F('on_time_orders') * Decimal('100.0') / F('completed_orders'),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=5, decimal_places=2)
+            )
+        ).order_by('-total_revenue')[:10]
 
-        serializer = StatsSerializer(stats, many=True)
-        return Response(serializer.data)
+        return Response(stats.values(
+            'id', 'first_name', 'last_name', 'full_name', 'email', 'total_orders',
+            'total_revenue', 'unpaid_orders_count', 'completed_orders', 'on_time_orders', 'on_time_percent'
+        ))
 
-    @extend_schema(
-        summary="Статистика по клієнтах",
-        parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE),
-            OpenApiParameter("end_date", OpenApiTypes.DATE),
-        ],
-        responses={200: StatsSerializer(many=True)},
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Статистика по клієнтах (з середнім чеком)", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='clients-stats')
     def client_stats(self, request):
         start_date = request.query_params.get('start_date')
@@ -245,30 +218,29 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         stats = Client.objects.annotate(
             total_orders=Count('order', filter=order_filters),
-            total_revenue=Coalesce(Sum('order__page_count', filter=order_filters), Decimal('0.0')),
+            total_revenue=Coalesce(Sum('order__total_amount', filter=order_filters), Decimal('0.0')),
             unpaid_orders_count=Count(
-                'order',
-                filter=order_filters & ~Q(order__client_status=PAID_STATUS_ID)
+                'order', filter=order_filters & ~Q(order__client_status=PAID_STATUS_ID)
+            )
+        ).annotate(
+            avg_check=Case(
+                When(total_orders=0, then=Value(Decimal('0.00'))),
+                default=ExpressionWrapper(
+                    F('total_revenue') / F('total_orders'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
             )
         ).order_by('-total_revenue')
 
         serializer = StatsSerializer(stats, many=True)
         return Response(serializer.data)
 
-    @extend_schema(
-        summary="Статистика по перекладачах",
-        parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE),
-            OpenApiParameter("end_date", OpenApiTypes.DATE),
-        ],
-        responses={200: StatsSerializer(many=True)},
-        tags=["Owner Dashboard"]
-    )
+    @extend_schema(summary="Статистика по перекладачах", tags=["Owner Dashboard"])
     @action(detail=False, methods=['get'], url_path='translators-stats')
     def translator_stats(self, request):
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
-
         order_filters = Q()
         if start_date and end_date:
             order_filters &= Q(order__created_at__date__range=[start_date, end_date])
@@ -281,6 +253,175 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         serializer = StatsSerializer(stats, many=True)
         return Response(serializer.data)
+
+    @extend_schema(summary="Топ мовних пар", tags=["Owner Dashboard"])
+    @action(detail=False, methods=['get'], url_path='language-pairs-stats')
+    def language_pairs_stats(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        order_filters = Q()
+        if start_date and end_date:
+            order_filters &= Q(created_at__date__range=[start_date, end_date])
+
+        stats = Order.objects.filter(order_filters).values(
+            pair_name=Concat(
+                F('language_pair_id__source_language__name'),
+                Value(' -> '),
+                F('language_pair_id__target_language__name')
+            )
+        ).annotate(
+            total_orders=Count('id'),
+            total_revenue=Coalesce(Sum('total_amount'), Decimal('0.0')),
+            avg_check=Case(
+                When(total_orders=0, then=Value(Decimal('0.00'))),
+                default=ExpressionWrapper(
+                    Sum('total_amount') / Count('id'),
+                    output_field=DecimalField(max_digits=10, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        ).order_by('-total_revenue')
+
+        return Response(stats)
+
+    @extend_schema(summary="KPI Перекладачів (Час, Затримки, Якість)", tags=["KPI Dashboard"])
+    @action(detail=False, methods=['get'], url_path='kpi-translators')
+    def kpi_translators(self, request):
+        stats = Translator.objects.annotate(
+            total_completed=Count('order', filter=Q(order__status_id__in=[2, 9])),
+            delayed_orders=Count(
+                'order', filter=Q(order__status_id__in=[2, 9]) & Q(order__completed_at__gt=F('order__deadline'))
+            ),
+            avg_execution_time=Avg(
+                ExpressionWrapper(F('order__completed_at') - F('order__created_at'), output_field=DurationField()),
+                filter=Q(order__status_id__in=[2, 9])
+            ),
+            avg_score=Avg('order__quality_score__score')
+        ).order_by('-total_completed')
+
+        data = []
+        for t in stats:
+            avg_time = t.avg_execution_time
+            hours = round(avg_time.total_seconds() / 3600, 1) if avg_time else 0
+            data.append({
+                "translator_id": t.id,
+                "translator_name": t.full_name,
+                "total_completed": t.total_completed,
+                "delayed_orders": t.delayed_orders,
+                "avg_execution_hours": hours,
+                "avg_score": round(t.avg_score, 2) if t.avg_score else 0.0
+            })
+        return Response(data)
+
+    @extend_schema(summary="KPI Редакторів (Час, Затримки)", tags=["KPI Dashboard"])
+    @action(detail=False, methods=['get'], url_path='kpi-editors')
+    def kpi_editors(self, request):
+        stats = User.objects.filter(role__slug='editor').annotate(
+            total_completed=Count('edited_orders', filter=Q(edited_orders__status_id__in=[2, 9])),
+            delayed_orders=Count(
+                'edited_orders', filter=Q(edited_orders__status_id__in=[2, 9]) & Q(edited_orders__completed_at__gt=F('edited_orders__deadline'))
+            ),
+            avg_execution_time=Avg(
+                ExpressionWrapper(F('edited_orders__completed_at') - F('edited_orders__created_at'), output_field=DurationField()),
+                filter=Q(edited_orders__status_id__in=[2, 9])
+            )
+        ).order_by('-total_completed')
+
+        data = []
+        for e in stats:
+            avg_time = e.avg_execution_time
+            hours = round(avg_time.total_seconds() / 3600, 1) if avg_time else 0
+            data.append({
+                "editor_id": e.id,
+                "editor_name": e.full_name,
+                "total_completed": e.total_completed,
+                "delayed_orders": e.delayed_orders,
+                "avg_execution_hours": hours
+            })
+        return Response(data)
+
+    @extend_schema(
+        summary="Обсяги замовлень по місяцях (LIN-181)",
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+        ],
+        tags=["KPI Dashboard"]
+    )
+    @action(detail=False, methods=['get'], url_path='volume-by-month')
+    def volume_by_month(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        qs = Order.objects.all()
+        if start_date and end_date:
+            qs = qs.filter(created_at__date__range=[start_date, end_date])
+
+        data = qs.annotate(
+            month=TruncMonth('created_at')
+        ).values('month').annotate(
+            orders_count=Count('id'),
+            total_pages=Sum('page_count'),
+            total_revenue=Sum('total_amount')
+        ).order_by('month')
+        return Response(data)
+
+    @extend_schema(
+        summary="Обсяги замовлень по мовних парах (LIN-182)",
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+        ],
+        tags=["KPI Dashboard"]
+    )
+    @action(detail=False, methods=['get'], url_path='volume-by-language')
+    def volume_by_language(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        qs = Order.objects.all()
+        if start_date and end_date:
+            qs = qs.filter(created_at__date__range=[start_date, end_date])
+
+        data = qs.values(
+            pair_name=Concat(
+                F('language_pair_id__source_language__name'), Value(' -> '), F('language_pair_id__target_language__name')
+            )
+        ).annotate(
+            orders_count=Count('id'),
+            total_pages=Sum('page_count'),
+            total_revenue=Sum('total_amount')
+        ).order_by('-orders_count')
+        return Response(data)
+
+    @extend_schema(
+        summary="Обсяги замовлень по категоріях (LIN-183)",
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+        ],
+        tags=["KPI Dashboard"]
+    )
+    @action(detail=False, methods=['get'], url_path='volume-by-category')
+    def volume_by_category(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        qs = Order.objects.all()
+        if start_date and end_date:
+            qs = qs.filter(created_at__date__range=[start_date, end_date])
+
+        data = qs.annotate(
+            safe_category_name=Coalesce('traffic_id__category__name', Value('Без категорії'))
+        ).values(
+            category_name=F('safe_category_name')
+        ).annotate(
+            orders_count=Count('id'),
+            total_pages=Sum('page_count'),
+            total_revenue=Sum('total_amount')
+        ).order_by('-orders_count')
+        return Response(data)
 
 
 class PnLViewSet(viewsets.ViewSet):
@@ -323,6 +464,13 @@ class PnLViewSet(viewsets.ViewSet):
         ).aggregate(sum=Sum('amount'))['sum']
 
         total_opex = Decimal(str(opex_agg)) if opex_agg is not None else Decimal('0.00')
+
+        opex_breakdown = Transaction.objects.filter(
+            created_at__date__range=[start_date, end_date],
+            type='expense'
+        ).values('category').annotate(
+            total_amount=Sum('amount')
+        ).order_by('-total_amount')
 
         net_profit = gross_profit - total_opex
 
@@ -368,5 +516,6 @@ class PnLViewSet(viewsets.ViewSet):
                 "opex": total_opex,
                 "net_profit": net_profit
             },
+            "opex_details": opex_breakdown,
             "breakdown": breakdown_data
         })
