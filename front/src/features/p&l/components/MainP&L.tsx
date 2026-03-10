@@ -11,6 +11,9 @@ import { CategoriesCard } from "./CategoriesCard"
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 
+import { useState } from "react"
+import { usePnL } from "../hooks/usePnL"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
@@ -48,16 +51,20 @@ export function MainPnL() {
 
     const { categories } = useCategories()
 
+    const today = new Date()
 
-    const income = transactions
-        .filter(t => t.type === "income")
-        .reduce((sum, t) => sum + t.amount, 0)
+    const weekLater = new Date()
+    weekLater.setDate(today.getDate() + 7)
 
-    const expenses = transactions
-        .filter(t => t.type === "expense")
-        .reduce((sum, t) => sum + t.amount, 0)
+    const formatDate = (date: Date) =>
+        date.toISOString().split("T")[0]
 
-    const profit = income - expenses
+    const [startDate, setStartDate] = useState(formatDate(today))
+    const [endDate, setEndDate] = useState(formatDate(weekLater))
+
+    const { data: pnl, loading } = usePnL(startDate, endDate)
+
+
 
 
     return (
@@ -97,18 +104,59 @@ export function MainPnL() {
                     </div>
 
 
-
                     {/* KPI */}
 
-                    <div className="grid grid-cols-4 gap-4">
+                    {/*<div className="grid grid-cols-4 gap-4">*/}
 
-                        <KpiCard title="Income" value={income}/>
-                        <KpiCard title="Expenses" value={expenses}/>
-                        <KpiCard title="Profit" value={profit}/>
-                        <KpiCard title="Net Profit" value={profit}/>
+                    {/*    <KpiCard title="Income" value={income}/>*/}
+                    {/*    <KpiCard title="Expenses" value={expenses}/>*/}
+                    {/*    <KpiCard title="Profit" value={profit}/>*/}
+                    {/*    <KpiCard title="Net Profit" value={profit}/>*/}
+
+                    {/*</div>*/}
+
+                    <div className="flex gap-4 items-center">
+
+                        <Input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-40"
+                        />
+
+                        <Input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-40"
+                        />
 
                     </div>
 
+
+                    <div className="grid grid-cols-4 gap-4">
+
+                        <KpiCard
+                            title="Revenue"
+                            value={pnl?.summary.revenue}
+                        />
+
+                        <KpiCard
+                            title="COGS"
+                            value={pnl?.summary.cogs}
+                        />
+
+                        <KpiCard
+                            title="Gross Profit"
+                            value={pnl?.summary.gross_profit}
+                        />
+
+                        <KpiCard
+                            title="Net Profit"
+                            value={pnl?.summary.net_profit}
+                        />
+
+                    </div>
 
 
                     {/* TABLE + CATEGORIES */}
@@ -138,14 +186,13 @@ export function MainPnL() {
                         </Card>
 
 
-                        <CategoriesCard />
+                        <CategoriesCard/>
 
                     </div>
 
                 </div>
 
             </main>
-
 
 
             {/* TRANSACTION MODAL */}
@@ -261,11 +308,11 @@ export function MainPnL() {
 
 
 
-function KpiCard({ title, value }: any) {
+function KpiCard({ title, value }: { title: string, value?: number }) {
 
     return (
 
-        <Card>
+        <Card className="border-muted">
 
             <CardHeader className="pb-2">
 
@@ -277,8 +324,12 @@ function KpiCard({ title, value }: any) {
 
             <CardContent>
 
-                <p className="text-2xl font-bold">
-                    ${value}
+                <p className="text-3xl font-bold tracking-tight">
+
+                    {value !== undefined
+                        ? `$${value.toLocaleString()}`
+                        : "—"}
+
                 </p>
 
             </CardContent>

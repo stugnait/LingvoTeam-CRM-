@@ -66,4 +66,16 @@ export const financeApi = {
             `core/transaction-categories/${slug}/`,
             { method: "DELETE" }
         ),
+
+    getPnL: (start_date: string, end_date: string, group_by?: string) => {
+        const params = new URLSearchParams({
+            start_date,
+            end_date,
+            ...(group_by ? { group_by } : {}),
+        })
+
+        return apiFetch(`stats/pnl/?${params.toString()}`, {
+            method: "GET",
+        })
+    }
 }

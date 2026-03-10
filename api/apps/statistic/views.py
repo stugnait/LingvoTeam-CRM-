@@ -303,7 +303,23 @@ class PnLViewSet(viewsets.ViewSet):
             status_id__in=[2, 9]
         )
 
-        revenue = orders.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
+        income_transactions = Transaction.objects.filter(
+            type="income",
+            created_at__date__range=[start_date, end_date]
+        )
+
+        orders_revenue = (
+                orders.aggregate(total=Sum("total_amount"))["total"]
+                or Decimal("0")
+        )
+
+        transactions_income = (
+                income_transactions.aggregate(total=Sum("amount"))["total"]
+                or Decimal("0")
+        )
+
+        revenue = Decimal(orders_revenue) + Decimal(transactions_income)
+
 
         orders_with_cost = orders.annotate(
             translator_cost_calc=ExpressionWrapper(
