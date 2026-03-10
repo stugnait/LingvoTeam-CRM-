@@ -6,6 +6,7 @@ import { useToast } from "@/src/hooks/use-toast"
 import { clientsCreationApi } from "../api"
 
 import type { Client, ClientFormData } from "../types"
+import {translatorsApi} from "@/src/features/translators/api";
 
 export function useClientsCreation() {
 
@@ -17,6 +18,8 @@ export function useClientsCreation() {
 
     const [clients, setClients] = useState<Client[]>([])
     const [loading, setLoading] = useState(false)
+    const [search, setSearch] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
 
     const [form, setForm] = useState<ClientFormData>({
         name: "",
@@ -39,7 +42,7 @@ export function useClientsCreation() {
         try {
             setLoading(true)
 
-            const response = await clientsCreationApi.list()
+            const response = await clientsCreationApi.list(debouncedSearch)
 
             setClients(response.results)
 
@@ -54,11 +57,19 @@ export function useClientsCreation() {
         } finally {
             setLoading(false)
         }
-    }, [toast])
+    }, [debouncedSearch, toast])
 
     useEffect(() => {
         loadClients()
     }, [loadClients])
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search)
+        }, 400)
+
+        return () => clearTimeout(timer)
+    }, [search])
 
     // -------------------------
     // Modal handlers
@@ -83,10 +94,10 @@ export function useClientsCreation() {
         setSelectedClient(client)
 
         setForm({
-            name: client.name,
+            name: client.full_name,
             email: client.email,
-            phone: client.phone,
-            category: client.category
+            phone: client.phone_number,
+            category: client.category.id
         })
 
         setIsFormOpen(true)
@@ -208,6 +219,9 @@ export function useClientsCreation() {
 
         form,
         setForm,
+
+        search,
+        setSearch,
 
         openAddClient,
         openEditClient,

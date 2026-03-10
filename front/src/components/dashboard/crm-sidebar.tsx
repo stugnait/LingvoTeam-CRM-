@@ -2,52 +2,67 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Languages } from "lucide-react"
 import { useMe } from "@/src/features/auth/hooks/useMe"
+import {
+    LayoutDashboard,
+    FileText,
+    DollarSign,
+    Languages,
+    Users,
+    UserCog,
+    User,
+    CheckSquare
+} from "lucide-react"
 
 const navigation = [
     {
         name: "Dashboard",
         href: "/dashboard",
+        icon: LayoutDashboard,
         roles: ["admin", "manager"],
     },
     {
         name: "Orders",
         href: "/dashboard/orders",
+        icon: FileText,
         roles: ["admin", "manager"],
     },
     {
         name: "Tariffs",
         href: "/dashboard/tariffs",
+        icon: DollarSign,
         roles: ["admin"],
     },
     {
         name: "Translators",
         href: "/dashboard/translations",
+        icon: Languages,
         roles: ["admin", "manager"],
     },
     {
         name: "Clients",
         href: "/dashboard/clients",
+        icon: Users,
         roles: ["admin", "manager"],
     },
     {
         name: "Users",
         href: "/dashboard/users",
+        icon: UserCog,
         roles: ["admin"],
     },
     {
         name: "Profile",
         href: "/dashboard/profile",
+        icon: User,
         roles: ["admin", "editor"],
     },
     {
         name: "Tasks",
         href: "/dashboard/editor",
+        icon: CheckSquare,
         roles: ["editor"],
     },
-
-
 ]
 
 export function CrmSidebar() {
@@ -76,19 +91,21 @@ export function CrmSidebar() {
                 {/* Navigation */}
                 <nav className="flex-1 space-y-1 px-3 py-6">
                     {filteredNavigation.map((item) => {
+                        const Icon = item.icon
+
                         const isActive =
                             pathname === item.href ||
-                            (item.href !== "/dashboard" &&
-                                pathname.startsWith(item.href))
+                            (item.href !== "/dashboard" && pathname.startsWith(item.href))
 
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`block rounded-lg px-4 py-3 text-sm
-                  ${isActive ? "bg-primary text-white" : "hover:bg-muted"}
-                `}
+                                className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm
+            ${isActive ? "bg-primary text-white" : "hover:bg-muted"}
+        `}
                             >
+                                <Icon className="h-4 w-4" />
                                 {item.name}
                             </Link>
                         )

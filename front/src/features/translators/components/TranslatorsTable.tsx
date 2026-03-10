@@ -8,35 +8,35 @@ import {
     TableHeader,
     TableRow,
 } from "@/src/components/ui/table"
+
 import { Button } from "@/src/components/ui/button"
+
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu"
+
 import {
     MoreHorizontal,
     Pencil,
     Trash2,
     UserX,
-    UserCheck,
 } from "lucide-react"
+
 import type { Translator } from "../types"
-import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
 
 interface Props {
     translators: Translator[]
     onEdit: (t: Translator) => void
     onDelete: (t: Translator) => void
-    onDeactivate: (t: Translator) => void
 }
 
 export function TranslatorsTable({
                                      translators,
                                      onEdit,
                                      onDelete,
-                                     onDeactivate,
                                  }: Props) {
     return (
         <div className="border border-border rounded-lg bg-card">
@@ -53,22 +53,30 @@ export function TranslatorsTable({
                     {translators.map((t) => (
                         <TableRow key={t.id}>
                             <TableCell>
-                                <p className="font-medium">{t.full_name}</p>
+                                <p className="font-medium">
+                                    {t.full_name}
+                                </p>
                             </TableCell>
 
                             <TableCell>
-                                <p className="text-sm text-muted-foreground">
-                                    {t.email}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                    {t.phone || "—"}
-                                </p>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">
+                                        {t.email}
+                                    </p>
+
+                                    <p className="text-sm text-muted-foreground">
+                                        {t.phone || "—"}
+                                    </p>
+                                </div>
                             </TableCell>
 
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                        >
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -79,13 +87,6 @@ export function TranslatorsTable({
                                         >
                                             <Pencil className="h-4 w-4 mr-2" />
                                             Edit
-                                        </DropdownMenuItem>
-
-                                        <DropdownMenuItem
-                                            onClick={() => onDeactivate(t)}
-                                        >
-                                            <UserX className="h-4 w-4 mr-2" />
-                                            Deactivate
                                         </DropdownMenuItem>
 
                                         <DropdownMenuItem

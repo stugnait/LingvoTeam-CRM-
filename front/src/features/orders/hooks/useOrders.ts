@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ordersApi } from "../api"
-import type {
+import {
     CreateOrderPayload,
     CreateOrderResponse,
     OrderListItem,
@@ -15,24 +15,29 @@ import type {
     Currency,
     OrderTraffic,
 } from "../types"
+
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
 export function useOrders() {
+
     const { toast } = useToast()
     const router = useRouter()
 
-    /* =========================
+    /* ======================
        STATE
-    ========================= */
+    ====================== */
 
     const [loading, setLoading] = useState(false)
+    const [deleteLoading, setDeleteLoading] = useState<number | null>(null)
+    const [updateLoading, setUpdateLoading] = useState<number | null>(null)
+
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
 
     const [orders, setOrders] = useState<OrderListItem[]>([])
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
-    const [orderDetail, setOrderDetails] = useState<Details | null>(null)
+    const [orderDetail, setOrderDetail] = useState<Details | null>(null)
 
     const [translators, setTranslators] = useState<Translator[]>([])
     const [clients, setClients] = useState<Client[]>([])
@@ -48,25 +53,44 @@ export function useOrders() {
 
     const initialLoadedRef = useRef(false)
 
-    /* =========================
-       HELPERS
-    ========================= */
+    /* ======================
+       TOAST HELPERS
+    ====================== */
 
-    const handleError = (e: any, fallback: string) => {
+    const handleError = useCallback((e: any, fallback: string) => {
+
         toast({
             title: "Error",
             description: e?.detail || fallback,
-            variant: "error",
+            variant: "error"
         })
-    }
 
+    }, [toast])
+
+
+    const handleSuccess = useCallback((title: string, description: string) => {
+
+        toast({
+            title,
+            description,
+            variant: "success"
+        })
+
+    }, [toast])
+
+
+    /* ======================
+       FILE DOWNLOAD
+    ====================== */
 
     const downloadBlob = (blob: Blob, filename: string) => {
+
         const url = URL.createObjectURL(blob)
 
-        const a = document.createElement('a')
+        const a = document.createElement("a")
         a.href = url
         a.download = filename
+
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -74,151 +98,263 @@ export function useOrders() {
         URL.revokeObjectURL(url)
     }
 
-
     const downloadOrderSourceFiles = useCallback(async (orderId: number) => {
+
         try {
+
             const blob = await ordersApi.downloadFilesSource(orderId)
             downloadBlob(blob, `order_${orderId}_source.zip`)
-        } catch (error) {
-            console.error('❌ Failed to download SOURCE files:', error)
+
+            handleSuccess("Success", "Source files downloaded")
+
+        } catch (e) {
+
+            handleError(e, "Failed to download source files")
+
         }
-    }, [])
+
+    }, [handleError, handleSuccess])
+
 
     const downloadOrderTargetFiles = useCallback(async (orderId: number) => {
+
         try {
+
             const blob = await ordersApi.downloadFilesTarget(orderId)
             downloadBlob(blob, `order_${orderId}_target.zip`)
-        } catch (error) {
-            console.error('❌ Failed to download TARGET files:', error)
-        }
-    }, [])
 
-    const confirmOrder = useCallback(async (orderId: number) => {
-        try {
-            const res = await ordersApi.confirmOrder(orderId)
+            handleSuccess("Success", "Target files downloaded")
 
-            toast({
-                title: "Order confirmed",
-                description: res.message,
-            })
-
-            // 🔥 оновлюємо список ордерів
-            const updated = await ordersApi.listOrders(page)
-            setOrders(updated.results)
-
-            return res
         } catch (e) {
-            handleError(e, "Failed to confirm order")
-            throw e
+
+            handleError(e, "Failed to download target files")
+
         }
-    }, [])
+
+    }, [handleError, handleSuccess])
+
+
+    /* ======================
+       LOAD ORDERS
+    ====================== */
 
     const loadOrders = useCallback(async (pageNumber: number = 1) => {
+
         try {
+
             setLoading(true)
 
-            const ordersRes = await ordersApi.listOrders(pageNumber)
+            const res = await ordersApi.listOrders(pageNumber)
 
-            setOrders(ordersRes.results)
+            setOrders(res.results)
 
-            const pages = Math.ceil(ordersRes.count / 10)
-            setTotalPages(pages)
+            setTotalPages(Math.ceil(res.count / 10))
             setPage(pageNumber)
 
-            // language pairs
-            const uniquePairIds = [
-                ...new Set(ordersRes.results.map(o => o.language_pair_id)),
-            ]
+            const pairIds = [...new Set(res.results.map(o => o.language_pair_id))]
 
-            const missingIds = uniquePairIds.filter(id => !languagePairs[id])
+            const missing = pairIds.filter(id => !languagePairs[id])
 
-            if (missingIds.length > 0) {
+            if (missing.length) {
+
                 const pairs = await Promise.all(
-                    missingIds.map(id => ordersApi.getLanguagePairById(id))
+                    missing.map(id => ordersApi.getLanguagePairById(id))
                 )
 
                 setLanguagePairs(prev => {
+
                     const updated = { ...prev }
-                    pairs.forEach(pair => {
-                        updated[pair.id] = pair
+
+                    pairs.forEach(p => {
+                        updated[p.id] = p
                     })
+
                     return updated
                 })
             }
 
         } catch (e) {
+
             handleError(e, "Failed to load orders")
+
         } finally {
+
             setLoading(false)
+
         }
-    }, [languagePairs, toast])
+
+    }, [handleError, languagePairs])
 
 
+    /* ======================
+       DELETE ORDER
+    ====================== */
 
+    const deleteOrder = useCallback(async (orderId: number) => {
 
-    /* =========================
-       CREATE ORDER
-    ========================= */
-
-    const createOrder = async (data: CreateOrderPayload) => {
         try {
+
+            setDeleteLoading(orderId)
+
+            await ordersApi.deleteOrder(orderId)
+
+            handleSuccess("Deleted", `Order #${orderId} deleted`)
+
+            await loadOrders(page)
+
+        } catch (e) {
+
+            handleError(e, "Failed to delete order")
+
+        } finally {
+
+            setDeleteLoading(null)
+
+        }
+
+    }, [page, loadOrders, handleError, handleSuccess])
+
+
+    /* ======================
+       UPDATE ORDER
+    ====================== */
+
+    const updateOrder = useCallback(async (orderId: number, data: Partial<CreateOrderPayload>) => {
+
+        try {
+
+            setUpdateLoading(orderId)
+
+            const formData = new FormData()
+
+            Object.entries(data).forEach(([key, value]) => {
+
+                if (value === undefined || value === null) {return}
+
+                if (key === "files" && Array.isArray(value)) {
+
+                    value.forEach(file => formData.append("files", file))
+
+                } else {
+
+                    formData.append(key, String(value))
+
+                }
+
+            })
+
+            await ordersApi.updateOrder(orderId, formData)
+
+            handleSuccess("Updated", `Order #${orderId} updated`)
+
+            await loadOrders(page)
+
+        } catch (e) {
+
+            handleError(e, "Failed to update order")
+
+        } finally {
+
+            setUpdateLoading(null)
+
+        }
+
+    }, [page, loadOrders, handleError, handleSuccess])
+
+
+    /* ======================
+       CREATE ORDER
+    ====================== */
+
+    const createOrder = useCallback(async (data: CreateOrderPayload) => {
+
+        try {
+
             setLoading(true)
 
             const formData = new FormData()
 
-            formData.append("client_id", String(data.client_id))
-            formData.append("source_language", String(data.source_language))
-            formData.append("target_language", String(data.target_language))
-            formData.append("traffic_id", String(data.traffic_id))
-            formData.append("currency_id_id", String(data.currency_id_id))
-            formData.append("editor_id", String(data.editor_id))
-            formData.append("deadline", String(data.deadline))
+            Object.entries(data).forEach(([key, value]) => {
 
-            if (data.priority) {
-                formData.append("priority", data.priority)
-            }
+                if (value === undefined || value === null) {return}
 
-            if (data.client_comment) {
-                formData.append("client_comment", data.client_comment)
-            }
+                if (key === "files" && Array.isArray(value)) {
 
-            if (data.translator_id)
-                {formData.append("translator_id", String(data.translator_id))}
+                    value.forEach(file => formData.append("files", file))
 
-            if (data.translator_traffic_id)
-                {formData.append("translator_traffic_id", String(data.translator_traffic_id))}
+                } else {
 
-            data.files?.forEach(file => {
-                formData.append("files", file)
+                    formData.append(key, String(value))
+
+                }
+
             })
 
             const res = await ordersApi.create(formData)
 
             setOrder(res)
 
-            toast({
-                title: "Order created",
-                description: `Order #${res.order_id} created successfully`,
-            })
+            handleSuccess("Order created", `Order #${res.order_id}`)
 
-            router.push(`/dashboard/orders/`)
+            router.push("/dashboard/orders")
+
             return res
+
         } catch (e) {
+
             handleError(e, "Failed to create order")
             throw e
-        } finally {
-            setLoading(false)
-        }
-    }
 
-    /* =========================
-       LOAD INITIAL DATA
-    ========================= */
+        } finally {
+
+            setLoading(false)
+
+        }
+
+    }, [handleError, handleSuccess, router])
+
+
+    /* ======================
+       ORDER DETAILS
+    ====================== */
+
+    const loadOrderDetails = useCallback(async (orderId: number) => {
+
+        try {
+
+            setLoading(true)
+
+            const res = await ordersApi.getById(orderId)
+
+            setOrderDetail(res)
+
+            return res
+
+        } catch (e) {
+
+            handleError(e, "Failed to load order")
+
+            throw e
+
+        } finally {
+
+            setLoading(false)
+
+        }
+
+    }, [handleError])
+
+
+    /* ======================
+       INITIAL DATA
+    ====================== */
 
     const loadInitialData = useCallback(async () => {
+
         if (initialLoadedRef.current) {return}
 
         try {
+
             setLoading(true)
 
             const [
@@ -226,144 +362,118 @@ export function useOrders() {
                 clientsRes,
                 languagesRes,
                 editorsRes,
-                currencyRes,
-                orderTrafficRes,
+                currenciesRes,
+                trafficRes
             ] = await Promise.all([
                 ordersApi.list(),
                 ordersApi.listClients(),
                 ordersApi.listLanguages(),
                 ordersApi.listEditors(),
                 ordersApi.listCurrency(),
-                ordersApi.listTraffic(),
+                ordersApi.listTraffic()
             ])
 
-            // Translators
             setTranslators(translatorsRes.results)
 
-            const translatorsMap = Object.fromEntries(
-                translatorsRes.results.map(t => [t.id, t])
-            )
-            setTranslatorsCache(translatorsMap)
+            const cache: Record<number, Translator> = {}
 
-            // Orders
+            translatorsRes.results.forEach(t => {
+                cache[t.id] = t
+            })
 
-            // Dictionaries
+            setTranslatorsCache(cache)
+
             setClients(clientsRes.results)
             setLanguages(languagesRes.results)
             setEditors(editorsRes.results)
-            setCurrencies(currencyRes.results)
-            setTraffics(orderTrafficRes.results)
-
-            // Language pairs
+            setCurrencies(currenciesRes.results)
+            setTraffics(trafficRes.results)
 
             initialLoadedRef.current = true
+
         } catch (e) {
+
             handleError(e, "Failed to load initial data")
+
         } finally {
+
             setLoading(false)
+
         }
-    }, [toast])
+
+    }, [handleError])
+
+
+    /* ======================
+       EFFECT
+    ====================== */
 
     useEffect(() => {
-        const init = async () => {
-            await loadInitialData()
-            await loadOrders(1)
-        }
 
-        init()
-    }, [loadInitialData, loadOrders])
+        loadInitialData()
+        loadOrders(1)
+
+    }, [])
+
 
     const onPageChange = (newPage: number) => {
         loadOrders(newPage)
     }
 
-    /* =========================
-       LOAD ORDER DETAILS
-    ========================= */
 
-    const loadOrderDetails = async (orderId: number): Promise<Details> => {
-        try {
-            setLoading(true)
-            const res = await ordersApi.getById(orderId)
-            setOrderDetails(res)
-            return res
-        } catch (e) {
-            handleError(e, "Failed to load order details")
-            throw e
-        } finally {
-            setLoading(false)
-        }
-    }
+    const getTranslatorById = useCallback((id: number | null) => {
 
-    /* =========================
-       LANGUAGE PAIR CACHE
-    ========================= */
+        if (!id) {return null}
+        return translatorsCache[id] || null
 
-    const loadLanguagePair = useCallback(
-        async (pairId: number) => {
-            if (languagePairs[pairId]) {
-                return languagePairs[pairId]
-            }
+    }, [translatorsCache])
 
-            const pair = await ordersApi.getLanguagePairById(pairId)
 
-            setLanguagePairs(prev => ({
-                ...prev,
-                [pairId]: pair,
-            }))
-
-            return pair
-        },
-        [languagePairs]
-    )
-
-    /* =========================
-       TRANSLATOR CACHE
-    ========================= */
-
-    const getTranslatorById = useCallback(
-        (translatorId: number | null): Translator | null => {
-            if (!translatorId) {return null}
-            return translatorsCache[translatorId] || null
-        },
-        [translatorsCache]
-    )
-
-    /* =========================
+    /* ======================
        RETURN
-    ========================= */
+    ====================== */
 
     return {
-        // state
+
         loading,
+        deleteLoading,
+        updateLoading,
+
         orders,
         order,
         orderDetail,
+
         translators,
         clients,
         languages,
         editors,
         currencies,
         traffics,
-        languagePairs,
 
-        // actions
-        createOrder,
-        loadOrderDetails,
-        loadLanguagePair,
-        loadInitialData,
-        downloadOrderSourceFiles,
-        downloadOrderTargetFiles,
-        confirmOrder,
+        languagePairs,
+        translatorsCache,
+
         page,
         totalPages,
+
+        createOrder,
+        loadOrders,
+        loadOrderDetails,
+
+        deleteOrder,
+        updateOrder,
+
+        downloadOrderSourceFiles,
+        downloadOrderTargetFiles,
+
+        loadInitialData,
+
         onPageChange,
 
-
-        // translators
-        translatorsCache,
         getTranslatorById,
+
         selectedTranslatorId,
-        setSelectedTranslatorId,
+        setSelectedTranslatorId
+
     }
 }

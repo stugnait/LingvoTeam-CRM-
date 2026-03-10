@@ -11,6 +11,18 @@ import {
 } from "@/src/components/ui/table"
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
+import {
+    MoreHorizontal,
+    Pencil,
+    Trash2,
+} from "lucide-react"
+
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu"
 import { ChevronDown, ChevronUp } from "lucide-react"
 
 import type {
@@ -32,10 +44,15 @@ interface OrdersTableProps {
     onOpen: (orderId: number) => Promise<Details>
     languagePairs: Record<number, LanguagePair>
     translatorsCache: Record<number, Translator>
+
     highlightId?: number | null
+
     confirmOrder: (orderId: number) => Promise<any>
     downloadOrderSourceFiles: (orderId: number) => Promise<void>
     downloadOrderTargetFiles: (orderId: number) => Promise<void>
+
+    onEdit?: (order: OrderListItem) => void
+    onDelete: (orderId: number) => void
 }
 
 export function OrdersTable({
@@ -49,7 +66,9 @@ export function OrdersTable({
                                 highlightId,
                                 confirmOrder,
                                 downloadOrderSourceFiles,
-                                downloadOrderTargetFiles
+                                downloadOrderTargetFiles,
+                                onEdit,
+                                onDelete
                             }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<Details | null>(null)
@@ -264,18 +283,82 @@ export function OrdersTable({
                                             </>
                                         )}
 
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => handleToggle(order.id)}
-                                            className="transition-smooth hover:bg-muted/50 rounded-full w-8 h-8 p-0 flex-shrink-0"
-                                        >
-                                            {expandedId === order.id ? (
-                                                <ChevronUp className="h-4 w-4 transition-spring"/>
-                                            ) : (
-                                                <ChevronDown className="h-4 w-4 transition-spring"/>
+                                        <div className="flex items-center justify-end gap-2">
+
+                                            {order.status_id === 9 && (
+                                                <>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => downloadOrderSourceFiles(order.id)}
+                                                        className="h-8"
+                                                    >
+                                                        Original
+                                                    </Button>
+
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => downloadOrderTargetFiles(order.id)}
+                                                        className="h-8"
+                                                    >
+                                                        Translation
+                                                    </Button>
+
+                                                    <Button
+                                                        size="sm"
+                                                        variant="default"
+                                                        onClick={() => confirmOrder(order.id)}
+                                                        className="h-8"
+                                                    >
+                                                        Send
+                                                    </Button>
+                                                </>
                                             )}
-                                        </Button>
+
+                                            {/* DROPDOWN ACTIONS */}
+
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                        <MoreHorizontal className="h-4 w-4"/>
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+
+                                                <DropdownMenuContent align="end">
+
+                                                    <DropdownMenuItem
+                                                        onClick={() => onEdit(order)}
+                                                    >
+                                                        <Pencil className="h-4 w-4 mr-2"/>
+                                                        Edit
+                                                    </DropdownMenuItem>
+
+                                                    <DropdownMenuItem
+                                                        onClick={() => onDelete(order.id)}
+                                                        className="text-destructive"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 mr-2"/>
+                                                        Delete
+                                                    </DropdownMenuItem>
+
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => handleToggle(order.id)}
+                                                className="rounded-full w-8 h-8 p-0"
+                                            >
+                                                {expandedId === order.id ? (
+                                                    <ChevronUp className="h-4 w-4"/>
+                                                ) : (
+                                                    <ChevronDown className="h-4 w-4"/>
+                                                )}
+                                            </Button>
+
+                                        </div>
                                     </div>
                                 </TableCell>
                             </TableRow>

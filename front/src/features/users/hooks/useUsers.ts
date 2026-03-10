@@ -1,9 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useState, useMemo } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useToast } from "@/src/hooks/use-toast"
 import { usersApi } from "../api"
 import type { User, UserFormData, UsersFilters } from "../types"
+import { useDebounce } from "@/src/shared/hooks/useDebounce"
 
 export function useUsers() {
     const { toast } = useToast()
@@ -11,10 +12,11 @@ export function useUsers() {
     // -------------------------
     // State
     // -------------------------
-    const [allUsers, setAllUsers] = useState<User[]>([]) // Всі користувачі
+    const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(false)
-    const [confirmAction, setConfirmAction] = useState<"delete" | "deactivate" | null>(null)
 
+
+    const [confirmAction, setConfirmAction] = useState<"delete" | "deactivate" | null>(null)
 
     const [filters, setFilters] = useState<UsersFilters>({
         search: "",
@@ -30,6 +32,7 @@ export function useUsers() {
         is_active: false
     })
 
+    const debouncedSearch = useDebounce(filters.search, 400)
 
     // modals
     const [isFormOpen, setIsFormOpen] = useState(false)
@@ -37,17 +40,21 @@ export function useUsers() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
     // -------------------------
-    // Load users (БЕЗ фільтрів)
+    // Load users (через API filters)
     // -------------------------
     const loadUsers = useCallback(async () => {
         try {
             setLoading(true)
 
-            // Завантажуємо ВСІ користувачі без фільтрів
-            const response = await usersApi.list()
+            const response = await usersApi.list({
+                search: debouncedSearch,
+                role: filters.role,
+                status: filters.status
+            })
 
-            setAllUsers(response.results)
-        } catch (error) {
+            setUsers(response.results)
+
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to load users",
@@ -56,57 +63,32 @@ export function useUsers() {
         } finally {
             setLoading(false)
         }
-    }, [toast])
+    }, [debouncedSearch, filters.role, filters.status, toast])
 
     useEffect(() => {
         loadUsers()
     }, [loadUsers])
 
     // -------------------------
-    // Фільтрація на фронтенді
-    // -------------------------
-    const users = useMemo(() => {
-        let filtered = [...allUsers]
-
-        // Фільтр за пошуком
-        if (filters.search) {
-            const searchLower = filters.search.toLowerCase()
-            filtered = filtered.filter(user =>
-                user.full_name?.toLowerCase().includes(searchLower) ||
-                user.email?.toLowerCase().includes(searchLower)
-            )
-        }
-
-        // Фільтр за роллю
-        // Фільтр за роллю
-        if (filters.role !== "all") {
-            filtered = filtered.filter(user =>
-                user.role && String(user.role.name).toLowerCase() === filters.role.toLowerCase()
-            )
-        }
-
-// Фільтр за статусом
-        // Фільтр за статусом
-        if (filters.status !== null) {
-            filtered = filtered.filter(
-                user => user.is_active === filters.status
-            )
-        }
-
-
-        return filtered
-    }, [allUsers, filters])
-
-    // -------------------------
     // Modal handlers
     // -------------------------
     const openAddUser = () => {
-        setForm({ full_name: "", phone: "", email: "", role: 0, is_active: false })
+        setSelectedUser(null)
+
+        setForm({
+            full_name: "",
+            phone: "",
+            email: "",
+            role: 0,
+            is_active: true
+        })
+
         setIsFormOpen(true)
     }
 
     const openEditUser = (user: User) => {
         setSelectedUser(user)
+
         setForm({
             full_name: user.full_name,
             email: user.email,
@@ -114,6 +96,7 @@ export function useUsers() {
             role: user.role.id,
             is_active: user.is_active
         })
+
         setIsFormOpen(true)
     }
 
@@ -129,11 +112,11 @@ export function useUsers() {
         setIsDeleteOpen(true)
     }
 
-
     const closeModals = () => {
         setIsFormOpen(false)
         setIsDeleteOpen(false)
         setSelectedUser(null)
+        setConfirmAction(null)
     }
 
     // -------------------------
@@ -141,6 +124,7 @@ export function useUsers() {
     // -------------------------
     const submitUser = async (data: UserFormData) => {
         try {
+
             if (selectedUser) {
                 await usersApi.update(selectedUser.id, data)
 
@@ -148,6 +132,7 @@ export function useUsers() {
                     title: "User updated",
                     description: `${data.full_name} updated successfully`,
                 })
+
             } else {
                 await usersApi.register(data)
 
@@ -159,7 +144,8 @@ export function useUsers() {
 
             closeModals()
             await loadUsers()
-        } catch (error) {
+
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to save user",
@@ -169,7 +155,7 @@ export function useUsers() {
     }
 
     const confirmDelete = async () => {
-        if (!selectedUser) {return}
+        if (!selectedUser) return
 
         try {
             await usersApi.remove(selectedUser.id)
@@ -181,7 +167,8 @@ export function useUsers() {
 
             closeModals()
             await loadUsers()
-        } catch (error) {
+
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to delete user",
@@ -189,33 +176,32 @@ export function useUsers() {
             })
         }
     }
-    
-    
 
     const confirmDeactivation = async () => {
-        if (!selectedUser) {return}
+        if (!selectedUser) return
 
         try {
             await usersApi.deactivate(selectedUser.id)
 
             toast({
                 title: "User deactivated",
-                description: `${selectedUser.full_name} removed`,
+                description: `${selectedUser.full_name} deactivated`,
             })
 
             closeModals()
             await loadUsers()
-        } catch (error) {
+
+        } catch {
             toast({
                 title: "Error",
-                description: "Failed to delete user",
+                description: "Failed to deactivate user",
                 variant: "error",
             })
         }
     }
 
     const handleConfirm = async () => {
-        if (!selectedUser || !confirmAction) {return}
+        if (!selectedUser || !confirmAction) return
 
         if (confirmAction === "delete") {
             await confirmDelete()
@@ -231,15 +217,18 @@ export function useUsers() {
     // -------------------------
     return {
         users,
+        loading,
+
         filters,
         setFilters,
 
         isFormOpen,
         isDeleteOpen,
         selectedUser,
+        confirmAction,
+
         form,
         setForm,
-        confirmAction,
 
         openAddUser,
         openEditUser,
@@ -249,7 +238,7 @@ export function useUsers() {
         submitUser,
         confirmDelete,
         confirmDeactivation,
-        closeModals,
         handleConfirm,
+        closeModals,
     }
 }
