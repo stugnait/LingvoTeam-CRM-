@@ -470,7 +470,7 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
     queryset = EditorLanguagePairs.objects.all()
-    serializer_class = EditorLanguagePairsSerializer
+    serializer_class = RegistrationSerializer
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
