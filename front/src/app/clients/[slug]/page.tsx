@@ -21,7 +21,13 @@ export default function ClientExternalOrderPage({
         init,
         submitPassword,
         remainingAttempts,
-        downloadFiles
+        downloadFiles,
+        filesCount,
+        filesLoading,
+        files,
+        refreshFiles,
+        downloadSingleFile,
+        downloadLoading,
     } = useClients(slug)
 
     useEffect(() => {
@@ -52,6 +58,12 @@ export default function ClientExternalOrderPage({
                 order={order}
                 error={error}
                 onDownload={downloadFiles}
+                filesCount={filesCount}
+                filesLoading={filesLoading}
+                files={files}
+                onRefreshFiles={() => void refreshFiles(order.id)}
+                onDownloadFile={(fileId, filename) => void downloadSingleFile(fileId, filename)}
+                downloadLoading={downloadLoading}
             />
         )
     }

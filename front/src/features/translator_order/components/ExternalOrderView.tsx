@@ -67,10 +67,10 @@ export function ExternalOrderView({
     const countdown = useCountdown(order.deadline)
     const pad = (num: number) => String(num).padStart(2, "0")
 
-    // ----------------- SOURCE DOWNLOADS -----------------
     const [sourceFiles, setSourceFiles] = useState<ExternalOrderFileItem[]>([])
     const [filesLoading, setFilesLoading] = useState(false)
     const [filesError, setFilesError] = useState<string | null>(null)
+    const [downloadLoading, setDownloadLoading] = useState(false)
 
     const refreshSourceFiles = async () => {
         setFilesLoading(true)
@@ -90,11 +90,42 @@ export function ExternalOrderView({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [order?.id])
 
-    const downloadSourceFileUrl = (fileId: number) =>
-        translatorOrderApi.downloadSourceFileUrl(order.id, fileId)
+    const downloadBlob = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+    }
 
-    const downloadAllSourceUrl = () =>
-        translatorOrderApi.downloadAllSourceUrl(order.id)
+    const handleDownloadSourceFile = async (fileId: number, filename: string) => {
+        setDownloadLoading(true)
+        setFilesError(null)
+        try {
+            const blob = await translatorOrderApi.downloadFile(order.id, "source", fileId)
+            downloadBlob(blob, filename)
+        } catch (e: any) {
+            setFilesError(e?.message || "Не вдалося скачати файл (source)")
+        } finally {
+            setDownloadLoading(false)
+        }
+    }
+
+    const handleDownloadAllSource = async () => {
+        setDownloadLoading(true)
+        setFilesError(null)
+        try {
+            const blob = await translatorOrderApi.downloadAllFiles(order.id, "source")
+            downloadBlob(blob, `order_${order.id}_source_files.zip`)
+        } catch (e: any) {
+            setFilesError(e?.message || "Не вдалося скачати всі файли (source)")
+        } finally {
+            setDownloadLoading(false)
+        }
+    }
 
     // ----------------- EXISTING HANDLERS -----------------
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -412,7 +443,7 @@ export function ExternalOrderView({
                     </div>
                 </div>
 
-                {/* ✅ Downloads: SOURCE ONLY */}
+                
                 <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between gap-3 mb-4">
                         <h2 className="text-lg font-semibold flex items-center gap-2 text-blue-800">
@@ -466,12 +497,11 @@ export function ExternalOrderView({
                                         <Button
                                             size="sm"
                                             variant="outline"
-                                            asChild
                                             className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                            onClick={() => void handleDownloadSourceFile(f.id, f.name)}
+                                            disabled={downloadLoading}
                                             >
-                                            <a href={downloadSourceFileUrl(f.id)} download>
-                                                Скачати
-                                            </a>
+                                            Скачати
                                         </Button>
                                     </div>
                                 ))
@@ -481,14 +511,12 @@ export function ExternalOrderView({
 
                     <div className="mt-6 flex justify-end">
                         <Button
-                            asChild
-                            disabled={filesLoading}
                             className="bg-blue-600 hover:bg-blue-700"
+                            onClick={() => void handleDownloadAllSource()}
+                            disabled={filesLoading || downloadLoading}
                             >
-                            <a href={downloadAllSourceUrl()} download>
-                                <FileUp className="h-4 w-4 mr-2" />
-                                Скачати все (source)
-                            </a>
+                            <FileUp className="h-4 w-4 mr-2" />
+                            Скачати все (source)
                         </Button>
                     </div>
                 </div>

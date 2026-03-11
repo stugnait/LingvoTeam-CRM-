@@ -14,5 +14,6 @@ urlpatterns = [
     
     path('<uuid:slug>/', ClientOrderAccessView.as_view(), name='external-order-access'),
     path('external/orders/<int:order_id>/download-files/', ClientDownloadView.as_view(), name='client-order-download'),
+    path('external/orders/<int:order_id>/download-files/<int:file_id>/', ClientDownloadView.as_view(), name='client-order-download-file'),
     path('', include(router.urls)),
 ]

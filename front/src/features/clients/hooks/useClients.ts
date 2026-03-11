@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 import { clientApi } from "../api"
-import type { ExternalOrder } from "../types"
+import type { ExternalOrder, ExternalOrderFileItem } from "../types"
 import {translatorOrderApi} from "@/src/features/translator_order/api";
 
 type Step = "loading" | "password" | "order" | "expired"
@@ -10,6 +10,10 @@ export function useClients(slug: string) {
     const [order, setOrder] = useState<ExternalOrder | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
+    const [filesCount, setFilesCount] = useState<number | null>(null)
+    const [filesLoading, setFilesLoading] = useState(false)
+    const [files, setFiles] = useState<ExternalOrderFileItem[]>([])
+    const [downloadLoading, setDownloadLoading] = useState(false)
 
     // ---------------- INIT ----------------
 
@@ -29,8 +33,9 @@ export function useClients(slug: string) {
             setStep("order")
             setError(null)
             setRemainingAttempts(null)
+            void refreshFiles(res.order_data.id)
         } catch (e: any) {
-            const data = e  // ← просто e, без .response.data
+            const data = e
 
             if (!data?.message) {
                 setError("Помилка з'єднання")
@@ -44,7 +49,20 @@ export function useClients(slug: string) {
         }
     }
 
-    // ---------------- DOWNLOAD ----------------
+    const refreshFiles = async (orderId: number) => {
+        setFilesLoading(true)
+        try {
+            const res = await clientApi.listDownloadFiles(orderId)
+            const nextFiles = Array.isArray(res?.files) ? res.files : []
+            setFiles(nextFiles)
+            setFilesCount(typeof res?.count === "number" ? res.count : nextFiles.length)
+        } catch {
+            setFiles([])
+            setFilesCount(0)
+        } finally {
+            setFilesLoading(false)
+        }
+    }
 
     const downloadBlob = (blob: Blob, filename: string) => {
         const url = window.URL.createObjectURL(blob)
@@ -68,16 +86,45 @@ export function useClients(slug: string) {
 
         try {
             setError(null)
+            setDownloadLoading(true)
 
-            // clientApi має повертати Blob
             const blob = await clientApi.downloadFiles(order.id)
 
-            downloadBlob(blob, `order_${order.id}_files.zip`)
+            downloadBlob(blob, `order_${order.id}_final_files.zip`)
 
         } catch (e: any) {
-            setError(e?.message || "Помилка завантаження файлів")
+            if (e?.detail === "Файлів ще немає.") {
+                setFilesCount(0)
+                setFiles([])
+                setError(null)
+                return
+            }
+            setError(e?.message || e?.detail || "Помилка завантаження файлів")
+        } finally {
+            setDownloadLoading(false)
         }
     }, [order])
+
+    const downloadSingleFile = useCallback(
+        async (fileId: number, filename: string) => {
+            if (!order) {
+                setError("Замовлення не знайдено")
+                return
+            }
+
+            try {
+                setError(null)
+                setDownloadLoading(true)
+                const blob = await clientApi.downloadFile(order.id, fileId)
+                downloadBlob(blob, filename)
+            } catch (e: any) {
+                setError(e?.message || e?.detail || "Помилка завантаження файлу")
+            } finally {
+                setDownloadLoading(false)
+            }
+        },
+        [order]
+    )
 
     return {
         step,
@@ -87,5 +134,11 @@ export function useClients(slug: string) {
         submitPassword,
         remainingAttempts,
         downloadFiles,
+        filesCount,
+        filesLoading,
+        files,
+        refreshFiles,
+        downloadSingleFile,
+        downloadLoading,
     }
 }

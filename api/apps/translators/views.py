@@ -389,16 +389,23 @@ class ExternalTranslatorDownloadView(APIView):
 
     def _check_access(self, request, order: Order):
         provided_password = request.COOKIES.get(f"order_auth_{order.id}")
-        link_obj = OrderLink.objects.filter(order=order).last()
-
-        if not (provided_password and link_obj):
+        if not provided_password:
             return None, Response({"detail": "Немає доступу."}, status=http_status.HTTP_403_FORBIDDEN)
 
-        expire_at = getattr(link_obj, "expire_at", None) or getattr(link_obj, "expire_date", None)
-        if expire_at and expire_at < timezone.now():
-            return None, Response({"detail": "Посилання протерміноване."}, status=http_status.HTTP_403_FORBIDDEN)
+        now = timezone.now()
 
-        if not secrets.compare_digest(link_obj.password, provided_password):
+
+        link_qs = OrderLink.objects.filter(order=order, assignee=OrderLink.Assignee.TRANSLATOR)
+        link_obj = None
+        for candidate in link_qs.order_by("-id"):
+            expire_at = getattr(candidate, "expire_at", None) or getattr(candidate, "expire_date", None)
+            if expire_at and expire_at < now:
+                continue
+            if candidate.password and secrets.compare_digest(candidate.password, provided_password):
+                link_obj = candidate
+                break
+
+        if not link_obj:
             return None, Response({"detail": "Невірний пароль."}, status=http_status.HTTP_403_FORBIDDEN)
 
         return link_obj, None
