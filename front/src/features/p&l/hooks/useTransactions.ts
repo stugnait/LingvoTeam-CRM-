@@ -13,6 +13,7 @@ export function useTransactions() {
 
     const [form, setForm] = useState<TransactionFormData>({
         amount: 0,
+        created_at: null,
         type: "expense",
         comment: "",
         currency: 1,
@@ -53,6 +54,7 @@ export function useTransactions() {
 
         setForm({
             amount: 0,
+            created_at: null,
             type: "expense",
             comment: "",
             currency: 1,
@@ -67,6 +69,7 @@ export function useTransactions() {
 
         setForm({
             amount: transaction.amount,
+            created_at: transaction.created_at,
             type: transaction.type,
             comment: transaction.comment,
             currency: transaction.currency,

@@ -12,13 +12,14 @@ export interface Transaction {
     amount: number
     type: TransactionType
     comment: string
-    created_at: string
+    created_at: string | null
     currency: number
     category: number
 }
 
 export interface TransactionFormData {
     amount: number
+    created_at: string | null
     type: TransactionType
     comment: string
     currency: number

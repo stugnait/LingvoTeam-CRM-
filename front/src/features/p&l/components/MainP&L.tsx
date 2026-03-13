@@ -240,6 +240,17 @@ export function MainPnL() {
 
                     </Select>
 
+                    <Input
+                        type="date"
+                        value={form.created_at}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                created_at: e.target.value,
+                            }))
+                        }
+                    />
+
 
                     <Select
                         value={String(form.category)}
