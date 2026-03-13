@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from apps import core
 from apps.core.models.transaction_category import TransactionCategory
@@ -28,7 +29,7 @@ class Transaction(models.Model):
         related_name='transactions'
     )
     comment = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
     class Meta:
         db_table = 'transaction'
 

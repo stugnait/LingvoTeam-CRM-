@@ -63,6 +63,12 @@ const navigation = [
         icon: CheckSquare,
         roles: ["editor"],
     },
+    {
+        name: "P&L",
+        href: "/dashboard/p&l",
+        icon: CheckSquare,
+        roles: ["financier"],
+    },
 ]
 
 export function CrmSidebar() {
