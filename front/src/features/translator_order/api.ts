@@ -42,10 +42,15 @@ export const translatorOrderApi = {
             { method: "GET" }
         ),
 
-    downloadAllSourceUrl: (orderId: number) =>
-        `/api/translators/external/orders/${orderId}/download-files/source/`,
+    downloadAllFiles: (orderId: number, folder: ExternalOrderFolder = "source") =>
+        apiFetch<Blob>(
+            `translators/external/orders/${orderId}/download-files/${folder}/`,
+            { method: "GET", responseType: "blob" }
+        ),
 
-    downloadSourceFileUrl: (orderId: number, fileId: number) =>
-        `/api/translators/external/orders/${orderId}/download-files/source/${fileId}/`,
+    downloadFile: (orderId: number, folder: ExternalOrderFolder, fileId: number) =>
+        apiFetch<Blob>(
+            `translators/external/orders/${orderId}/download-files/${folder}/${fileId}/`,
+            { method: "GET", responseType: "blob" }
+        ),
 }
-

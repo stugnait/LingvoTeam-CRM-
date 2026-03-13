@@ -1,6 +1,6 @@
 "use client"
 
-import type { ExternalOrder } from "../types"
+import type { ExternalOrder, ExternalOrderFileItem } from "../types"
 import {
     Calendar,
     MessageSquare,
@@ -18,9 +18,26 @@ interface Props {
     order: ExternalOrder
     error?: string | null
     onDownload: () => void
+    filesCount?: number | null
+    filesLoading?: boolean
+    files?: ExternalOrderFileItem[]
+    onRefreshFiles?: () => void
+    onDownloadFile?: (fileId: number, filename: string) => void
+    downloadLoading?: boolean
 }
 
-export function MainClient({ order, error, onDownload }: Props) {
+export function MainClient({
+    order,
+    error,
+    onDownload,
+    filesCount,
+    filesLoading,
+    files = [],
+    onRefreshFiles,
+    onDownloadFile,
+    downloadLoading,
+}: Props) {
+    const isEmpty = filesCount === 0
     return (
         <div className="max-w-4xl mx-auto mt-8 p-6 animate-fade-in">
             {/* Хедер */}
@@ -86,21 +103,70 @@ export function MainClient({ order, error, onDownload }: Props) {
 
                 {/* Завантаження файлів */}
                 <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
-                        <div className="p-2 rounded-lg bg-blue-50">
-                            <Eye className="h-5 w-5 text-blue-600" />
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                        <h2 className="text-lg font-semibold flex items-center gap-2 text-blue-800">
+                            <div className="p-2 rounded-lg bg-blue-50">
+                                <Eye className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <span>Файли (final)</span>
+                        </h2>
+
+                        <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+                                {filesLoading ? "..." : (filesCount ?? files.length)}
+                            </Badge>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onRefreshFiles}
+                                disabled={filesLoading || downloadLoading || !onRefreshFiles}
+                                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                            >
+                                Оновити
+                            </Button>
                         </div>
-                        <span>Файли для перекладу</span>
-                    </h2>
+                    </div>
+
+                    {filesLoading ? (
+                        <p className="text-sm text-blue-500 mb-3">Перевіряємо файли…</p>
+                    ) : isEmpty ? (
+                        <p className="text-sm text-blue-500 mb-3">Поки що файлів у final немає.</p>
+                    ) : null}
+
+                    {!filesLoading && files.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                            {files.map(f => (
+                                <div
+                                    key={f.id}
+                                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-blue-100"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
+                                        <p className="text-xs text-blue-400">ID: {f.id}</p>
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                        onClick={() => onDownloadFile?.(f.id, f.name)}
+                                        disabled={downloadLoading || !onDownloadFile}
+                                    >
+                                        Скачати
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <Button
                         size="lg"
                         onClick={onDownload}
+                        disabled={filesLoading || downloadLoading || isEmpty}
                         className="w-full h-12 text-base relative overflow-hidden group bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         <span className="relative z-10 flex items-center gap-2">
                             <Download className="h-5 w-5 group-hover:translate-y-[-2px] transition-transform" />
-                            Завантажити всі файли
+                            Скачати все (final)
                         </span>
                     </Button>
                 </div>
