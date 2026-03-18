@@ -68,25 +68,55 @@ export function ExternalOrderView({
     const pad = (num: number) => String(num).padStart(2, "0")
 
     const [sourceFiles, setSourceFiles] = useState<ExternalOrderFileItem[]>([])
+    const [targetFiles, setTargetFiles] = useState<ExternalOrderFileItem[]>([])
     const [filesLoading, setFilesLoading] = useState(false)
     const [filesError, setFilesError] = useState<string | null>(null)
     const [downloadLoading, setDownloadLoading] = useState(false)
 
-    const refreshSourceFiles = async () => {
+    const refreshFiles = async () => {
         setFilesLoading(true)
         setFilesError(null)
         try {
-            const res = await translatorOrderApi.listDownloadFiles(order.id, "source")
-            setSourceFiles(res.files ?? [])
-        } catch (e: any) {
-            setFilesError(e?.message || "Не вдалося завантажити список файлів (source)")
+            const results = await Promise.allSettled([
+                translatorOrderApi.listDownloadFiles(order.id, "source"),
+                translatorOrderApi.listDownloadFiles(order.id, "target"),
+            ])
+
+            const isFolderEmptyError = (err: any) =>
+                typeof err?.detail === "string" &&
+                err.detail.includes("Файли") &&
+                err.detail.includes("відсутні")
+
+            const [sourceResult, targetResult] = results
+
+            if (sourceResult.status === "fulfilled") {
+                setSourceFiles(sourceResult.value.files ?? [])
+            } else if (isFolderEmptyError(sourceResult.reason)) {
+                setSourceFiles([])
+            }
+
+            if (targetResult.status === "fulfilled") {
+                setTargetFiles(targetResult.value.files ?? [])
+            } else if (isFolderEmptyError(targetResult.reason)) {
+                setTargetFiles([])
+            }
+
+            const errors = results
+                .filter(r => r.status === "rejected")
+                .map(r => (r as PromiseRejectedResult).reason)
+                .filter(err => !isFolderEmptyError(err))
+
+            if (errors.length > 0) {
+                const err = errors[0]
+                setFilesError(err?.message || err?.detail || "Не вдалося завантажити список файлів")
+            }
         } finally {
             setFilesLoading(false)
         }
     }
 
     useEffect(() => {
-        void refreshSourceFiles()
+        void refreshFiles()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [order?.id])
 
@@ -127,6 +157,32 @@ export function ExternalOrderView({
         }
     }
 
+    const handleDownloadTargetFile = async (fileId: number, filename: string) => {
+        setDownloadLoading(true)
+        setFilesError(null)
+        try {
+            const blob = await translatorOrderApi.downloadFile(order.id, "target", fileId)
+            downloadBlob(blob, filename)
+        } catch (e: any) {
+            setFilesError(e?.message || "Не вдалося скачати файл (target)")
+        } finally {
+            setDownloadLoading(false)
+        }
+    }
+
+    const handleDownloadAllTarget = async () => {
+        setDownloadLoading(true)
+        setFilesError(null)
+        try {
+            const blob = await translatorOrderApi.downloadAllFiles(order.id, "target")
+            downloadBlob(blob, `order_${order.id}_target_files.zip`)
+        } catch (e: any) {
+            setFilesError(e?.message || "Не вдалося скачати всі файли (target)")
+        } finally {
+            setDownloadLoading(false)
+        }
+    }
+
     // ----------------- EXISTING HANDLERS -----------------
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
@@ -152,8 +208,8 @@ export function ExternalOrderView({
             setUploadSuccess(true)
             setTimeout(() => setUploadSuccess(false), 3000)
 
-            // після успішного upload — оновимо source список (на всяк)
-            void refreshSourceFiles()
+            // після успішного upload — оновимо списки файлів
+            void refreshFiles()
         }
     }
 
@@ -456,7 +512,7 @@ export function ExternalOrderView({
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={refreshSourceFiles}
+                            onClick={refreshFiles}
                             disabled={filesLoading}
                             className="border-blue-200 text-blue-700 hover:bg-blue-50"
                         >
@@ -509,7 +565,45 @@ export function ExternalOrderView({
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end">
+                    <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="font-semibold text-blue-900">Target</p>
+                            <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
+                                {filesLoading ? "..." : targetFiles.length}
+                            </Badge>
+                        </div>
+
+                        <div className="space-y-2">
+                            {filesLoading ? (
+                                <div className="text-sm text-blue-500">Завантаження…</div>
+                            ) : targetFiles.length === 0 ? (
+                                <div className="text-sm text-blue-400">Файлів немає</div>
+                            ) : (
+                                targetFiles.map(f => (
+                                    <div
+                                        key={f.id}
+                                        className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-blue-100"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
+                                            <p className="text-xs text-blue-400">ID: {f.id}</p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                            onClick={() => void handleDownloadTargetFile(f.id, f.name)}
+                                            disabled={downloadLoading}
+                                        >
+                                            Скачати
+                                        </Button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end gap-3">
                         <Button
                             className="bg-blue-600 hover:bg-blue-700"
                             onClick={() => void handleDownloadAllSource()}
@@ -517,6 +611,14 @@ export function ExternalOrderView({
                             >
                             <FileUp className="h-4 w-4 mr-2" />
                             Скачати все (source)
+                        </Button>
+                        <Button
+                            className="bg-blue-600 hover:bg-blue-700"
+                            onClick={() => void handleDownloadAllTarget()}
+                            disabled={filesLoading || downloadLoading}
+                        >
+                            <FileUp className="h-4 w-4 mr-2" />
+                            Скачати все (target)
                         </Button>
                     </div>
                 </div>

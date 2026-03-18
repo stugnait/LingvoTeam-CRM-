@@ -19,7 +19,7 @@ export interface ExternalOrderLoginResponse {
     order_data: ExternalOrder
 }
 
-export type ExternalOrderFolder = "source"
+export type ExternalOrderFolder = "source" | "target"
 
 export interface ExternalOrderFileItem {
     id: number
