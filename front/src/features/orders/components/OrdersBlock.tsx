@@ -145,9 +145,9 @@ export function OrdersTable({
                         <TableHead className="font-semibold text-foreground h-14">Client</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Languages</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Status</TableHead>
-                        <TableHead className="font-semibold text-foreground h-14 pr-6">Actions</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Deadline</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Priority</TableHead>
+                        <TableHead className="font-semibold text-foreground h-14 pr-6">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
 
@@ -429,7 +429,7 @@ export function OrdersTable({
                             {/* EXPANDED ROW */}
                             {expandedId === order.id && (
                                 <TableRow className="bg-muted/30 border-b-0">
-                                    <TableCell colSpan={5} className="p-0 border-b-0">
+                                    <TableCell colSpan={7} className="p-0 border-b-0">
                                         <div
                                             className="animate-expand-row w-full"
                                             style={{overflow: 'hidden'}}

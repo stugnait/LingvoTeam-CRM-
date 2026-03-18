@@ -7,6 +7,28 @@ import {User} from "@/src/features/users/types";
 /**
  * Відповідає TranslatorSerializer
  */
+
+export interface TranslatorTraffic {
+    id: number
+    name: string | null
+
+    translator: number
+    translator_name: string
+
+    language_pair: number
+    language_pair_name: string
+
+    source_language: string
+    target_language: string
+
+    category: number | null
+    category_name: string | null
+
+    currency_id: number
+    currency_name: string
+    currency_sign: string
+}
+
 export interface Translator {
     id: number
     full_name: string
@@ -17,7 +39,10 @@ export interface Translator {
     currency_id: number
     currency_name: string
 
+    traffic: TranslatorTraffic[]
+
     created_at: string // ISO datetime
+    orders_count: number
 }
 
 /* =========================================================
@@ -48,6 +73,16 @@ export interface TranslatorFilters {
     search?: string
 }
 
+export interface TranslatorTrafficPayload {
+    translator: number
+    language_pair: number
+    rate_per_page?: number
+    rate_per_action?: number
+    currency_id: number
+    category?: number | null
+    name?: string | null
+}
+
 /* =========================================================
    TRANSLATOR TRAFFIC
    ========================================================= */
@@ -73,14 +108,6 @@ export interface TranslatorTraffic {
    TRANSLATOR TRAFFIC — CREATE / UPDATE PAYLOAD
    ========================================================= */
 
-export interface TranslatorTrafficPayload {
-    translator_id: number
-    language_pair: number
-    currency_id: number
-
-    rate_per_page?: number | null
-    rate_per_action?: number | null
-}
 
 /* =========================================================
    COMMON API RESPONSES
