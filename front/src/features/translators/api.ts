@@ -3,7 +3,7 @@ import type {
     Translator,
     TranslatorFilters,
     TranslatorPayload,
-    TranslatorListResponse
+    TranslatorListResponse, TranslatorTraffic, TranslatorTrafficPayload
 } from "./types"
 
 export const translatorsApi = {
@@ -50,4 +50,32 @@ export const translatorsApi = {
         apiFetch<void>(`translators/${id}/`, {
             method: "DELETE",
         }),
+
+    createTranslatorTraffic: (data: TranslatorTrafficPayload) =>
+        apiFetch<TranslatorTraffic>(
+            "translatortraffic/",
+            {
+                method: "POST",
+                body: JSON.stringify(data),
+            }
+        ),
+
+    // PATCH /translatortraffic/:id/
+    updateTranslatorTraffic: (id: number, data: Partial<TranslatorTrafficPayload>) =>
+        apiFetch<TranslatorTraffic>(
+            `translatortraffic/${id}/`,
+            {
+                method: "PATCH",
+                body: JSON.stringify(data),
+            }
+        ),
+
+    // DELETE /translatortraffic/:id/
+    removeTranslatorTraffic: (id: number) =>
+        apiFetch<void>(
+            `translatortraffic/${id}/`,
+            {
+                method: "DELETE",
+            }
+        ),
 }

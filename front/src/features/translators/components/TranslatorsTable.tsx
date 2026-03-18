@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 
 import type { Translator } from "../types"
+import {cn} from "@/src/lib/utils";
 
 interface Props {
     translators: Translator[]
@@ -45,6 +46,8 @@ export function TranslatorsTable({
                     <TableRow>
                         <TableHead>Translator</TableHead>
                         <TableHead>Contacts</TableHead>
+                        <TableHead>Orders</TableHead>
+                        <TableHead>Tariffs</TableHead>
                         <TableHead className="w-[70px]" />
                     </TableRow>
                 </TableHeader>
@@ -68,6 +71,63 @@ export function TranslatorsTable({
                                         {t.phone || "—"}
                                     </p>
                                 </div>
+                            </TableCell>
+
+                            <TableCell>
+                                <div className="flex items-center">
+        <span
+            className={cn(
+                "px-2.5 py-1 rounded-md text-xs font-semibold",
+                t.orders_count === 0
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-primary/10 text-primary"
+            )}
+        >
+            {t.orders_count ?? 0}
+        </span>
+                                </div>
+                            </TableCell>
+
+                            <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                            {t.traffic?.length || 0} rates
+                                        </Button>
+                                    </DropdownMenuTrigger>
+
+                                    <DropdownMenuContent align="start" className="w-[280px]">
+                                        {t.traffic?.length ? (
+                                            t.traffic.map((tr) => (
+                                                <div
+                                                    key={tr.id}
+                                                    className="px-3 py-2 border-b last:border-0"
+                                                >
+                                                    <p className="text-sm font-medium">
+                                                        {tr.language_pair_name}
+                                                    </p>
+
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {tr.source_language} → {tr.target_language}
+                                                    </p>
+
+                                                    <div className="flex justify-between mt-1 text-xs">
+                            <span>
+                                Page: {tr.rate_per_page} {tr.currency_sign}
+                            </span>
+                                                        <span>
+                                Action: {tr.rate_per_action} {tr.currency_sign}
+                            </span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="px-3 py-2 text-sm text-muted-foreground">
+                                                No rates
+                                            </p>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </TableCell>
 
                             <TableCell>

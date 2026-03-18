@@ -6,10 +6,13 @@ import { financeApi } from "../api"
 import type { Transaction, TransactionFormData } from "../types"
 
 export function useTransactions() {
+
     const { toast } = useToast()
 
     const [transactions, setTransactions] = useState<Transaction[]>([])
     const [loading, setLoading] = useState(false)
+
+    const [ordering, setOrdering] = useState<string>("-created_at")
 
     const [form, setForm] = useState<TransactionFormData>({
         amount: 0,
@@ -27,29 +30,41 @@ export function useTransactions() {
         useState<Transaction | null>(null)
 
     const loadTransactions = useCallback(async () => {
+
         try {
+
             setLoading(true)
 
-            const response = await financeApi.listTransactions()
+            const response = await financeApi.listTransactions(ordering)
+
             setTransactions(response.results)
 
         } catch {
+
             toast({
                 title: "Error",
                 description: "Failed to load transactions",
                 variant: "error",
             })
+
         } finally {
+
             setLoading(false)
+
         }
-    }, [toast])
+
+    }, [ordering, toast])
 
     useEffect(() => {
         loadTransactions()
     }, [loadTransactions])
 
+    const changeOrdering = (value?: string) => {
+        setOrdering(value ?? "-created_at")
+    }
 
     const openAddTransaction = () => {
+
         setSelectedTransaction(null)
 
         setForm({
@@ -62,9 +77,11 @@ export function useTransactions() {
         })
 
         setIsFormOpen(true)
+
     }
 
     const openEditTransaction = (transaction: Transaction) => {
+
         setSelectedTransaction(transaction)
 
         setForm({
@@ -77,6 +94,7 @@ export function useTransactions() {
         })
 
         setIsFormOpen(true)
+
     }
 
     const openDeleteTransaction = (transaction: Transaction) => {
@@ -85,13 +103,15 @@ export function useTransactions() {
     }
 
     const closeModals = () => {
+
         setIsFormOpen(false)
         setIsDeleteOpen(false)
         setSelectedTransaction(null)
+
     }
 
-
     const submitTransaction = async (data: TransactionFormData) => {
+
         try {
 
             if (selectedTransaction) {
@@ -101,17 +121,13 @@ export function useTransactions() {
                     data
                 )
 
-                toast({
-                    title: "Transaction updated",
-                })
+                toast({ title: "Transaction updated" })
 
             } else {
 
                 await financeApi.createTransaction(data)
 
-                toast({
-                    title: "Transaction created",
-                })
+                toast({ title: "Transaction created" })
 
             }
 
@@ -127,19 +143,18 @@ export function useTransactions() {
             })
 
         }
+
     }
 
-
     const confirmDelete = async () => {
-        if (!selectedTransaction) {return}
+
+        if (!selectedTransaction) return
 
         try {
 
             await financeApi.deleteTransaction(selectedTransaction.id)
 
-            toast({
-                title: "Transaction deleted",
-            })
+            toast({ title: "Transaction deleted" })
 
             closeModals()
             await loadTransactions()
@@ -153,8 +168,8 @@ export function useTransactions() {
             })
 
         }
-    }
 
+    }
 
     return {
         transactions,
@@ -162,6 +177,9 @@ export function useTransactions() {
 
         form,
         setForm,
+
+        ordering,
+        changeOrdering,
 
         isFormOpen,
         isDeleteOpen,
