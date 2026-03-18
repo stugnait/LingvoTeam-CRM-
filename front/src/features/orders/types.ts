@@ -204,6 +204,8 @@ export interface OrderListItem {
     created_at: string // ISO
     translator_id: number
     language_pair_id: number
+    deadline: string
+    priority: "low" | "medium" | "high" | "critical"
 }
 
 export interface OrderListResponse {

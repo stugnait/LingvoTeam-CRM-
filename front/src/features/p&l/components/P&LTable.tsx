@@ -11,6 +11,17 @@ import {
 
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
+import { Input } from "@/src/components/ui/input"
+
+import { ArrowUpDown } from "lucide-react"
+
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/src/components/ui/select"
 
 import {
     DropdownMenu,
@@ -25,12 +36,16 @@ import { Transaction } from "../types"
 
 interface Props {
     transactions: Transaction[]
+    ordering?: string
+    changeOrdering: (value?: string) => void
     onEdit: (transaction: Transaction) => void
     onDelete: (transaction: Transaction) => void
 }
 
 export function PnLTable({
                              transactions,
+                             ordering,
+                             changeOrdering,
                              onEdit,
                              onDelete
                          }: Props) {
@@ -40,91 +55,138 @@ export function PnLTable({
 
     return (
 
-        <div className="border border-border rounded-lg bg-card">
+        <div className="space-y-4">
 
-            <Table>
+            {/* FILTER */}
 
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Comment</TableHead>
-                        <TableHead className="w-[70px]" />
-                    </TableRow>
-                </TableHeader>
+            <div className="flex items-center justify-end mb-4">
 
-                <TableBody>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <ArrowUpDown className="h-4 w-4"/>
+                </div>
 
-                    {transactions.map(op => (
+                <Select
+                    value={ordering}
+                    onValueChange={changeOrdering}
+                >
+                    <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Sort by"/>
+                    </SelectTrigger>
 
-                        <TableRow key={op.id}>
+                    <SelectContent>
 
-                            <TableCell>
-                                <Badge variant={getVariant(op.type)}>
-                                    {op.type}
-                                </Badge>
-                            </TableCell>
+                        <SelectItem value="-created_at">
+                            Newest first
+                        </SelectItem>
 
-                            <TableCell className="font-medium">
-                                {op.category}
-                            </TableCell>
+                        <SelectItem value="created_at">
+                            Oldest first
+                        </SelectItem>
 
-                            <TableCell>
-                                ${op.amount}
-                            </TableCell>
+                        <SelectItem value="-amount">
+                            Amount high → low
+                        </SelectItem>
 
-                            <TableCell className="text-muted-foreground">
-                                {new Date(op.created_at).toLocaleDateString()}
-                            </TableCell>
+                        <SelectItem value="amount">
+                            Amount low → high
+                        </SelectItem>
 
-                            <TableCell className="text-muted-foreground">
-                                {op.comment}
-                            </TableCell>
+                    </SelectContent>
 
-                            <TableCell>
+                </Select>
 
-                                <DropdownMenu>
+            </div>
 
-                                    <DropdownMenuTrigger asChild>
 
-                                        <Button variant="ghost" size="sm">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
+            {/* TABLE */}
 
-                                    </DropdownMenuTrigger>
+            <div className="border border-border rounded-lg bg-card">
 
-                                    <DropdownMenuContent align="end">
+                <Table>
 
-                                        <DropdownMenuItem
-                                            onClick={() => onEdit(op)}
-                                        >
-                                            <Pencil className="h-4 w-4 mr-2"/>
-                                            Edit
-                                        </DropdownMenuItem>
-
-                                        <DropdownMenuItem
-                                            className="text-destructive"
-                                            onClick={() => onDelete(op)}
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2"/>
-                                            Delete
-                                        </DropdownMenuItem>
-
-                                    </DropdownMenuContent>
-
-                                </DropdownMenu>
-
-                            </TableCell>
-
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Comment</TableHead>
+                            <TableHead className="w-[70px]"/>
                         </TableRow>
+                    </TableHeader>
 
-                    ))}
+                    <TableBody>
 
-                </TableBody>
+                        {transactions.map(op => (
 
-            </Table>
+                            <TableRow key={op.id}>
+
+                                <TableCell>
+                                    <Badge variant={getVariant(op.type)}>
+                                        {op.type}
+                                    </Badge>
+                                </TableCell>
+
+                                <TableCell className="font-medium">
+                                    {op.category}
+                                </TableCell>
+
+                                <TableCell>
+                                    ${op.amount}
+                                </TableCell>
+
+                                <TableCell className="text-muted-foreground">
+                                    {new Date(op.created_at).toLocaleDateString()}
+                                </TableCell>
+
+                                <TableCell className="text-muted-foreground">
+                                    {op.comment}
+                                </TableCell>
+
+                                <TableCell>
+
+                                    <DropdownMenu>
+
+                                        <DropdownMenuTrigger asChild>
+
+                                            <Button variant="ghost" size="sm">
+                                                <MoreHorizontal className="h-4 w-4"/>
+                                            </Button>
+
+                                        </DropdownMenuTrigger>
+
+                                        <DropdownMenuContent align="end">
+
+                                            <DropdownMenuItem
+                                                onClick={() => onEdit(op)}
+                                            >
+                                                <Pencil className="h-4 w-4 mr-2"/>
+                                                Edit
+                                            </DropdownMenuItem>
+
+                                            <DropdownMenuItem
+                                                className="text-destructive"
+                                                onClick={() => onDelete(op)}
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2"/>
+                                                Delete
+                                            </DropdownMenuItem>
+
+                                        </DropdownMenuContent>
+
+                                    </DropdownMenu>
+
+                                </TableCell>
+
+                            </TableRow>
+
+                        ))}
+
+                    </TableBody>
+
+                </Table>
+
+            </div>
 
         </div>
 

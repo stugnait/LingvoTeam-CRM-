@@ -13,10 +13,22 @@ export const financeApi = {
 
     // TRANSACTIONS
 
-    listTransactions: () =>
-        apiFetch<TransactionListResponse>("core/transactions/", {
+    listTransactions: (ordering?: string) => {
+
+        const query = new URLSearchParams()
+
+        if (ordering) {
+            query.append("ordering", ordering)
+        }
+
+        const url = query.toString()
+            ? `core/transactions/?${query.toString()}`
+            : "core/transactions/"
+
+        return apiFetch<TransactionListResponse>(url, {
             method: "GET",
-        }),
+        })
+    },
 
     createTransaction: (body: TransactionFormData) =>
         apiFetch<Transaction>("core/transactions/", {
@@ -77,5 +89,5 @@ export const financeApi = {
         return apiFetch(`stats/pnl/?${params.toString()}`, {
             method: "GET",
         })
-    }
+    },
 }

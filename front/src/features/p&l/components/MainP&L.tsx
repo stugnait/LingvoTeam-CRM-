@@ -40,6 +40,9 @@ export function MainPnL() {
         isDeleteOpen,
         selectedTransaction,
 
+        ordering,
+        changeOrdering,
+
         openAddTransaction,
         openEditTransaction,
         openDeleteTransaction,
@@ -176,6 +179,8 @@ export function MainPnL() {
                             <CardContent className="p-0">
 
                                 <PnLTable
+                                    ordering={ordering}
+                                    changeOrdering={changeOrdering}
                                     transactions={transactions}
                                     onEdit={openEditTransaction}
                                     onDelete={openDeleteTransaction}

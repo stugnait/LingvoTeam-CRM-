@@ -66,7 +66,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.select_related('currency', 'category').all()
     serializer_class = TransactionSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['type', 'currency', 'category', 'category__slug']
+    filterset_fields = ['type', 'currency', 'category', 'category__slug', 'created_at']
     search_fields = ['comment']
     ordering_fields = ['created_at', 'amount']
     ordering = ['-created_at']

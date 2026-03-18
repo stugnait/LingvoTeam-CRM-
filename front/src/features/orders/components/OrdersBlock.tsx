@@ -121,6 +121,10 @@ export function OrdersTable({
         setDetails(null)
     }, [page])
 
+    const isOverdue = (deadline: string) => {
+        return new Date(deadline).getTime() < Date.now()
+    }
+
 
 
     const getStatusVariant = (status: string) =>
@@ -142,6 +146,8 @@ export function OrdersTable({
                         <TableHead className="font-semibold text-foreground h-14">Languages</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Status</TableHead>
                         <TableHead className="font-semibold text-foreground h-14 pr-6">Actions</TableHead>
+                        <TableHead className="font-semibold text-foreground h-14">Deadline</TableHead>
+                        <TableHead className="font-semibold text-foreground h-14">Priority</TableHead>
                     </TableRow>
                 </TableHeader>
 
@@ -151,9 +157,18 @@ export function OrdersTable({
                             {/* MAIN ROW */}
                             <TableRow
                                 className={cn(
-                                    "hover:bg-muted/30 transition-colors",
+                                    "transition-colors",
+
+                                    // звичайний hover
+                                    "hover:bg-muted/30",
+
+                                    // highlight
                                     order.id === highlightId &&
-                                    "bg-primary/10 ring-2 ring-primary animate-pulse"
+                                    "bg-primary/10 ring-2 ring-primary",
+
+                                    // 🔴 OVERDUE — тільки фон, без бордерів
+                                    isOverdue(order.deadline) &&
+                                    "bg-red-500/10 hover:bg-red-500/15"
                                 )}
                             >
                                 <TableCell className="align-middle h-16 pl-6">
@@ -202,6 +217,54 @@ export function OrdersTable({
                                         className="transition-smooth hover-lift"
                                     >
                                         {order.status_name}
+                                    </Badge>
+                                </TableCell>
+                                {/* Deadline */}
+                                <TableCell className="align-middle h-16">
+                                    <div className="flex flex-col">
+        <span
+            className={cn(
+                "text-sm font-medium",
+                isOverdue(order.deadline)
+                    ? "text-red-600"
+                    : "text-foreground"
+            )}
+        >
+            {new Date(order.deadline).toLocaleDateString()}
+        </span>
+                                        <span
+                                            className={cn(
+                                                "text-xs",
+                                                isOverdue(order.deadline)
+                                                    ? "text-red-500"
+                                                    : "text-muted-foreground"
+                                            )}
+                                        >
+            {new Date(order.deadline).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+            })}
+        </span>
+                                    </div>
+                                </TableCell>
+
+                                {/* Priority */}
+                                <TableCell className="align-middle h-16">
+                                    <Badge
+                                        variant="outline"
+                                        className={cn(
+                                            "capitalize font-medium",
+                                            order.priority === "low" && "border-green-500 text-green-500",
+                                            order.priority === "medium" && "border-yellow-500 text-yellow-500",
+                                            order.priority === "high" && "border-orange-500 text-orange-500",
+                                            order.priority === "critical" &&
+                                            "border-red-600 text-red-600 bg-red-500/10"
+                                        )}
+                                    >
+                                        {order.priority === "critical" && (
+                                            <span className="mr-1">⚠️</span>
+                                        )}
+                                        {order.priority}
                                     </Badge>
                                 </TableCell>
 
