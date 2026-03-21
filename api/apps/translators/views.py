@@ -75,20 +75,22 @@ class NumberInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
     pass
 
 class TranslatorFilter(django_filters.FilterSet):
+
     categories = NumberInFilter(
         field_name='translatortraffic__category',
         lookup_expr='in'
     )
 
     language_pair_id = django_filters.NumberFilter(
-        field_name='language_pair_relations__language_pair'
+        field_name='language_pair_relations__language_pair_id'
     )
 
     source_language = django_filters.NumberFilter(
-        field_name='language_pair_relations__language_pair__source_lang'
+        field_name='language_pair_relations__language_pair__source_language'
     )
+
     target_language = django_filters.NumberFilter(
-        field_name='language_pair_relations__language_pair__target_lang'
+        field_name='language_pair_relations__language_pair__target_language'
     )
 
 
