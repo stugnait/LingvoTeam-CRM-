@@ -2,6 +2,8 @@
 
 import { useTranslators } from "../hooks/useTranslators"
 
+import { useOrders } from "@/src/features/orders/hooks/useOrders"
+
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 
@@ -45,7 +47,19 @@ export default function TranslatorsPage() {
         submitTranslator,
         confirmActionHandler,
         closeModals,
+        ordering,
+        setOrdering,
+        sourceLanguage,
+        setSourceLanguage,
+        targetLanguage,
+        setTargetLanguage,
     } = useTranslators()
+
+    const {
+        languages
+    } = useOrders()
+
+
 
     return (
         <>
@@ -85,6 +99,17 @@ export default function TranslatorsPage() {
                             <TranslatorsFilters
                                 search={search}
                                 setSearch={setSearch}
+
+                                ordering={ordering}
+                                setOrdering={setOrdering}
+
+                                sourceLanguage={sourceLanguage}
+                                setSourceLanguage={setSourceLanguage}
+
+                                targetLanguage={targetLanguage}
+                                setTargetLanguage={setTargetLanguage}
+
+                                languages={languages} // масив з API
                             />
                         </CardContent>
                     </Card>

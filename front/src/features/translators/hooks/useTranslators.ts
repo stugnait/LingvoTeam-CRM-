@@ -17,6 +17,15 @@ export function useTranslators() {
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
 
+    // 🔥 NEW: sorting + filters
+    const [ordering, setOrdering] = useState<
+        "orders_count" | "-orders_count" | null
+    >(null)
+
+    const [sourceLanguage, setSourceLanguage] = useState<number | null>(null)
+    const [targetLanguage, setTargetLanguage] = useState<number | null>(null)
+    const [languagePairId, setLanguagePairId] = useState<number | null>(null)
+
     const [confirmAction, setConfirmAction] =
         useState<"delete" | "deactivate" | null>(null)
 
@@ -54,6 +63,10 @@ export function useTranslators() {
 
             const response = await translatorsApi.list({
                 search: debouncedSearch,
+                ordering: ordering || undefined,
+                source_language: sourceLanguage || undefined,
+                target_language: targetLanguage || undefined,
+                language_pair_id: languagePairId || undefined,
             })
 
             setTranslators(response.results)
@@ -66,7 +79,14 @@ export function useTranslators() {
         } finally {
             setLoading(false)
         }
-    }, [debouncedSearch, toast])
+    }, [
+        debouncedSearch,
+        ordering,
+        sourceLanguage,
+        targetLanguage,
+        languagePairId,
+        toast,
+    ])
 
     useEffect(() => {
         loadTranslators()
@@ -151,7 +171,7 @@ export function useTranslators() {
     }
 
     const confirmActionHandler = async () => {
-        if (!selectedTranslator || !confirmAction) {return}
+        if (!selectedTranslator || !confirmAction) return
 
         try {
             await translatorsApi.remove(selectedTranslator.id)
@@ -184,6 +204,19 @@ export function useTranslators() {
 
         search,
         setSearch,
+
+        // 🔥 NEW
+        ordering,
+        setOrdering,
+
+        sourceLanguage,
+        setSourceLanguage,
+
+        targetLanguage,
+        setTargetLanguage,
+
+        languagePairId,
+        setLanguagePairId,
 
         form,
         setForm,
