@@ -69,6 +69,12 @@ const navigation = [
         icon: CheckSquare,
         roles: ["financier"],
     },
+    {
+        name: "Client-Categories",
+        href: "/dashboard/client-categories",
+        icon: CheckSquare,
+        roles: ["admin", "manager"],
+    },
 ]
 
 export function CrmSidebar() {
