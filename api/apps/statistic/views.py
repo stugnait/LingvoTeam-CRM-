@@ -2,7 +2,7 @@ from datetime import timezone, timedelta
 from decimal import Decimal
 
 from django.db.models import Q, Count, Sum, Value, F, ExpressionWrapper, DecimalField
-from django.db.models.functions import Coalesce, Concat, TruncDay
+from django.db.models.functions import Coalesce, Concat, TruncDay, Cast
 from django.utils import timezone
 
 from rest_framework import viewsets, filters
@@ -212,9 +212,17 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         if start_date and end_date:
             order_filters &= Q(managed_orders__created_at__date__range=[start_date, end_date])
 
+        from django.db.models.functions import Cast
+
         stats = User.objects.filter(role__slug='manager').annotate(
             total_orders=Count('managed_orders', filter=order_filters),
-            total_revenue=Coalesce(Sum('managed_orders__page_count', filter=order_filters), Decimal('0.0')),
+            total_revenue=Coalesce(
+                Sum(
+                    Cast('managed_orders__page_count', DecimalField(max_digits=12, decimal_places=2)),
+                    filter=order_filters
+                ),
+                Decimal('0.00')
+            ),
             unpaid_orders_count=Count(
                 'managed_orders',
                 filter=order_filters & ~Q(managed_orders__client_status=PAID_STATUS_ID)
@@ -245,7 +253,13 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         stats = Client.objects.annotate(
             total_orders=Count('order', filter=order_filters),
-            total_revenue=Coalesce(Sum('order__page_count', filter=order_filters), Decimal('0.0')),
+            total_revenue=Coalesce(
+                Sum(
+                    Cast('order__page_count', DecimalField(max_digits=12, decimal_places=2)),
+                    filter=order_filters
+                ),
+                Decimal('0.00')
+            ),
             unpaid_orders_count=Count(
                 'order',
                 filter=order_filters & ~Q(order__client_status=PAID_STATUS_ID)
@@ -275,7 +289,13 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         stats = Translator.objects.annotate(
             total_orders=Count('order', filter=order_filters),
-            total_revenue=Coalesce(Sum('order__page_count', filter=order_filters), Decimal('0.0')),
+            total_revenue=Coalesce(
+                Sum(
+                    Cast('order__page_count', DecimalField(max_digits=12, decimal_places=2)),
+                    filter=order_filters
+                ),
+                Decimal('0.00')
+            ),
             unpaid_orders_count=Count('order', filter=order_filters)
         ).order_by('-total_revenue')
 
@@ -320,10 +340,10 @@ class PnLViewSet(viewsets.ViewSet):
 
         revenue = Decimal(orders_revenue) + Decimal(transactions_income)
 
-
         orders_with_cost = orders.annotate(
             translator_cost_calc=ExpressionWrapper(
-                F('page_count') * F('translator_traffic_id__rate_per_page'),
+                Cast(F('page_count'), DecimalField(max_digits=12, decimal_places=2)) *
+                Cast(F('translator_traffic_id__rate_per_page'), DecimalField(max_digits=12, decimal_places=2)),
                 output_field=DecimalField(max_digits=12, decimal_places=2)
             )
         )
@@ -331,7 +351,10 @@ class PnLViewSet(viewsets.ViewSet):
         cogs_translators = orders_with_cost.aggregate(sum=Sum('translator_cost_calc'))['sum'] or Decimal('0.00')
 
         gross_profit = revenue - cogs_translators
-        gross_margin = (gross_profit / revenue * Decimal('100.0')) if revenue > 0 else Decimal('0.0')
+        gross_margin = (
+            (Decimal(gross_profit) / Decimal(revenue)) * Decimal('100.0')
+            if revenue > 0 else Decimal('0.0')
+        )
 
         opex_agg = Transaction.objects.filter(
             created_at__date__range=[start_date, end_date],
@@ -356,7 +379,10 @@ class PnLViewSet(viewsets.ViewSet):
                 breakdown_data = orders_with_cost.values(name=F('full_pair_name')).annotate(
                     val_revenue=Sum('total_amount'),
                     val_cost=Sum('translator_cost_calc'),
-                    val_profit=Sum('total_amount') - Sum('translator_cost_calc')
+                    val_profit=ExpressionWrapper(
+                        Sum('total_amount') - Sum('translator_cost_calc'),
+                        output_field=DecimalField(max_digits=12, decimal_places=2)
+                    )
                 ).order_by('-val_revenue')
 
             else:
@@ -371,7 +397,10 @@ class PnLViewSet(viewsets.ViewSet):
                     breakdown_data = orders_with_cost.values(name=F(db_field)).annotate(
                         val_revenue=Sum('total_amount'),
                         val_cost=Sum('translator_cost_calc'),
-                        val_profit=Sum('total_amount') - Sum('translator_cost_calc')
+                        val_profit=ExpressionWrapper(
+                            Sum('total_amount') - Sum('translator_cost_calc'),
+                            output_field=DecimalField(max_digits=12, decimal_places=2)
+                        )
                     ).order_by('-val_revenue')
 
         return Response({

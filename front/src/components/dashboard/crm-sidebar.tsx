@@ -31,7 +31,7 @@ const navigation = [
         name: "Tariffs",
         href: "/dashboard/tariffs",
         icon: DollarSign,
-        roles: ["admin"],
+        roles: ["admin", "financier"],
     },
     {
         name: "Translators",

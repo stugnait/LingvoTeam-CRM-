@@ -130,7 +130,7 @@ export const statisticsApi = {
         ).toString()
 
         return apiFetch<PnLResponse>(
-            `stats/dashboard/pnl/?${query}`,
+            `stats/pnl/?${query}`,
             { method: "GET" }
         )
     },
