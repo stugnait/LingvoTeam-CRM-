@@ -8,7 +8,7 @@ class ClientCategorySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'discount_percent']
 
 class ClientSerializer(serializers.ModelSerializer):
-    category_name = serializers.CharField(source='category.name', read_only=True, default="---")
+    category_details = ClientCategorySerializer(source='category', read_only=True)
 
     class Meta:
         model = Client
@@ -18,7 +18,7 @@ class ClientSerializer(serializers.ModelSerializer):
             'email',
             'phone_number',
             'category',
-            'category_name',
+            'category_details',
             'created_at'
         ]
         read_only_fields = ['created_at']
