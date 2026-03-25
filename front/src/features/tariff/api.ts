@@ -27,8 +27,8 @@ export const tariffApi = {
             method: "DELETE",
         }),
 
-    listTariff: () =>
-        apiFetch<TariffsListResponse>("orders/order-traffic/", {
+    listTariff: (page: number = 1) =>
+        apiFetch<TariffsListResponse>(`orders/order-traffic/?page=${page}`, {
             method: "GET",
         }),
 

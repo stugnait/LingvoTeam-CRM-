@@ -30,8 +30,8 @@ export function useTariffs() {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
-
-
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
 
     const [form, setForm] = useState<TariffsFormData>({
         name: "",
@@ -65,7 +65,7 @@ export function useTariffs() {
             })
 
             closeModals()
-            await loadTariffs()
+            await loadTariffs(page)
         } catch {
             toast({
                 title: "Error",
@@ -78,10 +78,12 @@ export function useTariffs() {
     // -------------------------
     // Load tariffs
     // -------------------------
-    const loadTariffs = useCallback(async () => {
+    const loadTariffs = useCallback(async (pageNumber: number = 1) => {
         try {
-            const response = await tariffApi.listTariff()
+            const response = await tariffApi.listTariff(pageNumber)
             setAllTariffs(response.results)
+            setTotalPages(Math.ceil((response.count || 0) / 10))
+            setPage(pageNumber)
         } catch {
             toast({
                 title: "Error",
@@ -90,6 +92,10 @@ export function useTariffs() {
             })
         }
     }, [toast])
+
+    const onPageChange = (newPage: number) => {
+        loadTariffs(newPage)
+    }
 
     // -------------------------
     // Load currencies
@@ -143,7 +149,7 @@ export function useTariffs() {
         const init = async () => {
             setLoading(true)
             await Promise.all([
-                loadTariffs(),
+                loadTariffs(1),
                 loadCurrencies(),
                 loadLanguages(),
                 loadCategories()
@@ -253,7 +259,7 @@ export function useTariffs() {
             }
 
             closeModals()
-            await loadTariffs()
+            await loadTariffs(page)
         } catch {
             toast({
                 title: "Error",
@@ -283,5 +289,8 @@ export function useTariffs() {
         openEditTariff,
         closeModals,
         submitTariff,
+        page,
+        totalPages,
+        onPageChange,
     }
 }
