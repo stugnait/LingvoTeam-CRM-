@@ -11,8 +11,8 @@ import type {
 export const clientsCreationApi = {
 
     // GET /clients/
-    list: (search?: string) =>
-        apiFetch<ClientsListResponse>(`clients/?search=${search ?? ""}`, {
+    list: (page: number = 1, search?: string) =>
+        apiFetch<ClientsListResponse>(`clients/?page=${page}&search=${search ?? ""}`, {
             method: "GET",
         }),
 

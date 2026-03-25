@@ -26,12 +26,18 @@ interface TariffTableProps {
     tariffs: Tariff[]
     onEdit: (tariff: Tariff) => void
     onDelete: (tariff: Tariff) => void
+    page: number
+    totalPages: number
+    onPageChange: (page: number) => void
 }
 
 export function TariffTable({
                                 tariffs,
                                 onEdit,
-                                onDelete
+                                onDelete,
+                                page,
+                                totalPages,
+                                onPageChange
                             }: TariffTableProps) {
     return (
         <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
@@ -172,6 +178,44 @@ export function TariffTable({
                     )}
                 </TableBody>
             </Table>
+
+            <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => onPageChange(page - 1)}
+                >
+                    Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                        const pageNumber = i + 1
+
+                        return (
+                            <Button
+                                key={pageNumber}
+                                size="sm"
+                                variant={page === pageNumber ? "default" : "outline"}
+                                onClick={() => onPageChange(pageNumber)}
+                                className="w-9"
+                            >
+                                {pageNumber}
+                            </Button>
+                        )
+                    })}
+                </div>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages || totalPages === 0}
+                    onClick={() => onPageChange(page + 1)}
+                >
+                    Next
+                </Button>
+            </div>
         </div>
     )
 }

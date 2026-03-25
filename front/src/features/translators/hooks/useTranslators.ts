@@ -17,6 +17,9 @@ export function useTranslators() {
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
 
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
+
     const [confirmAction, setConfirmAction] =
         useState<"delete" | "deactivate" | null>(null)
 
@@ -48,15 +51,17 @@ export function useTranslators() {
     // -------------------------
     // Load translators
     // -------------------------
-    const loadTranslators = useCallback(async () => {
+    const loadTranslators = useCallback(async (pageNumber: number = 1) => {
         try {
             setLoading(true)
 
-            const response = await translatorsApi.list({
+            const response = await translatorsApi.list(pageNumber, {
                 search: debouncedSearch,
             })
 
             setTranslators(response.results)
+            setTotalPages(Math.ceil((response.count || 0) / 10))
+            setPage(pageNumber)
         } catch {
             toast({
                 title: "Error",
@@ -69,8 +74,12 @@ export function useTranslators() {
     }, [debouncedSearch, toast])
 
     useEffect(() => {
-        loadTranslators()
+        loadTranslators(1)
     }, [loadTranslators])
+
+    const onPageChange = (newPage: number) => {
+        loadTranslators(newPage)
+    }
 
     // -------------------------
     // Modal handlers
@@ -140,7 +149,7 @@ export function useTranslators() {
             }
 
             closeModals()
-            await loadTranslators()
+            await loadTranslators(page)
         } catch {
             toast({
                 title: "Error",
@@ -165,7 +174,7 @@ export function useTranslators() {
             })
 
             closeModals()
-            await loadTranslators()
+            await loadTranslators(page)
         } catch {
             toast({
                 title: "Error",
@@ -201,5 +210,8 @@ export function useTranslators() {
         submitTranslator,
         confirmActionHandler,
         closeModals,
+        page,
+        totalPages,
+        onPageChange,
     }
 }

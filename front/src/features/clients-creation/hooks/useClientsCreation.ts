@@ -21,6 +21,9 @@ export function useClientsCreation() {
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
 
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
+
     const [form, setForm] = useState<ClientFormData>({
         name: "",
         email: "",
@@ -38,13 +41,15 @@ export function useClientsCreation() {
     // Load clients
     // -------------------------
 
-    const loadClients = useCallback(async () => {
+    const loadClients = useCallback(async (pageNumber: number = 1) => {
         try {
             setLoading(true)
 
-            const response = await clientsCreationApi.list(debouncedSearch)
+            const response = await clientsCreationApi.list(pageNumber, debouncedSearch)
 
             setClients(response.results)
+            setTotalPages(Math.ceil((response.count || 0) / 10))
+            setPage(pageNumber)
 
         } catch (error) {
 
@@ -60,7 +65,7 @@ export function useClientsCreation() {
     }, [debouncedSearch, toast])
 
     useEffect(() => {
-        loadClients()
+        loadClients(1)
     }, [loadClients])
 
     useEffect(() => {
@@ -70,6 +75,10 @@ export function useClientsCreation() {
 
         return () => clearTimeout(timer)
     }, [search])
+
+    const onPageChange = (newPage: number) => {
+        loadClients(newPage)
+    }
 
     // -------------------------
     // Modal handlers
@@ -96,7 +105,7 @@ export function useClientsCreation() {
         setForm({
             name: client.full_name,
             email: client.email,
-            phone: client.phone_number,
+            phone: client.phone_number || "",
             category: client.category.id
         })
 
@@ -146,7 +155,7 @@ export function useClientsCreation() {
             }
 
             closeModals()
-            await loadClients()
+            await loadClients(page)
 
         } catch (error) {
 
@@ -178,7 +187,7 @@ export function useClientsCreation() {
             })
 
             closeModals()
-            await loadClients()
+            await loadClients(page)
 
         } catch (error) {
 
@@ -209,9 +218,9 @@ export function useClientsCreation() {
         clients,
         loading,
 
-        createClient: clientsCreationApi.create,
-        updateClient: clientsCreationApi.update,
-        deleteClient: clientsCreationApi.remove,
+        page,
+        totalPages,
+        onPageChange,
 
         isFormOpen,
         isDeleteOpen,

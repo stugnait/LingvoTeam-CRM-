@@ -19,6 +19,7 @@ export interface Tariff {
 export interface TariffsListResponse {
     results: Tariff[]
     total: number
+    count: number
 }
 
 export interface TariffsFormData {

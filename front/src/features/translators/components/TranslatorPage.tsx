@@ -45,6 +45,11 @@ export default function TranslatorsPage() {
         submitTranslator,
         confirmActionHandler,
         closeModals,
+
+        // Змінні та функції пагінації
+        page,
+        totalPages,
+        onPageChange,
     } = useTranslators()
 
     return (
@@ -103,6 +108,10 @@ export default function TranslatorsPage() {
                                 translators={translators}
                                 onEdit={openEditTranslator}
                                 onDelete={openDeleteTranslator}
+                                // Передаємо пропси пагінації
+                                page={page}
+                                totalPages={totalPages}
+                                onPageChange={onPageChange}
                             />
                         </CardContent>
                     </Card>

@@ -43,6 +43,9 @@ export function TariffsPage() {
         isDeleteOpen,
         openDeleteTariff,
         confirmDelete,
+        page,
+        totalPages,
+        onPageChange,
     } = useTariffs()
 
     return (
@@ -81,6 +84,9 @@ export function TariffsPage() {
                                 tariffs={tariffs}
                                 onEdit={openEditTariff}
                                 onDelete={openDeleteTariff}
+                                page={page}
+                                totalPages={totalPages}
+                                onPageChange={onPageChange}
                             />
                         </CardContent>
                     </Card>

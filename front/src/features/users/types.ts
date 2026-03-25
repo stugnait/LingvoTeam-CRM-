@@ -30,6 +30,7 @@ export interface UsersFilters {
 export interface UsersListResponse {
     results: User[]
     total: number
+    count: number
 }
 
 export interface UsersQueryParams extends UsersFilters {
