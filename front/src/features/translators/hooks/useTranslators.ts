@@ -31,6 +31,8 @@ export function useTranslators() {
         currency_id: 0,
     })
 
+    const [errors, setErrors] = useState<Partial<Record<keyof TranslatorPayload, string>>>({})
+
     // modals
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
@@ -93,6 +95,7 @@ export function useTranslators() {
             work_type: 0,
             currency_id: 0,
         })
+        setErrors({})
         setIsFormOpen(true)
     }
 
@@ -105,6 +108,7 @@ export function useTranslators() {
             work_type: Number(translator.work_type),
             currency_id: translator.currency_id,
         })
+        setErrors({})
         setIsFormOpen(true)
     }
 
@@ -125,6 +129,7 @@ export function useTranslators() {
         setIsConfirmOpen(false)
         setSelectedTranslator(null)
         setConfirmAction(null)
+        setErrors({})
     }
 
     // -------------------------
@@ -132,6 +137,38 @@ export function useTranslators() {
     // -------------------------
     const submitTranslator = async (data: TranslatorPayload) => {
         try {
+            const newErrors: Partial<Record<keyof TranslatorPayload, string>> = {}
+
+            if (!data.full_name.trim()) {
+                newErrors.full_name = "Full name is required"
+            }
+            if (!data.email.trim()) {
+                newErrors.email = "Email is required"
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+                newErrors.email = "Invalid email format"
+            }
+            if (!data.phone.trim()) {
+                newErrors.phone = "Phone is required"
+            }
+            if (!data.work_type || Number(data.work_type) <= 0) {
+                newErrors.work_type = "Please select a work type"
+            }
+            if (!data.currency_id || Number(data.currency_id) <= 0) {
+                newErrors.currency_id = "Please select a currency"
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors)
+                toast({
+                    title: "Validation error",
+                    description: "Please check the form fields",
+                    variant: "error",
+                })
+                return
+            }
+
+            setErrors({})
+
             if (selectedTranslator) {
                 await translatorsApi.update(selectedTranslator.id, data)
 
@@ -196,6 +233,7 @@ export function useTranslators() {
 
         form,
         setForm,
+        errors,
 
         isFormOpen,
         isConfirmOpen,

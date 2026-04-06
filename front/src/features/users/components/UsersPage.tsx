@@ -34,6 +34,7 @@ export function UsersPage() {
         selectedUser,
         form,
         setForm,
+        errors,
 
         openAddUser,
         openEditUser,
@@ -120,58 +121,73 @@ export function UsersPage() {
                 onSubmit={() => submitUser(form)}
             >
                 <div className="space-y-4">
-                    <Input
-                        placeholder="Full name"
-                        value={form.full_name}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                full_name: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Full name"
+                            value={form.full_name}
+                            className={errors?.full_name ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    full_name: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.full_name && <p className="text-xs text-red-500 mt-1">{errors.full_name}</p>}
+                    </div>
 
-                    <Input
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                email: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Email"
+                            value={form.email}
+                            className={errors?.email ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    email: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                    </div>
 
-                    <Input
-                        placeholder="Phone"
-                        value={form.phone}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                phone: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Phone"
+                            value={form.phone}
+                            className={errors?.phone ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    phone: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                    </div>
 
-                    <Select
-                        value={String(form.role || "")}
-                        onValueChange={(value) =>
-                            setForm(prev => ({
-                                ...prev,
-                                role: Number(value),
-                            }))
-                        }
-                    >
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="1">Admin</SelectItem>
-                            <SelectItem value="2">Manager</SelectItem>
-                            <SelectItem value="3">Editor</SelectItem>
-                            <SelectItem value="4">Finance</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div>
+                        <Select
+                            value={String(form.role || "")}
+                            onValueChange={(value) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    role: Number(value),
+                                }))
+                            }
+                        >
+                            <SelectTrigger className={errors?.role ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="1">Admin</SelectItem>
+                                <SelectItem value="2">Manager</SelectItem>
+                                <SelectItem value="3">Editor</SelectItem>
+                                <SelectItem value="4">Finance</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors?.role && <p className="text-xs text-red-500 mt-1">{errors.role}</p>}
+                    </div>
                 </div>
             </BaseFormModal>
 

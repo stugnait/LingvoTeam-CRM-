@@ -36,6 +36,7 @@ export function TariffsPage() {
         selectedTariff,
         form,
         setForm,
+        errors,
         openAddTariff,
         openEditTariff,
         closeModals,
@@ -106,6 +107,7 @@ export function TariffsPage() {
                     <Input
                         placeholder="Tariff name"
                         value={form.name}
+                        className={errors?.name ? "border-red-500" : ""}
                         onChange={(e) =>
                             setForm(prev => ({
                                 ...prev,
@@ -113,6 +115,7 @@ export function TariffsPage() {
                             }))
                         }
                     />
+                    {errors?.name && <p className="text-xs text-red-500 -mt-2">{errors.name}</p>}
 
                     {/* Language Pair (поки що просто по id, якщо нема pairs endpoint) */}
                     <Select
@@ -124,7 +127,7 @@ export function TariffsPage() {
                             }))
                         }
                     >
-                        <SelectTrigger>
+                        <SelectTrigger className={errors?.language_pair ? "border-red-500" : ""}>
                             <SelectValue placeholder="Language" />
                         </SelectTrigger>
                         <SelectContent>
@@ -138,6 +141,7 @@ export function TariffsPage() {
                             ))}
                         </SelectContent>
                     </Select>
+                    {errors?.language_pair && <p className="text-xs text-red-500 -mt-2">{errors.language_pair}</p>}
 
                     {/* Currency */}
                     <Select
@@ -149,7 +153,7 @@ export function TariffsPage() {
                             }))
                         }
                     >
-                        <SelectTrigger>
+                        <SelectTrigger className={errors?.currency_id ? "border-red-500" : ""}>
                             <SelectValue placeholder="Currency" />
                         </SelectTrigger>
                         <SelectContent>
@@ -163,6 +167,7 @@ export function TariffsPage() {
                             ))}
                         </SelectContent>
                     </Select>
+                    {errors?.currency_id && <p className="text-xs text-red-500 -mt-2">{errors.currency_id}</p>}
 
 
                     {/* Category */}
@@ -175,7 +180,7 @@ export function TariffsPage() {
                             }))
                         }
                     >
-                        <SelectTrigger>
+                        <SelectTrigger className={errors?.category ? "border-red-500" : ""}>
                             <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -189,6 +194,7 @@ export function TariffsPage() {
                             ))}
                         </SelectContent>
                     </Select>
+                    {errors?.category && <p className="text-xs text-red-500 -mt-2">{errors.category}</p>}
 
                     {/* Price per page */}
                     <Input
@@ -196,6 +202,7 @@ export function TariffsPage() {
                         min="1"
                         placeholder="Price per page"
                         value={form.price_per_page}
+                        className={errors?.price_per_page ? "border-red-500" : ""}
                         onChange={(e) => {
                             const value = e.target.value
 
@@ -208,6 +215,7 @@ export function TariffsPage() {
                             }
                         }}
                     />
+                    {errors?.price_per_page && <p className="text-xs text-red-500 -mt-2">{errors.price_per_page}</p>}
 
                     {/* Price per action */}
                     <Input
@@ -215,6 +223,7 @@ export function TariffsPage() {
                         min="1"
                         placeholder="Price per action"
                         value={form.price_per_action}
+                        className={errors?.price_per_action ? "border-red-500" : ""}
                         onChange={(e) => {
                             const value = e.target.value
 
@@ -227,6 +236,7 @@ export function TariffsPage() {
                             }
                         }}
                     />
+                    {errors?.price_per_action && <p className="text-xs text-red-500 -mt-2">{errors.price_per_action}</p>}
 
                 </div>
             </BaseFormModal>

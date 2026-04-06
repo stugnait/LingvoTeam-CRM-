@@ -31,6 +31,8 @@ export function useClientsCreation() {
         category: 0
     })
 
+    const [errors, setErrors] = useState<Partial<Record<keyof ClientFormData, string>>>({})
+
     // modals
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -95,6 +97,8 @@ export function useClientsCreation() {
             category: 0
         })
 
+        setErrors({})
+
         setIsFormOpen(true)
     }
 
@@ -108,6 +112,8 @@ export function useClientsCreation() {
             phone: client.phone_number || "",
             category: client.category.id
         })
+
+        setErrors({})
 
         setIsFormOpen(true)
     }
@@ -123,6 +129,7 @@ export function useClientsCreation() {
         setIsFormOpen(false)
         setIsDeleteOpen(false)
         setSelectedClient(null)
+        setErrors({})
 
     }
 
@@ -133,7 +140,31 @@ export function useClientsCreation() {
     const submitClient = async (data: ClientFormData) => {
 
         try {
+            const newErrors: Partial<Record<keyof ClientFormData, string>> = {}
 
+            if (!data.name.trim()) {
+                newErrors.name = "Full name is required"
+            }
+            if (!data.email.trim()) {
+                newErrors.email = "Email is required"
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+                newErrors.email = "Invalid email format"
+            }
+            if (!data.category) {
+                newErrors.category = "Please select a category"
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors)
+                toast({
+                    title: "Validation error",
+                    description: "Please check the form fields",
+                    variant: "error",
+                })
+                return
+            }
+
+            setErrors({})
             if (selectedClient) {
 
                 await clientsCreationApi.update(selectedClient.id, data)
@@ -228,6 +259,7 @@ export function useClientsCreation() {
 
         form,
         setForm,
+        errors,
 
         search,
         setSearch,

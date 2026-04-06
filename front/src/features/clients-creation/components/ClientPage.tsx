@@ -43,6 +43,7 @@ export function ClientPage() {
 
         form,
         setForm,
+        errors, 
 
         openAddClient,
         openEditClient,
@@ -159,50 +160,65 @@ export function ClientPage() {
 
                 <div className="space-y-4">
 
-                    <Input
-                        placeholder="Client name"
-                        value={form.name}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                name: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Client name"
+                            value={form.name}
+                            className={errors?.name ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    name: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                    </div>
 
-                    <Input
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                email: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Email"
+                            value={form.email}
+                            className={errors?.email ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    email: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                    </div>
 
-                    <Input
-                        placeholder="Phone"
-                        value={form.phone}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                phone: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Phone"
+                            value={form.phone}
+                            className={errors?.phone ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    phone: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                    </div>
 
-                    <Combobox
-                        options={categoryOptions}
-                        value={String(form.category || "")}
-                        onChange={(value) =>
-                            setForm(prev => ({
-                                ...prev,
-                                category: Number(value),
-                            }))
-                        }
-                        placeholder="Select category"
-                    />
+                    <div>
+                        <Combobox
+                            options={categoryOptions}
+                            value={String(form.category || "")}
+                            onChange={(value) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    category: Number(value),
+                                }))
+                            }
+                            placeholder="Select category"
+                        />
+                        {errors?.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
+                    </div>
 
                 </div>
 
