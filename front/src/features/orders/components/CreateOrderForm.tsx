@@ -128,10 +128,45 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [modalOpen, setModalOpen] = useState(false)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
 
+    const [priceCalculated, setPriceCalculated] = useState(false)
+    const [priceData, setPriceData] = useState<any>(null)
+    const [priceLoading, setPriceLoading] = useState(false)
+
     const handleConfirmFiles = async () => {
         if (!files.length) {return}
         await calculateStats(files)
         setFilesConfirmed(true)
+    }
+
+    const handleCalculatePrice = async () => {
+        if (!files.length || !trafficId) return
+
+        try {
+            setPriceLoading(true)
+
+            const formData = new FormData()
+
+            files.forEach(f => formData.append("files", f))
+            formData.append("traffic_id", trafficId)
+
+            if (selectedTranslatorId) {
+                formData.append("translator_id", String(selectedTranslatorId))
+            }
+
+            if (translatorTrafficId) {
+                formData.append("translator_traffic_id", translatorTrafficId)
+            }
+
+            const res = await ordersApi.previewPrice(formData)
+
+            setPriceData(res)
+            setPriceCalculated(true)
+
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setPriceLoading(false)
+        }
     }
 
     const handleAnalyzeImages = async () => {
@@ -192,6 +227,17 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             cancelled = true
         }
     }, [sourceLanguage, targetLanguage, editors])
+
+    useEffect(() => {
+        if (!filesConfirmed) return
+        if (!trafficId) return
+        if (!files.length) return
+
+        // якщо хочеш тільки коли вибраний перекладач — розкоментуй
+        // if (!selectedTranslatorId) return
+
+        handleCalculatePrice()
+    }, [filesConfirmed, trafficId, selectedTranslatorId])
 
     return (
         <WizardModal
@@ -425,6 +471,36 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         </div>
                     )}
                 </div>
+
+                {priceLoading && (
+                    <div className="text-sm text-gray-500">
+                        Calculating price...
+                    </div>
+                )}
+
+                {priceData && !priceLoading && (
+                    <div className="bg-green-50 p-4 rounded-lg text-sm space-y-1">
+                        <p className="font-medium text-green-700">Price Preview</p>
+
+                        <p>Pages: {priceData.pages}</p>
+
+                        <p>
+                            Client price: {priceData.total_client_price} ({priceData.client_price_per_page}/page)
+                        </p>
+
+                        {priceData.translator_rate_per_page && (
+                            <>
+                                <p>
+                                    Translator: {priceData.translator_total} ({priceData.translator_rate_per_page}/page)
+                                </p>
+
+                                <p>
+                                    Margin: {priceData.margin}
+                                </p>
+                            </>
+                        )}
+                    </div>
+                )}
             </WizardStep>
 
             <WizardStep>

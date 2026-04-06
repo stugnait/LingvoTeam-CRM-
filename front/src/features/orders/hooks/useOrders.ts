@@ -51,6 +51,18 @@ export function useOrders() {
 
     const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
 
+    const [pricePreview, setPricePreview] = useState<{
+        total_price: number
+        client_price: number
+        translator_price: number
+        margin: number
+    } | null>(null)
+
+    const [pricePreviewLoading, setPricePreviewLoading] = useState(false)
+
+
+
+
     const initialLoadedRef = useRef(false)
 
     /* ======================
@@ -77,6 +89,53 @@ export function useOrders() {
         })
 
     }, [toast])
+
+
+
+    const previewPrice = useCallback(async (data: {
+        files: File[]
+        traffic_id: number
+        translator_id?: number
+        translator_traffic_id?: number
+        source_language_id?: number
+    }) => {
+        try {
+            setPricePreviewLoading(true)
+
+            const formData = new FormData()
+
+            data.files.forEach(file => formData.append("files", file))
+
+            formData.append("traffic_id", String(data.traffic_id))
+
+            if (data.translator_id) {
+                formData.append("translator_id", String(data.translator_id))
+            }
+
+            if (data.translator_traffic_id) {
+                formData.append("translator_traffic_id", String(data.translator_traffic_id))
+            }
+
+            if (data.source_language_id) {
+                formData.append("source_language_id", String(data.source_language_id))
+            }
+
+            const res = await ordersApi.previewPrice(formData)
+
+            setPricePreview(res)
+
+            return res
+
+        } catch (e) {
+
+            handleError(e, "Failed to calculate price")
+
+        } finally {
+
+            setPricePreviewLoading(false)
+
+        }
+    }, [handleError])
 
 
     /* ======================
@@ -473,7 +532,10 @@ export function useOrders() {
         getTranslatorById,
 
         selectedTranslatorId,
-        setSelectedTranslatorId
+        setSelectedTranslatorId,
+        pricePreview,
+        pricePreviewLoading,
+        previewPrice,
 
     }
 }

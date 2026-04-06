@@ -41,6 +41,17 @@ export const ordersApi = {
             method: "GET",
         }),
 
+    previewPrice: (body: BodyInit) =>
+        apiFetch<{
+            total_price: number
+            client_price: number
+            translator_price: number
+            margin: number
+        }>("orders/calculate-full/", {
+            method: "POST",
+            body,
+        }),
+
     deleteOrder: (id: number) =>
         apiFetch<void>(`orders/${id}/`, {
             method: "DELETE"
