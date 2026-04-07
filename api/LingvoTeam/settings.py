@@ -10,6 +10,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
+    'unmarine-portably-cooper.ngrok-free.dev'
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -42,7 +43,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8000",
     "http://127.0.0.1:8080",
-    "https://9b34dedeca46.ngrok-free.app",
+    "https://unmarine-portably-cooper.ngrok-free.dev",
     "https://secure.wayforpay.com"
 ]
 # Email
@@ -179,3 +180,5 @@ SPECTACULAR_SETTINGS = {
 AUTH_USER_MODEL = 'users.User'
 APPEND_SLASH = False
 ROOT_URLCONF = 'LingvoTeam.urls'
+
+COOKIE_DOMAIN = "localhost"

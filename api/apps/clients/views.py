@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 
+from LingvoTeam import settings
 from ..orders.models import Order, OrderLink, File
 from ..dropbox_services.dropbox_utils import get_dbx
 from ..users.permissions import HasPermission
@@ -143,7 +144,8 @@ class ClientOrderAccessView(APIView):
                     max_age=max_age,
                     httponly=True,
                     samesite='Lax',
-                    secure=False
+                    secure=False,
+                    domain=settings.COOKIE_DOMAIN
                 )
 
                 return response

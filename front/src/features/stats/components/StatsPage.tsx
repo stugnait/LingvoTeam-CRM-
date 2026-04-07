@@ -48,6 +48,8 @@ export function StatsPage() {
         end_date: "",
     })
 
+    const [groupBy, setGroupBy] = useState<"client" | "manager" | "translator" | "language_pair">("client")
+
     // initial load
     useEffect(() => {
         fetchUnpaidOrders()
@@ -61,7 +63,7 @@ export function StatsPage() {
         fetchManagersStats(dates)
         fetchClientsStats(dates)
         fetchTranslatorsStats(dates)
-        fetchPnL({ ...dates })
+        fetchPnL({ ...dates, group_by: groupBy })
     }
 
     return (

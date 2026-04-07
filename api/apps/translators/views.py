@@ -30,6 +30,7 @@ from rest_framework import viewsets
 from rest_framework import status as http_status
 from rest_framework.parsers import MultiPartParser, FormParser
 
+from LingvoTeam import settings
 from apps.dropbox_services.dropbox_utils import get_dbx
 
 from ..dropbox_services.dropbox_utils import get_dbx
@@ -217,7 +218,8 @@ class ExternalOrderAccessView(APIView):
                 max_age=max_age,
                 httponly=True,
                 samesite='Lax',
-                secure=False
+                secure=False,
+                domain=settings.COOKIE_DOMAIN
             )
             return response
 
@@ -279,7 +281,8 @@ class ExternalOrderAccessView(APIView):
                     max_age=max_age,
                     httponly=True,
                     samesite='Lax',
-                    secure=False
+                    secure=False,
+                    domain=settings.COOKIE_DOMAIN
                 )
 
                 return response

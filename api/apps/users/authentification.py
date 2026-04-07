@@ -15,7 +15,8 @@ def set_auth_cookies(response, access_token, refresh_token):
         max_age=int(access_lifetime.total_seconds()),
         httponly=True,
         samesite='Lax',
-        secure=not settings.DEBUG
+        secure=not settings.DEBUG,
+        domain=settings.COOKIE_DOMAIN
     )
 
     response.set_cookie(
@@ -25,6 +26,7 @@ def set_auth_cookies(response, access_token, refresh_token):
         httponly=True,
         samesite='Lax',
         secure=not settings.DEBUG,
+        domain=settings.COOKIE_DOMAIN
     )
 
 class CookieJWTAuthentication(JWTAuthentication):

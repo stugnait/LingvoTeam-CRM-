@@ -33,6 +33,7 @@ from .models import EditorLanguagePairs
 
 from rest_framework import viewsets
 
+
 @extend_schema_view(
     list=extend_schema(
         summary="Список мовних пар редакторів",
@@ -65,14 +66,15 @@ from rest_framework import viewsets
         tags=["Editor Language Pairs"]
     ),
 )
-
 class EditorLanguagePairViewSet(viewsets.ModelViewSet):
     queryset = EditorLanguagePairs.objects.all()
     serializer_class = EditorLanguagePairsSerializer
 
+
 access_lifetime = settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME']
 refresh_lifetime = settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME']
 User = get_user_model()
+
 
 @extend_schema_view(
     get=extend_schema(summary="Деталі користувача (Admin)", tags=["Users Management"]),
@@ -130,7 +132,6 @@ class AdminToggleUserStatusView(APIView):
     partial_update=extend_schema(summary="Частково оновити користувача", tags=["Users Management"]),
     destroy=extend_schema(summary="Видалити користувача", tags=["Users Management"]),
 )
-
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
 
@@ -243,7 +244,8 @@ class UserViewSet(viewsets.ModelViewSet):
         request=UserSelfUpdateSerializer,
         tags=["Profile"]
     )
-    @action(detail=False, methods=['patch'], url_path='user/update', serializer_class=UserSelfUpdateSerializer, permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['patch'], url_path='user/update', serializer_class=UserSelfUpdateSerializer,
+            permission_classes=[IsAuthenticated])
     def update_user(self, request):
         user = request.user
         serializer = self.get_serializer(
@@ -304,23 +306,32 @@ class UserViewSet(viewsets.ModelViewSet):
             try:
                 RefreshToken(refresh_token).blacklist()
             except Exception:
-                pass # поки просто ігнор
+                pass  # поки просто ігнор
 
         resp = Response(
             {"message": "Пароль успішно змінено. Зайдіть знову в акаунт.", "logout": True},
             status=status.HTTP_200_OK
         )
-        resp.delete_cookie("access-token")
-        resp.delete_cookie("refresh-token")
+        resp.delete_cookie(
+            key="access-token",
+            domain=settings.COOKIE_DOMAIN,
+            samesite="Lax"
+        )
+        resp.delete_cookie(
+            key="refresh-token",
+            domain=settings.COOKIE_DOMAIN,
+            samesite="Lax"
+        )
         return resp
 
+
 @extend_schema(
-        summary="Забули пароль?",
-        description="Надсилає посилання для відновлення пароля на email користувача.",
-        request=ForgotPasswordSerializer,
-        responses={200: OpenApiTypes.OBJECT},
-        tags=["Password Reset"]
-    )
+    summary="Забули пароль?",
+    description="Надсилає посилання для відновлення пароля на email користувача.",
+    request=ForgotPasswordSerializer,
+    responses={200: OpenApiTypes.OBJECT},
+    tags=["Password Reset"]
+)
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -349,13 +360,14 @@ class ForgotPasswordView(APIView):
             status=status.HTTP_200_OK
         )
 
+
 @extend_schema(
-        summary="Встановити новий пароль",
-        description="Приймає токен з пошти та новий пароль.",
-        request=ResetPasswordSerializer,
-        responses={200: OpenApiTypes.OBJECT},
-        tags=["Password Reset"]
-    )
+    summary="Встановити новий пароль",
+    description="Приймає токен з пошти та новий пароль.",
+    request=ResetPasswordSerializer,
+    responses={200: OpenApiTypes.OBJECT},
+    tags=["Password Reset"]
+)
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -372,35 +384,51 @@ class ResetPasswordView(APIView):
             status=status.HTTP_200_OK
         )
 
-        response.delete_cookie("access-token")
-        response.delete_cookie("refresh-token")
+        response.delete_cookie(
+            key="access-token",
+            domain=settings.COOKIE_DOMAIN,
+            samesite="Lax"
+        )
+        response.delete_cookie(
+            key="refresh-token",
+            domain=settings.COOKIE_DOMAIN,
+            samesite="Lax"
+        )
 
         return response
 
 
 @extend_schema(
-        summary="Вихід з системи",
-        description="Видаляє HttpOnly cookies з токенами (access-token, refresh-token).",
-        responses={200: OpenApiTypes.OBJECT},
-        tags=["Authentication"]
-    )
+    summary="Вихід з системи",
+    description="Видаляє HttpOnly cookies з токенами (access-token, refresh-token).",
+    responses={200: OpenApiTypes.OBJECT},
+    tags=["Authentication"]
+)
 class LogoutView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         response = Response({"detail": "Logout successful."}, status=status.HTTP_200_OK)
 
-        response.delete_cookie('access-token')
-        response.delete_cookie('refresh-token')
-
+        response.delete_cookie(
+            key="access-token",
+            domain=settings.COOKIE_DOMAIN,
+            samesite="Lax"
+        )
+        response.delete_cookie(
+            key="refresh-token",
+            domain=settings.COOKIE_DOMAIN,
+            samesite="Lax"
+        )
 
         return response
 
+
 @extend_schema(
-        summary="Логін (JWT у Cookies)",
-        responses={200: UserUpdateSerializer},
-        tags=["Authentication"]
-    )
+    summary="Логін (JWT у Cookies)",
+    responses={200: UserUpdateSerializer},
+    tags=["Authentication"]
+)
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -456,7 +484,8 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
                     max_age=int(access_lifetime.total_seconds()),
                     httponly=True,
                     secure=not settings.DEBUG,
-                    samesite='Lax'
+                    samesite='Lax',
+                    domain=settings.COOKIE_DOMAIN
                 )
 
             # Очищуємо тіло відповіді
@@ -464,7 +493,6 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
             response.data.pop('refresh', None)
 
         return response
-
 
 
 @extend_schema(tags=['Authentication'])
@@ -535,4 +563,3 @@ class RegistrationView(generics.CreateAPIView):
             'password': final_password,  # Повертаємо той пароль, який був використаний (або згенерований, або ваш)
             'message': 'Користувача успішно створено.'
         }, status=status.HTTP_201_CREATED)
-
