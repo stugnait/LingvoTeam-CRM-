@@ -30,13 +30,19 @@ import type { Client } from "../types"
 interface ClientTableProps {
     clients: Client[]
     onEdit: (client: Client) => void
-    onDelete: (id: number) => void
+    onDelete: (client: Client) => void
+    page: number
+    totalPages: number
+    onPageChange: (page: number) => void
 }
 
 export function ClientTable({
                                 clients,
                                 onEdit,
-                                onDelete
+                                onDelete,
+                                page,
+                                totalPages,
+                                onPageChange
                             }: ClientTableProps) {
 
     return (
@@ -116,6 +122,40 @@ export function ClientTable({
 
                 </TableBody>
             </Table>
+
+            <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => onPageChange(page - 1)}
+                >
+                    Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }).map((_, i) => (
+                        <Button
+                            key={i + 1}
+                            size="sm"
+                            variant={page === i + 1 ? "default" : "outline"}
+                            onClick={() => onPageChange(i + 1)}
+                            className="w-9"
+                        >
+                            {i + 1}
+                        </Button>
+                    ))}
+                </div>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages || totalPages === 0}
+                    onClick={() => onPageChange(page + 1)}
+                >
+                    Next
+                </Button>
+            </div>
         </div>
     )
 }

@@ -15,6 +15,8 @@ export function useUsers() {
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(false)
 
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
 
     const [confirmAction, setConfirmAction] = useState<"delete" | "deactivate" | null>(null)
 
@@ -42,17 +44,20 @@ export function useUsers() {
     // -------------------------
     // Load users (через API filters)
     // -------------------------
-    const loadUsers = useCallback(async () => {
+    const loadUsers = useCallback(async (pageNumber: number = 1) => {
         try {
             setLoading(true)
 
             const response = await usersApi.list({
                 search: debouncedSearch,
                 role: filters.role,
-                status: filters.status
+                status: filters.status,
+                page: pageNumber
             })
 
             setUsers(response.results)
+            setTotalPages(Math.ceil((response.count || 0) / 10))
+            setPage(pageNumber)
 
         } catch {
             toast({
@@ -66,8 +71,12 @@ export function useUsers() {
     }, [debouncedSearch, filters.role, filters.status, toast])
 
     useEffect(() => {
-        loadUsers()
+        loadUsers(1)
     }, [loadUsers])
+
+    const onPageChange = (newPage: number) => {
+        loadUsers(newPage)
+    }
 
     // -------------------------
     // Modal handlers
@@ -143,7 +152,7 @@ export function useUsers() {
             }
 
             closeModals()
-            await loadUsers()
+            await loadUsers(page)
 
         } catch {
             toast({
@@ -166,7 +175,7 @@ export function useUsers() {
             })
 
             closeModals()
-            await loadUsers()
+            await loadUsers(page)
 
         } catch {
             toast({
@@ -189,7 +198,7 @@ export function useUsers() {
             })
 
             closeModals()
-            await loadUsers()
+            await loadUsers(page)
 
         } catch {
             toast({
@@ -218,6 +227,9 @@ export function useUsers() {
     return {
         users,
         loading,
+        page,
+        totalPages,
+        onPageChange,
 
         filters,
         setFilters,

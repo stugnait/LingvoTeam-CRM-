@@ -53,6 +53,11 @@ export default function TranslatorsPage() {
         setSourceLanguage,
         targetLanguage,
         setTargetLanguage,
+
+        // Змінні та функції пагінації
+        page,
+        totalPages,
+        onPageChange,
     } = useTranslators()
 
     const {
@@ -128,6 +133,10 @@ export default function TranslatorsPage() {
                                 translators={translators}
                                 onEdit={openEditTranslator}
                                 onDelete={openDeleteTranslator}
+                                // Передаємо пропси пагінації
+                                page={page}
+                                totalPages={totalPages}
+                                onPageChange={onPageChange}
                             />
                         </CardContent>
                     </Card>

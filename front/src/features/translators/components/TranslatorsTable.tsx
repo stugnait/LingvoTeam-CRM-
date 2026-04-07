@@ -32,12 +32,18 @@ interface Props {
     translators: Translator[]
     onEdit: (t: Translator) => void
     onDelete: (t: Translator) => void
+    page: number
+    totalPages: number
+    onPageChange: (page: number) => void
 }
 
 export function TranslatorsTable({
                                      translators,
                                      onEdit,
                                      onDelete,
+                                     page,
+                                     totalPages,
+                                     onPageChange
                                  }: Props) {
     return (
         <div className="border border-border rounded-lg bg-card">
@@ -161,8 +167,54 @@ export function TranslatorsTable({
                             </TableCell>
                         </TableRow>
                     ))}
+
+                    {translators.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                                No translators found.
+                            </TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
             </Table>
+
+            <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => onPageChange(page - 1)}
+                >
+                    Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                        const pageNumber = i + 1
+
+                        return (
+                            <Button
+                                key={pageNumber}
+                                size="sm"
+                                variant={page === pageNumber ? "default" : "outline"}
+                                onClick={() => onPageChange(pageNumber)}
+                                className="w-9"
+                            >
+                                {pageNumber}
+                            </Button>
+                        )
+                    })}
+                </div>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages || totalPages === 0}
+                    onClick={() => onPageChange(page + 1)}
+                >
+                    Next
+                </Button>
+            </div>
         </div>
     )
 }

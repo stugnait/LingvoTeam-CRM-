@@ -25,6 +25,8 @@ export function useTranslators() {
     const [sourceLanguage, setSourceLanguage] = useState<number | null>(null)
     const [targetLanguage, setTargetLanguage] = useState<number | null>(null)
     const [languagePairId, setLanguagePairId] = useState<number | null>(null)
+    const [page, setPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(1)
 
     const [confirmAction, setConfirmAction] =
         useState<"delete" | "deactivate" | null>(null)
@@ -57,11 +59,11 @@ export function useTranslators() {
     // -------------------------
     // Load translators
     // -------------------------
-    const loadTranslators = useCallback(async () => {
+    const loadTranslators = useCallback(async (pageNumber: number = 1) => {
         try {
             setLoading(true)
 
-            const response = await translatorsApi.list({
+            const response = await translatorsApi.list(pageNumber, {
                 search: debouncedSearch,
                 ordering: ordering || undefined,
                 source_language: sourceLanguage || undefined,
@@ -70,6 +72,8 @@ export function useTranslators() {
             })
 
             setTranslators(response.results)
+            setTotalPages(Math.ceil((response.count || 0) / 10))
+            setPage(pageNumber)
         } catch {
             toast({
                 title: "Error",
@@ -89,8 +93,12 @@ export function useTranslators() {
     ])
 
     useEffect(() => {
-        loadTranslators()
+        loadTranslators(1)
     }, [loadTranslators])
+
+    const onPageChange = (newPage: number) => {
+        loadTranslators(newPage)
+    }
 
     // -------------------------
     // Modal handlers
@@ -160,7 +168,7 @@ export function useTranslators() {
             }
 
             closeModals()
-            await loadTranslators()
+            await loadTranslators(page)
         } catch {
             toast({
                 title: "Error",
@@ -185,7 +193,7 @@ export function useTranslators() {
             })
 
             closeModals()
-            await loadTranslators()
+            await loadTranslators(page)
         } catch {
             toast({
                 title: "Error",
@@ -234,5 +242,8 @@ export function useTranslators() {
         submitTranslator,
         confirmActionHandler,
         closeModals,
+        page,
+        totalPages,
+        onPageChange,
     }
 }

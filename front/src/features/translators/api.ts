@@ -18,6 +18,7 @@ export const translatorsApi = {
     }) => {
 
         const query = new URLSearchParams()
+        query.append("page", String(page))
 
         // 🔍 search
         if (params?.search) {
@@ -43,7 +44,7 @@ export const translatorsApi = {
         }
 
         const qs = query.toString()
-        const url = qs ? `translators/?${qs}` : "translators/"
+        const url = `translators/?${qs}`
 
         return apiFetch<TranslatorListResponse>(url, {
             method: "GET",

@@ -29,9 +29,10 @@ export function ClientPage() {
 
     const {
         clients,
-        createClient,
-        updateClient,
-        deleteClient,
+        loading,
+        page,
+        totalPages,
+        onPageChange,
 
         search,
         setSearch,
@@ -58,6 +59,11 @@ export function ClientPage() {
         value: String(cat.id),
         label: cat.name,
     }))
+
+    const categoryMap = categories?.reduce((acc, cat) => {
+        acc[cat.id] = cat.name
+        return acc
+    }, {} as Record<number, string>)
 
     return (
         <>
@@ -128,6 +134,9 @@ export function ClientPage() {
                                         openDeleteClient(client)
                                     }
                                 }}
+                                page={page}
+                                totalPages={totalPages}
+                                onPageChange={onPageChange}
                             />
 
                         </CardContent>
