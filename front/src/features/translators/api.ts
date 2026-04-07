@@ -9,13 +9,38 @@ import type {
 export const translatorsApi = {
 
     // GET /translators/?search=
-    list: (page: number = 1, params?: { search?: string }) => {
+    list: (params?: {
+        search?: string
+        ordering?: "orders_count" | "-orders_count" | "created_at" | "-created_at"
+        source_language?: number
+        target_language?: number
+        language_pair_id?: number
+    }) => {
 
         const query = new URLSearchParams()
         query.append("page", String(page))
 
+        // 🔍 search
         if (params?.search) {
             query.append("search", params.search)
+        }
+
+        // 📊 sorting
+        if (params?.ordering) {
+            query.append("ordering", params.ordering)
+        }
+
+        // 🌐 filters
+        if (params?.source_language) {
+            query.append("source_language", String(params.source_language))
+        }
+
+        if (params?.target_language) {
+            query.append("target_language", String(params.target_language))
+        }
+
+        if (params?.language_pair_id) {
+            query.append("language_pair_id", String(params.language_pair_id))
         }
 
         const qs = query.toString()
@@ -31,6 +56,7 @@ export const translatorsApi = {
         apiFetch<Translator>(`translators/${id}/`, {
             method: "GET",
         }),
+
 
     // POST /translators/
     create: (data: TranslatorPayload) =>

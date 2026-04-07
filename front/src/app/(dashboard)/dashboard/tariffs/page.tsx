@@ -1,5 +1,5 @@
-import { TariffsPage } from "@/src/features/tariff/components/TariffsPage"
+import { StatsPage } from "@/src/features/stats/components/StatsPage"
 
 export default function Page() {
-    return <TariffsPage />
+    return <StatsPage />
 }

@@ -401,6 +401,51 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return {"total_stats": total_stats}
 
+    @action(detail=False, methods=['post'], url_path='calculate-full', parser_classes=[MultiPartParser])
+    def calculate_full(self, request):
+        files = request.FILES.getlist('files')
+        traffic_id = request.data.get('traffic_id')
+        translator_id = request.data.get('translator_id')
+
+        if not files or not traffic_id:
+            return Response({"detail": "files and traffic_id required"}, status=400)
+
+        # 1. Аналіз файлів
+        total_pages = 0
+
+        for f in files:
+            f.seek(0)
+            stats = analyze_file_content(f)
+            total_pages += stats["pages"]
+
+        # 2. Отримуємо тариф компанії
+        traffic = get_object_or_404(OrderTraffic, id=traffic_id)
+
+        client_price = Decimal(total_pages) * Decimal(traffic.price_per_page)
+
+        # 3. Отримуємо тариф перекладача
+        translator_rate = None
+        margin = None
+
+        if translator_id:
+            tt = TranslatorTraffic.objects.filter(
+                translator_id=translator_id,
+                language_pair_id=traffic.language_pair_id
+            ).first()
+
+            if tt and tt.rate_per_page:
+                translator_rate = Decimal(tt.rate_per_page)
+                margin = (client_price - (translator_rate * total_pages))
+
+        return Response({
+            "pages": total_pages,
+            "client_price_per_page": str(traffic.price_per_page),
+            "total_client_price": str(client_price),
+            "translator_rate_per_page": str(translator_rate) if translator_rate else None,
+            "translator_total": str(translator_rate * total_pages) if translator_rate else None,
+            "margin": str(margin) if margin else None,
+        })
+
     @extend_schema(
         summary="Відхилити переклад",
         description="Метод для редактора. Змінює статус на 'Відхилено' та надсилає email менеджеру.",
