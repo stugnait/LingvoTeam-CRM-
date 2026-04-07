@@ -60,6 +60,7 @@ export interface TranslatorPayload {
 export interface TranslatorListResponse {
     results: Translator[]
     total: number
+    count: number
 }
 
 /* =========================================================

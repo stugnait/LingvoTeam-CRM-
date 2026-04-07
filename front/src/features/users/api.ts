@@ -8,9 +8,14 @@ export const usersApi = {
         search?: string
         role?: string
         status?: boolean | null
+        page?: number
     }) => {
 
         const query = new URLSearchParams()
+
+        if (params?.page) {
+            query.append("page", params.page.toString())
+        }
 
         if (params?.search) {
             query.append("search", params.search)

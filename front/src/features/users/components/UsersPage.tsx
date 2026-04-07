@@ -23,6 +23,9 @@ import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
 export function UsersPage() {
     const {
         users,
+        page,
+        totalPages,
+        onPageChange,
         filters,
         setFilters,
 
@@ -99,6 +102,9 @@ export function UsersPage() {
                                     if (user) {openDeleteUser(user)}
                                 }}
                                 onDeactivate={openDeactivateUser}
+                                page={page}
+                                totalPages={totalPages}
+                                onPageChange={onPageChange}
                             />
                         </CardContent>
                     </Card>
