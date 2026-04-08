@@ -31,7 +31,8 @@ export default function OrdersPage() {
         downloadOrderTargetFiles,
         page,
         totalPages,
-        onPageChange
+        onPageChange,
+        refreshTranslators
     } = useOrders()
 
     // Modal
@@ -227,6 +228,8 @@ export default function OrdersPage() {
                 currencies={currencies || []}
                 translators={translators || []}
                 tariffs={traffics || []}
+
+                onRefreshTranslators={refreshTranslators}
             />
         </>
     )

@@ -13,6 +13,12 @@ import {
     DollarSign,
 } from "lucide-react"
 
+import { useTranslators } from "@/src/features/translators/hooks/useTranslators"
+import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
+import { Input } from "@/src/components/ui/input"
+import { Button } from "@/src/components/ui/button"
+import { UserPlus } from "lucide-react"
+
 import { Combobox } from "@/src/components/ui/Combobox"
 import { TranslatorSelect } from "@/src/components/ui/TranslatorSelect"
 import { FileUpload } from "@/src/components/ui/FileUpload"
@@ -64,6 +70,7 @@ interface CreateOrderModalProps {
     setComment: (value: string) => void
     priority: Priority | undefined
     setPriority: (value: Priority) => void
+    onRefreshTranslators?: () => Promise<void>
 }
 
 type EditorOption = {
@@ -110,7 +117,19 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         setComment,
         priority,
         setPriority,
+        onRefreshTranslators, // Дістали нашу функцію з пропсів
     } = props
+
+    // Додаємо логіку створення перекладача
+    const {
+        form, setForm, isFormOpen, openAddTranslator, closeModals, submitTranslator
+    } = useTranslators()
+
+    const handleQuickCreateTranslator = async () => {
+        await submitTranslator(form)
+        if (onRefreshTranslators) await onRefreshTranslators()
+        closeModals()
+    }
 
     const {
         calculateStats,
@@ -124,7 +143,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
 
-    const [editingOrder, setEditingOrder] = useState<Order | null>(null)
+    const [editingOrder, setEditingOrder] = useState<any | null>(null)
     const [modalOpen, setModalOpen] = useState(false)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
 
@@ -240,36 +259,37 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     }, [filesConfirmed, trafficId, selectedTranslatorId])
 
     return (
-        <WizardModal
-            open={open}
-            onOpenChange={onOpenChange}
-            title={mode === "edit" ? "Edit Order" : "Create New Order"}
-            steps={[
-                { title: "Client & Files" },
-                { title: "Tariff" },
-                { title: "Assignment" },
-                { title: "Deadline" },
-            ]}
-            isLoading={loading}
-            onSubmit={() => onSubmit()}
-        >
-            <WizardStep>
-                <div className="space-y-6">
-                    <div>
-                        <label className="flex items-center gap-2 text-sm font-medium">
-                            <User className="h-4 w-4 text-blue-600" />
-                            Client *
-                        </label>
-                        <Combobox
-                            value={clientId}
-                            onChange={setClientId}
-                            placeholder="Select client"
-                            options={clients.map((c) => ({
-                                value: String(c.id),
-                                label: c.full_name,
-                            }))}
-                        />
-                    </div>
+        <>
+            <WizardModal
+                open={open}
+                onOpenChange={onOpenChange}
+                title={mode === "edit" ? "Edit Order" : "Create New Order"}
+                steps={[
+                    { title: "Client & Files" },
+                    { title: "Tariff" },
+                    { title: "Assignment" },
+                    { title: "Deadline" },
+                ]}
+                isLoading={loading}
+                onSubmit={() => onSubmit()}
+            >
+                <WizardStep>
+                    <div className="space-y-6">
+                        <div>
+                            <label className="flex items-center gap-2 text-sm font-medium">
+                                <User className="h-4 w-4 text-blue-600" />
+                                Client *
+                            </label>
+                            <Combobox
+                                value={clientId}
+                                onChange={setClientId}
+                                placeholder="Select client"
+                                options={clients.map((c) => ({
+                                    value: String(c.id),
+                                    label: c.full_name,
+                                }))}
+                            />
+                        </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <Combobox
@@ -412,13 +432,25 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 </div>
             </WizardStep>
 
-            <WizardStep>
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <Users className="h-4 w-4 text-blue-600" />
-                            Translator
-                        </label>
+                <WizardStep>
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                    <Users className="h-4 w-4 text-blue-600" />
+                                    Translator
+                                </label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-blue-600 hover:bg-blue-50"
+                                    onClick={openAddTranslator}
+                                >
+                                    <UserPlus className="h-3.5 w-3.5 mr-1" />
+                                    Quick Create
+                                </Button>
+                            </div>
 
                         <TranslatorSelect
                             value={selectedTranslatorId}
@@ -528,22 +560,62 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         />
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="text-sm font-medium mb-2">Order Summary</h4>
-                        <div className="space-y-1 text-sm text-gray-600">
-                            <p>• Client: {clients.find((c) => String(c.id) === clientId)?.full_name || "Not selected"}</p>
-                            <p>• Files: {files.length} file(s)</p>
-                            <p>
-                                • Languages: {languages.find((l) => String(l.id) === sourceLanguage)?.name || "?"} →{" "}
-                                {languages.find((l) => String(l.id) === targetLanguage)?.name || "?"}
-                            </p>
-                            <p>• Tariff: {tariffs?.find((t) => String(t.id) === trafficId)?.name || "Not selected"}</p>
-                            <p>• Priority: {priority || "none"}</p>
-                            <p>• Deadline: {deadline?.toLocaleDateString() || "Not set"}</p>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h4 className="text-sm font-medium mb-2">Order Summary</h4>
+                            <div className="space-y-1 text-sm text-gray-600">
+                                <p>• Client: {clients.find((c) => String(c.id) === clientId)?.full_name || "Not selected"}</p>
+                                <p>• Files: {files.length} file(s)</p>
+                                <p>
+                                    • Languages: {languages.find((l) => String(l.id) === sourceLanguage)?.name || "?"} →{" "}
+                                    {languages.find((l) => String(l.id) === targetLanguage)?.name || "?"}
+                                </p>
+                                <p>• Tariff: {tariffs?.find((t) => String(t.id) === trafficId)?.name || "Not selected"}</p>
+                                <p>• Priority: {priority || "none"}</p>
+                                <p>• Deadline: {deadline?.toLocaleDateString() || "Not set"}</p>
+                            </div>
                         </div>
                     </div>
+                </WizardStep>
+            </WizardModal>
+
+            <BaseFormModal
+                open={isFormOpen}
+                onOpenChange={(open) => !open && closeModals()}
+                title="Create New Translator"
+                submitLabel="Save"
+                onSubmit={handleQuickCreateTranslator}
+            >
+                <div className="space-y-4 pt-2">
+                    <Input
+                        placeholder="Full name"
+                        value={form.full_name}
+                        onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
+                    />
+                    <Input
+                        placeholder="Email"
+                        value={form.email}
+                        onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                    <Input
+                        placeholder="Phone"
+                        value={form.phone}
+                        onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input
+                            placeholder="Work type"
+                            value={form.work_type}
+                            onChange={(e) => setForm(prev => ({ ...prev, work_type: Number(e.target.value) }))}
+                        />
+                        <Input
+                            placeholder="Currency ID"
+                            type="number"
+                            value={form.currency_id}
+                            onChange={(e) => setForm(prev => ({ ...prev, currency_id: Number(e.target.value) }))}
+                        />
+                    </div>
                 </div>
-            </WizardStep>
-        </WizardModal>
+            </BaseFormModal>
+        </>
     )
 }
