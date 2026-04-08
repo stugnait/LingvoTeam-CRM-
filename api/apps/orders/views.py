@@ -1111,8 +1111,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = serializer.instance
         request = self.request
 
-        is_editor = request.user.is_authenticated and (
-                request.user.is_staff or getattr(request.user, 'role_id', None) == 2
+        # Перевіряємо, чи є користувач адміном, менеджером (1) або редактором (2)
+        has_internal_access = request.user.is_authenticated and (
+                request.user.is_staff or getattr(request.user, 'role_id', None) in [1, 2]
         )
 
         provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
@@ -1122,8 +1123,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         if provided_password and link_obj:
             is_password_valid = secrets.compare_digest(link_obj.password, provided_password)
 
-        if not (is_editor or is_password_valid):
-            raise PermissionDenied("У вас немає доступу (потрібна роль Editor або вірний пароль).")
+        # Якщо немає ані внутрішнього доступу, ані правильного пароля — блокуємо
+        if not (has_internal_access or is_password_valid):
+            raise PermissionDenied("У вас немає доступу (потрібна роль Менеджера/Редактора або вірний пароль).")
 
         instance = serializer.instance
 

@@ -1,3 +1,5 @@
+import {TaskPriority, TaskStatus} from "@/src/features/editor/types";
+
 export interface CreateOrderPayload {
     client_id: number
     source_language: number
@@ -337,4 +339,65 @@ export interface AnalyzeUploadedImagesResponse {
     total_images_found: number
     total_detected_symbols_from_images: number
     results: AnalyzeUploadedImageFileResult[]
+}
+
+export interface KanbanTask {
+    id: string
+
+    title: string
+    description?: string
+
+    status: TaskStatus
+    status_id: number
+
+    priority: TaskPriority
+
+    deadline?: string
+    client_id: number
+
+    assignee?: {
+        id: number
+        name: string
+        avatar?: string
+    } | null
+
+    tags: string[]
+    subtasks: any[] // 🔥 щоб не падало
+}
+
+export interface KanbanColumn {
+    id: string
+    title: string
+    status: TaskStatus
+    status_id: number
+    taskIds: string[]
+    color: string
+    icon: React.ReactNode
+}
+
+// Helper to map status_id to TaskStatus
+export const statusIdToTaskStatus = (status_id: number): TaskStatus => {
+    const mapping: Record<number, TaskStatus> = {
+        1: "planned",
+        2: "todo",
+        3: "in_progress",
+        4: "reject",
+        5: "pause",
+        6: "done",
+    }
+
+    return mapping[status_id] || "todo"
+}
+
+export const taskStatusToStatusId = (status: TaskStatus): number => {
+    const mapping: Record<TaskStatus, number> = {
+        planned: 1,
+        todo: 2,
+        in_progress: 3,
+        reject: 4,
+        pause: 5,
+        done: 6,
+    }
+
+    return mapping[status]
 }
