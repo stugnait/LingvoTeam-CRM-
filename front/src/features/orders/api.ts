@@ -36,10 +36,13 @@ export const ordersApi = {
             method: "GET",
         }),
 
-    listOrders: (page = 1) =>
-        apiFetch<OrderListResponse>(`orders/?page=${page}`, {
+    // Додаємо параметр onlyMine
+    listOrders: (page = 1, onlyMine = false) => {
+        const query = `?page=${page}${onlyMine ? '&my_orders=true' : ''}`
+        return apiFetch<OrderListResponse>(`orders/${query}`, {
             method: "GET",
-        }),
+        })
+    },
 
     previewPrice: (body: BodyInit) =>
         apiFetch<{

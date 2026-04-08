@@ -46,11 +46,8 @@ interface OrdersKanbanBoardProps {
 
 export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: OrdersKanbanBoardProps) {
     const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
-
-    // 👉 ДОДАНО: Локальний стан для оптимістичного оновлення (щоб картка не стрибала назад)
     const [localOrders, setLocalOrders] = useState(orders)
 
-    // 👉 ДОДАНО: Синхронізуємо локальний стан з даними від сервера, коли вони приходять
     useEffect(() => {
         setLocalOrders(orders)
     }, [orders])
@@ -61,11 +58,32 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
         })
     )
 
-    // Змінено `orders` на `localOrders`
+    // Форматуємо ордери: створюємо масив карток
     const formattedTasks = useMemo<KanbanTask[]>(() => {
-        return localOrders.map(order => {
-            let frontendStatus = 'all_orders';
+        const tasks: any[] = [];
 
+        localOrders.forEach(order => {
+            const baseTask = {
+                title: order.language_pair_name || `Order #${order.id}`,
+                priority: (order.priority?.toLowerCase() || 'medium') as 'low'|'medium'|'high'|'critical',
+                description: order.client_comment || '',
+                client_id: order.client_id,
+                language_pair_id: order.language_pair_id || 'N/A',
+                tags: [],
+                dueDate: order.deadline,
+                assignee: order.translator_name ? { name: order.translator_name, avatar: undefined } : undefined
+            };
+
+            // 1. ЗАВЖДИ створюємо картку-копію для колонки "All Orders"
+            // Використовуємо від'ємний ID, щоб уникнути конфлікту ID під час перетягування
+            tasks.push({
+                ...baseTask,
+                id: -order.id,
+                status: 'all_orders'
+            });
+
+            // 2. Створюємо основну картку для інших колонок, ТІЛЬКИ ЯКЩО статус співпадає
+            let frontendStatus = '';
             if (order.status_id === 6) frontendStatus = 'to_do';
             else if (order.status_id === 5) frontendStatus = 'planned';
             else if (order.status_id === 7) frontendStatus = 'in_progress';
@@ -73,19 +91,16 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
             else if (order.status_id === 3) frontendStatus = 'rejected';
             else if (order.status_id === 2) frontendStatus = 'done';
 
-            return {
-                id: order.id,
-                title: order.language_pair_name || `Order #${order.id}`,
-                priority: (order.priority?.toLowerCase() || 'medium') as 'low'|'medium'|'high'|'critical',
-                description: order.client_comment || '',
-                client_id: order.client_id,
-                language_pair_id: order.language_pair_id || 'N/A',
-                tags: [],
-                status: frontendStatus,
-                dueDate: order.deadline,
-                assignee: order.translator_name ? { name: order.translator_name, avatar: undefined } : undefined
+            if (frontendStatus) {
+                tasks.push({
+                    ...baseTask,
+                    id: order.id, // Оригінальний позитивний ID
+                    status: frontendStatus
+                });
             }
-        })
+        });
+
+        return tasks;
     }, [localOrders])
 
     const activeTask = activeTaskId ? formattedTasks.find(t => String(t.id) === activeTaskId) : null
@@ -123,6 +138,7 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
 
         const currentTask = formattedTasks.find(t => t.id === taskId)
 
+        // Блокуємо будь-які спроби потягнути з/в All Orders
         if (currentTask?.status === 'all_orders' || newStatus === 'all_orders') {
             return;
         }
@@ -131,7 +147,6 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
             const newStatusIdDb = STATUS_DB_MAP[newStatus];
 
             if (newStatusIdDb) {
-                // 👉 1. Миттєво оновлюємо UI локально (картка стає на нове місце миттєво)
                 setLocalOrders(prevOrders =>
                     prevOrders.map(order =>
                         order.id === taskId
@@ -140,11 +155,9 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                     )
                 );
 
-                // 👉 2. Відправляємо запит на бекенд у фоні
                 updateOrder(taskId, { status_id: newStatusIdDb }).catch((error) => {
-                    // Якщо сталася помилка на сервері, можна повернути старий статус
                     console.error("Помилка при зміні статусу:", error);
-                    setLocalOrders(orders); // Відкат до старих даних з бекенду
+                    setLocalOrders(orders);
                 });
             }
         }
@@ -168,7 +181,8 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                                 key={column.id}
                                 column={column as any}
                                 tasks={columnTasks}
-                                onTaskOpen={onTaskOpen}
+                                // 👉 Передаємо Math.abs, щоб при кліку на копію з All Orders все одно відкривався правильний ордер
+                                onTaskOpen={(id) => onTaskOpen(Math.abs(id))}
                             />
                         )
                     })}
@@ -192,7 +206,8 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                                 </h3>
                             </div>
                             <div className="text-xs text-gray-500">
-                                Order #{activeTask.id} • Client #{activeTask.client_id}
+                                {/* 👉 Math.abs щоб юзер не бачив Order #-15 під час перетягування */}
+                                Order #{Math.abs(Number(activeTask.id))} • Client #{activeTask.client_id}
                             </div>
 
                             {activeTask.status === 'all_orders' && (

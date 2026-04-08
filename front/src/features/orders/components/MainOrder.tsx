@@ -11,9 +11,8 @@ import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Priority } from "@/src/components/ui/PrioritySelector"
 import { cn } from "@/src/lib/utils"
 
-// Імпортуємо дошку та модалку для детальної інформації
 import OrdersKanbanBoard from "./OrdersKanbanBoard"
-import { TaskModal } from "@/src/components/modals/jira/InfoModal" // 👉 ДОДАНО ІМПОРТ
+import { TaskModal } from "@/src/components/modals/jira/InfoModal"
 
 export default function OrdersPage() {
     const {
@@ -21,7 +20,7 @@ export default function OrdersPage() {
         updateOrder,
         loading,
         orders,
-        loadOrderDetails,
+        loadOrderDetails, // <--- Ця функція повертає дані для розкриття рядка в таблиці
         languagePairs,
         translatorsCache,
         clients,
@@ -36,21 +35,20 @@ export default function OrdersPage() {
         downloadOrderTargetFiles,
         page,
         totalPages,
-        onPageChange
+        onPageChange,
+        loadOrders,
+        isOnlyMineFilter,
     } = useOrders()
 
-    // Стан для перемикання вигляду (таблиця або канбан)
     const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
 
-    // Стан для створення/редагування ордера
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingOrder, setEditingOrder] = useState<any | null>(null)
 
-    // 👉 ДОДАНО: Стан для перегляду ДЕТАЛЬНОЇ ІНФОРМАЦІЇ ордера (TaskModal)
+    // Стан для перегляду ДЕТАЛЬНОЇ ІНФОРМАЦІЇ ордера (модалка для Kanban дошки)
     const [viewingOrder, setViewingOrder] = useState<any | null>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
-    // Form state
     const [clientId, setClientId] = useState("")
     const [sourceLanguage, setSourceLanguage] = useState("")
     const [targetLanguage, setTargetLanguage] = useState("")
@@ -150,15 +148,14 @@ export default function OrdersPage() {
         setIsModalOpen(false)
     }
 
-    // 👉 ДОДАНО: Функція, яка відкриває детальну інфу при кліку на картку/рядок
-    const handleViewDetails = (id: number) => {
+    // 👉 ФУНКЦІЯ ДЛЯ ДОШКИ: Відкриває модальне вікно картки
+    const handleViewDetailsBoard = (id: number) => {
         const order = orders.find(o => o.id === id)
         if (order) {
             setViewingOrder(order)
             setIsViewModalOpen(true)
         }
-        // Залишаємо виклик loadOrderDetails на випадок, якщо він довантажує якісь дані
-        loadOrderDetails(id)
+        loadOrderDetails(id) // завантажуємо додаткові деталі у фоні
     }
 
     return (
@@ -175,7 +172,6 @@ export default function OrdersPage() {
             </div>
 
             <div className="space-y-6 w-full min-w-0 overflow-hidden px-1">
-                {/* Панель з перемикачем вигляду */}
                 <div className="flex justify-start pt-4 pl-4">
                     <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                         <button
@@ -205,7 +201,6 @@ export default function OrdersPage() {
                     </div>
                 </div>
 
-                {/* Умовний рендер: Таблиця або Канбан-дошка */}
                 <div className="w-full min-w-0 pb-6">
                     {viewMode === "table" ? (
                         <OrdersTable
@@ -213,7 +208,12 @@ export default function OrdersPage() {
                             page={page}
                             totalPages={totalPages}
                             onPageChange={onPageChange}
-                            onOpen={handleViewDetails} // 👉 Змінено на handleViewDetails
+                            isOnlyMineFilter={isOnlyMineFilter}
+                            onFilterChange={(onlyMine) => loadOrders(1, onlyMine)}
+
+                            // 👉 ДЛЯ ТАБЛИЦІ: передаємо loadOrderDetails, щоб рядок розгортався вниз!
+                            onOpen={loadOrderDetails}
+
                             languagePairs={languagePairs}
                             translatorsCache={translatorsCache}
                             highlightId={activeHighlightId}
@@ -227,13 +227,14 @@ export default function OrdersPage() {
                         <OrdersKanbanBoard
                             orders={orders}
                             updateOrder={updateOrder}
-                            onTaskOpen={handleViewDetails} // 👉 Змінено на handleViewDetails
+
+                            // 👉 ДЛЯ ДОШКИ: передаємо handleViewDetailsBoard, щоб відкрити модалку!
+                            onTaskOpen={handleViewDetailsBoard}
                         />
                     )}
                 </div>
             </div>
 
-            {/* Модалка для СТВОРЕННЯ/РЕДАГУВАННЯ */}
             <CreateOrderModal
                 open={isModalOpen}
                 onOpenChange={setIsModalOpen}
@@ -273,7 +274,6 @@ export default function OrdersPage() {
                 tariffs={traffics || []}
             />
 
-            {/* 👉 ДОДАНО: Модалка для ДЕТАЛЬНОЇ ІНФОРМАЦІЇ */}
             {viewingOrder && (
                 <TaskModal
                     open={isViewModalOpen}
