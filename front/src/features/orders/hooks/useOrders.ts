@@ -167,6 +167,7 @@ export function useOrders() {
             const res = await ordersApi.listOrders(pageNumber, onlyMine)
 
             setOrders(res.results)
+            setOrders([...res.results].reverse())
             setTotalPages(Math.ceil(res.count / 10))
             setPage(pageNumber)
             setIsOnlyMineFilter(onlyMine) // Оновлюємо стейт фільтра
@@ -193,6 +194,23 @@ export function useOrders() {
             setLoading(false)
         }
     }, [handleError, languagePairs])
+
+
+
+    const refreshTranslators = useCallback(async () => {
+        try {
+            const res = await ordersApi.list()
+            setTranslators(res.results)
+
+            const cache: Record<number, Translator> = {}
+            res.results.forEach(t => {
+                cache[t.id] = t
+            })
+            setTranslatorsCache(cache)
+        } catch (e) {
+            handleError(e, "Failed to refresh translators")
+        }
+    }, [handleError])
 
 
     /* ======================
@@ -267,6 +285,7 @@ export function useOrders() {
             const res = await ordersApi.create(formData)
             setOrder(res)
             handleSuccess("Order created", `Order #${res.order_id}`)
+            await loadOrders(1)
             router.push("/dashboard/orders")
             return res
         } catch (e) {
@@ -275,7 +294,7 @@ export function useOrders() {
         } finally {
             setLoading(false)
         }
-    }, [handleError, handleSuccess, router])
+    }, [handleError, handleSuccess, router, loadOrders])
 
 
     /* ======================
@@ -400,6 +419,7 @@ export function useOrders() {
         downloadOrderTargetFiles,
 
         loadInitialData,
+        refreshTranslators,
         onPageChange,
         getTranslatorById,
 

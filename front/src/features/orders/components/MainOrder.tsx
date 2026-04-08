@@ -38,6 +38,7 @@ export default function OrdersPage() {
         onPageChange,
         loadOrders,
         isOnlyMineFilter,
+        refreshTranslators
     } = useOrders()
 
     const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
@@ -272,6 +273,8 @@ export default function OrdersPage() {
                 currencies={currencies || []}
                 translators={translators || []}
                 tariffs={traffics || []}
+
+                onRefreshTranslators={refreshTranslators}
             />
 
             {viewingOrder && (
