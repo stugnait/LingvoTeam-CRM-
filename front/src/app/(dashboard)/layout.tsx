@@ -1,4 +1,6 @@
-import type React from "react"
+"use client"
+
+import { useState } from "react"
 import { CrmSidebar } from "@/src/components/dashboard/crm-sidebar"
 
 export default function DashboardLayout({
@@ -6,13 +8,26 @@ export default function DashboardLayout({
                                         }: {
     children: React.ReactNode
 }) {
-    return (
-        <div className="flex h-screen overflow-hidden">
-            {/* Sidebar - persists across navigation */}
-            <CrmSidebar />
+    const [collapsed, setCollapsed] = useState(false)
 
-            {/* Main content area */}
-            <div className="flex flex-1 flex-col overflow-y-auto pl-64">{children}</div>
+    return (
+        <div className="flex">
+            {/* SIDEBAR */}
+            <CrmSidebar
+                collapsed={collapsed}
+                toggle={() => setCollapsed(prev => !prev)}
+            />
+
+            {/* CONTENT */}
+            <main
+                className={`
+                    w-full min-h-screen
+                    transition-all duration-300 ease-in-out
+                    ${collapsed ? "ml-0" : "ml-64"}
+                `}
+            >
+                {children}
+            </main>
         </div>
     )
 }

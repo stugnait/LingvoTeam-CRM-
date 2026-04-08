@@ -167,14 +167,23 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Order.objects.none()
 
+        # Базовий запит залежно від ролі
         if user.role.slug in ['admin', 'owner']:
-            return Order.objects.all()
+            queryset = Order.objects.all()
+        elif user.role.slug == 'editor':
+            # Редактори завжди бачать лише свої (там де вони призначені)
+            queryset = Order.objects.filter(editor_id=user)
+        else:
+            # Менеджери за замовчуванням бачать всі замовлення
+            queryset = Order.objects.all()
 
-        if user.role.slug == 'editor':
-            return Order.objects.filter(editor_id=user)
+        # 👉 ДОДАНО: Перевірка параметра ?my_orders=true
+        my_orders_only = self.request.query_params.get('my_orders')
+        if my_orders_only and my_orders_only.lower() == 'true':
+            # Відфільтровуємо лише ті замовлення, де manager_id — це поточний юзер
+            queryset = queryset.filter(manager_id=user)
 
-        # Можна додати фільтрацію для менеджера/перекладача
-        return Order.objects.all()
+        return queryset
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
@@ -1111,8 +1120,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = serializer.instance
         request = self.request
 
-        is_editor = request.user.is_authenticated and (
-                request.user.is_staff or getattr(request.user, 'role_id', None) == 2
+        # Перевіряємо, чи є користувач адміном, менеджером (1) або редактором (2)
+        has_internal_access = request.user.is_authenticated and (
+                request.user.is_staff or getattr(request.user, 'role_id', None) in [1, 2]
         )
 
         provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
@@ -1122,8 +1132,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         if provided_password and link_obj:
             is_password_valid = secrets.compare_digest(link_obj.password, provided_password)
 
-        if not (is_editor or is_password_valid):
-            raise PermissionDenied("У вас немає доступу (потрібна роль Editor або вірний пароль).")
+        # Якщо немає ані внутрішнього доступу, ані правильного пароля — блокуємо
+        if not (has_internal_access or is_password_valid):
+            raise PermissionDenied("У вас немає доступу (потрібна роль Менеджера/Редактора або вірний пароль).")
 
         instance = serializer.instance
 

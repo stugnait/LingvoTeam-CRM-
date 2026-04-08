@@ -4,11 +4,15 @@ import { Button } from "@/src/components/ui/button"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
 import { useEffect, useState } from "react"
 import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
-import { Plus } from "lucide-react"
+import { Plus, LayoutList, KanbanSquare } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CreateOrderModal } from "./CreateOrderForm"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Priority } from "@/src/components/ui/PrioritySelector"
+import { cn } from "@/src/lib/utils"
+
+import OrdersKanbanBoard from "./OrdersKanbanBoard"
+import { TaskModal } from "@/src/components/modals/jira/InfoModal"
 
 export default function OrdersPage() {
     const {
@@ -16,7 +20,7 @@ export default function OrdersPage() {
         updateOrder,
         loading,
         orders,
-        loadOrderDetails,
+        loadOrderDetails, // <--- Ця функція повертає дані для розкриття рядка в таблиці
         languagePairs,
         translatorsCache,
         clients,
@@ -32,16 +36,20 @@ export default function OrdersPage() {
         page,
         totalPages,
         onPageChange,
+        loadOrders,
+        isOnlyMineFilter,
         refreshTranslators
     } = useOrders()
 
-    // Modal
-    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
 
-    // Edit mode
+    const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingOrder, setEditingOrder] = useState<any | null>(null)
 
-    // Form state
+    // Стан для перегляду ДЕТАЛЬНОЇ ІНФОРМАЦІЇ ордера (модалка для Kanban дошки)
+    const [viewingOrder, setViewingOrder] = useState<any | null>(null)
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+
     const [clientId, setClientId] = useState("")
     const [sourceLanguage, setSourceLanguage] = useState("")
     const [targetLanguage, setTargetLanguage] = useState("")
@@ -99,7 +107,6 @@ export default function OrdersPage() {
 
     const handleEdit = (order: any) => {
         setEditingOrder(order)
-
         setClientId(String(order.client_id ?? ""))
         setSourceLanguage(String(order.source_language ?? ""))
         setTargetLanguage(String(order.target_language ?? ""))
@@ -108,13 +115,10 @@ export default function OrdersPage() {
         setEditor(String(order.editor_id ?? ""))
         setLanguagePairId(String(order.language_pair_id ?? ""))
         setTranslatorTrafficId(String(order.translator_traffic_id ?? ""))
-
         setSelectedTranslatorId(order.translator_id ?? null)
-
         setDeadline(order.deadline ? new Date(order.deadline) : undefined)
         setComment(order.client_comment ?? "")
         setPriority(order.priority ?? undefined)
-
         setIsModalOpen(true)
     }
 
@@ -145,8 +149,18 @@ export default function OrdersPage() {
         setIsModalOpen(false)
     }
 
+    // 👉 ФУНКЦІЯ ДЛЯ ДОШКИ: Відкриває модальне вікно картки
+    const handleViewDetailsBoard = (id: number) => {
+        const order = orders.find(o => o.id === id)
+        if (order) {
+            setViewingOrder(order)
+            setIsViewModalOpen(true)
+        }
+        loadOrderDetails(id) // завантажуємо додаткові деталі у фоні
+    }
+
     return (
-        <>
+        <div className="w-full max-w-full min-w-0 flex flex-col">
             <DashboardHeader />
 
             <div className="fixed bottom-8 right-8 z-40">
@@ -158,23 +172,68 @@ export default function OrdersPage() {
                 </Button>
             </div>
 
-            <div className="space-y-8">
-                <OrdersTable
-                    orders={orders}
-                    page={page}
-                    totalPages={totalPages}
-                    onPageChange={onPageChange}
-                    onOpen={loadOrderDetails}
-                    languagePairs={languagePairs}
-                    translatorsCache={translatorsCache}
-                    highlightId={activeHighlightId}
-                    confirmOrder={confirmOrder}
-                    downloadOrderSourceFiles={downloadOrderSourceFiles}
-                    downloadOrderTargetFiles={downloadOrderTargetFiles}
+            <div className="space-y-6 w-full min-w-0 overflow-hidden px-1">
+                <div className="flex justify-start pt-4 pl-4">
+                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                        <button
+                            onClick={() => setViewMode("table")}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                viewMode === "table"
+                                    ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
+                                    : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            <LayoutList className="w-4 h-4"/>
+                            Table
+                        </button>
+                        <button
+                            onClick={() => setViewMode("kanban")}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                viewMode === "kanban"
+                                    ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
+                                    : "text-gray-500 hover:text-gray-700"
+                            )}
+                        >
+                            <KanbanSquare className="w-4 h-4"/>
+                            Board
+                        </button>
+                    </div>
+                </div>
 
-                    onEdit={handleEdit}
-                    onDelete={(id) => deleteOrder(id)}
-                />
+                <div className="w-full min-w-0 pb-6">
+                    {viewMode === "table" ? (
+                        <OrdersTable
+                            orders={orders}
+                            page={page}
+                            totalPages={totalPages}
+                            onPageChange={onPageChange}
+                            isOnlyMineFilter={isOnlyMineFilter}
+                            onFilterChange={(onlyMine) => loadOrders(1, onlyMine)}
+
+                            // 👉 ДЛЯ ТАБЛИЦІ: передаємо loadOrderDetails, щоб рядок розгортався вниз!
+                            onOpen={loadOrderDetails}
+
+                            languagePairs={languagePairs}
+                            translatorsCache={translatorsCache}
+                            highlightId={activeHighlightId}
+                            confirmOrder={confirmOrder}
+                            downloadOrderSourceFiles={downloadOrderSourceFiles}
+                            downloadOrderTargetFiles={downloadOrderTargetFiles}
+                            onEdit={handleEdit}
+                            onDelete={(id) => deleteOrder(id)}
+                        />
+                    ) : (
+                        <OrdersKanbanBoard
+                            orders={orders}
+                            updateOrder={updateOrder}
+
+                            // 👉 ДЛЯ ДОШКИ: передаємо handleViewDetailsBoard, щоб відкрити модалку!
+                            onTaskOpen={handleViewDetailsBoard}
+                        />
+                    )}
+                </div>
             </div>
 
             <CreateOrderModal
@@ -182,46 +241,32 @@ export default function OrdersPage() {
                 onOpenChange={setIsModalOpen}
                 onSubmit={handleSubmit}
                 loading={loading}
-
                 mode={editingOrder ? "edit" : "create"}
                 orderId={editingOrder?.id}
-
                 clientId={clientId}
                 setClientId={setClientId}
-
                 sourceLanguage={sourceLanguage}
                 setSourceLanguage={setSourceLanguage}
-
                 targetLanguage={targetLanguage}
                 setTargetLanguage={setTargetLanguage}
-
                 files={files}
                 setFiles={setFiles}
-
                 trafficId={trafficId}
                 setTrafficId={setTrafficId}
-
                 currencyId={currencyId}
                 setCurrencyId={setCurrencyId}
-
                 selectedTranslatorId={selectedTranslatorId}
                 setSelectedTranslatorId={setSelectedTranslatorId}
-
                 editor={editor}
                 setEditor={setEditor}
-
                 translatorTrafficId={translatorTrafficId}
                 setTranslatorTrafficId={setTranslatorTrafficId}
-
                 deadline={deadline}
                 setDeadline={setDeadline}
-
                 comment={comment}
                 setComment={setComment}
-
                 priority={priority}
                 setPriority={setPriority}
-
                 clients={clients || []}
                 languages={languages || []}
                 editors={editors || []}
@@ -231,6 +276,24 @@ export default function OrdersPage() {
 
                 onRefreshTranslators={refreshTranslators}
             />
-        </>
+
+            {viewingOrder && (
+                <TaskModal
+                    open={isViewModalOpen}
+                    onOpenChange={setIsViewModalOpen}
+                    taskId={viewingOrder.id.toString()}
+                    taskTitle={viewingOrder.language_pair_name || `Order #${viewingOrder.id}`}
+                    taskDescription={viewingOrder.client_comment || 'No comment'}
+                    status={viewingOrder.status_name || viewingOrder.status || 'all_orders'}
+                    priority={viewingOrder.priority || 'medium'}
+                    manager={viewingOrder.manager_name || 'Unassigned'}
+                    translator={viewingOrder.translator_name || 'Unassigned'}
+                    onDownloadOriginal={() => downloadOrderSourceFiles(viewingOrder.id)}
+                    onDownloadTranslation={() => downloadOrderTargetFiles(viewingOrder.id)}
+                    onCancel={() => setIsViewModalOpen(false)}
+                    onSave={() => setIsViewModalOpen(false)}
+                />
+            )}
+        </div>
     )
 }

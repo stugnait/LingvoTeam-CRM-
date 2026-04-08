@@ -35,6 +35,9 @@ export function useOrders() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
 
+    // 👉 ДОДАНО: Стан для збереження поточного фільтру "тільки мої"
+    const [isOnlyMineFilter, setIsOnlyMineFilter] = useState(false)
+
     const [orders, setOrders] = useState<OrderListItem[]>([])
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
     const [orderDetail, setOrderDetail] = useState<Details | null>(null)
@@ -60,9 +63,6 @@ export function useOrders() {
 
     const [pricePreviewLoading, setPricePreviewLoading] = useState(false)
 
-
-
-
     const initialLoadedRef = useRef(false)
 
     /* ======================
@@ -70,27 +70,20 @@ export function useOrders() {
     ====================== */
 
     const handleError = useCallback((e: any, fallback: string) => {
-
         toast({
             title: "Error",
             description: e?.detail || fallback,
             variant: "error"
         })
-
     }, [toast])
 
-
     const handleSuccess = useCallback((title: string, description: string) => {
-
         toast({
             title,
             description,
             variant: "success"
         })
-
     }, [toast])
-
-
 
     const previewPrice = useCallback(async (data: {
         files: File[]
@@ -101,95 +94,63 @@ export function useOrders() {
     }) => {
         try {
             setPricePreviewLoading(true)
-
             const formData = new FormData()
-
             data.files.forEach(file => formData.append("files", file))
-
             formData.append("traffic_id", String(data.traffic_id))
 
             if (data.translator_id) {
                 formData.append("translator_id", String(data.translator_id))
             }
-
             if (data.translator_traffic_id) {
                 formData.append("translator_traffic_id", String(data.translator_traffic_id))
             }
-
             if (data.source_language_id) {
                 formData.append("source_language_id", String(data.source_language_id))
             }
 
             const res = await ordersApi.previewPrice(formData)
-
             setPricePreview(res)
-
             return res
-
         } catch (e) {
-
             handleError(e, "Failed to calculate price")
-
         } finally {
-
             setPricePreviewLoading(false)
-
         }
     }, [handleError])
-
 
     /* ======================
        FILE DOWNLOAD
     ====================== */
 
     const downloadBlob = (blob: Blob, filename: string) => {
-
         const url = URL.createObjectURL(blob)
-
         const a = document.createElement("a")
         a.href = url
         a.download = filename
-
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-
         URL.revokeObjectURL(url)
     }
 
     const downloadOrderSourceFiles = useCallback(async (orderId: number) => {
-
         try {
-
             const blob = await ordersApi.downloadFilesSource(orderId)
             downloadBlob(blob, `order_${orderId}_source.zip`)
-
             handleSuccess("Success", "Source files downloaded")
-
         } catch (e) {
-
             handleError(e, "Failed to download source files")
-
         }
-
     }, [handleError, handleSuccess])
 
-
     const downloadOrderTargetFiles = useCallback(async (orderId: number) => {
-
         try {
-
             const blob = await ordersApi.downloadFilesTarget(orderId)
             downloadBlob(blob, `order_${orderId}_target.zip`)
-
             handleSuccess("Success", "Target files downloaded")
-
         } catch (e) {
-
             handleError(e, "Failed to download target files")
-
         }
-
     }, [handleError, handleSuccess])
 
 
@@ -197,51 +158,41 @@ export function useOrders() {
        LOAD ORDERS
     ====================== */
 
-    const loadOrders = useCallback(async (pageNumber: number = 1) => {
-
+    // 👉 ДОДАНО: параметр onlyMine (за замовчуванням false)
+    const loadOrders = useCallback(async (pageNumber: number = 1, onlyMine: boolean = false) => {
         try {
-
             setLoading(true)
 
-            const res = await ordersApi.listOrders(pageNumber)
+            // Передаємо параметр в API
+            const res = await ordersApi.listOrders(pageNumber, onlyMine)
 
+            setOrders(res.results)
             setOrders([...res.results].reverse())
-
             setTotalPages(Math.ceil(res.count / 10))
             setPage(pageNumber)
+            setIsOnlyMineFilter(onlyMine) // Оновлюємо стейт фільтра
 
             const pairIds = [...new Set(res.results.map(o => o.language_pair_id))]
-
             const missing = pairIds.filter(id => !languagePairs[id])
 
             if (missing.length) {
-
                 const pairs = await Promise.all(
                     missing.map(id => ordersApi.getLanguagePairById(id))
                 )
-
                 setLanguagePairs(prev => {
-
                     const updated = { ...prev }
-
                     pairs.forEach(p => {
                         updated[p.id] = p
                     })
-
                     return updated
                 })
             }
 
         } catch (e) {
-
             handleError(e, "Failed to load orders")
-
         } finally {
-
             setLoading(false)
-
         }
-
     }, [handleError, languagePairs])
 
 
@@ -267,28 +218,19 @@ export function useOrders() {
     ====================== */
 
     const deleteOrder = useCallback(async (orderId: number) => {
-
         try {
-
             setDeleteLoading(orderId)
-
             await ordersApi.deleteOrder(orderId)
-
             handleSuccess("Deleted", `Order #${orderId} deleted`)
 
-            await loadOrders(page)
-
+            // 👉 Оновлюємо з урахуванням поточного фільтра
+            await loadOrders(page, isOnlyMineFilter)
         } catch (e) {
-
             handleError(e, "Failed to delete order")
-
         } finally {
-
             setDeleteLoading(null)
-
         }
-
-    }, [page, loadOrders, handleError, handleSuccess])
+    }, [page, isOnlyMineFilter, loadOrders, handleError, handleSuccess])
 
 
     /* ======================
@@ -296,46 +238,30 @@ export function useOrders() {
     ====================== */
 
     const updateOrder = useCallback(async (orderId: number, data: Partial<CreateOrderPayload>) => {
-
         try {
-
             setUpdateLoading(orderId)
-
             const formData = new FormData()
 
             Object.entries(data).forEach(([key, value]) => {
-
                 if (value === undefined || value === null) {return}
-
                 if (key === "files" && Array.isArray(value)) {
-
                     value.forEach(file => formData.append("files", file))
-
                 } else {
-
                     formData.append(key, String(value))
-
                 }
-
             })
 
             await ordersApi.updateOrder(orderId, formData)
-
             handleSuccess("Updated", `Order #${orderId} updated`)
 
-            await loadOrders(page)
-
+            // 👉 Оновлюємо з урахуванням поточного фільтра
+            await loadOrders(page, isOnlyMineFilter)
         } catch (e) {
-
             handleError(e, "Failed to update order")
-
         } finally {
-
             setUpdateLoading(null)
-
         }
-
-    }, [page, loadOrders, handleError, handleSuccess])
+    }, [page, isOnlyMineFilter, loadOrders, handleError, handleSuccess])
 
 
     /* ======================
@@ -343,50 +269,30 @@ export function useOrders() {
     ====================== */
 
     const createOrder = useCallback(async (data: CreateOrderPayload) => {
-
         try {
-
             setLoading(true)
-
             const formData = new FormData()
 
             Object.entries(data).forEach(([key, value]) => {
-
                 if (value === undefined || value === null) {return}
-
                 if (key === "files" && Array.isArray(value)) {
-
                     value.forEach(file => formData.append("files", file))
-
                 } else {
-
                     formData.append(key, String(value))
-
                 }
-
             })
 
             const res = await ordersApi.create(formData)
-
             setOrder(res)
-
             handleSuccess("Order created", `Order #${res.order_id}`)
-
             await loadOrders(1)
-
             router.push("/dashboard/orders")
-
             return res
-
         } catch (e) {
-
             handleError(e, "Failed to create order")
             throw e
-
         } finally {
-
             setLoading(false)
-
         }
     }, [handleError, handleSuccess, router, loadOrders])
 
@@ -396,29 +302,17 @@ export function useOrders() {
     ====================== */
 
     const loadOrderDetails = useCallback(async (orderId: number) => {
-
         try {
-
             setLoading(true)
-
             const res = await ordersApi.getById(orderId)
-
             setOrderDetail(res)
-
             return res
-
         } catch (e) {
-
             handleError(e, "Failed to load order")
-
             throw e
-
         } finally {
-
             setLoading(false)
-
         }
-
     }, [handleError])
 
 
@@ -427,13 +321,9 @@ export function useOrders() {
     ====================== */
 
     const loadInitialData = useCallback(async () => {
-
         if (initialLoadedRef.current) {return}
-
         try {
-
             setLoading(true)
-
             const [
                 translatorsRes,
                 clientsRes,
@@ -451,13 +341,10 @@ export function useOrders() {
             ])
 
             setTranslators(translatorsRes.results)
-
             const cache: Record<number, Translator> = {}
-
             translatorsRes.results.forEach(t => {
                 cache[t.id] = t
             })
-
             setTranslatorsCache(cache)
 
             setClients(clientsRes.results)
@@ -467,17 +354,11 @@ export function useOrders() {
             setTraffics(trafficRes.results)
 
             initialLoadedRef.current = true
-
         } catch (e) {
-
             handleError(e, "Failed to load initial data")
-
         } finally {
-
             setLoading(false)
-
         }
-
     }, [handleError])
 
 
@@ -486,23 +367,17 @@ export function useOrders() {
     ====================== */
 
     useEffect(() => {
-
         loadInitialData()
-        loadOrders(1)
-
+        loadOrders(1, false) // За замовчуванням вантажимо ВСІ ордери
     }, [])
 
-
     const onPageChange = (newPage: number) => {
-        loadOrders(newPage)
+        loadOrders(newPage, isOnlyMineFilter)
     }
 
-
     const getTranslatorById = useCallback((id: number | null) => {
-
         if (!id) {return null}
         return translatorsCache[id] || null
-
     }, [translatorsCache])
 
 
@@ -511,7 +386,6 @@ export function useOrders() {
     ====================== */
 
     return {
-
         loading,
         deleteLoading,
         updateLoading,
@@ -532,6 +406,7 @@ export function useOrders() {
 
         page,
         totalPages,
+        isOnlyMineFilter, // 👉 Експортуємо стан фільтра, щоб використати в UI
 
         createOrder,
         loadOrders,
@@ -545,9 +420,7 @@ export function useOrders() {
 
         loadInitialData,
         refreshTranslators,
-
         onPageChange,
-
         getTranslatorById,
 
         selectedTranslatorId,
@@ -555,6 +428,5 @@ export function useOrders() {
         pricePreview,
         pricePreviewLoading,
         previewPrice,
-
     }
 }
