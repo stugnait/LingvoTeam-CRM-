@@ -80,6 +80,17 @@ class OrderTrafficFilter(filters.FilterSet):
         model = OrderTraffic
         fields = ['currency', 'category', 'language_pair']
 
+
+class OrderFilter(filters.FilterSet):
+    status = filters.ModelChoiceFilter(field_name='status_id', queryset=Status.objects.all())
+    manager = filters.ModelChoiceFilter(field_name='manager_id', queryset=User.objects.all())
+    date_from = filters.DateFilter(field_name='created_at', lookup_expr='gte')
+    date_to = filters.DateFilter(field_name='created_at', lookup_expr='lte')
+
+    class Meta:
+        model = Order
+        fields = ['status', 'manager', 'created_at']
+
 @extend_schema_view(
     list=extend_schema(summary="Список трафіку замовлень", tags=["Order Pricing"]),
     retrieve=extend_schema(summary="Деталі трафіку", tags=["Order Pricing"]),
@@ -129,8 +140,8 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     permission_classes = [HasPermission]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-    filter_backends = [OrderingFilter]
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filterset_class = OrderFilter
     ordering_fields = ['position', 'created_at']
     ordering = ['position']
 
