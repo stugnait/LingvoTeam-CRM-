@@ -14,6 +14,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     @classmethod
@@ -38,41 +39,35 @@ class UserSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True
     )
-
     role = RoleSerializer(read_only=True)
+    avatar = serializers.SerializerMethodField()
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar:
+            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return None
 
     class Meta:
         model = User
-        fields = [
-            'id',
-            'email',
-            'full_name',
-            'phone',
-            'role', 'role_id',
-            'is_active'
-        ]
-
-
-from rest_framework import serializers
-from drf_spectacular.utils import extend_schema_field
-from apps.users.models import EditorLanguagePairs
+        fields = ['id', 'email', 'full_name', 'phone', 'role', 'role_id', 'is_active', 'avatar']
 
 
 class UserListSerializer(serializers.ModelSerializer):
     role = RoleSerializer(read_only=True)
     language_pairs = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
 
-    class Meta:
-        model = User
-        fields = ('id', 'email', 'phone', 'full_name', 'role', 'is_active', 'language_pairs')
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar:
+            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return None
 
-    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_language_pairs(self, obj):
         if not obj.role or obj.role.id != 2:
             return []
-
         pairs = EditorLanguagePairs.objects.filter(editor_id=obj.id).select_related('language_pair')
-
         return [
             {
                 "id": pair.id,
@@ -84,6 +79,10 @@ class UserListSerializer(serializers.ModelSerializer):
             for pair in pairs
         ]
 
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'phone', 'full_name', 'role', 'is_active', 'language_pairs', 'avatar')
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     role_id = serializers.PrimaryKeyRelatedField(
@@ -93,42 +92,48 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True
     )
-
     role = RoleSerializer(read_only=True)
+    avatar = serializers.SerializerMethodField()
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar:
+            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return None
 
     class Meta:
         model = User
-        fields = (
-            'id',
-            'email',
-            'full_name',
-            'phone',
-            'role_id',
-            'role',
-        )
-
+        fields = ('id', 'email', 'full_name', 'phone', 'role_id', 'role', 'avatar')
         read_only_fields = ('id',)
+
+
+class UserSelfUpdateSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.avatar:
+            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+        return None
+
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'full_name', 'phone', 'avatar')
+        read_only_fields = ('id',)
+
+
+# --- решта серіалізаторів без змін ---
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True, required=True)
     new_password = serializers.CharField(write_only=True, min_length=8, required=True)
     new_password_confirm = serializers.CharField(write_only=True, min_length=8, required=True)
+
     def validate(self, attrs):
         if attrs["new_password"] != attrs["new_password_confirm"]:
             raise serializers.ValidationError({"new_password_confirm": "Паролі не збігаються."})
         return attrs
 
-class UserSelfUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = (
-            'id',
-            'email',
-            'full_name',
-            'phone'
-        )
-
-        read_only_fields = ('id',)
 
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -137,6 +142,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
         if not User.objects.filter(email=email, is_active=True).exists():
             raise serializers.ValidationError("Користувача з таким email не існує.")
         return email
+
 
 class ResetPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()
@@ -147,16 +153,13 @@ class ResetPasswordSerializer(serializers.Serializer):
     def validate(self, data):
         if data["new_password"] != data["new_password_confirm"]:
             raise serializers.ValidationError("Паролі не співпадають.")
-
         try:
-            uid = force_str(urlsafe_base64_decode(data["uid"])) # секуріті
+            uid = force_str(urlsafe_base64_decode(data["uid"]))
             user = User.objects.get(pk=uid)
         except Exception:
             raise serializers.ValidationError("Невалідний uid.")
-
         if not default_token_generator.check_token(user, data["token"]):
             raise serializers.ValidationError("Невалідний або прострочений токен.")
-
         data["user"] = user
         return data
 
@@ -166,28 +169,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
         regex=r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$',
         message="Пароль має містити хоча б одну велику літеру, одну малу літеру та цифру."
     )
-
     password = serializers.CharField(
-        write_only=True,
-        min_length=8,
-        required=True,
-        validators=[password_validator]
+        write_only=True, min_length=8, required=True, validators=[password_validator]
     )
-
-    role = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(),
-        required=True
-    )
+    role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), required=True)
 
     class Meta:
         model = User
-        fields = (
-            'email',
-            'full_name',
-            'phone',
-            'role',
-            'password',
-        )
+        fields = ('email', 'full_name', 'phone', 'role', 'password', 'avatar')
         extra_kwargs = {
             'password': {'write_only': True},
             'full_name': {'required': True},
@@ -197,21 +186,13 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password')
-
         user = User(**validated_data)
-
         user.set_password(password)
         user.save()
-
         return user
 
 
-from rest_framework import serializers
-from .models import EditorLanguagePairs
-from apps.users.models import User # перевір шлях до моделі User
-
 class EditorLanguagePairsSerializer(serializers.ModelSerializer):
-    # Явно кажемо: це поле можна писати!
     editor_id = serializers.IntegerField()
     language_pair = serializers.IntegerField(source='language_pair_id')
 

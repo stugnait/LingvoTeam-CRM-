@@ -1,8 +1,9 @@
 "use client"
 
+import { useMemo } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
-import { Plus } from "lucide-react"
+import { Plus, Upload, User as UserIcon } from "lucide-react"
 
 import { UserTable } from "./UserTable"
 import { UserFilters } from "./UserFilter"
@@ -18,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/src/components/ui/select"
-import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 
 export function UsersPage() {
     const {
@@ -45,6 +46,14 @@ export function UsersPage() {
         confirmAction,
         closeModals,
     } = useUsers()
+
+    // 👇 Генеруємо посилання для прев'ю аватарки (щоб бачити картинку до відправки на сервер)
+    const avatarPreview = useMemo(() => {
+        if (!form.avatar) {return null}
+        if (typeof form.avatar === 'string') {return form.avatar}
+        if (form.avatar instanceof File) {return URL.createObjectURL(form.avatar)}
+        return null
+    }, [form.avatar])
 
     return (
         <>
@@ -119,7 +128,57 @@ export function UsersPage() {
                 submitLabel={selectedUser ? "Update" : "Create"}
                 onSubmit={() => submitUser(form)}
             >
-                <div className="space-y-4">
+                <div className="space-y-6">
+                    {/* 👇 Блок завантаження аватарки */}
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border bg-muted flex items-center justify-center">
+                            {avatarPreview ? (
+                                <img
+                                    src={avatarPreview}
+                                    alt="Avatar preview"
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                <UserIcon className="h-10 w-10 text-muted-foreground" />
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                id="avatar-upload"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                        setForm(prev => ({ ...prev, avatar: file }))
+                                    }
+                                    // Очищаємо input, щоб можна було вибрати той самий файл ще раз
+                                    e.target.value = ""
+                                }}
+                            />
+                            <Button asChild variant="outline" size="sm">
+                                <label htmlFor="avatar-upload" className="cursor-pointer">
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Upload Avatar
+                                </label>
+                            </Button>
+
+                            {form.avatar && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setForm(prev => ({ ...prev, avatar: null }))}
+                                >
+                                    Remove
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                    {/* ☝️ Кінець блоку завантаження аватарки */}
+
                     <Input
                         placeholder="Full name"
                         value={form.full_name}
