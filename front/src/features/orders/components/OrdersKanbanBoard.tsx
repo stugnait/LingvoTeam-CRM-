@@ -67,11 +67,18 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                 title: order.language_pair_name || `Order #${order.id}`,
                 priority: (order.priority?.toLowerCase() || 'medium') as 'low'|'medium'|'high'|'critical',
                 description: order.client_comment || '',
-                client_id: order.client_id,
+                client_name: order.client_name || "none",
                 language_pair_id: order.language_pair_id || 'N/A',
                 tags: [],
                 dueDate: order.deadline,
-                assignee: order.translator_name ? { name: order.translator_name, avatar: undefined } : undefined
+
+                // 🔥 ГОЛОВНЕ
+                assignee: order.manager_name
+                    ? {
+                        name: order.manager_name,
+                        avatar: order.manager_avatar || undefined
+                    }
+                    : undefined
             };
 
             // 1. ЗАВЖДИ створюємо картку-копію для колонки "All Orders"
@@ -117,7 +124,7 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
         const { active, over } = event
         setActiveTaskId(null)
 
-        if (!over) return
+        if (!over) {return}
 
         const taskId = Number(active.id)
         const overId = String(over.id)
@@ -207,7 +214,7 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                             </div>
                             <div className="text-xs text-gray-500">
                                 {/* 👉 Math.abs щоб юзер не бачив Order #-15 під час перетягування */}
-                                Order #{Math.abs(Number(activeTask.id))} • Client #{activeTask.client_id}
+                                Order #{Math.abs(Number(activeTask.id))} • {activeTask.client_name}
                             </div>
 
                             {activeTask.status === 'all_orders' && (
