@@ -69,3 +69,10 @@ export interface PnLResponse {
         val_profit: number
     }[]
 }
+
+export interface SalesChartDataPoint {
+    date: string
+    daily_revenue: number
+}
+
+export type SalesChartResponse = SalesChartDataPoint[]
