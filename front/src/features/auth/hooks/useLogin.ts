@@ -29,7 +29,7 @@ export function useLogin() {
             })
 
             // Єдиний редірект
-            router.replace("/dashboard")
+            router.replace("/dashboard/orders")
 
         } catch (err) {
             const errors = err as ValidationErrorResponse
