@@ -19,6 +19,7 @@ export interface User {
     role: UserRole
     is_active: boolean
     date_joined: string
+    is_translator?: boolean
 }
 
 export interface UsersFilters {
@@ -44,4 +45,5 @@ export interface UserFormData {
     phone: string
     role: number
     is_active: boolean
+    is_translator?: boolean
 }

@@ -45,7 +45,7 @@ export default function RootLayout({
     return (
         <html
             lang="en"
-            className={`${geistSans.variable} ${geistMono.variable}`}
+            className={`${geistSans.variable} ${geistMono.variable} overflow-x-hidden`}
             suppressHydrationWarning
         >
         <body className="min-h-screen bg-background font-sans antialiased text-foreground">

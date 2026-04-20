@@ -18,7 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/src/components/ui/select"
-import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 
 export function UsersPage() {
     const {
@@ -159,6 +159,7 @@ export function UsersPage() {
                             setForm(prev => ({
                                 ...prev,
                                 role: Number(value),
+                                is_translator: Number(value) === 3 ? prev.is_translator : false
                             }))
                         }
                     >
@@ -172,6 +173,31 @@ export function UsersPage() {
                             <SelectItem value="4">Finance</SelectItem>
                         </SelectContent>
                     </Select>
+
+                    {/* Чекбокс із використанням var(--color-primary) */}
+                    {form.role === 3 && (
+                        <div className="flex items-center space-x-3 pt-2">
+                            <input
+                                type="checkbox"
+                                id="is_translator"
+                                checked={form.is_translator || false}
+                                onChange={(e) =>
+                                    setForm(prev => ({
+                                        ...prev,
+                                        is_translator: e.target.checked
+                                    }))
+                                }
+                                // Використовуємо accent-color для встановлення кольору зі змінної
+                                className="w-5 h-5 cursor-pointer rounded border-gray-300 accent-[var(--color-primary)]"
+                            />
+                            <label
+                                htmlFor="is_translator"
+                                className="text-sm font-medium leading-none cursor-pointer"
+                            >
+                                Визначити як перекладача
+                            </label>
+                        </div>
+                    )}
                 </div>
             </BaseFormModal>
 

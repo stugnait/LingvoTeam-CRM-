@@ -31,7 +31,8 @@ export function useUsers() {
         phone: "",
         email: "",
         role: 0,
-        is_active: false
+        is_active: false,
+        is_translator: false
     })
 
     const debouncedSearch = useDebounce(filters.search, 400)
@@ -89,7 +90,8 @@ export function useUsers() {
             phone: "",
             email: "",
             role: 0,
-            is_active: true
+            is_active: true,
+            is_translator: false
         })
 
         setIsFormOpen(true)
@@ -103,7 +105,8 @@ export function useUsers() {
             email: user.email,
             phone: user.phone,
             role: user.role.id,
-            is_active: user.is_active
+            is_active: user.is_active,
+            is_translator: user.is_translator || false
         })
 
         setIsFormOpen(true)
