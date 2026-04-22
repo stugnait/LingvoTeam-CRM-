@@ -1,6 +1,6 @@
 "use client"
 
-import {Fragment, useEffect, useState} from "react"
+import { Fragment, useEffect, useState } from "react"
 import {
     Table,
     TableBody,
@@ -11,13 +11,21 @@ import {
 } from "@/src/components/ui/table"
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
+import { Input } from "@/src/components/ui/input"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/src/components/ui/select"
 import {
     MoreHorizontal,
     Pencil,
     Trash2,
     ChevronDown,
-    ChevronUp,
-    Filter
+    Filter,
+    CalendarIcon
 } from "lucide-react"
 
 import {
@@ -27,6 +35,8 @@ import {
     DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu"
 
+import { Calendar } from "@/src/components/ui/calendar"
+
 import type {
     OrderListItem,
     LanguagePair,
@@ -34,7 +44,7 @@ import type {
     Details,
     Client
 } from "@/src/features/orders/types"
-import {cn} from "@/src/lib/utils";
+import { cn } from "@/src/lib/utils"
 
 interface OrdersTableProps {
     orders: OrderListItem[]
@@ -44,6 +54,20 @@ interface OrdersTableProps {
 
     isOnlyMineFilter: boolean
     onFilterChange: (onlyMine: boolean) => void
+
+    statusFilter?: string | number
+    onStatusChange?: (val: string | number) => void
+
+    managerFilter?: string | number
+    onManagerChange?: (val: string | number) => void
+
+    dateFromFilter?: string
+    onDateFromChange?: (val: string) => void
+
+    dateToFilter?: string
+    onDateToChange?: (val: string) => void
+
+    editors?: any[]
 
     onOpen: (orderId: number) => Promise<Details>
     languagePairs: Record<number, LanguagePair>
@@ -67,6 +91,17 @@ export function OrdersTable({
                                 onPageChange,
                                 isOnlyMineFilter,
                                 onFilterChange,
+
+                                statusFilter,
+                                onStatusChange,
+                                managerFilter,
+                                onManagerChange,
+                                dateFromFilter,
+                                onDateFromChange,
+                                dateToFilter,
+                                onDateToChange,
+                                editors = [],
+
                                 onOpen,
                                 languagePairs,
                                 translatorsCache,
@@ -82,6 +117,9 @@ export function OrdersTable({
     const [details, setDetails] = useState<Details | null>(null)
     const [loadingId, setLoadingId] = useState<number | null>(null)
     const [activeHighlightId, setActiveHighlightId] = useState<number | null>(null)
+
+    const [isFromCalendarOpen, setIsFromCalendarOpen] = useState(false)
+    const [isToCalendarOpen, setIsToCalendarOpen] = useState(false)
 
     const handleToggle = async (orderId: number) => {
         if (expandedId === orderId) {
@@ -99,7 +137,7 @@ export function OrdersTable({
     }
 
     useEffect(() => {
-        if (!highlightId) {return}
+        if (!highlightId) { return }
         setActiveHighlightId(highlightId)
         const timer = setTimeout(() => setActiveHighlightId(null), 5000)
         return () => clearTimeout(timer)
@@ -115,17 +153,22 @@ export function OrdersTable({
     const getStatusVariant = (status: string) => status === "completed" ? "default" : "warning"
 
     const getTranslatorName = (translatorId: number | null) => {
-        if (!translatorId) {return "—"}
+        if (!translatorId) { return "—" }
         const translator = translatorsCache[translatorId]
         return translator?.full_name || `Translator #${translatorId}`
+    }
+
+    const formatToYMD = (date: Date) => {
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0]
     }
 
     return (
         <div className="border border-border rounded-lg bg-card mx-4 my-6 shadow-soft overflow-hidden">
 
-            {/* Панель інструментів таблиці (з перемикачем) */}
-            <div className="flex items-center justify-between p-4 border-b border-border bg-muted/10">
-                <div className="flex items-center gap-2">
+            {/* 👉 ПАНЕЛЬ ФІЛЬТРІВ */}
+            <div className="flex flex-col xl:flex-row items-center justify-between p-4 border-b border-border bg-muted/10 gap-4">
+
+                <div className="flex items-center gap-2 w-full xl:w-auto">
                     <Filter className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-medium text-foreground">Filter:</span>
                     <div className="flex bg-muted/50 p-1 rounded-lg ml-2">
@@ -151,6 +194,146 @@ export function OrdersTable({
                         >
                             My Orders
                         </button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col items-center lg:flex-row gap-4 w-full xl:w-auto">
+                    {/* Статус */}
+                    <Select
+                        value={String(statusFilter || "all")}
+                        onValueChange={(val) => onStatusChange && onStatusChange(val === "all" ? "" : val)}
+                    >
+                        <SelectTrigger className="w-full lg:w-[160px] bg-background">
+                            <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="1">Planned</SelectItem>
+                            <SelectItem value="2">To Do</SelectItem>
+                            <SelectItem value="3">In Progress</SelectItem>
+                            <SelectItem value="4">Reject</SelectItem>
+                            <SelectItem value="5">Pause</SelectItem>
+                            <SelectItem value="6">Done</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {/* Менеджер */}
+                    <Select
+                        value={String(managerFilter || "all")}
+                        onValueChange={(val) => onManagerChange && onManagerChange(val === "all" ? "" : val)}
+                    >
+                        <SelectTrigger className="w-full lg:w-[180px] bg-background">
+                            <SelectValue placeholder="All Managers" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Managers</SelectItem>
+                            {editors.map(ed => (
+                                <SelectItem key={ed.id} value={String(ed.id)}>
+                                    {ed.full_name || ed.email}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* 👉 Дати (UI Календар без поповерів) */}
+                    <div className="flex flex-col lg:flex-row items-center gap-2 w-full xl:w-auto">
+                        {/* Дата Від */}
+                        <div
+                            className="relative w-full lg:w-auto group"
+                            tabIndex={-1}
+                            onBlur={(e) => {
+                                if (!e.currentTarget.contains(e.relatedTarget)) {
+                                    setIsFromCalendarOpen(false)
+                                }
+                            }}
+                        >
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                onClick={() => setIsFromCalendarOpen(!isFromCalendarOpen)}
+                                className={cn(
+                                    "flex h-10 w-full lg:w-[160px] items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-2 text-sm font-normal",
+                                    "backdrop-blur-sm transition-all duration-300",
+                                    "focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring",
+                                    "hover:bg-accent/10 hover:border-accent/30 shadow-sm hover:shadow-md"
+                                )}
+                            >
+                                <div className="flex items-center gap-2 truncate">
+                                    <CalendarIcon className="h-4 w-4 opacity-50" />
+                                    {/* 👇 ТУТ жорстко задано колір тексту */}
+                                    <span className={cn("truncate", dateFromFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
+                                        {dateFromFilter ? new Date(dateFromFilter).toLocaleDateString() : "Date From"}
+                                    </span>
+                                </div>
+                                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
+                            </Button>
+
+                            {isFromCalendarOpen && (
+                                <div className="absolute z-50 mt-1 bg-white border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+                                    <Calendar
+                                        mode="single"
+                                        selected={dateFromFilter ? new Date(dateFromFilter) : undefined}
+                                        onSelect={(date) => {
+                                            if (onDateFromChange) {
+                                                onDateFromChange(date ? formatToYMD(date) : "")
+                                            }
+                                            setIsFromCalendarOpen(false)
+                                        }}
+                                        initialFocus
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <span className="text-muted-foreground hidden lg:inline-block">-</span>
+
+                        {/* Дата До */}
+                        <div
+                            className="relative w-full lg:w-auto group"
+                            tabIndex={-1}
+                            onBlur={(e) => {
+                                if (!e.currentTarget.contains(e.relatedTarget)) {
+                                    setIsToCalendarOpen(false)
+                                }
+                            }}
+                        >
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                onClick={() => setIsToCalendarOpen(!isToCalendarOpen)}
+                                className={cn(
+                                    "flex h-10 w-full lg:w-[160px] items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-2 text-sm font-normal",
+                                    "backdrop-blur-sm transition-all duration-300",
+                                    "focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring",
+                                    "hover:bg-accent/10 hover:border-accent/30 shadow-sm hover:shadow-md"
+                                )}
+                            >
+                                <div className="flex items-center gap-2 truncate">
+                                    <CalendarIcon className="h-4 w-4 opacity-50" />
+                                    {/* 👇 ТУТ жорстко задано колір тексту */}
+                                    <span className={cn("truncate", dateToFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
+                                        {dateToFilter ? new Date(dateToFilter).toLocaleDateString() : "Date To"}
+                                    </span>
+                                </div>
+                                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
+                            </Button>
+
+                            {isToCalendarOpen && (
+                                <div className="absolute right-0 z-50 mt-1 bg-white border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+                                    <Calendar
+                                        mode="single"
+                                        selected={dateToFilter ? new Date(dateToFilter) : undefined}
+                                        onSelect={(date) => {
+                                            if (onDateToChange) {
+                                                onDateToChange(date ? formatToYMD(date) : "")
+                                            }
+                                            setIsToCalendarOpen(false)
+                                        }}
+                                        initialFocus
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -266,15 +449,15 @@ export function OrdersTable({
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" size="sm">
-                                                        <MoreHorizontal className="h-4 w-4"/>
+                                                        <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => onEdit(order)}>
-                                                        <Pencil className="h-4 w-4 mr-2"/> Edit
+                                                        <Pencil className="h-4 w-4 mr-2" /> Edit
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => onDelete(order.id)} className="text-destructive">
-                                                        <Trash2 className="h-4 w-4 mr-2"/> Delete
+                                                        <Trash2 className="h-4 w-4 mr-2" /> Delete
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -292,7 +475,7 @@ export function OrdersTable({
                                             <ChevronDown className={cn(
                                                 "h-4 w-4 transition-transform duration-300",
                                                 expandedId === order.id && "rotate-180"
-                                            )}/>
+                                            )} />
                                         </Button>
                                     </div>
                                 </TableCell>
@@ -302,19 +485,17 @@ export function OrdersTable({
                             {expandedId === order.id && (
                                 <TableRow className="bg-muted/10 border-b-0">
                                     <TableCell colSpan={7} className="p-0 border-b-0 relative">
-                                        {/* Сучасна анімація появи (slide-in згори + fade-in) */}
                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 ease-out w-full">
                                             <div className="px-6 py-6 w-full">
                                                 {loadingId === order.id ? (
                                                     <div className="flex items-center justify-center gap-3 py-8 animate-in fade-in">
-                                                        <div className="loading-spinner"/>
+                                                        <div className="loading-spinner" />
                                                         <p className="text-sm text-muted-foreground">Loading details...</p>
                                                     </div>
                                                 ) : (
                                                     details && (
                                                         <div className="space-y-6 w-full">
 
-                                                            {/* КАРТКИ УЧАСНИКІВ: Клієнт та Перекладач */}
                                                             <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
                                                                 {(() => {
                                                                     // Шукаємо клієнта з масиву
@@ -396,7 +577,7 @@ export function OrdersTable({
                     Previous
                 </Button>
                 <div className="flex items-center gap-1">
-                    {Array.from({length: totalPages}).map((_, i) => {
+                    {Array.from({ length: totalPages }).map((_, i) => {
                         const pageNumber = i + 1
                         return (
                             <Button key={pageNumber} size="sm" variant={page === pageNumber ? "default" : "outline"} onClick={() => onPageChange(pageNumber)} className="w-9">
