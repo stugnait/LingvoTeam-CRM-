@@ -1,7 +1,8 @@
 "use client"
 
+import { useState, useEffect } from "react" // Додали useEffect
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useSearchParams } from "next/navigation"
 import { useMe } from "@/src/features/auth/hooks/useMe"
 import {
     LayoutDashboard,
@@ -13,6 +14,7 @@ import {
     User,
     CheckSquare,
     ChevronLeft,
+    ChevronDown,
 } from "lucide-react"
 
 const navigation = [
@@ -26,7 +28,18 @@ const navigation = [
     { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, roles: ["editor"] },
     { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier"] },
     { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, roles: ["admin", "manager"] },
-    { name: "Salary", href: "/dashboard/salary", icon: CheckSquare, roles: ["admin", "manager"] },
+    {
+        name: "Salary",
+        href: "/dashboard/salary",
+        icon: CheckSquare,
+        roles: ["admin", "manager"],
+        children: [
+            { name: "Менеджер", roleId: 1 },
+            { name: "Редактор", roleId: 2 },
+            { name: "Фінансист", roleId: 4 },
+            { name: "Перекладачі", roleId: 5 },
+        ]
+    },
 ]
 
 export function CrmSidebar({
@@ -37,7 +50,20 @@ export function CrmSidebar({
     toggle: () => void
 }) {
     const pathname = usePathname()
+    const searchParams = useSearchParams()
     const { role, loading } = useMe()
+
+    const [salaryOpen, setSalaryOpen] = useState(pathname.startsWith("/dashboard/salary"))
+
+    // 🔥 ОПЕРАЦІЯ "АВТО-ЗАКРИТТЯ":
+    // Стежимо за зміною шляху. Якщо ми йдемо з Salary на іншу вкладку — згортаємо підменю.
+    useEffect(() => {
+        if (!pathname.startsWith("/dashboard/salary")) {
+            setSalaryOpen(false)
+        } else {
+            setSalaryOpen(true)
+        }
+    }, [pathname])
 
     if (loading || !role) {return null}
 
@@ -68,11 +94,50 @@ export function CrmSidebar({
                     <nav className="flex-1 space-y-1 px-3 py-6">
                         {filteredNavigation.map((item) => {
                             const Icon = item.icon
+                            const hasChildren = !!item.children
+                            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
 
-                            const isActive =
-                                pathname === item.href ||
-                                (item.href !== "/dashboard" &&
-                                    pathname.startsWith(item.href))
+                            if (hasChildren) {
+                                return (
+                                    <div key={item.name} className="space-y-1">
+                                        <button
+                                            onClick={() => setSalaryOpen(!salaryOpen)}
+                                            className={`
+                                                w-full flex items-center justify-between rounded-lg px-4 py-3 text-sm
+                                                transition-colors hover:bg-muted
+                                                ${isActive ? "text-primary font-medium" : ""}
+                                            `}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Icon className="h-4 w-4"/>
+                                                {item.name}
+                                            </div>
+                                            <ChevronDown className={`h-4 w-4 transition-transform ${salaryOpen ? "rotate-180" : ""}`} />
+                                        </button>
+
+                                        {salaryOpen && (
+                                            <div className="ml-6 space-y-1 border-l pl-2 animate-in slide-in-from-top-1 duration-200">
+                                                {item.children?.map((child) => {
+                                                    const isChildActive = pathname === item.href && searchParams.get("role") === String(child.roleId)
+                                                    return (
+                                                        <Link
+                                                            key={child.roleId}
+                                                            href={`${item.href}?role=${child.roleId}`}
+                                                            className={`
+                                                                flex items-center rounded-lg px-4 py-2 text-xs
+                                                                transition-colors
+                                                                ${isChildActive ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"}
+                                                            `}
+                                                        >
+                                                            {child.name}
+                                                        </Link>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            }
 
                             return (
                                 <Link
