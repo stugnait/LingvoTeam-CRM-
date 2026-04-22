@@ -11,7 +11,6 @@ import {
 } from "@/src/components/ui/table"
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
-import { Input } from "@/src/components/ui/input"
 import {
     Select,
     SelectContent,
@@ -91,7 +90,6 @@ export function OrdersTable({
                                 onPageChange,
                                 isOnlyMineFilter,
                                 onFilterChange,
-
                                 statusFilter,
                                 onStatusChange,
                                 managerFilter,
@@ -101,7 +99,6 @@ export function OrdersTable({
                                 dateToFilter,
                                 onDateToChange,
                                 editors = [],
-
                                 onOpen,
                                 languagePairs,
                                 translatorsCache,
@@ -165,7 +162,7 @@ export function OrdersTable({
     return (
         <div className="border border-border rounded-lg bg-card mx-4 my-6 shadow-soft overflow-hidden">
 
-            {/* 👉 ПАНЕЛЬ ФІЛЬТРІВ */}
+            {/* ПАНЕЛЬ ФІЛЬТРІВ */}
             <div className="flex flex-col xl:flex-row items-center justify-between p-4 border-b border-border bg-muted/10 gap-4">
 
                 <div className="flex items-center gap-2 w-full xl:w-auto">
@@ -235,7 +232,7 @@ export function OrdersTable({
                         </SelectContent>
                     </Select>
 
-                    {/* 👉 Дати (UI Календар без поповерів) */}
+                    {/* Дати */}
                     <div className="flex flex-col lg:flex-row items-center gap-2 w-full xl:w-auto">
                         {/* Дата Від */}
                         <div
@@ -260,7 +257,6 @@ export function OrdersTable({
                             >
                                 <div className="flex items-center gap-2 truncate">
                                     <CalendarIcon className="h-4 w-4 opacity-50" />
-                                    {/* 👇 ТУТ жорстко задано колір тексту */}
                                     <span className={cn("truncate", dateFromFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
                                         {dateFromFilter ? new Date(dateFromFilter).toLocaleDateString() : "Date From"}
                                     </span>
@@ -310,7 +306,6 @@ export function OrdersTable({
                             >
                                 <div className="flex items-center gap-2 truncate">
                                     <CalendarIcon className="h-4 w-4 opacity-50" />
-                                    {/* 👇 ТУТ жорстко задано колір тексту */}
                                     <span className={cn("truncate", dateToFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
                                         {dateToFilter ? new Date(dateToFilter).toLocaleDateString() : "Date To"}
                                     </span>
@@ -371,7 +366,6 @@ export function OrdersTable({
                                     <div className="font-medium text-foreground">#{order.id}</div>
                                 </TableCell>
 
-                                {/* ONLY MANAGER */}
                                 <TableCell className="align-middle h-16">
                                     <div className="flex items-center gap-3">
                                         {order.manager_avatar ? (
@@ -396,7 +390,6 @@ export function OrdersTable({
                                     </div>
                                 </TableCell>
 
-                                {/* LANGUAGES залишив як є */}
                                 <TableCell className="align-middle h-16">
                                     <div className="flex items-center gap-2">
                                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
@@ -482,7 +475,7 @@ export function OrdersTable({
                                 </TableCell>
                             </TableRow>
 
-                            {/* EXPANDED */}
+                            {/* EXPANDED ROW */}
                             {expandedId === order.id && (
                                 <TableRow className="bg-muted/10 border-b-0">
                                     <TableCell colSpan={7} className="p-0 border-b-0 relative">
@@ -494,94 +487,52 @@ export function OrdersTable({
                                                         <div className="loading-spinner" />
                                                         <p className="text-sm text-muted-foreground">Loading details...</p>
                                                     </div>
-                                                ) : (
-                                                    details && (
-                                                        <div className="space-y-6 w-full">
+                                                ) : details && (
+                                                    <div className="space-y-6 w-full">
 
-                                                            <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
-                                                                {(() => {
-                                                                    // Шукаємо клієнта з масиву
-                                                                    const clientId = details.client_id || (order as any).client_id;
-                                                                    const client = clients?.find(c => c.id === clientId);
+                                                        {/* Client + Translator */}
+                                                        <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
+                                                            {(() => {
+                                                                const clientId = details.client_id || (order as any).client_id
+                                                                const client = clients?.find(c => c.id === clientId)
+                                                                return (
+                                                                    <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
+                                                                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
+                                                                        <span className="text-lg font-bold text-foreground">
+                                                                            {client ? client.full_name : `Client #${clientId}`}
+                                                                        </span>
+                                                                        {client?.email && (
+                                                                            <span className="text-sm text-muted-foreground">{client.email}</span>
+                                                                        )}
+                                                                        {(client as any)?.phone_number && (
+                                                                            <span className="text-sm text-muted-foreground">{(client as any).phone_number}</span>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })()}
 
-                                                                    return (
-                                                                        <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
-                                                                            <span className="text-lg font-bold text-foreground">
-                                                                                {client ? client.full_name : `Client #${clientId}`}
-                                                                            </span>
-                                                                            {client?.email && (
-                                                                                <span className="text-sm text-muted-foreground">{client.email}</span>
-                                                                            )}
-                                                                            {(client as any)?.phone_number && (
-                                                                                <span className="text-sm text-muted-foreground">{(client as any).phone_number}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })()}
-
-                                                                {(() => {
-                                                                    // Шукаємо перекладача з кешу
-                                                                    const translatorId = details.translator_id || order.translator_id;
-                                                                    const translator = translatorsCache[translatorId];
-
-                                                                    return (
-                                                                        <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Translator Information</span>
-                                                                            <span className="text-lg font-bold text-foreground">
-                                                                                {translator ? translator.full_name : getTranslatorName(translatorId)}
-                                                                            </span>
-                                                                            {translator?.email && (
-                                                                                <span className="text-sm text-muted-foreground">{translator.email}</span>
-                                                                            )}
-                                                                            {(translator as any)?.phone && (
-                                                                                <span className="text-sm text-muted-foreground">{(translator as any).phone}</span>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })()}
-                                                            </div>
-
-                                                            {/* КАРТКИ СТАТИСТИКИ */}
-                                                            <div className="grid grid-cols-4 gap-4 w-full animate-stagger">
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
-                                                                    <span className="text-xl font-bold text-foreground">{details.page_count}</span>
-                                                                </div>
-                                                                <div className="leading-tight">
-                                                                    <p className="text-sm font-semibold text-foreground">
-                                                                        {order.client_name || "Unknown client"}
-                                                                    </p>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        {order.client_email || "—"}
-                                                                    </p>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        Client
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center text-sm font-semibold text-green-600">
-                                                                    {getTranslatorName(order.translator_id)?.[0] || "T"}
-                                                                </div>
-                                                                <div className="leading-tight">
-                                                                    <p className="text-sm font-medium text-foreground">
-                                                                        {getTranslatorName(order.translator_id)}
-                                                                    </p>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        {translatorsCache[order.translator_id]?.email || "—"}
-                                                                    </p>
-                                                                    <p className="text-xs text-green-600 font-medium">
-                                                                        Translator
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
+                                                            {(() => {
+                                                                const translatorId = details.translator_id || order.translator_id
+                                                                const translator = translatorsCache[translatorId]
+                                                                return (
+                                                                    <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
+                                                                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Translator Information</span>
+                                                                        <span className="text-lg font-bold text-foreground">
+                                                                            {translator ? translator.full_name : getTranslatorName(translatorId)}
+                                                                        </span>
+                                                                        {translator?.email && (
+                                                                            <span className="text-sm text-muted-foreground">{translator.email}</span>
+                                                                        )}
+                                                                        {(translator as any)?.phone && (
+                                                                            <span className="text-sm text-muted-foreground">{(translator as any).phone}</span>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })()}
                                                         </div>
 
-                                                        {/* ORIGINAL DETAILS (НЕ ЧІПАВ) */}
-                                                        <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
+                                                        {/* Stats */}
+                                                        <div className="grid grid-cols-4 gap-4 w-full animate-stagger">
                                                             <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
                                                                 <span className="text-xl font-bold text-foreground">{details.page_count}</span>
@@ -611,6 +562,7 @@ export function OrdersTable({
                     ))}
                 </TableBody>
             </Table>
+
             <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
                 <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)}>
                     Previous
