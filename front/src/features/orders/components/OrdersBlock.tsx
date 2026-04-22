@@ -342,7 +342,7 @@ export function OrdersTable({
                 <TableHeader>
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="font-semibold text-foreground h-14 pl-6">ID</TableHead>
-                        <TableHead className="font-semibold text-foreground h-14">Client</TableHead>
+                        <TableHead className="font-semibold text-foreground h-14">Manager</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Languages</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Status</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Deadline</TableHead>
@@ -371,19 +371,32 @@ export function OrdersTable({
                                     <div className="font-medium text-foreground">#{order.id}</div>
                                 </TableCell>
 
+                                {/* ONLY MANAGER */}
                                 <TableCell className="align-middle h-16">
-                                    <div>
-                                        <p className="font-medium text-foreground">
-                                            {getTranslatorName(order.translator_id)}
-                                        </p>
-                                        {translatorsCache[order.translator_id]?.email && (
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                {translatorsCache[order.translator_id].email}
-                                            </p>
+                                    <div className="flex items-center gap-3">
+                                        {order.manager_avatar ? (
+                                            <img
+                                                src={order.manager_avatar}
+                                                alt="manager"
+                                                className="w-9 h-9 rounded-full object-cover border"
+                                            />
+                                        ) : (
+                                            <div className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center text-sm font-semibold text-blue-600">
+                                                {order.manager_name?.[0] || "M"}
+                                            </div>
                                         )}
+                                        <div className="leading-tight">
+                                            <p className="text-sm font-medium text-foreground">
+                                                {order.manager_name || "Manager"}
+                                            </p>
+                                            <p className="text-xs text-blue-600 font-medium">
+                                                Manager
+                                            </p>
+                                        </div>
                                     </div>
                                 </TableCell>
 
+                                {/* LANGUAGES залишив як є */}
                                 <TableCell className="align-middle h-16">
                                     <div className="flex items-center gap-2">
                                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
@@ -414,19 +427,7 @@ export function OrdersTable({
                                 </TableCell>
 
                                 <TableCell className="align-middle h-16">
-                                    <Badge
-                                        variant="outline"
-                                        className={cn(
-                                            "capitalize font-medium",
-                                            order.priority === "low" && "border-green-500 text-green-500",
-                                            order.priority === "medium" && "border-yellow-500 text-yellow-500",
-                                            order.priority === "high" && "border-orange-500 text-orange-500",
-                                            order.priority === "critical" && "border-red-600 text-red-600 bg-red-500/10"
-                                        )}
-                                    >
-                                        {order.priority === "critical" && <span className="mr-1">⚠️</span>}
-                                        {order.priority}
-                                    </Badge>
+                                    <Badge variant="outline">{order.priority}</Badge>
                                 </TableCell>
 
                                 <TableCell className="align-middle h-16 pr-6">
@@ -481,12 +482,13 @@ export function OrdersTable({
                                 </TableCell>
                             </TableRow>
 
-                            {/* EXPANDED ROW */}
+                            {/* EXPANDED */}
                             {expandedId === order.id && (
                                 <TableRow className="bg-muted/10 border-b-0">
                                     <TableCell colSpan={7} className="p-0 border-b-0 relative">
                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 ease-out w-full">
                                             <div className="px-6 py-6 w-full">
+
                                                 {loadingId === order.id ? (
                                                     <div className="flex items-center justify-center gap-3 py-8 animate-in fade-in">
                                                         <div className="loading-spinner" />
@@ -546,22 +548,59 @@ export function OrdersTable({
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
                                                                     <span className="text-xl font-bold text-foreground">{details.page_count}</span>
                                                                 </div>
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Images</span>
-                                                                    <span className="text-xl font-bold text-foreground">{details.images_count}</span>
+                                                                <div className="leading-tight">
+                                                                    <p className="text-sm font-semibold text-foreground">
+                                                                        {order.client_name || "Unknown client"}
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {order.client_email || "—"}
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Client
+                                                                    </p>
                                                                 </div>
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
-                                                                    <span className="text-xl font-bold text-foreground">{details.chars_with_spaces}</span>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center text-sm font-semibold text-green-600">
+                                                                    {getTranslatorName(order.translator_id)?.[0] || "T"}
                                                                 </div>
-                                                                <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (no spaces)</span>
-                                                                    <span className="text-xl font-bold text-foreground">{details.chars_no_spaces}</span>
+                                                                <div className="leading-tight">
+                                                                    <p className="text-sm font-medium text-foreground">
+                                                                        {getTranslatorName(order.translator_id)}
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {translatorsCache[order.translator_id]?.email || "—"}
+                                                                    </p>
+                                                                    <p className="text-xs text-green-600 font-medium">
+                                                                        Translator
+                                                                    </p>
                                                                 </div>
                                                             </div>
 
                                                         </div>
-                                                    )
+
+                                                        {/* ORIGINAL DETAILS (НЕ ЧІПАВ) */}
+                                                        <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
+                                                            <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
+                                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
+                                                                <span className="text-xl font-bold text-foreground">{details.page_count}</span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
+                                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Symbols</span>
+                                                                <span className="text-xl font-bold text-foreground">{details.symbols_count}</span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
+                                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
+                                                                <span className="text-xl font-bold text-foreground">{details.chars_with_spaces}</span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
+                                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (no spaces)</span>
+                                                                <span className="text-xl font-bold text-foreground">{details.chars_no_spaces}</span>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

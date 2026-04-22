@@ -27,6 +27,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.core.mail import send_mail
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from rest_framework import serializers
 from .models import EditorLanguagePairs
@@ -83,6 +84,10 @@ User = get_user_model()
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserUpdateSerializer
+
+    # 👇 Додаємо парсери для підтримки завантаження файлів (avatar)
+    parser_classes = [MultiPartParser, FormParser]
+
     # permission_classes = (IsAdminUser,)
 
     lookup_field = 'id'
@@ -135,6 +140,9 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+
+    # 👇 Додаємо парсери сюди також
+    parser_classes = [MultiPartParser, FormParser]
 
     search_fields = ['first_name', 'last_name', 'full_name']
     ordering_fields = ['id', 'email', 'first_name', 'last_name']
@@ -255,9 +263,12 @@ class UserViewSet(viewsets.ModelViewSet):
         request=UserSelfUpdateSerializer,
         tags=["Profile"]
     )
-    @action(detail=False, methods=['patch'], url_path='user/update', serializer_class=UserSelfUpdateSerializer, permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['patch'], url_path='user/update', serializer_class=UserSelfUpdateSerializer,
+            permission_classes=[IsAuthenticated])
     def update_user(self, request):
         user = request.user
+
+        # request.data тепер міститиме і текст, і файли завдяки MultiPartParser
         serializer = self.get_serializer(
             user,
             data=request.data,
@@ -265,6 +276,7 @@ class UserViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
         return Response(
             {
                 "message": "Дані успішно оновлено.",
@@ -478,17 +490,25 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
         return response
 
 
-
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
-    queryset = EditorLanguagePairs.objects.all()
+    # 1. Виправлено queryset (був EditorLanguagePairs)
+    queryset = User.objects.all()
+
+    # Твій серіалізатор, у який ми раніше додали поле 'avatar'
     serializer_class = RegistrationSerializer
 
+    # 2. Додано парсери для того, щоб Django міг читати файли (multipart/form-data)
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def create(self, request, *args, **kwargs):
+        # request.data при FormData — це об'єкт QueryDict, який не можна змінювати.
+        # Тому copy() тут є абсолютно обов'язковим.
         data = request.data.copy()
 
         input_password = data.get('password')
 
+        # Логіка генерації пароля, якщо юзер його не ввів
         if not input_password or input_password.strip() == "":
             lowercase = string.ascii_lowercase
             uppercase = string.ascii_uppercase
@@ -504,15 +524,16 @@ class RegistrationView(generics.CreateAPIView):
             random.shuffle(password_list)
 
             final_password = "".join(password_list)
-
             data['password'] = final_password
         else:
             final_password = input_password
 
+        # Передаємо дані у серіалізатор. Він сам дістане текстові поля і файл аватарки.
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
+        # Відправка листа з доступами
         email_subject = 'Реєстрація успішна'
         email_message = f"""
         Вітаємо, {user.full_name}!
@@ -537,14 +558,14 @@ class RegistrationView(generics.CreateAPIView):
         except Exception as e:
             print(f"Помилка відправки пошти: {e}")
 
+        # Формуємо відповідь (використовуємо full_name замість first/last name)
         return Response({
             'user_id': user.id,
             'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
+            'full_name': user.full_name,
             'phone': user.phone,
-            'role': user.role.id if user.role else None,
-            'password': final_password,  # Повертаємо той пароль, який був використаний (або згенерований, або ваш)
+            'role': user.role.id if hasattr(user, 'role') and user.role else None,
+            'password': final_password,
             'message': 'Користувача успішно створено.'
         }, status=status.HTTP_201_CREATED)
 

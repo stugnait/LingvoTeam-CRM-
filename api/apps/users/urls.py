@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenBlacklistView
 
+
 from .views import (
     ForgotPasswordView, RegistrationView, ResetPasswordView,
     CustomTokenObtainPairView, CustomTokenRefreshView,
@@ -24,3 +25,4 @@ urlpatterns = [
 
     path('', include(router.urls))
 ]
+

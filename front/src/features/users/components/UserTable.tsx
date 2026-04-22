@@ -25,6 +25,27 @@ import {
 } from "@/src/components/ui/dropdown-menu"
 import type { User } from "../types"
 
+// 👇 1. Додаємо адресу бекенду та функцію-помічник
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
+export const getImageUrl = (path: string | null | undefined) => {
+    if (!path) {return undefined}
+
+    // Якщо шлях вже має http (наприклад, бекенд віддав повне посилання), залишаємо як є
+    if (path.startsWith("http")) {return path}
+
+    // Очищаємо від зайвих слешів на початку
+    const cleanPath = path.startsWith("/") ? path.substring(1) : path
+
+    // Якщо в шляху чомусь немає слова media, додаємо його
+    if (!cleanPath.startsWith("media/")) {
+        return `${BACKEND_URL}/media/${cleanPath}`
+    }
+
+    return `${BACKEND_URL}/${cleanPath}`
+}
+// ☝️ Кінець блоку з функцією
+
 interface UserTableProps {
     users: User[]
     onEdit: (user: User) => void
@@ -77,16 +98,33 @@ export function UserTable({
                     {users.map((user) => (
                         <TableRow key={user.id}>
                             <TableCell>
-                                <div>
-                                    <p className="font-medium">
-                                        {user.full_name}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {user.email}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {user.phone}
-                                    </p>
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold overflow-hidden border">
+                                        {user.avatar ? (
+                                            <img
+                                                // 👇 2. Використовуємо функцію getImageUrl тут
+                                                src={getImageUrl(user.avatar)}
+                                                alt={user.full_name}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <span>
+                                                {user.full_name?.charAt(0).toUpperCase() || "?"}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <p className="font-medium">
+                                            {user.full_name}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {user.email}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {user.phone}
+                                        </p>
+                                    </div>
                                 </div>
                             </TableCell>
 

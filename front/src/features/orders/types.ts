@@ -30,8 +30,27 @@ export interface CreateOrderResponse {
 }
 
 export interface Details {
-    translator_id: number
-    client_id: number
+    translator: {
+        id: number
+        full_name: string
+        email?: string
+        avatar?: string
+    } | null
+
+    manager: {
+        id: number
+        full_name: string
+        email?: string
+        avatar?: string
+    } | null
+
+    client: {
+        id: number
+        full_name: string
+        email?: string
+        phone?: string
+    } | null
+
     page_count: number
     images_count: number
     chars_with_spaces: number
@@ -206,6 +225,7 @@ export interface OrderListItem {
     created_at: string // ISO
     translator_id: number
     language_pair_id: number
+    client_name: string
     deadline: string
     priority: "low" | "medium" | "high" | "critical"
 }
@@ -353,7 +373,9 @@ export interface KanbanTask {
     priority: TaskPriority
 
     deadline?: string
-    client_id: number
+    client_name: string
+
+    avatar_url?: string | null
 
     assignee?: {
         id: number

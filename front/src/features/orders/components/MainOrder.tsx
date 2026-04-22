@@ -345,6 +345,7 @@ export default function OrdersPage() {
                     taskDescription={viewingOrder.client_comment || 'No comment'}
                     status={viewingOrder.status_name || viewingOrder.status || 'all_orders'}
                     priority={viewingOrder.priority || 'medium'}
+                    avatar_url={viewingOrder.avatar_url}
                     manager={viewingOrder.manager_name || 'Unassigned'}
                     translator={viewingOrder.translator_name || 'Unassigned'}
                     onDownloadOriginal={() => downloadOrderSourceFiles(viewingOrder.id)}

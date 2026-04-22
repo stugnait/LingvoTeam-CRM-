@@ -44,6 +44,7 @@ interface TaskModalProps {
     onAssignToMe?: () => void
     onDownloadOriginal?: () => void
     onDownloadTranslation?: () => void
+    avatar_url?: string | null
 }
 
 export function TaskModal({

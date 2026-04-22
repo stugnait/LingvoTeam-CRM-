@@ -1,8 +1,9 @@
 "use client"
 
+import { useMemo } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
-import { Plus } from "lucide-react"
+import { Plus, Upload, User as UserIcon } from "lucide-react"
 
 import { UserTable } from "./UserTable"
 import { UserFilters } from "./UserFilter"
@@ -18,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/src/components/ui/select"
-import {DashboardHeader} from "@/src/shared/components/layout/DashboardHeader";
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 
 export function UsersPage() {
     const {
@@ -46,6 +47,14 @@ export function UsersPage() {
         confirmAction,
         closeModals,
     } = useUsers()
+
+    // 👇 Генеруємо посилання для прев'ю аватарки (щоб бачити картинку до відправки на сервер)
+    const avatarPreview = useMemo(() => {
+        if (!form.avatar) {return null}
+        if (typeof form.avatar === 'string') {return form.avatar}
+        if (form.avatar instanceof File) {return URL.createObjectURL(form.avatar)}
+        return null
+    }, [form.avatar])
 
     return (
         <>
@@ -120,74 +129,109 @@ export function UsersPage() {
                 submitLabel={selectedUser ? "Update" : "Create"}
                 onSubmit={() => submitUser(form)}
             >
-                <div className="space-y-4">
-                    <div>
-                        <Input
-                            placeholder="Full name"
-                            value={form.full_name}
-                            className={errors?.full_name ? "border-red-500" : ""}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    full_name: e.target.value,
-                                }))
-                            }
-                        />
-                        {errors?.full_name && <p className="text-xs text-red-500 mt-1">{errors.full_name}</p>}
-                    </div>
+                <div className="space-y-6">
+                    {/* 👇 Блок завантаження аватарки */}
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border bg-muted flex items-center justify-center">
+                            {avatarPreview ? (
+                                <img
+                                    src={avatarPreview}
+                                    alt="Avatar preview"
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                <UserIcon className="h-10 w-10 text-muted-foreground" />
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                id="avatar-upload"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                        setForm(prev => ({ ...prev, avatar: file }))
+                                    }
+                                    // Очищаємо input, щоб можна було вибрати той самий файл ще раз
+                                    e.target.value = ""
+                                }}
+                            />
+                            <Button asChild variant="outline" size="sm">
+                                <label htmlFor="avatar-upload" className="cursor-pointer">
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Upload Avatar
+                                </label>
+                            </Button>
 
-                    <div>
-                        <Input
-                            placeholder="Email"
-                            value={form.email}
-                            className={errors?.email ? "border-red-500" : ""}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    email: e.target.value,
-                                }))
-                            }
-                        />
-                        {errors?.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                            {form.avatar && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setForm(prev => ({ ...prev, avatar: null }))}
+                                >
+                                    Remove
+                                </Button>
+                            )}
+                        </div>
                     </div>
+                    {/* ☝️ Кінець блоку завантаження аватарки */}
 
-                    <div>
-                        <Input
-                            placeholder="Phone"
-                            value={form.phone}
-                            className={errors?.phone ? "border-red-500" : ""}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    phone: e.target.value,
-                                }))
-                            }
-                        />
-                        {errors?.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
-                    </div>
+                    <Input
+                        placeholder="Full name"
+                        value={form.full_name}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                full_name: e.target.value,
+                            }))
+                        }
+                    />
 
-                    <div>
-                        <Select
-                            value={String(form.role || "")}
-                            onValueChange={(value) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    role: Number(value),
-                                }))
-                            }
-                        >
-                            <SelectTrigger className={errors?.role ? "border-red-500" : ""}>
-                                <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="1">Admin</SelectItem>
-                                <SelectItem value="2">Manager</SelectItem>
-                                <SelectItem value="3">Editor</SelectItem>
-                                <SelectItem value="4">Finance</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {errors?.role && <p className="text-xs text-red-500 mt-1">{errors.role}</p>}
-                    </div>
+                    <Input
+                        placeholder="Email"
+                        value={form.email}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                email: e.target.value,
+                            }))
+                        }
+                    />
+
+                    <Input
+                        placeholder="Phone"
+                        value={form.phone}
+                        onChange={(e) =>
+                            setForm(prev => ({
+                                ...prev,
+                                phone: e.target.value,
+                            }))
+                        }
+                    />
+
+                    <Select
+                        value={String(form.role || "")}
+                        onValueChange={(value) =>
+                            setForm(prev => ({
+                                ...prev,
+                                role: Number(value),
+                            }))
+                        }
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="1">Admin</SelectItem>
+                            <SelectItem value="2">Manager</SelectItem>
+                            <SelectItem value="3">Editor</SelectItem>
+                            <SelectItem value="4">Finance</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </BaseFormModal>
 

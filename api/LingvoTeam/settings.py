@@ -4,8 +4,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from apps import users
 
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+
+# 👈 Перевір, чи є ці два рядки (і чи є імпорт os на початку файлу)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -122,7 +129,7 @@ TEMPLATES = [
     },
 ]
 SECRET_KEY = os.getenv('SECRET_KEY')
-DEBUG = os.getenv('DEBUG')
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 
 DATABASES = {

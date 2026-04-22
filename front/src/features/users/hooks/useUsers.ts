@@ -31,7 +31,8 @@ export function useUsers() {
         phone: "",
         email: "",
         role: 0,
-        is_active: false
+        is_active: false,
+        avatar: null // 👈 Додаємо аватар сюди
     })
 
     const [errors, setErrors] = useState<Partial<Record<keyof UserFormData, string>>>({})
@@ -91,7 +92,8 @@ export function useUsers() {
             phone: "",
             email: "",
             role: 0,
-            is_active: true
+            is_active: true,
+            avatar: null // 👈 Очищаємо аватар при створенні нового
         })
         setErrors({})
 
@@ -106,7 +108,8 @@ export function useUsers() {
             email: user.email,
             phone: user.phone,
             role: user.role.id,
-            is_active: user.is_active
+            is_active: user.is_active,
+            avatar: null // 👈 Очищаємо, бо якщо юзер не вибере новий файл, старий збережеться на бекенді
         })
         setErrors({})
 
@@ -197,7 +200,7 @@ export function useUsers() {
     }
 
     const confirmDelete = async () => {
-        if (!selectedUser) return
+        if (!selectedUser) {return}
 
         try {
             await usersApi.remove(selectedUser.id)
@@ -220,7 +223,7 @@ export function useUsers() {
     }
 
     const confirmDeactivation = async () => {
-        if (!selectedUser) return
+        if (!selectedUser) {return}
 
         try {
             await usersApi.deactivate(selectedUser.id)
@@ -243,7 +246,7 @@ export function useUsers() {
     }
 
     const handleConfirm = async () => {
-        if (!selectedUser || !confirmAction) return
+        if (!selectedUser || !confirmAction) {return}
 
         if (confirmAction === "delete") {
             await confirmDelete()
