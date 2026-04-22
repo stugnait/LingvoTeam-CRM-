@@ -25,7 +25,7 @@ class Salary(models.Model):
 
     margin = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
-    rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     bonus = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     premium = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 

@@ -74,7 +74,7 @@ INSTALLED_APPS = [
     'apps.translators',
     'apps.notifications',
     'drf_spectacular',
-    'apps.salary'
+    'apps.salary',
 ]
 
 
