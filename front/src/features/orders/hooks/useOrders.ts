@@ -37,6 +37,10 @@ export function useOrders() {
 
     // 👉 ДОДАНО: Стан для збереження поточного фільтру "тільки мої"
     const [isOnlyMineFilter, setIsOnlyMineFilter] = useState(false)
+    const [statusFilter, setStatusFilter] = useState<string | number>("")
+    const [managerFilter, setManagerFilter] = useState<string | number>("")
+    const [dateFromFilter, setDateFromFilter] = useState<string>("")
+    const [dateToFilter, setDateToFilter] = useState<string>("")
 
     const [orders, setOrders] = useState<OrderListItem[]>([])
     const [order, setOrder] = useState<CreateOrderResponse | null>(null)
@@ -158,19 +162,36 @@ export function useOrders() {
        LOAD ORDERS
     ====================== */
 
-    // 👉 ДОДАНО: параметр onlyMine (за замовчуванням false)
-    const loadOrders = useCallback(async (pageNumber: number = 1, onlyMine: boolean = false) => {
+    const loadOrders = useCallback(async (
+        pageNumber: number = 1,
+        onlyMine: boolean = isOnlyMineFilter,
+        status: string | number = statusFilter,
+        manager: string | number = managerFilter,
+        dateFrom: string = dateFromFilter,
+        dateTo: string = dateToFilter
+    ) => {
         try {
             setLoading(true)
 
-            // Передаємо параметр в API
-            const res = await ordersApi.listOrders(pageNumber, onlyMine)
+            const res = await ordersApi.listOrders({
+                page: pageNumber,
+                my_orders: onlyMine,
+                status: status || undefined,
+                manager: manager || undefined,
+                date_from: dateFrom || undefined,
+                date_to: dateTo || undefined
+            })
 
-            setOrders(res.results)
             setOrders([...res.results].reverse())
-            setTotalPages(Math.ceil(res.count / 10))
+
+            setTotalPages(Math.ceil((res.count || 0) / 10))
             setPage(pageNumber)
-            setIsOnlyMineFilter(onlyMine) // Оновлюємо стейт фільтра
+
+            setIsOnlyMineFilter(onlyMine)
+            setStatusFilter(status)
+            setManagerFilter(manager)
+            setDateFromFilter(dateFrom)
+            setDateToFilter(dateTo)
 
             const pairIds = [...new Set(res.results.map(o => o.language_pair_id))]
             const missing = pairIds.filter(id => !languagePairs[id])
@@ -193,7 +214,7 @@ export function useOrders() {
         } finally {
             setLoading(false)
         }
-    }, [handleError, languagePairs])
+    }, [handleError, languagePairs, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter])
 
 
 
@@ -224,13 +245,13 @@ export function useOrders() {
             handleSuccess("Deleted", `Order #${orderId} deleted`)
 
             // 👉 Оновлюємо з урахуванням поточного фільтра
-            await loadOrders(page, isOnlyMineFilter)
+            await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
         } catch (e) {
             handleError(e, "Failed to delete order")
         } finally {
             setDeleteLoading(null)
         }
-    }, [page, isOnlyMineFilter, loadOrders, handleError, handleSuccess])
+    }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, loadOrders, handleError, handleSuccess])
 
 
     /* ======================
@@ -255,13 +276,13 @@ export function useOrders() {
             handleSuccess("Updated", `Order #${orderId} updated`)
 
             // 👉 Оновлюємо з урахуванням поточного фільтра
-            await loadOrders(page, isOnlyMineFilter)
+            await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
         } catch (e) {
             handleError(e, "Failed to update order")
         } finally {
             setUpdateLoading(null)
         }
-    }, [page, isOnlyMineFilter, loadOrders, handleError, handleSuccess])
+    }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, loadOrders, handleError, handleSuccess])
 
 
     /* ======================
@@ -368,11 +389,11 @@ export function useOrders() {
 
     useEffect(() => {
         loadInitialData()
-        loadOrders(1, false) // За замовчуванням вантажимо ВСІ ордери
+        loadOrders(1, false, "", "", "", "")
     }, [])
 
     const onPageChange = (newPage: number) => {
-        loadOrders(newPage, isOnlyMineFilter)
+        loadOrders(newPage, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
     }
 
     const getTranslatorById = useCallback((id: number | null) => {
@@ -406,7 +427,16 @@ export function useOrders() {
 
         page,
         totalPages,
-        isOnlyMineFilter, // 👉 Експортуємо стан фільтра, щоб використати в UI
+        isOnlyMineFilter,
+        setIsOnlyMineFilter,
+        statusFilter,
+        setStatusFilter,
+        managerFilter,
+        setManagerFilter,
+        dateFromFilter,
+        setDateFromFilter,
+        dateToFilter,
+        setDateToFilter,
 
         createOrder,
         loadOrders,

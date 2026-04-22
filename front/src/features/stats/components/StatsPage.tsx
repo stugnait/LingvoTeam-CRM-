@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { useStats } from "../hooks/useStats"
 
+import { PeriodSelector } from "@/src/components/ui/PeriodSelector"
 import type { Order, StatsItem, SalesChartItem, PnLBreakdownItem, ConversionStats } from "../types"
 import {
     Card,
@@ -49,26 +50,52 @@ export function StatsPage() {
         fetchPnL,
     } = useStats()
 
-    const [dates, setDates] = useState({
-        start_date: "",
-        end_date: "",
-    })
-
-    // initial load
+    // initial load для загальних даних
     useEffect(() => {
         fetchUnpaidOrders()
         fetchOverduePayments()
         fetchHighRiskOrders()
     }, [])
 
-    const loadAnalytics = () => {
-        fetchConversion(dates)
-        fetchSalesChart(dates)
-        fetchManagersStats(dates)
-        fetchClientsStats(dates)
-        fetchTranslatorsStats(dates)
-        fetchPnL({ ...dates })
-    }
+    const handlePeriodChange = useCallback((periodValue: string) => {
+        let params: any = {}
+
+        if (periodValue.includes(' - ')) {
+            const [start, end] = periodValue.split(' - ')
+
+            const formatForApi = (dateStr: string) => {
+                const [d, m, y] = dateStr.split('-')
+                return `${y}-${m}-${d}`
+            }
+
+            params = {
+                start_date: formatForApi(start),
+                end_date: formatForApi(end)
+            }
+        }
+        else if (periodValue.startsWith('Початок: ')) {
+            const start = periodValue.replace('Початок: ', '')
+            const [d, m, y] = start.split('-')
+            params = {
+                start_date: `${y}-${m}-${d}`,
+                end_date: ""
+            }
+        }
+        else {
+            params = { period: periodValue }
+        }
+
+        fetchConversion(params)
+        fetchSalesChart(params)
+        fetchManagersStats(params)
+        fetchClientsStats(params)
+        fetchTranslatorsStats(params)
+        fetchPnL(params)
+
+    }, [
+        fetchConversion, fetchSalesChart, fetchManagersStats,
+        fetchClientsStats, fetchTranslatorsStats, fetchPnL
+    ])
 
     return (
         <>
@@ -87,26 +114,12 @@ export function StatsPage() {
                     </div>
 
                     {/* DATE FILTER */}
-                    <Card>
+                    <Card className="relative z-50 overflow-visible">
                         <CardHeader>
                             <CardTitle>Filters</CardTitle>
-                            <CardDescription>Select period</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex gap-4">
-                            <Input
-                                type="date"
-                                value={dates.start_date}
-                                onChange={(e) => setDates(prev => ({ ...prev, start_date: e.target.value }))}
-                            />
-
-                            <Input
-                                type="date"
-                                value={dates.end_date}
-                                onChange={(e) => setDates(prev => ({ ...prev, end_date: e.target.value }))}
-                            />
-                            <Button onClick={loadAnalytics} disabled={loading}>
-                                Load
-                            </Button>
+                        <CardContent>
+                            <PeriodSelector onPeriodChange={handlePeriodChange} />
                         </CardContent>
                     </Card>
 

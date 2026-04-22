@@ -27,6 +27,7 @@ interface TaskModalProps {
     taskDescription: string
     status: string
     priority: "critical" | "high" | "medium" | "low" | string,
+    priorityName?: string
     manager: string
     translator: string,
     dueDate?: string
@@ -35,6 +36,8 @@ interface TaskModalProps {
     team?: string
     startDate?: string
     isLoading?: boolean
+    clientName?: string
+    languagePair?: string
     onSave: () => void
     onCancel: () => void
     onDelete?: () => void
@@ -52,6 +55,7 @@ export function TaskModal({
                               taskDescription,
                               status,
                               priority,
+                              priorityName,
                               manager,
                               translator,
                               dueDate,
@@ -60,6 +64,8 @@ export function TaskModal({
                               team,
                               startDate,
                               isLoading,
+                              clientName,
+                              languagePair,
                               onSave,
                               onCancel,
                               onDelete,
@@ -68,14 +74,14 @@ export function TaskModal({
                               onDownloadTranslation,
                           }: TaskModalProps) {
     const getPriorityIcon = () => {
-        const icons = {
-            critical: "⚠️",
-            high: "🔴",
-            medium: "🟡",
-            low: "🟢"
+        const icons: Record<string, string> = {
+            critical: "⚠️", "4": "⚠️",
+            high: "🔴", "3": "🔴",
+            medium: "🟡", "2": "🟡",
+            low: "🟢", "1": "🟢"
         }
 
-        return icons[priority as keyof typeof icons] || "="
+        return icons[priority?.toString().toLowerCase()] || "="
     }
 
     return (
@@ -179,6 +185,20 @@ export function TaskModal({
                                 <Settings className="h-4 w-4 text-gray-400" />
                             </button>
 
+                            {clientName && (
+                                <div className="py-3 px-3 border-t">
+                                    <label className="text-xs text-gray-600 mb-2 block">Клієнт</label>
+                                    <div className="text-sm font-medium">{clientName}</div>
+                                </div>
+                            )}
+
+                            {languagePair && (
+                                <div className="py-3 px-3 border-t">
+                                    <label className="text-xs text-gray-600 mb-2 block">Мовна пара</label>
+                                    <div className="text-sm font-medium">{languagePair}</div>
+                                </div>
+                            )}
+
                             {/* Assignee */}
                             <div className="py-3 px-3 border-t">
                                 <label className="text-xs text-gray-600 mb-2 block">Виконавець</label>
@@ -232,7 +252,7 @@ export function TaskModal({
                                 <label className="text-xs text-gray-600 mb-2 block">Пріоритет</label>
                                 <div className="flex items-center gap-2">
                                     <span>{getPriorityIcon()}</span>
-                                    <span className="text-sm font-medium capitalize">{priority}</span>
+                                    <span className="text-sm font-medium capitalize">{priorityName || priority}</span>
                                 </div>
                             </div>
 

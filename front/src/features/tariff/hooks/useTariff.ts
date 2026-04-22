@@ -42,6 +42,8 @@ export function useTariffs() {
         price_per_action: "",
     })
 
+    const [errors, setErrors] = useState<Partial<Record<keyof TariffsFormData, string>>>({})
+
     const openDeleteTariff = (tariff: Tariff) => {
         setSelectedTariff(tariff)
         setIsDeleteOpen(true)
@@ -51,6 +53,7 @@ export function useTariffs() {
         setIsFormOpen(false)
         setIsDeleteOpen(false)
         setSelectedTariff(null)
+        setErrors({})
     }
 
     const confirmDelete = async () => {
@@ -94,7 +97,7 @@ export function useTariffs() {
     }, [toast])
 
     const onPageChange = (newPage: number) => {
-        loadTariffs(newPage)
+        void loadTariffs(newPage)
     }
 
     // -------------------------
@@ -107,7 +110,7 @@ export function useTariffs() {
         } catch {
             toast({
                 title: "Error",
-                description: "Failed to load currencies",
+                description: "Failed to load categories",
                 variant: "error",
             })
         }
@@ -157,7 +160,7 @@ export function useTariffs() {
             setLoading(false)
         }
 
-        init()
+        void init()
     }, [loadTariffs, loadCurrencies, loadLanguages, loadCategories])
 
     // -------------------------
@@ -173,6 +176,7 @@ export function useTariffs() {
             price_per_page: "",
             price_per_action: "",
         })
+        setErrors({})
         setIsFormOpen(true)
     }
 
@@ -186,6 +190,7 @@ export function useTariffs() {
             price_per_page: tariff.price_per_page,
             price_per_action: tariff.price_per_action,
         })
+        setErrors({})
         setIsFormOpen(true)
     }
 
@@ -196,38 +201,39 @@ export function useTariffs() {
     const submitTariff = async (data: TariffsFormData) => {
         try {
             // -------- Validation --------
+            const newErrors: Partial<Record<keyof TariffsFormData, string>> = {}
+
             if (!data.name.trim()) {
+                newErrors.name = "Tariff name is required"
+            }
+            if (!data.language_pair) {
+                newErrors.language_pair = "Please select a language pair"
+            }
+            if (!data.currency_id) {
+                newErrors.currency_id = "Please select a currency"
+            }
+            if (!data.category) {
+                newErrors.category = "Please select a category"
+            }
+
+            if (!data.price_per_page || Number(data.price_per_page) <= 0) {
+                newErrors.price_per_page = "Price per page must be greater than 0"
+            }
+            if (!data.price_per_action || Number(data.price_per_action) <= 0) {
+                newErrors.price_per_action = "Price per action must be greater than 0"
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors)
                 toast({
                     title: "Validation error",
-                    description: "Tariff name is required",
+                    description: "Please check the form fields",
                     variant: "error",
                 })
                 return
             }
 
-            if (
-                !data.price_per_page ||
-                Number(data.price_per_page) <= 0
-            ) {
-                toast({
-                    title: "Validation error",
-                    description: "Price per page must be greater than 0",
-                    variant: "error",
-                })
-                return
-            }
-
-            if (
-                !data.price_per_action ||
-                Number(data.price_per_action) <= 0
-            ) {
-                toast({
-                    title: "Validation error",
-                    description: "Price per action must be greater than 0",
-                    variant: "error",
-                })
-                return
-            }
+            setErrors({})
 
             // -------- Transform payload --------
             const payload = {
@@ -281,6 +287,7 @@ export function useTariffs() {
 
         form,
         setForm,
+        errors,
 
         selectedTariff,
         isFormOpen,

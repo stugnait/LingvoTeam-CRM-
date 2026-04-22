@@ -6,7 +6,8 @@ import {
     TransactionCategory,
     TransactionCategoryPayload,
     TransactionCategoryListResponse,
-    TransactionFormData
+    TransactionFormData,
+    SalesChartResponse
 } from "./types"
 
 export const financeApi = {
@@ -87,6 +88,17 @@ export const financeApi = {
         })
 
         return apiFetch(`stats/pnl/?${params.toString()}`, {
+            method: "GET",
+        })
+    },
+
+    getSalesChart: (start_date: string, end_date: string) => {
+        const params = new URLSearchParams({
+            start_date,
+            end_date,
+        })
+
+        return apiFetch<SalesChartResponse>(`stats/dashboard/sales-chart/?${params.toString()}`, {
             method: "GET",
         })
     },

@@ -35,6 +35,7 @@ export function UsersPage() {
         selectedUser,
         form,
         setForm,
+        errors,
 
         openAddUser,
         openEditUser,
