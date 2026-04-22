@@ -32,6 +32,7 @@ export default function TranslatorsPage() {
 
         form,
         setForm,
+        errors,
 
         search,
         setSearch,
@@ -156,61 +157,83 @@ export default function TranslatorsPage() {
                 onSubmit={() => submitTranslator(form)}
             >
                 <div className="space-y-4">
-                    <Input
-                        placeholder="Full name"
-                        value={form.full_name}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                full_name: e.target.value,
-                            }))
-                        }
-                    />
 
-                    <Input
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                email: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Full name"
+                            value={form.full_name}
+                            className={errors?.full_name ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    full_name: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.full_name && <p className="text-xs text-red-500 mt-1">{errors.full_name}</p>}
+                    </div>
 
-                    <Input
-                        placeholder="Phone"
-                        value={form.phone}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                phone: e.target.value,
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Email"
+                            value={form.email}
+                            className={errors?.email ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    email: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                    </div>
 
-                    <Input
-                        placeholder="Work type"
-                        value={form.work_type}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                work_type: Number(e.target.value),
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Phone"
+                            value={form.phone}
+                            className={errors?.phone ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    phone: e.target.value,
+                                }))
+                            }
+                        />
+                        {errors?.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                    </div>
 
-                    <Input
-                        placeholder="Currency ID"
-                        type="number"
-                        value={form.currency_id}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                currency_id: Number(e.target.value),
-                            }))
-                        }
-                    />
+                    <div>
+                        <Input
+                            placeholder="Work type"
+                            value={form.work_type}
+                            className={errors?.work_type ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    work_type: Number(e.target.value),
+                                }))
+                            }
+                        />
+                        {errors?.work_type && <p className="text-xs text-red-500 mt-1">{errors.work_type}</p>}
+                    </div>
+
+                    <div>
+                        <Input
+                            placeholder="Currency ID"
+                            type="number"
+                            value={form.currency_id}
+                            className={errors?.currency_id ? "border-red-500" : ""}
+                            onChange={(e) =>
+                                setForm(prev => ({
+                                    ...prev,
+                                    currency_id: Number(e.target.value),
+                                }))
+                            }
+                        />
+                        {errors?.currency_id && <p className="text-xs text-red-500 mt-1">{errors.currency_id}</p>}
+                    </div>
+
                 </div>
             </BaseFormModal>
 

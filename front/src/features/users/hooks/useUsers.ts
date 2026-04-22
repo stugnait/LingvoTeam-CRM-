@@ -34,6 +34,8 @@ export function useUsers() {
         is_active: false
     })
 
+    const [errors, setErrors] = useState<Partial<Record<keyof UserFormData, string>>>({})
+
     const debouncedSearch = useDebounce(filters.search, 400)
 
     // modals
@@ -91,6 +93,7 @@ export function useUsers() {
             role: 0,
             is_active: true
         })
+        setErrors({})
 
         setIsFormOpen(true)
     }
@@ -105,6 +108,7 @@ export function useUsers() {
             role: user.role.id,
             is_active: user.is_active
         })
+        setErrors({})
 
         setIsFormOpen(true)
     }
@@ -126,6 +130,7 @@ export function useUsers() {
         setIsDeleteOpen(false)
         setSelectedUser(null)
         setConfirmAction(null)
+        setErrors({})
     }
 
     // -------------------------
@@ -133,6 +138,34 @@ export function useUsers() {
     // -------------------------
     const submitUser = async (data: UserFormData) => {
         try {
+            const newErrors: Partial<Record<keyof UserFormData, string>> = {}
+
+            if (!data.full_name.trim()) {
+                newErrors.full_name = "Full name is required"
+            }
+            if (!data.email.trim()) {
+                newErrors.email = "Email is required"
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+                newErrors.email = "Invalid email format"
+            }
+            if (!data.phone.trim()) {
+                newErrors.phone = "Phone is required"
+            }
+            if (!data.role || Number(data.role) <= 0) {
+                newErrors.role = "Role is required"
+            }
+
+            if (Object.keys(newErrors).length > 0) {
+                setErrors(newErrors)
+                toast({
+                    title: "Validation error",
+                    description: "Please check the form fields",
+                    variant: "error",
+                })
+                return
+            }
+
+            setErrors({})
 
             if (selectedUser) {
                 await usersApi.update(selectedUser.id, data)
@@ -241,6 +274,7 @@ export function useUsers() {
 
         form,
         setForm,
+        errors,
 
         openAddUser,
         openEditUser,
