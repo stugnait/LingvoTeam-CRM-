@@ -37,8 +37,14 @@ export default function OrdersPage() {
         totalPages,
         onPageChange,
         loadOrders,
-        isOnlyMineFilter,
-        refreshTranslators
+        refreshTranslators,
+
+        // 👉 Дістаємо всі наші стани для фільтрів з хука
+        isOnlyMineFilter, setIsOnlyMineFilter,
+        statusFilter, setStatusFilter,
+        managerFilter, setManagerFilter,
+        dateFromFilter, setDateFromFilter,
+        dateToFilter, setDateToFilter,
     } = useOrders()
 
     const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
@@ -156,7 +162,7 @@ export default function OrdersPage() {
             setViewingOrder(order)
             setIsViewModalOpen(true)
         }
-        loadOrderDetails(id) // завантажуємо додаткові деталі у фоні
+        loadOrderDetails(id)
     }
 
     return (
@@ -209,14 +215,39 @@ export default function OrdersPage() {
                             page={page}
                             totalPages={totalPages}
                             onPageChange={onPageChange}
+
+                            // 👉 ПЕРЕДАЄМО ФІЛЬТРИ В ТАБЛИЦЮ:
                             isOnlyMineFilter={isOnlyMineFilter}
-                            onFilterChange={(onlyMine) => loadOrders(1, onlyMine)}
+                            onFilterChange={(onlyMine) => {
+                                setIsOnlyMineFilter(onlyMine)
+                                loadOrders(1, onlyMine, statusFilter, managerFilter, dateFromFilter, dateToFilter)
+                            }}
+                            statusFilter={statusFilter}
+                            onStatusChange={(val) => {
+                                setStatusFilter(val)
+                                loadOrders(1, isOnlyMineFilter, val, managerFilter, dateFromFilter, dateToFilter)
+                            }}
+                            managerFilter={managerFilter}
+                            onManagerChange={(val) => {
+                                setManagerFilter(val)
+                                loadOrders(1, isOnlyMineFilter, statusFilter, val, dateFromFilter, dateToFilter)
+                            }}
+                            dateFromFilter={dateFromFilter}
+                            onDateFromChange={(val) => {
+                                setDateFromFilter(val)
+                                loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, val, dateToFilter)
+                            }}
+                            dateToFilter={dateToFilter}
+                            onDateToChange={(val) => {
+                                setDateToFilter(val)
+                                loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, val)
+                            }}
+                            editors={editors} // Для списку менеджерів
 
-                            // 👉 ДЛЯ ТАБЛИЦІ: передаємо loadOrderDetails, щоб рядок розгортався вниз!
                             onOpen={loadOrderDetails}
-
                             languagePairs={languagePairs}
                             translatorsCache={translatorsCache}
+                            clients={clients || []}
                             highlightId={activeHighlightId}
                             confirmOrder={confirmOrder}
                             downloadOrderSourceFiles={downloadOrderSourceFiles}
