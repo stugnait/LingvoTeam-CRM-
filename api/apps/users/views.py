@@ -237,6 +237,18 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=["GET"], url_path="for-salary")
+    def for_salary(self, request):
+        role = request.query_params.get("role")
+
+        queryset = User.objects.select_related("role").filter(is_active=True)
+
+        if role:
+            queryset = queryset.filter(role_id=role)
+
+        serializer = UserListSerializer(queryset, many=True)
+        return Response(serializer.data)
+
     @extend_schema(
         summary="Оновити свій профіль",
         description="Дозволяє залогіненому користувачу змінити свої особисті дані.",

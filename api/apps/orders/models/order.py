@@ -27,11 +27,20 @@ class Order(models.Model):
         db_column='language_pair_id'
     )
 
-    manager_id = models.ForeignKey(
+    manager_accept_id = models.ForeignKey(
         "users.User",
         on_delete=models.CASCADE,
-        related_name='managed_orders',
-        db_column='manager_id'
+        related_name='accepted_orders',
+        db_column='manager_accept_id'
+    )
+
+    manager_delivery_id = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name='delivered_orders',
+        db_column='manager_delivery_id',
+        null=True,
+        blank=True
     )
 
     editor_id = models.ForeignKey(

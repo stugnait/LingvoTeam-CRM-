@@ -26,6 +26,7 @@ const navigation = [
     { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, roles: ["editor"] },
     { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier"] },
     { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, roles: ["admin", "manager"] },
+    { name: "Salary", href: "/dashboard/salary", icon: CheckSquare, roles: ["admin", "manager"] },
 ]
 
 export function CrmSidebar({

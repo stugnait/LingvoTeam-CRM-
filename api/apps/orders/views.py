@@ -236,7 +236,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         status_in_progress = get_object_or_404(Status, slug="in_translation")
 
         order = serializer.save(
-            manager_id=request.user,
+            manager_accept_id=request.get('manager_accept_id'),
+            manager_delivery_id=data.get('manager_delivery_id'),
             language_pair_id=language_pair_instance,
 
             status_id=status_in_progress,

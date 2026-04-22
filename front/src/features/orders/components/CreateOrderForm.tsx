@@ -64,6 +64,14 @@ interface CreateOrderModalProps {
     translators: any[]
     tariffs: any[]
 
+    manager: string
+    setManager: (value: string) => void
+
+    salesManager: string
+    setSalesManager: (value: string) => void
+
+    managers: any[]
+
     deadline: Date | undefined
     setDeadline: (date: Date | undefined) => void
     comment: string
@@ -117,7 +125,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         setComment,
         priority,
         setPriority,
-        onRefreshTranslators, // Дістали нашу функцію з пропсів
+        onRefreshTranslators,
+        manager,
+        setManager,
+        salesManager,
+        setSalesManager,
+        managers,
     } = props
 
     // Додаємо логіку створення перекладача
@@ -127,7 +140,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const handleQuickCreateTranslator = async () => {
         await submitTranslator(form)
-        if (onRefreshTranslators) await onRefreshTranslators()
+        if (onRefreshTranslators) {await onRefreshTranslators()}
         closeModals()
     }
 
@@ -158,7 +171,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     }
 
     const handleCalculatePrice = async () => {
-        if (!files.length || !trafficId) return
+        if (!files.length || !trafficId) {return}
 
         try {
             setPriceLoading(true)
@@ -434,6 +447,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                 <WizardStep>
                     <div className="space-y-6">
+
+                        {/* TRANSLATOR */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -452,88 +467,109 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 </Button>
                             </div>
 
-                        <TranslatorSelect
-                            value={selectedTranslatorId}
-                            translators={translators}
-                            sourceLanguage={sourceLanguage}
-                            targetLanguage={targetLanguage}
-                            placeholder="Select translator (optional)"
-                            orderTrafficId={trafficId ? Number(trafficId) : null}
-                            onChange={(translatorId, translatorTrafficId) => {
-                                setSelectedTranslatorId(translatorId)
-                                setTranslatorTrafficId(translatorTrafficId ? String(translatorTrafficId) : "")
-                            }}
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <Users className="h-4 w-4 text-green-600" />
-                            Editor
-                        </label>
-                        <Combobox
-                            value={editor}
-                            onChange={setEditor}
-                            placeholder="Select editor (optional)"
-                            searchPlaceholder="Search editor..."
-                            options={editorOptions}
-                            renderOption={(option) => (
-                                <div className="flex flex-col">
-                                    <span>{option.label}</span>
-                                    {option.description && (
-                                        <span className="text-xs text-gray-500">
-                    {option.description}
-                </span>
-                                    )}
-                                </div>
-                            )}
-                        />
-                    </div>
-
-                    {selectedTranslatorId && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Translator Traffic ID</label>
-                            <input
-                                type="text"
-                                value={translatorTrafficId}
-                                onChange={(e) => setTranslatorTrafficId(e.target.value)}
-                                className="w-full px-3 py-2 border rounded-md"
-                                placeholder="Enter traffic ID"
+                            <TranslatorSelect
+                                value={selectedTranslatorId}
+                                translators={translators}
+                                sourceLanguage={sourceLanguage}
+                                targetLanguage={targetLanguage}
+                                placeholder="Select translator (optional)"
+                                orderTrafficId={trafficId ? Number(trafficId) : null}
+                                onChange={(translatorId, translatorTrafficId) => {
+                                    setSelectedTranslatorId(translatorId)
+                                    setTranslatorTrafficId(translatorTrafficId ? String(translatorTrafficId) : "")
+                                }}
                             />
                         </div>
-                    )}
-                </div>
 
-                {priceLoading && (
-                    <div className="text-sm text-gray-500">
-                        Calculating price...
-                    </div>
-                )}
+                        {/* EDITOR */}
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Users className="h-4 w-4 text-green-600" />
+                                Editor
+                            </label>
+                            <Combobox
+                                value={editor}
+                                onChange={setEditor}
+                                placeholder="Select editor (optional)"
+                                options={editorOptions}
+                            />
+                        </div>
 
-                {priceData && !priceLoading && (
-                    <div className="bg-green-50 p-4 rounded-lg text-sm space-y-1">
-                        <p className="font-medium text-green-700">Price Preview</p>
+                        {/* 🔥 MANAGER 1 */}
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <User className="h-4 w-4 text-indigo-600" />
+                                Project Manager
+                            </label>
+                            <Combobox
+                                value={manager}
+                                onChange={setManager}
+                                placeholder="Select manager"
+                                options={managers.map((m) => ({
+                                    value: String(m.id),
+                                    label: m.full_name,
+                                }))}
+                            />
+                        </div>
 
-                        <p>Pages: {priceData.pages}</p>
+                        {/* 🔥 MANAGER 2 */}
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <User className="h-4 w-4 text-purple-600" />
+                                Sales Manager
+                            </label>
+                            <Combobox
+                                value={salesManager}
+                                onChange={setSalesManager}
+                                placeholder="Select sales manager"
+                                options={managers.map((m) => ({
+                                    value: String(m.id),
+                                    label: m.full_name,
+                                }))}
+                            />
+                        </div>
 
-                        <p>
-                            Client price: {priceData.total_client_price} ({priceData.client_price_per_page}/page)
-                        </p>
-
-                        {priceData.translator_rate_per_page && (
-                            <>
-                                <p>
-                                    Translator: {priceData.translator_total} ({priceData.translator_rate_per_page}/page)
-                                </p>
-
-                                <p>
-                                    Margin: {priceData.margin}
-                                </p>
-                            </>
+                        {selectedTranslatorId && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">
+                                    Translator Traffic ID
+                                </label>
+                                <input
+                                    type="text"
+                                    value={translatorTrafficId}
+                                    onChange={(e) => setTranslatorTrafficId(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-md"
+                                />
+                            </div>
                         )}
                     </div>
-                )}
-            </WizardStep>
+
+                    {/* PRICE BLOCK */}
+                    {priceLoading && (
+                        <div className="text-sm text-gray-500">
+                            Calculating price...
+                        </div>
+                    )}
+
+                    {priceData && !priceLoading && (
+                        <div className="bg-green-50 p-4 rounded-lg text-sm space-y-1">
+                            <p className="font-medium text-green-700">Price Preview</p>
+
+                            <p>Pages: {priceData.pages}</p>
+
+                            <p>
+                                Client price: {priceData.total_client_price}
+                            </p>
+
+                            {priceData.translator_rate_per_page && (
+                                <>
+                                    <p>Translator: {priceData.translator_total}</p>
+                                    <p>Margin: {priceData.margin}</p>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </WizardStep>
 
             <WizardStep>
                 <div className="space-y-6">
