@@ -6,16 +6,19 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 export interface OrderListItem {
     id: number
     client_id: number
+    client_name?: string
     source_language: number
     target_language: number
     status_id: string  // '1', '2', '3', '4', '5', '6'
     status_name: string,
     comment: string,
     language_pair_name: string
+    deadline?: string
     created_at: string // ISO
     client_comment: string
     translator_id: string
     language_pair_id: number,
+    priority_display?: string,
     priority: string,
     manager_name: string,
     translator_name: string
@@ -76,6 +79,17 @@ export const taskStatusToStatusId = (status: TaskStatus): string => {
         'done': '6',
     };
     return mapping[status];
+};
+
+export const formatPriority = (priorityValue: string | number): TaskPriority => {
+    const stringValue = String(priorityValue);
+    const mapping: Record<string, TaskPriority> = {
+        '1': 'low',
+        '2': 'medium',
+        '3': 'high',
+        '4': 'critical',
+    };
+    return mapping[stringValue] || 'low'; // low за замовчуванням
 };
 
 // API related types

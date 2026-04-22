@@ -24,7 +24,7 @@ import {TaskModal} from "@/src/components/modals/jira/InfoModal";
 
 // Hooks and types
 import { useEditor } from '../hooks/useEditor';
-import { KanbanTask } from '../types';
+import { KanbanTask, formatPriority } from '../types';
 import { cn } from '@/src/lib/utils';
 
 // Icons for columns
@@ -47,6 +47,22 @@ const COLUMN_ICONS = {
     reject: <XCircle className="w-4 h-4" />,
     pause: <PauseCircle className="w-4 h-4" />,
     done: <CheckSquare className="w-4 h-4" />,
+};
+
+const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Не вказано';
+    try {
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('uk-UA', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(date);
+    } catch (e) {
+        return dateString;
+    }
 };
 
 export default function EditorMain() {
@@ -219,9 +235,9 @@ export default function EditorMain() {
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className={cn(
                                                 "w-2 h-2 rounded-full",
-                                                activeTask.priority === 'critical' ? 'bg-red-500' :
-                                                    activeTask.priority === 'high' ? 'bg-yellow-500' :
-                                                        activeTask.priority === 'medium' ? 'bg-blue-500' : 'bg-green-500'
+                                                formatPriority(activeTask.priority) === 'critical' ? 'bg-red-500' :
+                                                    formatPriority(activeTask.priority) === 'high' ? 'bg-yellow-500' :
+                                                        formatPriority(activeTask.priority) === 'medium' ? 'bg-blue-500' : 'bg-green-500'
                                             )} />
                                             <h3 className="font-medium text-sm text-gray-900 dark:text-white">
                                                 {activeTask.title}
@@ -251,9 +267,17 @@ export default function EditorMain() {
                             taskTitle={selectedTask.language_pair_name}
                             taskDescription={selectedTask.client_comment}
                             status={selectedTask.status_name}
-                            priority={selectedTask.priority}
+
+                            priority={formatPriority(selectedTask.priority)}
+                            priorityName={formatPriority(selectedTask.priority_display || selectedTask.priority)}
+
                             manager={selectedTask.manager_name}
                             translator={selectedTask.translator_name}
+
+                            clientName={selectedTask.client_name}
+                            languagePair={selectedTask.language_pair_name}
+                            dueDate={formatDate(selectedTask.deadline)}
+
                             onDownloadOriginal={() =>
                                 downloadOrderSourceFiles(selectedTask.id)
                             }

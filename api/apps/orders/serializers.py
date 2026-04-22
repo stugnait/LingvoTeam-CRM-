@@ -63,6 +63,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'client_id',
             'language_pair_id',
             'priority',
+            'manager_accept_id',
+            'manager_delivery_id',
             'deadline',
             'flex_deadline',
             'page_count',
@@ -123,7 +125,8 @@ class OrderStatusHistorySerializer(serializers.ModelSerializer):
 
 class OrderListSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source='client_id.full_name', default="-", read_only=True)
-    manager_name = serializers.CharField(source='manager_id.full_name', default="-", read_only=True)
+    manager_accept_name = serializers.CharField(source='manager_accept_id.full_name', default="-", read_only=True)
+    manager_delivery_name = serializers.CharField(source='manager_delivery_id.full_name', default="-", read_only=True)
     editor_name = serializers.CharField(source='editor_id.full_name', default="-", read_only=True)
     translator_name = serializers.CharField(source='translator_id.full_name', default="-", read_only=True)
 
@@ -144,7 +147,8 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'client_id', 'client_name',
-            'manager_id', 'manager_name',
+            'manager_accept_id', 'manager_accept_name',
+            'manager_delivery_id', 'manager_delivery_name',
             'editor_id', 'editor_name',
             'translator_id', 'translator_name',
             'status_id', 'status_name',

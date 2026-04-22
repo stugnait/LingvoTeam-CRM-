@@ -37,11 +37,27 @@ export const ordersApi = {
         }),
 
     // Додаємо параметр onlyMine
-    listOrders: (page = 1, onlyMine = false) => {
-        const query = `?page=${page}${onlyMine ? '&my_orders=true' : ''}`
-        return apiFetch<OrderListResponse>(`orders/${query}`, {
+    listOrders: (filters: {
+        page?: number;
+        my_orders?: boolean;
+        status?: number | string;
+        manager?: number | string;
+        date_from?: string;
+        date_to?: string;
+    } = { page: 1 }) => {
+        const params = new URLSearchParams();
+
+        if (filters.page) params.append('page', String(filters.page));
+        if (filters.my_orders) params.append('my_orders', 'true');
+        if (filters.status) params.append('status', String(filters.status));
+        if (filters.manager) params.append('manager', String(filters.manager));
+        if (filters.date_from) params.append('date_from', filters.date_from);
+        if (filters.date_to) params.append('date_to', filters.date_to);
+
+        const query = params.toString();
+        return apiFetch<OrderListResponse>(`orders/?${query}`, {
             method: "GET",
-        })
+        });
     },
 
     previewPrice: (body: BodyInit) =>

@@ -7,16 +7,21 @@ import { useCategories } from "../hooks/useCategories"
 
 import { PnLTable } from "./P&LTable"
 import { CategoriesCard } from "./CategoriesCard"
+import { SalesChart } from "./SalesChart"
 
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 
-import { useState } from "react"
+
+import { useState, useCallback } from "react"
 import { usePnL } from "../hooks/usePnL"
+
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
+
+import { PeriodSelector } from "@/src/components/ui/PeriodSelector"
 
 import {
     Select,
@@ -67,7 +72,33 @@ export function MainPnL() {
 
     const { data: pnl, loading } = usePnL(startDate, endDate)
 
+    const { data: salesData, loading: salesLoading } = useSalesChart(startDate, endDate)
 
+
+    const handlePeriodChange = useCallback((periodValue: string) => {
+        if (periodValue.includes(' - ')) {
+            const [start, end] = periodValue.split(' - ')
+
+            const formatForApi = (dateStr: string) => {
+                const [d, m, y] = dateStr.split('-')
+                return `${y}-${m}-${d}`
+            }
+
+            setStartDate(formatForApi(start))
+            setEndDate(formatForApi(end))
+        }
+        else if (periodValue.startsWith('Початок: ')) {
+            const start = periodValue.replace('Початок: ', '')
+            const [d, m, y] = start.split('-')
+
+            setStartDate(`${y}-${m}-${d}`)
+            setEndDate("")
+        }
+        else {
+            setStartDate(periodValue)
+            setEndDate("")
+        }
+    }, [])
 
 
     return (
@@ -106,34 +137,8 @@ export function MainPnL() {
 
                     </div>
 
-
-                    {/* KPI */}
-
-                    {/*<div className="grid grid-cols-4 gap-4">*/}
-
-                    {/*    <KpiCard title="Income" value={income}/>*/}
-                    {/*    <KpiCard title="Expenses" value={expenses}/>*/}
-                    {/*    <KpiCard title="Profit" value={profit}/>*/}
-                    {/*    <KpiCard title="Net Profit" value={profit}/>*/}
-
-                    {/*</div>*/}
-
-                    <div className="flex gap-4 items-center">
-
-                        <Input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="w-40"
-                        />
-
-                        <Input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="w-40"
-                        />
-
+                    <div className="flex gap-4 items-center relative z-50">
+                        <PeriodSelector onPeriodChange={handlePeriodChange} />
                     </div>
 
 
@@ -160,6 +165,21 @@ export function MainPnL() {
                         />
 
                     </div>
+
+
+
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle>Обсяг продажів</CardTitle>
+                        </CardHeader>
+
+                        <CardContent>
+                            <SalesChart
+                                data={salesData}
+                                loading={salesLoading}
+                            />
+                        </CardContent>
+                    </Card>
 
 
                     {/* TABLE + CATEGORIES */}
