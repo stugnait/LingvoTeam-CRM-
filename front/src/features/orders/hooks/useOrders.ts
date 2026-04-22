@@ -50,6 +50,7 @@ export function useOrders() {
     const [clients, setClients] = useState<Client[]>([])
     const [languages, setLanguages] = useState<Language[]>([])
     const [editors, setEditors] = useState<Editor[]>([])
+    const [managers, setManagers] = useState<Editor[]>([])
     const [currencies, setCurrencies] = useState<Currency[]>([])
     const [traffics, setTraffics] = useState<OrderTraffic[]>([])
 
@@ -350,6 +351,7 @@ export function useOrders() {
                 clientsRes,
                 languagesRes,
                 editorsRes,
+                managersRes,
                 currenciesRes,
                 trafficRes
             ] = await Promise.all([
@@ -357,6 +359,7 @@ export function useOrders() {
                 ordersApi.listClients(),
                 ordersApi.listLanguages(),
                 ordersApi.listEditors(),
+                ordersApi.listManagers(),
                 ordersApi.listCurrency(),
                 ordersApi.listTraffic()
             ])
@@ -371,6 +374,7 @@ export function useOrders() {
             setClients(clientsRes.results)
             setLanguages(languagesRes.results)
             setEditors(editorsRes.results)
+            setManagers(managersRes.results)
             setCurrencies(currenciesRes.results)
             setTraffics(trafficRes.results)
 
@@ -419,6 +423,7 @@ export function useOrders() {
         clients,
         languages,
         editors,
+        managers,
         currencies,
         traffics,
 

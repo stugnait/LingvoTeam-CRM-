@@ -14,6 +14,8 @@ export interface CreateOrderPayload {
     priority: string | undefined,
     client_comment: string,
     files?: File[]
+    manager_accept_id?: number
+    manager_delivery_id?: number
 }
 
 export interface CreateOrderResponse {
@@ -228,6 +230,10 @@ export interface OrderListItem {
     client_name: string
     deadline: string
     priority: "low" | "medium" | "high" | "critical"
+    manager_accept_id?: number
+    manager_accept_name?: string
+    manager_delivery_id?: number
+    manager_delivery_name?: string
 }
 
 export interface OrderListResponse {
