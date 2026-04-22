@@ -117,6 +117,10 @@ export const ordersApi = {
         apiFetch<EditorListResponse>(`users/users/?role=2`, {
             method: "GET"
         }),
+    listManagers: () =>
+        apiFetch<EditorListResponse>(`users/users/?role=1`, {
+            method: "GET"
+        }),
     listCurrency: () =>
         apiFetch<CurrencyListResponse>(`core/currencies/`, {
             method: "GET"

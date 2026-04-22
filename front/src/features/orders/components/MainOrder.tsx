@@ -20,12 +20,13 @@ export default function OrdersPage() {
         updateOrder,
         loading,
         orders,
-        loadOrderDetails, // <--- Ця функція повертає дані для розкриття рядка в таблиці
+        loadOrderDetails,
         languagePairs,
         translatorsCache,
         clients,
         languages,
         editors,
+        managers,
         currencies,
         translators,
         traffics,
@@ -74,8 +75,8 @@ export default function OrdersPage() {
     const searchParams = useSearchParams()
     const highlightId = Number(searchParams.get("highlight"))
     const [activeHighlightId, setActiveHighlightId] = useState<number | null>(null)
-    const [manager, setManager] = useState("")
-    const [salesManager, setSalesManager] = useState("")
+    const [managerAccept, setManagerAccept] = useState("")
+    const [managerDelivery, setManagerDelivery] = useState("")
     const router = useRouter()
 
     useEffect(() => {
@@ -106,8 +107,8 @@ export default function OrdersPage() {
         setComment("")
         setPriority(undefined)
         setEditingOrder(null)
-        setManager("")
-        setSalesManager("")
+        setManagerAccept("")
+        setManagerDelivery("")
     }
 
     const handleCreateClick = () => {
@@ -130,8 +131,8 @@ export default function OrdersPage() {
         setComment(order.client_comment ?? "")
         setPriority(order.priority ?? undefined)
         setIsModalOpen(true)
-        setManager(String(order.manager_id ?? ""))
-        setSalesManager(String(order.sales_manager_id ?? ""))
+        setManagerAccept(String(order.manager_accept_id ?? ""))
+        setManagerDelivery(String(order.manager_delivery_id ?? ""))
     }
 
     const handleSubmit = async () => {
@@ -149,8 +150,8 @@ export default function OrdersPage() {
             deadline: deadline ? deadline.toISOString() : undefined,
             priority,
             client_comment: comment,
-            manager_id: manager ? Number(manager) : undefined,
-            sales_manager_id: salesManager ? Number(salesManager) : undefined,
+            manager_accept_id: managerAccept ? Number(managerAccept) : undefined,
+            manager_delivery_id: managerDelivery ? Number(managerDelivery) : undefined,
         }
 
         if (editingOrder) {
@@ -326,12 +327,11 @@ export default function OrdersPage() {
                 translators={translators || []}
                 tariffs={traffics || []}
 
-                // 🔥 НОВЕ
-                manager={manager}
-                setManager={setManager}
-                salesManager={salesManager}
-                setSalesManager={setSalesManager}
-                managers={editors || []}
+                managerAccept={managerAccept}
+                setManagerAccept={setManagerAccept}
+                managerDelivery={managerDelivery}
+                setManagerDelivery={setManagerDelivery}
+                managers={managers || []}
 
                 onRefreshTranslators={refreshTranslators}
             />

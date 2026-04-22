@@ -64,11 +64,10 @@ interface CreateOrderModalProps {
     translators: any[]
     tariffs: any[]
 
-    manager: string
-    setManager: (value: string) => void
-
-    salesManager: string
-    setSalesManager: (value: string) => void
+    managerAccept: string
+    setManagerAccept: (value: string) => void
+    managerDelivery: string
+    setManagerDelivery: (value: string) => void
 
     managers: any[]
 
@@ -126,10 +125,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         priority,
         setPriority,
         onRefreshTranslators,
-        manager,
-        setManager,
-        salesManager,
-        setSalesManager,
+        managerAccept,
+        setManagerAccept,
+        managerDelivery,
+        setManagerDelivery,
         managers,
     } = props
 
@@ -499,11 +498,11 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <User className="h-4 w-4 text-indigo-600" />
-                                Project Manager
+                                Менеджер на прийом
                             </label>
                             <Combobox
-                                value={manager}
-                                onChange={setManager}
+                                value={managerAccept}
+                                onChange={setManagerAccept}
                                 placeholder="Select manager"
                                 options={managers.map((m) => ({
                                     value: String(m.id),
@@ -516,12 +515,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <User className="h-4 w-4 text-purple-600" />
-                                Sales Manager
+                                Менеджер на здачу
                             </label>
                             <Combobox
-                                value={salesManager}
-                                onChange={setSalesManager}
-                                placeholder="Select sales manager"
+                                value={managerDelivery}
+                                onChange={setManagerDelivery}
+                                placeholder="Select manager"
                                 options={managers.map((m) => ({
                                     value: String(m.id),
                                     label: m.full_name,
