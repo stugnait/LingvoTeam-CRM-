@@ -71,7 +71,8 @@ export function ClientTable({
                             <TableCell>
                                 {client.category && (
                                     <Badge variant="secondary">
-                                        {client.category_name}
+                                        {/* @ts-ignore: if category_name is missing, try category object */}
+                                        {client.category_name || (client.category as any).name}
                                     </Badge>
                                 )}
                             </TableCell>
@@ -104,7 +105,7 @@ export function ClientTable({
                                         </DropdownMenuItem>
 
                                         <DropdownMenuItem
-                                            onClick={() => onDelete(client.id)}
+                                            onClick={() => onDelete(client)}
                                             className="text-destructive"
                                         >
                                             <Trash2 className="h-4 w-4 mr-2"/>

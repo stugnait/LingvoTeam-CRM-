@@ -128,8 +128,9 @@ export function ClientPage() {
                             <ClientTable
                                 clients={clients}
                                 onEdit={openEditClient}
-                                onDelete={(id) => {
-                                    const client = clients.find(c => c.id === id)
+                                onDelete={(id: any) => {
+                                    const targetId = typeof id === 'object' ? id.id : id;
+                                    const client = clients.find(c => c.id === targetId)
                                     if (client) {
                                         openDeleteClient(client)
                                     }

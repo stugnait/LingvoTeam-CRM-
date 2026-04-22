@@ -14,25 +14,26 @@ export function mapOrderToTask(order: OrderListItem): KanbanTask {
         target_language: 0,
         translator_id: "",
         translator_name: "",
-        id: String(order.id),
+        id: order.id,
 
         title: `Order #${order.id}`,
         description: `${order.source_language} → ${order.target_language}`,
 
-        status: statusIdToTaskStatus(order.status_id),
-        status_id: order.status_id,
+        status: statusIdToTaskStatus(String(order.status_id)),
+        status_id: String(order.status_id),
 
         priority: order.priority,
 
         deadline: order.deadline,
         client_id: order.client_id,
 
+        // ВИПРАВЛЕНО: id приведено до рядка, замість null використовуємо undefined
         assignee: order.translator_id
             ? {
-                id: order.translator_id,
+                id: String(order.translator_id),
                 name: `Translator #${order.translator_id}`,
             }
-            : null,
+            : undefined,
 
         tags: [],
         subtasks: [] // 🔥 must have
