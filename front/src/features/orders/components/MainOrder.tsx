@@ -247,6 +247,7 @@ export default function OrdersPage() {
                             onOpen={loadOrderDetails}
                             languagePairs={languagePairs}
                             translatorsCache={translatorsCache}
+                            clients={clients || []}
                             highlightId={activeHighlightId}
                             confirmOrder={confirmOrder}
                             downloadOrderSourceFiles={downloadOrderSourceFiles}
