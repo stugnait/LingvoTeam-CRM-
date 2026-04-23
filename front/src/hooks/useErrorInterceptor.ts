@@ -1,0 +1,28 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export const useErrorInterceptor = () => {
+    const router = useRouter();
+
+    useEffect(() => {
+        const { fetch: originalFetch } = window;
+
+        window.fetch = async (...args) => {
+            const response = await originalFetch(...args);
+
+            if (!response.ok) {
+                if ([401, 403, 405].includes(response.status)) {
+                    router.push(`/${response.status}`);
+                }
+            }
+
+            return response;
+        };
+
+        return () => {
+            window.fetch = originalFetch;
+        };
+    }, [router]);
+};
