@@ -7,18 +7,14 @@ const buildFormData = (data: UserFormData): FormData => {
 
     Object.entries(data).forEach(([key, value]) => {
         if (key === "avatar") {
-            // Якщо це новий файл — додаємо його
+            // Якщо це новий файл — додаємо
             if (value instanceof File) {
                 formData.append(key, value)
             }
-            // Якщо юзер видалив аватарку (null) — відправляємо порожній рядок, щоб бекенд її стер
-            else if (value === null) {
-                formData.append(key, "")
-            }
-            // Якщо це просто string (старе посилання) — ігноруємо, не відправляємо
+            // Якщо null — просто не відправляємо взагалі
+            // бекенд залишить старе значення при PATCH
         }
         else if (value !== null && value !== undefined) {
-            // Всі інші текстові поля та числа конвертуємо в рядок
             formData.append(key, String(value))
         }
     })
@@ -67,7 +63,7 @@ export const usersApi = {
 
     // 👇 Замінили JSON.stringify на buildFormData(data)
     update: (id: string, data: UserFormData) =>
-        apiFetch<User>(`users/${id}/`, {
+        apiFetch<User>(`users/users/${id}/`, {
             method: "PATCH",
             body: buildFormData(data),
         }),
