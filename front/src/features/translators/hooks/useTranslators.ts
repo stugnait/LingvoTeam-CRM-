@@ -73,10 +73,14 @@ export function useTranslators() {
                 language_pair_id: languagePairId || undefined,
             })
 
-            setTranslators(response.results)
-            setTotalPages(Math.ceil((response.count || 0) / 10))
-            setPage(pageNumber)
-        } catch {
+            if (response && response.results) {
+                setTranslators(response.results)
+                setTotalPages(Math.ceil((response.count || 0) / 10))
+                setPage(pageNumber)
+            }
+        } catch (err) {
+            console.error("Failed to load translators:", err)
+
             toast({
                 title: "Error",
                 description: "Failed to load translators",
@@ -206,7 +210,8 @@ export function useTranslators() {
 
             closeModals()
             await loadTranslators(page)
-        } catch {
+        } catch (err) {
+            console.error("Save error:", err)
             toast({
                 title: "Error",
                 description: "Failed to save translator",
@@ -231,7 +236,8 @@ export function useTranslators() {
 
             closeModals()
             await loadTranslators(page)
-        } catch {
+        } catch (err) {
+            console.error("Action error:", err)
             toast({
                 title: "Error",
                 description: "Action failed",
