@@ -2,6 +2,7 @@ import random
 import secrets
 import string
 
+import dropbox
 from django.core.validators import RegexValidator
 
 from .models.editor_language_pairs import EditorLanguagePairs
@@ -13,6 +14,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+
+from ..dropbox_services.dropbox_utils import get_dbx
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -43,9 +46,8 @@ class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
 
     def get_avatar(self, obj):
-        request = self.context.get('request')
         if obj.avatar:
-            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+            return obj.avatar  # просто повертаємо URL-рядок з Dropbox
         return None
 
     class Meta:
@@ -59,9 +61,8 @@ class UserListSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
 
     def get_avatar(self, obj):
-        request = self.context.get('request')
         if obj.avatar:
-            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
+            return obj.avatar  # просто повертаємо URL-рядок з Dropbox
         return None
 
     def get_language_pairs(self, obj):
@@ -93,13 +94,33 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         write_only=True
     )
     role = RoleSerializer(read_only=True)
-    avatar = serializers.SerializerMethodField()
+    avatar = serializers.ImageField(
+        required=False,
+        allow_null=True,
+        write_only=True,
+        source='avatar_upload'  # 👈 фіктивне ім'я, щоб не конфліктувало з полем моделі
+    )
 
-    def get_avatar(self, obj):
-        request = self.context.get('request')
-        if obj.avatar:
-            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
-        return None
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['avatar'] = instance.avatar or None
+        return rep
+
+    def update(self, instance, validated_data):
+        avatar_file = validated_data.pop('avatar_upload', None)  # 👈 той самий фіктивний ключ
+
+        instance = super().update(instance, validated_data)
+
+        if avatar_file:
+            from ..dropbox_services.dropbox_utils import upload_user_avatar
+            print("UPLOADING AVATAR:", avatar_file.name)
+            avatar_url = upload_user_avatar(instance, avatar_file)
+            print("AVATAR URL:", avatar_url)
+            if avatar_url:
+                instance.avatar = avatar_url
+                instance.save(update_fields=['avatar'])
+
+        return instance
 
     class Meta:
         model = User
@@ -108,13 +129,28 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
 
 class UserSelfUpdateSerializer(serializers.ModelSerializer):
-    avatar = serializers.SerializerMethodField()
+    avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
-    def get_avatar(self, obj):
-        request = self.context.get('request')
-        if obj.avatar:
-            return request.build_absolute_uri(obj.avatar.url) if request else obj.avatar.url
-        return None
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['avatar'] = instance.avatar or None
+        return rep
+
+    def update(self, instance, validated_data):
+        avatar_file = validated_data.pop('avatar', None)
+
+        instance = super().update(instance, validated_data)
+
+        if avatar_file:
+            from ..dropbox_services.dropbox_utils import upload_user_avatar
+            print("UPLOADING AVATAR:", avatar_file.name)
+            avatar_url = upload_user_avatar(instance, avatar_file)
+            print("AVATAR URL:", avatar_url)
+            if avatar_url:
+                instance.avatar = avatar_url
+                instance.save(update_fields=['avatar'])
+
+        return instance
 
     class Meta:
         model = User
@@ -169,26 +205,43 @@ class RegistrationSerializer(serializers.ModelSerializer):
         regex=r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$',
         message="Пароль має містити хоча б одну велику літеру, одну малу літеру та цифру."
     )
+
     password = serializers.CharField(
-        write_only=True, min_length=8, required=True, validators=[password_validator]
+        write_only=True,
+        min_length=8,
+        required=True,
+        validators=[password_validator]
     )
-    role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all(), required=True)
+
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        required=True
+    )
+
+    # 👇 Явно оголошуємо як поле для файлу
+    avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = User
         fields = ('email', 'full_name', 'phone', 'role', 'password', 'avatar')
-        extra_kwargs = {
-            'password': {'write_only': True},
-            'full_name': {'required': True},
-            'email': {'required': True},
-            'role': {'required': True},
-        }
 
     def create(self, validated_data):
+        avatar = validated_data.pop('avatar', None)
         password = validated_data.pop('password')
+
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+
+        if avatar:
+            from ..dropbox_services.dropbox_utils import upload_user_avatar
+            print("UPLOADING AVATAR:", avatar.name)
+            avatar_url = upload_user_avatar(user, avatar)
+            print("AVATAR URL:", avatar_url)
+            if avatar_url:
+                user.avatar = avatar_url
+                user.save(update_fields=['avatar'])
+
         return user
 
 

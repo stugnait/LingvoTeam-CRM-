@@ -233,3 +233,47 @@ def move_file_from_target_to_final(from_path):
     dbx.files_move_v2(from_path, to_path, autorename=True)
 
     return to_path
+
+
+def upload_user_avatar(user, file):
+    dbx = get_dbx()
+
+    base_path = "/avatars"
+    user_path = f"{base_path}/user_{user.id}"
+
+    ensure_folder(base_path)
+    ensure_folder(user_path)
+
+    name, ext = os.path.splitext(file.name)
+    filename = f"avatar{ext}"
+    full_path = f"{user_path}/{filename}"
+
+    file.seek(0)
+    content = file.read()
+
+    # Завантажуємо файл (overwrite якщо вже є)
+    dbx.files_upload(
+        content,
+        full_path,
+        mode=dropbox.files.WriteMode.overwrite
+    )
+
+    # Генеруємо публічне посилання
+    try:
+        # Спочатку видаляємо старе посилання якщо є
+        links = dbx.sharing_list_shared_links(path=full_path, direct_only=True).links
+        if links:
+            url = links[0].url
+        else:
+            url = dbx.sharing_create_shared_link_with_settings(full_path).url
+
+        # Конвертуємо в прямий CDN лінк
+        url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com")
+        url = url.replace("?dl=0", "")
+
+        print("FINAL AVATAR URL:", url)
+        return url
+
+    except Exception as e:
+        print("ERROR generating link:", e)
+        return None
