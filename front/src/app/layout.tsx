@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "@/src/styles/global.css"
 import { Toaster } from "@/src/components/ui/toaster"
+import ErrorInterceptor from "@/src/components/ErrorInterceptor"
 
 const geistSans = Geist({
     subsets: ["latin"],
@@ -49,7 +50,9 @@ export default function RootLayout({
             suppressHydrationWarning
         >
         <body className="min-h-screen bg-background font-sans antialiased text-foreground">
-        {children}
+        <ErrorInterceptor>
+            {children}
+        </ErrorInterceptor>
         <Toaster />
         </body>
         </html>
