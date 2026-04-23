@@ -10,7 +10,7 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True, null=True)
 
     # 👇 Додаємо необов'язкове поле для аватарки
-    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    avatar = models.CharField(blank=True, null=True)
 
     role = models.ForeignKey(
         'Role',
