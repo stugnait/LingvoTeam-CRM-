@@ -23,14 +23,22 @@ from apps.users.permissions import HasPermission
 
 
 class OwnerDetailFilter(FilterSet):
-    manager = NumberFilter(field_name='manager_id')
+    # Змінюємо field_name на кастомний метод
+    manager = NumberFilter(method='filter_manager')
     client = NumberFilter(field_name='client_id')
     translator = NumberFilter(field_name='translator_id')
     status = NumberFilter(field_name='status_id')
 
     class Meta:
         model = Order
-        fields = ['manager', 'client', 'translator', 'status']
+        # Видаляємо 'manager' звідси, бо він тепер обробляється методом
+        fields = ['client', 'translator', 'status']
+
+    def filter_manager(self, queryset, name, value):
+        # Шукаємо замовлення, де юзер є АБО менеджером прийому, АБО здачі
+        return queryset.filter(
+            Q(manager_accept_id=value) | Q(manager_delivery_id=value)
+        )
 
 
 @extend_schema_view(
@@ -193,6 +201,10 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         return Response(chart_data)
 
+    from django.db.models import Q, Count, Sum, F, ExpressionWrapper, IntegerField, DecimalField
+    from django.db.models.functions import Coalesce
+    from django.utils import timezone
+
     @extend_schema(
         summary="Статистика по менеджерах",
         parameters=[
@@ -206,28 +218,47 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     def manager_stats(self, request):
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
-        PAID_STATUS_ID = 5
 
-        order_filters = Q()
+        # 1. Базові фільтри дат для обох ролей менеджера
+        date_acc = Q()
+        date_del = Q()
         if start_date and end_date:
-            order_filters &= Q(managed_orders__created_at__date__range=[start_date, end_date])
+            date_acc &= Q(accepted_orders__created_at__date__range=[start_date, end_date])
+            date_del &= Q(delivered_orders__created_at__date__range=[start_date, end_date])
 
-        from django.db.models.functions import Cast
+        # 2. Фільтри для протермінованих (дедлайн пройшов, а статус не "Done" (id=2))
+        DONE_STATUS_ID = 2
+        now = timezone.now()
 
+        overdue_acc = date_acc & Q(accepted_orders__deadline__lt=now) & ~Q(accepted_orders__status_id=DONE_STATUS_ID)
+        overdue_del = date_del & Q(delivered_orders__deadline__lt=now) & ~Q(delivered_orders__status_id=DONE_STATUS_ID)
+
+        # 3. Уникаємо подвійного підрахунку!
+        # Якщо менеджер сам прийняв і сам здав замовлення, ми рахуємо його тільки в accepted_orders.
+        # Тому для delivered_orders відфільтровуємо ті, де він вже є manager_accept_id.
+        not_same_manager = ~Q(delivered_orders__manager_accept_id=F('id'))
+        date_del &= not_same_manager
+        overdue_del &= not_same_manager
+
+        # 4. Анотація статистики
         stats = User.objects.filter(role__slug='manager').annotate(
-            total_orders=Count('managed_orders', filter=order_filters),
-            total_revenue=Coalesce(
-                Sum(
-                    Cast('managed_orders__page_count', DecimalField(max_digits=12, decimal_places=2)),
-                    filter=order_filters
-                ),
-                Decimal('0.00')
-            ),
-            unpaid_orders_count=Count(
-                'managed_orders',
-                filter=order_filters & ~Q(managed_orders__client_status=PAID_STATUS_ID)
-            )
-        ).order_by('-total_orders')
+            # Показники як Менеджера Прийому
+            acc_orders=Count('accepted_orders', filter=date_acc, distinct=True),
+            acc_rev=Coalesce(Sum('accepted_orders__total_amount', filter=date_acc), Decimal('0.00')),
+            acc_overdue=Count('accepted_orders', filter=overdue_acc, distinct=True),
+
+            # Показники як Менеджера Здачі
+            del_orders=Count('delivered_orders', filter=date_del, distinct=True),
+            del_rev=Coalesce(Sum('delivered_orders__total_amount', filter=date_del), Decimal('0.00')),
+            del_overdue=Count('delivered_orders', filter=overdue_del, distinct=True),
+
+        ).annotate(
+            # Зводимо все разом в фінальні поля для серіалізатора
+            total_orders=ExpressionWrapper(F('acc_orders') + F('del_orders'), output_field=IntegerField()),
+            total_revenue=ExpressionWrapper(F('acc_rev') + F('del_rev'),
+                                            output_field=DecimalField(max_digits=12, decimal_places=2)),
+            overdue_orders_count=ExpressionWrapper(F('acc_overdue') + F('del_overdue'), output_field=IntegerField()),
+        ).order_by('-total_revenue')
 
         serializer = StatsSerializer(stats, many=True)
         return Response(serializer.data)
