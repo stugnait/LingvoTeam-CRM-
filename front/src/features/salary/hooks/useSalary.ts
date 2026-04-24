@@ -1,35 +1,24 @@
-// src/features/salary/hooks/useSalaryManagement.ts
 import { useState, useCallback } from "react";
 import { salaryApi, usersApi } from "@/src/features/salary/api";
 import {
     Salary,
-    SalaryPreview,
     SalaryCreatePayload,
     User,
 } from "@/src/features/salary/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface SalaryFormValues {
+// Розширений тип прев'ю, що відповідає вашому бекенду
+export interface SalaryPreview {
+    user: number;
+    full_name: string;
     base_salary: number;
     bonus: number;
     premium: number;
-}
-
-export interface PreviewState {
-    open: boolean;
-    userId: number | null;
-    startDate: string;
-    endDate: string;
-    data: SalaryPreview | null;
-    loading: boolean;
-    error: string | null;
-}
-
-export interface CreateState {
-    loading: boolean;
-    error: string | null;
-    success: boolean;
+    revenue: number;
+    orders_count: number;
+    overdue_orders_count: number;
+    margin: number;
 }
 
 export interface SalaryListState {
@@ -45,60 +34,37 @@ export interface UseSalaryManagementOptions {
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useSalaryManagement(options?: UseSalaryManagementOptions) {
-    // Список юзерів для таблиці
     const [users, setUsers] = useState<User[]>([]);
     const [usersLoading, setUsersLoading] = useState(false);
     const [usersError, setUsersError] = useState<string | null>(null);
 
-    // Список збережених зарплат
     const [salaryList, setSalaryList] = useState<SalaryListState>({
         items: [],
         loading: false,
         error: null,
     });
 
-    // Стан модалки превью + форми
-    const [preview, setPreview] = useState<PreviewState>({
-        open: false,
-        userId: null,
-        startDate: "",
-        endDate: "",
-        data: null,
-        loading: false,
-        error: null,
-    });
-
-    // Значення форми (ставка, бонус, премія)
-    const [formValues, setFormValues] = useState<SalaryFormValues>({
-        base_salary: 0,
-        bonus: 0,
-        premium: 0,
-    });
-
-    // Стан збереження зп
-    const [createState, setCreateState] = useState<CreateState>({
-        loading: false,
-        error: null,
-        success: false,
-    });
+    // Зберігаємо прев'ю (статистику) для КОЖНОГО користувача: { [userId]: SalaryPreview }
+    const [previews, setPreviews] = useState<Record<number, SalaryPreview>>({});
+    const [previewsLoading, setPreviewsLoading] = useState(false);
 
     // ─── Завантаження юзерів ────────────────────────────────────────────────
-
     const fetchUsers = useCallback(async (roleId?: number) => {
         setUsersLoading(true);
         setUsersError(null);
         try {
             const res = await usersApi.getForSalary(roleId ?? options?.roleId);
             setUsers(res);
+            return res; // Повертаємо для ланцюжка промісів
         } catch (e: any) {
             setUsersError(e?.message ?? "Помилка завантаження працівників");
+            return [];
         } finally {
             setUsersLoading(false);
         }
     }, [options?.roleId]);
 
     // ─── Завантаження списку зарплат ────────────────────────────────────────
-
     const fetchSalaryList = useCallback(async (params?: {
         user?: number;
         start_date?: string;
@@ -119,216 +85,78 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
         }
     }, []);
 
-    // ─── Відкрити модалку превью ────────────────────────────────────────────
-
-    const openPreviewModal = useCallback((userId: number) => {
-        setPreview({
-            open: true,
-            userId,
-            startDate: "",
-            endDate: "",
-            data: null,
-            loading: false,
-            error: null,
-        });
-        setFormValues({ base_salary: 0, bonus: 0, premium: 0 });
-        setCreateState({ loading: false, error: null, success: false });
-    }, []);
-
-    // ─── Закрити модалку ────────────────────────────────────────────────────
-
-    const closePreviewModal = useCallback(() => {
-        setPreview(prev => ({ ...prev, open: false }));
-    }, []);
-
-    // ─── Оновити дати в модалці ─────────────────────────────────────────────
-
-    const setPreviewDates = useCallback((startDate: string, endDate: string) => {
-        setPreview(prev => ({ ...prev, startDate, endDate, data: null, error: null }));
-    }, []);
-
-    // ─── Завантажити превью статистики ──────────────────────────────────────
-
-    const fetchPreview = useCallback(async () => {
-        setPreview(prev => {
-            if (!prev.userId || !prev.startDate || !prev.endDate) return prev;
-            return { ...prev, loading: true, error: null, data: null };
-        });
-
-        setPreview(prev => {
-            const { userId, startDate, endDate } = prev;
-            if (!userId || !startDate || !endDate) return prev;
-
-            salaryApi
-                .preview({ user: userId, start_date: startDate, end_date: endDate })
-                .then(data => {
-                    setPreview(p => ({ ...p, data, loading: false }));
-                    // Підтягуємо базову ставку з превью
-                    setFormValues(f => ({
-                        ...f,
-                        base_salary: data.base_salary ?? 0,
-                        bonus: data.bonus ?? 0,
-                        premium: data.premium ?? 0,
-                    }));
-                })
-                .catch((e: any) => {
-                    setPreview(p => ({
-                        ...p,
-                        loading: false,
-                        error: e?.message ?? "Помилка завантаження статистики",
-                    }));
-                });
-
-            return { ...prev, loading: true };
-        });
-    }, []);
-
-    // ─── Оновити поле форми ─────────────────────────────────────────────────
-
-    const updateFormValue = useCallback(
-        (field: keyof SalaryFormValues, value: number) => {
-            setFormValues(prev => ({ ...prev, [field]: value }));
-        },
-        []
-    );
-
-    // ─── Порахувати тотал (утиліта для UI) ──────────────────────────────────
-
-    const computedTotal = formValues.base_salary + formValues.bonus + formValues.premium;
-
-    // ─── Зберегти зарплату ──────────────────────────────────────────────────
-
-    const saveSalary = useCallback(async (): Promise<Salary | null> => {
-        const { userId, startDate, endDate } = preview;
-        if (!userId || !startDate || !endDate) {
-            setCreateState(prev => ({
-                ...prev,
-                error: "Заповніть всі поля перед збереженням",
-            }));
-            return null;
+    // ─── Завантаження ПРЕВ'Ю для ВСІХ юзерів ────────────────────────────────
+    const fetchAllPreviews = useCallback(async (usersToFetch: User[], startDate: string, endDate: string) => {
+        if (!usersToFetch || usersToFetch.length === 0) {
+            setPreviews({});
+            return;
         }
 
-        setCreateState({ loading: true, error: null, success: false });
+        setPreviewsLoading(true);
+        try {
+            // Робимо паралельні запити для кожного юзера з таблиці
+            const results = await Promise.all(
+                usersToFetch.map(u =>
+                    salaryApi.preview({ user: u.id, start_date: startDate, end_date: endDate })
+                )
+            );
+
+            // Перетворюємо масив результатів у об'єкт для зручного доступу в UI
+            const newPreviews: Record<number, SalaryPreview> = {};
+            results.forEach((res: any) => {
+                newPreviews[res.user] = res;
+            });
+            setPreviews(newPreviews);
+
+        } catch (e: any) {
+            console.error("Помилка завантаження статистики", e);
+        } finally {
+            setPreviewsLoading(false);
+        }
+    }, []);
+
+    // ─── Зберегти зарплату (адаптовано для inline-рядків) ───────────────────
+    const saveSalary = useCallback(async (
+        userId: number,
+        draft: { base_salary: number, bonus: number, premium: number },
+        startDate: string,
+        endDate: string
+    ): Promise<Salary | null> => {
 
         const payload: SalaryCreatePayload = {
             user: userId,
             start_date: startDate,
             end_date: endDate,
-            base_salary: formValues.base_salary,
-            bonus: formValues.bonus,
-            premium: formValues.premium,
+            base_salary: draft.base_salary,
+            bonus: draft.bonus,
+            premium: draft.premium,
         };
 
         try {
             const salary = await salaryApi.create(payload);
-            setCreateState({ loading: false, error: null, success: true });
-            // Оновлюємо список зарплат одразу
+            // Додаємо нову зарплату в історію транзакцій миттєво
             setSalaryList(prev => ({ ...prev, items: [salary, ...prev.items] }));
             return salary;
         } catch (e: any) {
-            const msg =
-                e?.detail ??
-                e?.message ??
-                "Помилка збереження зарплати";
-            setCreateState({ loading: false, error: msg, success: false });
+            console.error("Помилка збереження зарплати", e);
             return null;
         }
-    }, [preview, formValues]);
-
-    // ─── Видалити зарплату ──────────────────────────────────────────────────
-
-    const deleteSalary = useCallback(async (id: number) => {
-        try {
-            await salaryApi.delete(id);
-            setSalaryList(prev => ({
-                ...prev,
-                items: prev.items.filter(s => s.id !== id),
-            }));
-            return true;
-        } catch {
-            return false;
-        }
     }, []);
 
-    // ─── Скинути стан успіху (після показу нотіфікації) ─────────────────────
-
-    const resetCreateState = useCallback(() => {
-        setCreateState({ loading: false, error: null, success: false });
-    }, []);
-
-    // ─── Повна послідовність: відкрити → вибрати дати → завантажити превью ──
-
-    /**
-     * Хелпер для UI: дозволяє за одну функцію оновити дати і одразу загрузити превью.
-     * Зручно якщо в UI є два date picker-и з onChange.
-     */
-    const handleDatesConfirm = useCallback(
-        async (startDate: string, endDate: string) => {
-            setPreview(prev => ({
-                ...prev,
-                startDate,
-                endDate,
-                data: null,
-                error: null,
-                loading: true,
-            }));
-
-            const { userId } = preview;
-            if (!userId) return;
-
-            try {
-                const data = await salaryApi.preview({
-                    user: userId,
-                    start_date: startDate,
-                    end_date: endDate,
-                });
-                setPreview(p => ({ ...p, data, loading: false }));
-                setFormValues({
-                    base_salary: data.base_salary ?? 0,
-                    bonus: data.bonus ?? 0,
-                    premium: data.premium ?? 0,
-                });
-            } catch (e: any) {
-                setPreview(p => ({
-                    ...p,
-                    loading: false,
-                    error: e?.message ?? "Помилка завантаження статистики",
-                }));
-            }
-        },
-        [preview.userId]
-    );
-
-    // ─── Return ──────────────────────────────────────────────────────────────
 
     return {
-        // Юзери
         users,
         usersLoading,
         usersError,
         fetchUsers,
 
-        // Список зарплат
         salaryList,
         fetchSalaryList,
-        deleteSalary,
 
-        // Превью модалка
-        preview,
-        openPreviewModal,
-        closePreviewModal,
-        setPreviewDates,
-        fetchPreview,
-        handleDatesConfirm,  // ← shortcut: встановлює дати + одразу завантажує
+        previews,
+        previewsLoading,
+        fetchAllPreviews,
 
-        // Форма
-        formValues,
-        updateFormValue,
-        computedTotal,
-
-        // Збереження
-        createState,
         saveSalary,
-        resetCreateState,
     };
 }
