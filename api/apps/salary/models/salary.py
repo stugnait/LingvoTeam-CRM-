@@ -10,11 +10,9 @@ class Salary(models.Model):
         ("paid", "Paid"),
     ]
 
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="salaries"
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="salaries", null=True, blank=True)
+    translator = models.ForeignKey('translators.Translator', on_delete=models.CASCADE, related_name="salaries",
+                                   null=True, blank=True)
 
     start_date = models.DateField(null=True, blank=True,)
     end_date = models.DateField(null=True, blank=True)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react" // Додали useEffect
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useMe } from "@/src/features/auth/hooks/useMe"
@@ -36,7 +36,6 @@ const navigation = [
         children: [
             { name: "Менеджер", roleId: 1 },
             { name: "Редактор", roleId: 2 },
-            { name: "Фінансист", roleId: 4 },
             { name: "Перекладачі", roleId: 5 },
         ]
     },

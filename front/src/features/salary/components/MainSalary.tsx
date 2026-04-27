@@ -26,10 +26,8 @@ import {
     ChevronRight,
     Save,
     History,
-    FileText,
-    Star,
     AlertCircle,
-    CalendarIcon
+    Star // Додаємо іконку зірки для оцінки
 } from "lucide-react"
 
 import { User } from "@/src/features/users/types"
@@ -68,15 +66,25 @@ export default function FinanceTablePage() {
     const searchParams = useSearchParams()
     const router = useRouter()
 
+    // Повертаємо числові значення ролей
     const activeRole = Number(searchParams.get("role")) || 1
     const isManager = activeRole === 1
+    const isEditor = activeRole === 2
+    const isTranslator = activeRole === 5
+
+    // Визначаємо підпис для бейджика під іменем
+    const getRoleLabel = () => {
+        if (isManager) return "Менеджер"
+        if (isEditor) return "Редактор"
+        if (isTranslator) return "Перекладач"
+        return "Працівник"
+    }
 
     const maxMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     const [currentMonthDate, setCurrentMonthDate] = useState(() => maxMonthDate)
     const [expandedId, setExpandedId] = useState<number | null>(null)
 
-    // Стан інпутів
-    const [drafts, setDrafts] = useState<Record<number, { base_salary: number, bonus: number, premium: number, pay_amount?: number }>>({})
+    const [drafts, setDrafts] = useState<Record<number, { base_salary: number, bonus: number, premium: number }>>({})
 
     const {
         users,
@@ -90,24 +98,20 @@ export default function FinanceTablePage() {
         saveSalary,
     } = useSalaryManagement({ roleId: activeRole })
 
-    // 1. Завантаження користувачів та їх статистики при зміні ролі або місяця
     useEffect(() => {
         const loadData = async () => {
             const fetchedUsers = await fetchUsers(activeRole)
             const { startDate, endDate } = getMonthDates(currentMonthDate)
 
-            // Завантажуємо історію транзакцій (якщо треба для всієї ролі)
             fetchSalaryList({ role: activeRole, start_date: startDate, end_date: endDate })
 
-            // Завантажуємо прев'ю (статистику) для таблиці
             if (fetchedUsers && fetchedUsers.length > 0) {
-                fetchAllPreviews(fetchedUsers, startDate, endDate)
+                fetchAllPreviews(fetchedUsers, startDate, endDate, activeRole)
             }
         }
         loadData()
     }, [activeRole, currentMonthDate])
 
-    // 2. Синхронізація драфтів з отриманими прев'ю
     useEffect(() => {
         if (Object.keys(previews).length > 0) {
             setDrafts(prev => {
@@ -117,7 +121,6 @@ export default function FinanceTablePage() {
                         base_salary: Number(p.base_salary) || 0,
                         bonus: Number(p.bonus) || 0,
                         premium: Number(p.premium) || 0,
-                        pay_amount: Number(p.revenue) || 0 // Для перекладача (або інше поле)
                     }
                 })
                 return newDrafts
@@ -149,7 +152,7 @@ export default function FinanceTablePage() {
             setExpandedId(null)
         } else {
             setExpandedId(userId)
-            fetchSalaryList({ user: userId })
+            fetchSalaryList({ user: userId, role: activeRole })
         }
     }
 
@@ -157,8 +160,11 @@ export default function FinanceTablePage() {
         const draft = drafts[userId]
         if (!draft) return
         const { startDate, endDate } = getMonthDates(currentMonthDate)
-        await saveSalary(userId, draft, startDate, endDate)
+        await saveSalary(userId, draft, startDate, endDate, activeRole)
     }
+
+    // 8 колонок для менеджера, 11 для перекладача (бо додали оцінку), 10 для редактора
+    const colSpanCount = isManager ? 8 : (isTranslator ? 11 : 10);
 
     return (
         <div className="flex flex-col h-full min-h-screen bg-background p-6">
@@ -179,7 +185,8 @@ export default function FinanceTablePage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="1">Менеджери</SelectItem>
-                                <SelectItem value="2">Перекладачі</SelectItem>
+                                <SelectItem value="2">Редактори</SelectItem>
+                                <SelectItem value="5">Перекладачі</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -211,18 +218,25 @@ export default function FinanceTablePage() {
                                     <>
                                         <TableHead className="font-semibold text-foreground h-14">Замовлення (Всі / Простр.)</TableHead>
                                         <TableHead className="font-semibold text-foreground h-14">Виручка / Маржа</TableHead>
-                                        <TableHead className="font-semibold text-foreground h-14 w-[110px]">Ставка</TableHead>
-                                        <TableHead className="font-semibold text-foreground h-14 w-[110px]">Бонус</TableHead>
-                                        <TableHead className="font-semibold text-foreground h-14 w-[110px]">Премія</TableHead>
-                                        <TableHead className="font-semibold text-emerald-600 h-14 text-right">Разом</TableHead>
                                     </>
                                 ) : (
                                     <>
-                                        <TableHead className="font-semibold text-foreground h-14">Загальна сума (Виручка)</TableHead>
                                         <TableHead className="font-semibold text-foreground h-14">Замовлення</TableHead>
-                                        <TableHead className="font-semibold text-foreground h-14 w-[130px]">До сплати</TableHead>
+                                        <TableHead className="font-semibold text-foreground h-14">Виручка {isEditor && "/ Маржа"}</TableHead>
+                                        <TableHead className="font-semibold text-foreground h-14">Сторінки</TableHead>
+                                        <TableHead className="font-semibold text-foreground h-14">Символи (без / з)</TableHead>
+                                        {/* Додаємо колонку тільки для перекладача */}
+                                        {isTranslator && (
+                                            <TableHead className="font-semibold text-foreground h-14 text-center">Сер. Оцінка</TableHead>
+                                        )}
                                     </>
                                 )}
+
+                                {/* Спільні фінансові колонки */}
+                                <TableHead className="font-semibold text-foreground h-14 w-[110px]">Ставка</TableHead>
+                                <TableHead className="font-semibold text-foreground h-14 w-[110px]">Бонус</TableHead>
+                                <TableHead className="font-semibold text-foreground h-14 w-[110px]">Премія</TableHead>
+                                <TableHead className="font-semibold text-emerald-600 h-14 text-right">Разом</TableHead>
                                 <TableHead className="font-semibold text-foreground h-14 pr-6 text-right">Дії</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -230,24 +244,22 @@ export default function FinanceTablePage() {
                         <TableBody>
                             {usersLoading || previewsLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={isManager ? 8 : 5} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={colSpanCount} className="h-24 text-center text-muted-foreground">
                                         Завантаження статистики...
                                     </TableCell>
                                 </TableRow>
                             ) : users.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={isManager ? 8 : 5} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={colSpanCount} className="h-24 text-center text-muted-foreground">
                                         Працівників не знайдено.
                                     </TableCell>
                                 </TableRow>
                             ) : users.map((user: User) => {
-                                // Беремо статистику з preview або дефолтні значення
-                                const stats = previews[user.id] || { revenue: 0, orders_count: 0, overdue_orders_count: 0, margin: 0 }
-                                const draft = drafts[user.id] || { base_salary: 0, bonus: 0, premium: 0, pay_amount: 0 }
+                                // Додали average_score зі значенням за замовчуванням
+                                const stats = previews[user.id] || { revenue: 0, orders_count: 0, overdue_orders_count: 0, margin: 0, pages_count: 0, chars_count: 0, chars_with_spaces_count: 0, average_score: 0 }
+                                const draft = drafts[user.id] || { base_salary: 0, bonus: 0, premium: 0 }
 
-                                const totalCalculated = isManager
-                                    ? (draft.base_salary + draft.bonus + draft.premium)
-                                    : draft.pay_amount;
+                                const totalCalculated = draft.base_salary + draft.bonus + draft.premium;
 
                                 return (
                                     <Fragment key={user.id}>
@@ -259,7 +271,7 @@ export default function FinanceTablePage() {
                                                     </div>
                                                     <div className="leading-tight">
                                                         <p className="text-sm font-medium text-foreground">{user.full_name}</p>
-                                                        <p className="text-xs text-muted-foreground">{isManager ? "Менеджер" : "Перекладач"}</p>
+                                                        <p className="text-xs text-muted-foreground">{getRoleLabel()}</p>
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -278,36 +290,55 @@ export default function FinanceTablePage() {
                                                     <TableCell className="align-middle">
                                                         <div className="flex flex-col">
                                                             <span className="text-sm font-semibold text-foreground">{formatCurrency(stats.revenue)}</span>
-                                                            <span className="text-xs text-emerald-600 font-medium">Маржа: {stats.margin}%</span>
+                                                            <span className="text-xs text-emerald-600 font-medium">Маржа: {stats.margin || 0}%</span>
                                                         </div>
-                                                    </TableCell>
-
-                                                    <TableCell className="align-middle">
-                                                        <input type="number" value={draft.base_salary || ""} onChange={(e) => handleDraftChange(user.id, "base_salary", e.target.value)} className="w-[90px] h-9 px-2 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="0"/>
-                                                    </TableCell>
-                                                    <TableCell className="align-middle">
-                                                        <input type="number" value={draft.bonus || ""} onChange={(e) => handleDraftChange(user.id, "bonus", e.target.value)} className="w-[90px] h-9 px-2 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="0"/>
-                                                    </TableCell>
-                                                    <TableCell className="align-middle">
-                                                        <input type="number" value={draft.premium || ""} onChange={(e) => handleDraftChange(user.id, "premium", e.target.value)} className="w-[90px] h-9 px-2 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="0"/>
-                                                    </TableCell>
-                                                    <TableCell className="align-middle text-right font-bold text-emerald-600 text-base">
-                                                        {formatCurrency(totalCalculated)}
                                                     </TableCell>
                                                 </>
                                             ) : (
                                                 <>
                                                     <TableCell className="align-middle">
-                                                        <span className="text-sm font-semibold text-foreground">{formatCurrency(stats.revenue)}</span>
-                                                    </TableCell>
-                                                    <TableCell className="align-middle">
                                                         <Badge variant="outline" className="bg-background">{stats.orders_count}</Badge>
                                                     </TableCell>
                                                     <TableCell className="align-middle">
-                                                        <input type="number" value={draft.pay_amount || ""} onChange={(e) => handleDraftChange(user.id, "pay_amount", e.target.value)} className="w-[110px] h-9 px-3 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="Сума"/>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-semibold text-foreground">{formatCurrency(stats.revenue)}</span>
+                                                            {/* Маржу показуємо тільки редакторам */}
+                                                            {isEditor && (
+                                                                <span className="text-xs text-emerald-600 font-medium">Маржа: {stats.margin || 0}%</span>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
+                                                    <TableCell className="align-middle text-sm font-medium">
+                                                        {stats.pages_count || 0}
+                                                    </TableCell>
+                                                    <TableCell className="align-middle text-sm text-muted-foreground whitespace-nowrap">
+                                                        <span className="text-foreground font-medium">{stats.chars_count || 0}</span> / {stats.chars_with_spaces_count || 0}
+                                                    </TableCell>
+                                                    {/* Оцінка для перекладача */}
+                                                    {isTranslator && (
+                                                        <TableCell className="align-middle text-center">
+                                                            <Badge variant="secondary" className="gap-1.5 font-medium px-2.5 py-0.5">
+                                                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                                                {stats.average_score > 0 ? stats.average_score.toFixed(1) : "—"}
+                                                            </Badge>
+                                                        </TableCell>
+                                                    )}
                                                 </>
                                             )}
+
+                                            {/* Спільні фінансові інпути */}
+                                            <TableCell className="align-middle">
+                                                <input type="number" value={draft.base_salary || ""} onChange={(e) => handleDraftChange(user.id, "base_salary", e.target.value)} className="w-[90px] h-9 px-2 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="0"/>
+                                            </TableCell>
+                                            <TableCell className="align-middle">
+                                                <input type="number" value={draft.bonus || ""} onChange={(e) => handleDraftChange(user.id, "bonus", e.target.value)} className="w-[90px] h-9 px-2 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="0"/>
+                                            </TableCell>
+                                            <TableCell className="align-middle">
+                                                <input type="number" value={draft.premium || ""} onChange={(e) => handleDraftChange(user.id, "premium", e.target.value)} className="w-[90px] h-9 px-2 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-primary focus:outline-none transition-all" placeholder="0"/>
+                                            </TableCell>
+                                            <TableCell className="align-middle text-right font-bold text-emerald-600 text-base">
+                                                {formatCurrency(totalCalculated)}
+                                            </TableCell>
 
                                             <TableCell className="align-middle pr-6">
                                                 <div className="flex items-center justify-end gap-2">
@@ -322,12 +353,11 @@ export default function FinanceTablePage() {
                                             </TableCell>
                                         </TableRow>
 
-                                        {/* РОЗГОРНУТИЙ РЯДОК ІСТОРІЇ (БЕЗ ЗМІН) */}
+                                        {/* РОЗГОРНУТИЙ РЯДОК ІСТОРІЇ */}
                                         {expandedId === user.id && (
                                             <TableRow className="bg-muted/10 border-b-0">
-                                                {/* Тут код історії транзакцій (такий самий як в попередньому прикладі) */}
-                                                <TableCell colSpan={isManager ? 8 : 5} className="p-0 border-b-0 relative">
-                                                    {/* ... */}
+                                                <TableCell colSpan={colSpanCount} className="p-0 border-b-0 relative">
+                                                    {/* Компонент історії */}
                                                 </TableCell>
                                             </TableRow>
                                         )}

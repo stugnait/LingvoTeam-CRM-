@@ -13,7 +13,7 @@ class TranslationQuality(models.Model):
     )
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'translators.Translator',
         on_delete=models.SET_NULL,
         null=True,
         verbose_name='Оцінювач'

@@ -62,6 +62,8 @@ class Order(models.Model):
         db_column='traffic_id'
     )
 
+    symbols_with_spaces_count = models.IntegerField(default=0, verbose_name="Символи з пробілами")
+
     translator_id = models.ForeignKey(
         "translators.Translator",
         on_delete=models.CASCADE,
