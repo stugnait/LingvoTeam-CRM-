@@ -16,7 +16,7 @@ export function usePnL(startDate: string, endDate: string, groupBy?: string) {
 
             const res = await financeApi.getPnL(startDate, endDate, groupBy)
 
-            setData(res)
+            setData(res as PnLResponse)
 
         } catch (err) {
             setError("Failed to load PnL")
@@ -57,7 +57,7 @@ export function useSalesChart(startDate: string, endDate: string) {
                 { date: "2024-05-21", daily_revenue: 800 },
                 { date: "2024-05-22", daily_revenue: 2500 },
                 { date: "2024-05-23", daily_revenue: 1700 },
-            ]
+            ] as SalesChartResponse
 
             setData(res)
         } catch (err) {

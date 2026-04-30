@@ -1,4 +1,5 @@
-// src/features/salary/hooks/useSalaryManagement.ts
+"use client"
+
 import { useState, useCallback } from "react";
 import { salaryApi, usersApi } from "@/src/features/salary/api";
 import {
@@ -150,40 +151,31 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
     // ─── Завантажити превью статистики ──────────────────────────────────────
 
     const fetchPreview = useCallback(async () => {
-        setPreview(prev => {
-            if (!prev.userId || !prev.startDate || !prev.endDate) return prev;
-            return { ...prev, loading: true, error: null, data: null };
-        });
+        // Уникаємо зайвих запусків, якщо стейт ще не оновився
+        const { userId, startDate, endDate } = preview;
+        if (!userId || !startDate || !endDate) return;
 
-        setPreview(prev => {
-            const { userId, startDate, endDate } = prev;
-            if (!userId || !startDate || !endDate) return prev;
+        setPreview(prev => ({ ...prev, loading: true, error: null }));
 
-            salaryApi
-                .preview({ user: userId, start_date: startDate, end_date: endDate })
-                .then(data => {
-                    setPreview(p => ({ ...p, data, loading: false }));
-                    // Підтягуємо базову ставку з превью
-                    setFormValues(f => ({
-                        ...f,
-                        base_salary: data.base_salary ?? 0,
-                        bonus: data.bonus ?? 0,
-                        premium: data.premium ?? 0,
-                    }));
-                })
-                .catch((e: any) => {
-                    setPreview(p => ({
-                        ...p,
-                        loading: false,
-                        error: e?.message ?? "Помилка завантаження статистики",
-                    }));
-                });
+        try {
+            const data = await salaryApi.preview({ user: userId, start_date: startDate, end_date: endDate });
 
-            return { ...prev, loading: true };
-        });
-    }, []);
+            setPreview(p => ({ ...p, data, loading: false }));
 
-    // ─── Оновити поле форми ─────────────────────────────────────────────────
+            // Виправлення помилки: Примусово конвертуємо в number
+            setFormValues({
+                base_salary: Number(data.base_salary) || 0,
+                bonus: Number(data.bonus) || 0,
+                premium: Number(data.premium) || 0,
+            });
+        } catch (e: any) {
+            setPreview(p => ({
+                ...p,
+                loading: false,
+                error: e?.message ?? "Помилка завантаження статистики",
+            }));
+        }
+    }, [preview.userId, preview.startDate, preview.endDate]);
 
     const updateFormValue = useCallback(
         (field: keyof SalaryFormValues, value: number) => {
@@ -226,10 +218,7 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
             setSalaryList(prev => ({ ...prev, items: [salary, ...prev.items] }));
             return salary;
         } catch (e: any) {
-            const msg =
-                e?.detail ??
-                e?.message ??
-                "Помилка збереження зарплати";
+            const msg = e?.detail ?? e?.message ?? "Помилка збереження зарплати";
             setCreateState({ loading: false, error: msg, success: false });
             return null;
         }
@@ -264,6 +253,9 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
      */
     const handleDatesConfirm = useCallback(
         async (startDate: string, endDate: string) => {
+            const { userId } = preview;
+            if (!userId) return;
+
             setPreview(prev => ({
                 ...prev,
                 startDate,
@@ -273,9 +265,6 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
                 loading: true,
             }));
 
-            const { userId } = preview;
-            if (!userId) return;
-
             try {
                 const data = await salaryApi.preview({
                     user: userId,
@@ -284,9 +273,9 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
                 });
                 setPreview(p => ({ ...p, data, loading: false }));
                 setFormValues({
-                    base_salary: data.base_salary ?? 0,
-                    bonus: data.bonus ?? 0,
-                    premium: data.premium ?? 0,
+                    base_salary: Number(data.base_salary) || 0,
+                    bonus: Number(data.bonus) || 0,
+                    premium: Number(data.premium) || 0,
                 });
             } catch (e: any) {
                 setPreview(p => ({
@@ -319,9 +308,7 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
         closePreviewModal,
         setPreviewDates,
         fetchPreview,
-        handleDatesConfirm,  // ← shortcut: встановлює дати + одразу завантажує
-
-        // Форма
+        handleDatesConfirm,
         formValues,
         updateFormValue,
         computedTotal,

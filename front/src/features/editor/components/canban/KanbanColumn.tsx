@@ -67,7 +67,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                         <SortableTask
                             key={task.id}
                             task={task}
-                            onClick={() => onTaskOpen(task.id)}
+                            onClick={() => onTaskOpen(Math.abs(Number(task.id)))}
                         />
                     ))}
                 </SortableContext>

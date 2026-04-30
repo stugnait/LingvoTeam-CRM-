@@ -13,7 +13,6 @@ interface SortableTaskProps {
     onClick: () => void
 }
 
-
 const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick }) => {
     const {
         attributes,
@@ -58,7 +57,7 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
                     "select-none"
                 )}
                 onClick={(e) => {
-                    e.stopPropagation();   // ⬅️ критично
+                    e.stopPropagation();
                     onClick();
                 }}
             >
@@ -96,18 +95,20 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
 
                 {/* Order info */}
                 <div className="grid grid-cols-2 gap-2 mb-2 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 min-w-0">
                         <span className="font-medium">Client:</span>
-                        <span>#{task.client_id}</span>
+                        <span className="truncate" title={task.client_name}>
+                            {task.client_name || 'Unknown'}
+                        </span>
                     </div>
                     <div className="flex items-center gap-1">
                         <Globe className="w-3 h-3"/>
-                        <span>Pair: {task.language_pair_id}</span>
+                        <span>Pair: {(task as any).language_pair_id || 'N/A'}</span>
                     </div>
                 </div>
 
                 {/* Tags */}
-                {task.tags.length > 0 && (
+                {task.tags && task.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-2">
                         {task.tags.map((tag, index) => (
                             <span
@@ -151,10 +152,11 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
                         )}
                     </div>
 
-                    {task.dueDate && (
+                    {/* 🔥 Виправлення: використовуємо task.deadline замість task.dueDate */}
+                    {task.deadline && (
                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                             <Calendar className="w-3 h-3"/>
-                            {new Date(task.dueDate).toLocaleDateString('en-US', {
+                            {new Date(task.deadline).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric'
                             })}

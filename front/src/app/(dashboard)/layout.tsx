@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react" // Додали Suspense
 import { CrmSidebar } from "@/src/components/dashboard/crm-sidebar"
 
 export default function DashboardLayout({
@@ -12,11 +12,12 @@ export default function DashboardLayout({
 
     return (
         <div className="flex">
-            {/* SIDEBAR */}
-            <CrmSidebar
-                collapsed={collapsed}
-                toggle={() => setCollapsed(prev => !prev)}
-            />
+            <Suspense fallback={<div className={collapsed ? "w-0" : "w-64"} />}>
+                <CrmSidebar
+                    collapsed={collapsed}
+                    toggle={() => setCollapsed(prev => !prev)}
+                />
+            </Suspense>
 
             {/* CONTENT */}
             <main

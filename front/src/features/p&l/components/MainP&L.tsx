@@ -15,6 +15,7 @@ import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 
 import { useState, useCallback } from "react"
 import { usePnL } from "../hooks/usePnL"
+import { useSalesChart } from "../hooks/usePnL"
 
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
@@ -245,7 +246,7 @@ export function MainPnL() {
                     />
 
                     <Select
-                        value={form.type}
+                        value={form.type ?? ""}
                         onValueChange={(value) =>
                             setForm(prev => ({
                                 ...prev,
@@ -267,7 +268,7 @@ export function MainPnL() {
 
                     <Input
                         type="date"
-                        value={form.created_at}
+                        value={form.created_at ?? ""}
                         onChange={(e) =>
                             setForm(prev => ({
                                 ...prev,
