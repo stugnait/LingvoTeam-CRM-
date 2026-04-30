@@ -11,6 +11,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/src/components/ui/table"
+// Використовуємо лише один тип, щоб уникнути плутанини
 import { User } from "@/src/features/users/types"
 import { useSalaryManagement } from "@/src/features/salary/hooks/useSalary"
 import { Salary } from "@/src/features/salary/types"
@@ -41,7 +42,7 @@ function SalaryHistoryModal({
                                 salaries,
                                 onClose,
                             }: {
-    user: User
+    user: any
     salaries: Salary[]
     onClose: () => void
 }) {
@@ -122,7 +123,7 @@ function SalaryModal({
                          onSave,
                          onClose,
                      }: {
-    user: User
+    user: any
     preview: any
     formValues: any
     computedTotal: number
@@ -143,7 +144,7 @@ function SalaryModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-md mx-4 overflow-hidden">
                 {/* Header */}
                 <div className="px-6 py-5 border-b flex items-center justify-between">
                     <div>
@@ -214,8 +215,8 @@ function SalaryModal({
 
 export default function FinanceTablePage() {
     const searchParams = useSearchParams()
-    const activeRole = Number(searchParams.get("role")) || 1 // Беремо роль з URL або 1 за замовчуванням
-    const [historyUser, setHistoryUser] = useState<User | null>(null)
+    const activeRole = Number(searchParams.get("role")) || 1
+    const [historyUser, setHistoryUser] = useState<any>(null)
 
     const {
         users,
@@ -245,16 +246,14 @@ export default function FinanceTablePage() {
         fetchSalaryList({ role: activeRole })
     }, [activeRole])
 
-    // Відкрити модалку превью
-    function handleOpenPreview(user: User) {
+    function handleOpenPreview(user: any) {
         resetCreateState()
-        openPreviewModal(user.id)
+        openPreviewModal(Number(user.id))
     }
 
-    // Відкрити модалку транзакцій для юзера
-    function handleOpenHistory(user: User) {
+    function handleOpenHistory(user: any) {
         setHistoryUser(user)
-        fetchSalaryList({ user: user.id })
+        fetchSalaryList({ user: Number(user.id) })
     }
 
     // Зберегти та закрити
@@ -268,8 +267,8 @@ export default function FinanceTablePage() {
         }
     }
 
-    const activePreviewUser = users.find(u => u.id === preview.userId) ?? null
-    const userSalaries = historyUser ? salaryList.items.filter(s => s.user === historyUser.id) : []
+    const activePreviewUser = users.find(u => Number(u.id) === preview.userId) ?? null
+    const userSalaries = historyUser ? salaryList.items.filter(s => s.user === Number(historyUser.id)) : []
 
     return (
         <div className="flex h-full min-h-screen bg-slate-50 p-6">
@@ -294,7 +293,7 @@ export default function FinanceTablePage() {
                             ) : users.length === 0 ? (
                                 <TableRow><TableCell colSpan={2} className="text-center py-10 text-slate-400">Працівників не знайдено</TableCell></TableRow>
                             ) : (
-                                users.map((user: User) => (
+                                users.map((user: any) => (
                                     <TableRow key={user.id} className="hover:bg-slate-50/50">
                                         <TableCell className="font-medium">{user.full_name}</TableCell>
                                         <TableCell className="text-right">

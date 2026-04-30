@@ -28,7 +28,7 @@ import {
 import type { Client } from "../types"
 
 interface ClientTableProps {
-    clients: Client[]
+    clients: (Client & { category_name?: string })[]
     onEdit: (client: Client) => void
     onDelete: (client: Client) => void
     page: number
@@ -104,7 +104,7 @@ export function ClientTable({
                                         </DropdownMenuItem>
 
                                         <DropdownMenuItem
-                                            onClick={() => onDelete(client.id)}
+                                            onClick={() => onDelete(client)}
                                             className="text-destructive"
                                         >
                                             <Trash2 className="h-4 w-4 mr-2"/>

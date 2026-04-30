@@ -53,10 +53,14 @@ export interface Details {
         phone?: string
     } | null
 
+    // Поля статистики
     page_count: number
     images_count: number
     chars_with_spaces: number
     chars_no_spaces: number
+    symbols_count?: number
+    client_id?: number
+    translator_id?: number
 }
 
 /* =========================================================
@@ -234,6 +238,13 @@ export interface OrderListItem {
     manager_accept_name?: string
     manager_delivery_id?: number
     manager_delivery_name?: string
+    manager_avatar?: string | null
+    translator_avatar?: string | null
+    language_pair_name?: string
+    client_comment?: string
+    translator_name?: string
+    manager_name?: string
+    status?: string
 }
 
 export interface OrderListResponse {

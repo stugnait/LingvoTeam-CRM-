@@ -35,7 +35,7 @@ export function useOrders() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
 
-    // 👉 ДОДАНО: Стан для збереження поточного фільтру "тільки мої"
+    // 👉 Стан для збереження поточного фільтру "тільки мої"
     const [isOnlyMineFilter, setIsOnlyMineFilter] = useState(false)
     const [statusFilter, setStatusFilter] = useState<string | number>("")
     const [managerFilter, setManagerFilter] = useState<string | number>("")
@@ -245,12 +245,32 @@ export function useOrders() {
             await ordersApi.deleteOrder(orderId)
             handleSuccess("Deleted", `Order #${orderId} deleted`)
 
-            // 👉 Оновлюємо з урахуванням поточного фільтра
+            // Оновлюємо з урахуванням поточного фільтра
             await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
         } catch (e) {
             handleError(e, "Failed to delete order")
         } finally {
             setDeleteLoading(null)
+        }
+    }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, loadOrders, handleError, handleSuccess])
+
+    const confirmOrder = useCallback(async (orderId: number) => {
+        try {
+            setUpdateLoading(orderId)
+
+            if (ordersApi.confirmOrder) {
+                await ordersApi.confirmOrder(orderId)
+            } else {
+                console.warn("Потрібно реалізувати ordersApi.confirmOrder у файлі api.ts")
+            }
+
+            handleSuccess("Confirmed", `Order #${orderId} confirmed successfully`)
+
+            await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
+        } catch (e) {
+            handleError(e, "Failed to confirm order")
+        } finally {
+            setUpdateLoading(null)
         }
     }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, loadOrders, handleError, handleSuccess])
 
@@ -449,6 +469,7 @@ export function useOrders() {
 
         deleteOrder,
         updateOrder,
+        confirmOrder,
 
         downloadOrderSourceFiles,
         downloadOrderTargetFiles,

@@ -30,19 +30,21 @@ export interface OrderListResponse {
 }
 
 // Our Kanban Task now extends OrderListItem
-export interface KanbanTask extends OrderListItem {
-    // Fields from OrderListItem are included
+export interface KanbanTask extends Omit<OrderListItem, 'id'> {
+    id: number | string;
+    status: TaskStatus | 'all_orders';
     client_name: string;
     title: string;
     description?: string;
     priority: TaskPriority;
     assignee?: {
-        id: string;
+        id: string | number;
         name: string;
         avatar?: string;
     };
     tags: string[];
-    dueDate?: Date;
+    dueDate?: Date | string;
+    subtasks?: any[];
 }
 
 export interface KanbanColumn {

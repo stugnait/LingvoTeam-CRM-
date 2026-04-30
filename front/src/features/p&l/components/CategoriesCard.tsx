@@ -169,7 +169,7 @@ export function CategoriesCard() {
                     />
 
                     <Select
-                        value={form.type}
+                        value={form.type ?? ""}
                         onValueChange={(value) =>
                             setForm(prev => ({
                                 ...prev,

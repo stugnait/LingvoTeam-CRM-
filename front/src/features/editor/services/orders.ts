@@ -67,6 +67,7 @@ export const convertOrderToKanbanTask = (order: OrderListItem): KanbanTask => {
     return {
         // OrderListItem fields
         ...order,
+        client_name: order.client_name || "Unknown Client",
 
         // KanbanTask fields
         title,
@@ -75,6 +76,7 @@ export const convertOrderToKanbanTask = (order: OrderListItem): KanbanTask => {
         assignee,
         tags: getTagsFromOrder(order),
         dueDate: getDueDateFromOrder(order),
+        status: statusIdToTaskStatus(String(order.status_id)),
     };
 };
 

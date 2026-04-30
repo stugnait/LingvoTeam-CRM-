@@ -493,14 +493,17 @@ export function OrdersTable({
                                                         {/* Client + Translator */}
                                                         <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
                                                             {(() => {
-                                                                const clientId = details.client_id || (order as any).client_id
-                                                                const client = clients?.find(c => c.id === clientId)
+                                                                // Беремо id з details.client або падаємо на order.client_id
+                                                                const clientId = details.client?.id || order.client_id
+                                                                // Беремо клієнта безпосередньо з details, або шукаємо в масиві clients
+                                                                const client = details.client || clients?.find(c => c.id === clientId)
+
                                                                 return (
                                                                     <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
                                                                         <span className="text-lg font-bold text-foreground">
-                                                                            {client ? client.full_name : `Client #${clientId}`}
-                                                                        </span>
+                    {client ? client.full_name : `Client #${clientId}`}
+                </span>
                                                                         {client?.email && (
                                                                             <span className="text-sm text-muted-foreground">{client.email}</span>
                                                                         )}
@@ -512,8 +515,11 @@ export function OrdersTable({
                                                             })()}
 
                                                             {(() => {
-                                                                const translatorId = details.translator_id || order.translator_id
-                                                                const translator = translatorsCache[translatorId]
+                                                                // Беремо id з details.translator або падаємо на order.translator_id
+                                                                const translatorId = details.translator?.id || order.translator_id
+                                                                // Беремо перекладача безпосередньо з details, або шукаємо в кеші
+                                                                const translator = details.translator || translatorsCache[translatorId]
+
                                                                 return (
                                                                     <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Translator Information</span>
@@ -539,7 +545,10 @@ export function OrdersTable({
                                                             </div>
                                                             <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Symbols</span>
-                                                                <span className="text-xl font-bold text-foreground">{details.symbols_count}</span>
+                                                                {/* Використовуй chars_with_spaces, якщо symbols_count не приходить окремо */}
+                                                                <span className="text-xl font-bold text-foreground">
+                                                                    {details.symbols_count ?? details.chars_with_spaces}
+                                                                </span>
                                                             </div>
                                                             <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
