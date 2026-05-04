@@ -7,6 +7,7 @@ import {
     SalaryPreview,
     User
 } from "./types";
+import type {TranslatorListResponse} from "@/src/features/translators/types";
 
 export const usersApi = {
     // Стандартний список (якщо десь потрібен)
@@ -45,12 +46,21 @@ export const salaryApi = {
         user: number;
         start_date: string;
         end_date: string;
+        role?: string; // 🔥 Додаємо role сюди
     }) => {
-        const query = new URLSearchParams({
+        // Формуємо параметри динамічно, щоб не передавати undefined
+        const queryParams: Record<string, string> = {
             user: String(params.user),
             start_date: params.start_date,
             end_date: params.end_date,
-        }).toString();
+        };
+
+        // 🔥 Якщо роль є, додаємо її до запиту
+        if (params.role) {
+            queryParams.role = params.role;
+        }
+
+        const query = new URLSearchParams(queryParams).toString();
 
         return apiFetch<SalaryPreview>(
             `salary/preview/?${query}`,
@@ -76,3 +86,51 @@ export const salaryApi = {
     delete: (id: number) =>
         apiFetch<void>(`salary/${id}/`, { method: "DELETE" }),
 };
+
+export const translatorsApi = {
+    // Додали page у параметри
+    list: (params?: {
+        search?: string
+        ordering?: "orders_count" | "-orders_count" | "created_at" | "-created_at"
+        source_language?: number
+        target_language?: number
+        language_pair_id?: number
+        page?: number // 🔥 Додано сюди
+    }) => {
+        const query = new URLSearchParams()
+
+        // 🔥 Беремо з params або за замовчуванням 1
+        const page = params?.page || 1;
+        query.append("page", String(page));
+
+        // 🔍 search
+        if (params?.search) {
+            query.append("search", params.search)
+        }
+
+        // 📊 sorting
+        if (params?.ordering) {
+            query.append("ordering", params.ordering)
+        }
+
+        // 🌐 filters
+        if (params?.source_language) {
+            query.append("source_language", String(params.source_language))
+        }
+
+        if (params?.target_language) {
+            query.append("target_language", String(params.target_language))
+        }
+
+        if (params?.language_pair_id) {
+            query.append("language_pair_id", String(params.language_pair_id))
+        }
+
+        const qs = query.toString()
+        const url = `translators/?${qs}`
+
+        return apiFetch<TranslatorListResponse>(url, {
+            method: "GET",
+        })
+    },
+}

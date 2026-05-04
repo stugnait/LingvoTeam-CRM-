@@ -1,36 +1,30 @@
+
 "use client"
 
+
 import { useState, useCallback } from "react";
-import { salaryApi, usersApi } from "@/src/features/salary/api";
+import { salaryApi, usersApi, translatorsApi } from "@/src/features/salary/api";
 import {
     Salary,
-    SalaryPreview,
     SalaryCreatePayload,
     User,
 } from "@/src/features/salary/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface SalaryFormValues {
+export interface SalaryPreview {
+    user: number;
+    full_name: string;
     base_salary: number;
     bonus: number;
     premium: number;
-}
-
-export interface PreviewState {
-    open: boolean;
-    userId: number | null;
-    startDate: string;
-    endDate: string;
-    data: SalaryPreview | null;
-    loading: boolean;
-    error: string | null;
-}
-
-export interface CreateState {
-    loading: boolean;
-    error: string | null;
-    success: boolean;
+    revenue: number;
+    orders_count: number;
+    overdue_orders_count: number;
+    margin: number;
+    pages_count?: number;
+    chars_count?: number;
+    chars_with_spaces_count?: number;
 }
 
 export interface SalaryListState {
@@ -40,71 +34,58 @@ export interface SalaryListState {
 }
 
 export interface UseSalaryManagementOptions {
-    roleId?: number;
+    roleId?: number; // 🔥 Повертаємо на number, бо ми працюємо з ID (1, 2, 5)
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useSalaryManagement(options?: UseSalaryManagementOptions) {
-    // Список юзерів для таблиці
     const [users, setUsers] = useState<User[]>([]);
     const [usersLoading, setUsersLoading] = useState(false);
     const [usersError, setUsersError] = useState<string | null>(null);
 
-    // Список збережених зарплат
     const [salaryList, setSalaryList] = useState<SalaryListState>({
         items: [],
         loading: false,
         error: null,
     });
 
-    // Стан модалки превью + форми
-    const [preview, setPreview] = useState<PreviewState>({
-        open: false,
-        userId: null,
-        startDate: "",
-        endDate: "",
-        data: null,
-        loading: false,
-        error: null,
-    });
-
-    // Значення форми (ставка, бонус, премія)
-    const [formValues, setFormValues] = useState<SalaryFormValues>({
-        base_salary: 0,
-        bonus: 0,
-        premium: 0,
-    });
-
-    // Стан збереження зп
-    const [createState, setCreateState] = useState<CreateState>({
-        loading: false,
-        error: null,
-        success: false,
-    });
+    const [previews, setPreviews] = useState<Record<number, SalaryPreview>>({});
+    const [previewsLoading, setPreviewsLoading] = useState(false);
 
     // ─── Завантаження юзерів ────────────────────────────────────────────────
-
     const fetchUsers = useCallback(async (roleId?: number) => {
         setUsersLoading(true);
         setUsersError(null);
         try {
-            const res = await usersApi.getForSalary(roleId ?? options?.roleId);
+            const currentRole = roleId ?? options?.roleId;
+            let res;
+
+            // 🔥 Перевіряємо на 5 (ID перекладачів)
+            if (currentRole === 5 || String(currentRole) === "5") {
+                const response = await translatorsApi.list();
+                // 🔥 Дістаємо масив з об'єкта пагінації (якщо він є), інакше беремо саму response
+                res = (response as any).results ? (response as any).results : response;
+            } else {
+                res = await usersApi.getForSalary(currentRole);
+            }
+
             setUsers(res);
+            return res;
         } catch (e: any) {
             setUsersError(e?.message ?? "Помилка завантаження працівників");
+            return [];
         } finally {
             setUsersLoading(false);
         }
     }, [options?.roleId]);
 
     // ─── Завантаження списку зарплат ────────────────────────────────────────
-
     const fetchSalaryList = useCallback(async (params?: {
         user?: number;
         start_date?: string;
         end_date?: string;
-        role?: number;
+        role?: number; // 🔥 Змінено назад на number
     }) => {
         setSalaryList(prev => ({ ...prev, loading: true, error: null }));
         try {
@@ -117,6 +98,36 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
                 loading: false,
                 error: e?.message ?? "Помилка завантаження зарплат",
             }));
+        }
+    }, []);
+
+
+    // ─── Завантаження ПРЕВ'Ю для ВСІХ юзерів ────────────────────────────────
+    const fetchAllPreviews = useCallback(async (usersToFetch: User[], startDate: string, endDate: string, roleId: number) => {
+        if (!usersToFetch || usersToFetch.length === 0) {
+            setPreviews({});
+            return;
+        }
+
+        setPreviewsLoading(true);
+        try {
+            const results = await Promise.all(
+                usersToFetch.map(u =>
+                    // 🔥 Передаємо roleId (1, 2 або 5)
+                    salaryApi.preview({ user: u.id, start_date: startDate, end_date: endDate, role: String(roleId) })
+                )
+            );
+
+            const newPreviews: Record<number, SalaryPreview> = {};
+            results.forEach((res: any) => {
+                newPreviews[res.user] = res;
+            });
+            setPreviews(newPreviews);
+
+        } catch (e: any) {
+            console.error("Помилка завантаження статистики", e);
+        } finally {
+            setPreviewsLoading(false);
         }
     }, []);
 
@@ -189,53 +200,40 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
     const computedTotal = formValues.base_salary + formValues.bonus + formValues.premium;
 
     // ─── Зберегти зарплату ──────────────────────────────────────────────────
+    const saveSalary = useCallback(async (
+        userId: number,
+        draft: { base_salary: number, bonus: number, premium: number },
+        startDate: string,
+        endDate: string,
+        roleId: number // 🔥 Тут приймаємо number
+    ): Promise<Salary | null> => {
 
-    const saveSalary = useCallback(async (): Promise<Salary | null> => {
-        const { userId, startDate, endDate } = preview;
-        if (!userId || !startDate || !endDate) {
-            setCreateState(prev => ({
-                ...prev,
-                error: "Заповніть всі поля перед збереженням",
-            }));
-            return null;
-        }
-
-        setCreateState({ loading: true, error: null, success: false });
-
-        const payload: SalaryCreatePayload = {
-            user: userId,
+        const payload: any = {
             start_date: startDate,
             end_date: endDate,
-            base_salary: formValues.base_salary,
-            bonus: formValues.bonus,
-            premium: formValues.premium,
+            base_salary: draft.base_salary,
+            bonus: draft.bonus,
+            premium: draft.premium,
         };
+
+        // 🔥 Перевіряємо на 5
+        if (roleId === 5 || String(roleId) === "5") {
+            payload.translator = userId;
+        } else {
+            payload.user = userId;
+        }
 
         try {
             const salary = await salaryApi.create(payload);
-            setCreateState({ loading: false, error: null, success: true });
-            // Оновлюємо список зарплат одразу
             setSalaryList(prev => ({ ...prev, items: [salary, ...prev.items] }));
             return salary;
         } catch (e: any) {
+
+            console.error("Помилка збереження зарплати", e);
+
             const msg = e?.detail ?? e?.message ?? "Помилка збереження зарплати";
             setCreateState({ loading: false, error: msg, success: false });
             return null;
-        }
-    }, [preview, formValues]);
-
-    // ─── Видалити зарплату ──────────────────────────────────────────────────
-
-    const deleteSalary = useCallback(async (id: number) => {
-        try {
-            await salaryApi.delete(id);
-            setSalaryList(prev => ({
-                ...prev,
-                items: prev.items.filter(s => s.id !== id),
-            }));
-            return true;
-        } catch {
-            return false;
         }
     }, []);
 
@@ -291,15 +289,18 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
     // ─── Return ──────────────────────────────────────────────────────────────
 
     return {
-        // Юзери
         users,
         usersLoading,
         usersError,
         fetchUsers,
 
-        // Список зарплат
         salaryList,
         fetchSalaryList,
+
+
+        previews,
+        previewsLoading,
+        fetchAllPreviews,
         deleteSalary,
 
         // Превью модалка
@@ -313,9 +314,6 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
         updateFormValue,
         computedTotal,
 
-        // Збереження
-        createState,
         saveSalary,
-        resetCreateState,
     };
 }

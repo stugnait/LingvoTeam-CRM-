@@ -10,16 +10,17 @@ class ManagerInfoSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'full_name', 'email', 'phone', 'role']
 
+
 class ClientInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = ['id', 'full_name', 'email', 'phone_number', 'category']
 
+
 class TranslatorInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Translator
         fields = ['id', 'full_name', 'email', 'phone', 'work_type', 'currency_id']
-
 
 
 class StatsSerializer(serializers.Serializer):
@@ -28,10 +29,17 @@ class StatsSerializer(serializers.Serializer):
 
     total_orders = serializers.IntegerField()
     total_revenue = serializers.FloatField()
-    unpaid_orders_count = serializers.IntegerField()
+
+    # Робимо їх необов'язковими (required=False), бо для клієнтів повертається одне, а для менеджерів - інше
+    unpaid_orders_count = serializers.IntegerField(required=False)
+    overdue_orders_count = serializers.IntegerField(required=False)
+
 
 class OwnerOrderListSerializer(serializers.ModelSerializer):
-    manager = ManagerInfoSerializer(read_only=True)
+    # Вказуємо source, щоб DRF знав, з яких полів моделі брати дані
+    manager_accept = ManagerInfoSerializer(source='manager_accept_id', read_only=True)
+    manager_delivery = ManagerInfoSerializer(source='manager_delivery_id', read_only=True)
+
     client = ClientInfoSerializer(read_only=True)
     translator = TranslatorInfoSerializer(read_only=True)
 
@@ -45,8 +53,9 @@ class OwnerOrderListSerializer(serializers.ModelSerializer):
             'client_status',
             'status_id',
             'client_comment',
-            'manager',
+            # Замість 'manager' тепер віддаємо двох менеджерів:
+            'manager_accept',
+            'manager_delivery',
             'client',
             'translator'
         ]
-

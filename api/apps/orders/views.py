@@ -278,7 +278,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         uploaded_files = request.FILES.getlist('files')
         stats_data = self._analyze_and_upload_files(order, uploaded_files)
 
-        order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
+        print("=== DEBUG СТАТИСТИКИ ФАЙЛІВ ===")
+        print(stats_data["total_stats"])
+
+        # Розділяємо збереження символів
+        order.symbols_count = stats_data["total_stats"]["chars_no_spaces"]
+        order.symbols_with_spaces_count = stats_data["total_stats"]["chars_with_spaces"]
+
         order.page_count = stats_data["total_stats"]["physical_pages"]
 
         if order.traffic_id:
@@ -417,7 +423,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 file_type=ext,
                 dropbox_url=dropbox_url,
                 detected_pages=stats["pages"],
-                detected_symbols=stats["chars_with_spaces"],
+                detected_symbols=stats["chars_no_spaces"],  # Зберігаємо звичайні символи
             )
 
         return {"total_stats": total_stats}
@@ -545,10 +551,11 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         acting_user = request.user if request.user.is_authenticated else None
 
+        # 🔥 ЗМІНА ТУТ: Передаємо перекладача (order.translator_id) замість acting_user
         TranslationQuality.objects.update_or_create(
             order=order,
             defaults={
-                'user': acting_user,
+                'user': order.translator_id,  # Зберігаємо перекладача, який виконував це замовлення
                 'score': score,
                 'comment': comment
             }
@@ -564,21 +571,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.status_id_id = 2
         order.save(update_fields=['status_id'])
 
+        # Оновлюємо рейтинг перекладача
         if order.translator_id:
             self.update_translator_rating(order.translator_id)
 
         return Response({"message": "Замовлення успішно прийнято та оцінено!"}, status=status.HTTP_200_OK)
 
     def update_translator_rating(self, translator):
-
+        # 🔥 Тепер можемо рахувати середню оцінку безпосередньо по полю user
         average_data = TranslationQuality.objects.filter(
-            order__translator_id=translator.id
+            user=translator
         ).aggregate(avg_score=Avg('score'))
 
         new_rating = average_data['avg_score'] or 0.0
 
         translator.rating = round(new_rating, 2)
-        translator.save()
+        translator.save(update_fields=['rating'])  # Оптимізація: зберігаємо тільки рейтинг
 
         return translator.rating
 
