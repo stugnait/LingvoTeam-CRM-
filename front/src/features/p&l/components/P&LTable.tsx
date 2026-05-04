@@ -136,7 +136,7 @@ export function PnLTable({
                                 </TableCell>
 
                                 <TableCell className="text-muted-foreground">
-                                    {new Date(op.created_at).toLocaleDateString()}
+                                    {op.created_at ? new Date(op.created_at).toLocaleDateString() : ""}
                                 </TableCell>
 
                                 <TableCell className="text-muted-foreground">

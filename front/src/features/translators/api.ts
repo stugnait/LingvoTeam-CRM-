@@ -1,15 +1,15 @@
 import { apiFetch } from "@/src/shared/api/client"
 import type {
     Translator,
-    TranslatorFilters,
     TranslatorPayload,
-    TranslatorListResponse, TranslatorTraffic, TranslatorTrafficPayload
+    TranslatorListResponse,
+    TranslatorTraffic,
+    TranslatorTrafficPayload
 } from "./types"
 
 export const translatorsApi = {
-
-    // GET /translators/?search=
-    list: (params?: {
+    // Додано page як перший аргумент, щоб String(page) не викликав помилку
+    list: (page: number = 1, params?: {
         search?: string
         ordering?: "orders_count" | "-orders_count" | "created_at" | "-created_at"
         source_language?: number
@@ -18,6 +18,8 @@ export const translatorsApi = {
     }) => {
 
         const query = new URLSearchParams()
+
+        // Тепер змінна page визначена через аргументи функції
         query.append("page", String(page))
 
         // 🔍 search
@@ -79,30 +81,21 @@ export const translatorsApi = {
         }),
 
     createTranslatorTraffic: (data: TranslatorTrafficPayload) =>
-        apiFetch<TranslatorTraffic>(
-            "translatortraffic/",
-            {
-                method: "POST",
-                body: JSON.stringify(data),
-            }
-        ),
+        apiFetch<TranslatorTraffic>("translatortraffic/", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
 
     // PATCH /translatortraffic/:id/
     updateTranslatorTraffic: (id: number, data: Partial<TranslatorTrafficPayload>) =>
-        apiFetch<TranslatorTraffic>(
-            `translatortraffic/${id}/`,
-            {
-                method: "PATCH",
-                body: JSON.stringify(data),
-            }
-        ),
+        apiFetch<TranslatorTraffic>(`translatortraffic/${id}/`, {
+            method: "PATCH",
+            body: JSON.stringify(data),
+        }),
 
     // DELETE /translatortraffic/:id/
     removeTranslatorTraffic: (id: number) =>
-        apiFetch<void>(
-            `translatortraffic/${id}/`,
-            {
-                method: "DELETE",
-            }
-        ),
+        apiFetch<void>(`translatortraffic/${id}/`, {
+            method: "DELETE",
+        }),
 }

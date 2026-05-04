@@ -1,3 +1,4 @@
+// src/features/orders/components/MainOrder.tsx
 "use client"
 
 import { Button } from "@/src/components/ui/button"
@@ -40,7 +41,7 @@ export default function OrdersPage() {
         loadOrders,
         refreshTranslators,
 
-        // 👉 Дістаємо всі наші стани для фільтрів з хука
+        // Дістаємо всі наші стани для фільтрів з хука
         isOnlyMineFilter, setIsOnlyMineFilter,
         statusFilter, setStatusFilter,
         managerFilter, setManagerFilter,
@@ -147,7 +148,7 @@ export default function OrdersPage() {
             editor_id: Number(editor),
             translator_id: selectedTranslatorId ?? undefined,
             files,
-            deadline: deadline ? deadline.toISOString() : undefined,
+            deadline: (deadline ? deadline.toISOString() : undefined) as any,
             priority,
             client_comment: comment,
             manager_accept_id: managerAccept ? Number(managerAccept) : undefined,
