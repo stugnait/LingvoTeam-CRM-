@@ -24,24 +24,37 @@ class TranslatorInfoSerializer(serializers.ModelSerializer):
 
 
 class StatsSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
+    """
+    Універсальний серіалізатор для статистики.
+    Всі поля необов'язкові — кожен ендпоінт повертає тільки те, що потрібно.
+    """
+    id        = serializers.IntegerField()
     full_name = serializers.CharField()
 
-    total_orders = serializers.IntegerField()
-    total_revenue = serializers.FloatField()
+    # Загальні
+    total_orders  = serializers.IntegerField(required=False, default=0)
+    total_revenue = serializers.FloatField(required=False, default=0)
 
-    # Робимо їх необов'язковими (required=False), бо для клієнтів повертається одне, а для менеджерів - інше
-    unpaid_orders_count = serializers.IntegerField(required=False)
-    overdue_orders_count = serializers.IntegerField(required=False)
+    # Середній чек
+    avg_order_value = serializers.FloatField(required=False, default=0)
+
+    # Для менеджерів / клієнтів
+    unpaid_orders_count  = serializers.IntegerField(required=False, default=0)
+    overdue_orders_count = serializers.IntegerField(required=False, default=0)
+
+    # Для перекладачів
+    avg_rating      = serializers.FloatField(required=False, default=0)
+    revision_count  = serializers.IntegerField(required=False, default=0)
+
+    # Для редакторів
+    total_checked = serializers.IntegerField(required=False, default=0)
 
 
 class OwnerOrderListSerializer(serializers.ModelSerializer):
-    # Вказуємо source, щоб DRF знав, з яких полів моделі брати дані
-    manager_accept = ManagerInfoSerializer(source='manager_accept_id', read_only=True)
-    manager_delivery = ManagerInfoSerializer(source='manager_delivery_id', read_only=True)
-
-    client = ClientInfoSerializer(read_only=True)
-    translator = TranslatorInfoSerializer(read_only=True)
+    manager_accept   = ManagerInfoSerializer(source='manager_accept_id',   read_only=True)
+    manager_delivery = ManagerInfoSerializer(source='manager_delivery_id',  read_only=True)
+    client           = ClientInfoSerializer(read_only=True)
+    translator       = TranslatorInfoSerializer(read_only=True)
 
     class Meta:
         model = Order
@@ -53,9 +66,45 @@ class OwnerOrderListSerializer(serializers.ModelSerializer):
             'client_status',
             'status_id',
             'client_comment',
-            # Замість 'manager' тепер віддаємо двох менеджерів:
             'manager_accept',
             'manager_delivery',
             'client',
-            'translator'
+            'translator',
         ]
+
+
+# ─────────────────────────────────────────────
+# Серіалізатори для P&L відповіді
+# ─────────────────────────────────────────────
+
+class PnLBreakdownItemSerializer(serializers.Serializer):
+    name             = serializers.CharField()
+    val_revenue      = serializers.DecimalField(max_digits=12, decimal_places=2)
+    val_cost         = serializers.DecimalField(max_digits=12, decimal_places=2)
+    val_profit       = serializers.DecimalField(max_digits=12, decimal_places=2)
+    val_orders       = serializers.IntegerField()
+    avg_order_value  = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class PnLSummarySerializer(serializers.Serializer):
+    revenue               = serializers.DecimalField(max_digits=12, decimal_places=2)
+    cogs                  = serializers.DecimalField(max_digits=12, decimal_places=2)
+    gross_profit          = serializers.DecimalField(max_digits=12, decimal_places=2)
+    gross_margin_percent  = serializers.DecimalField(max_digits=6,  decimal_places=2)
+    opex                  = serializers.DecimalField(max_digits=12, decimal_places=2)
+    net_profit            = serializers.DecimalField(max_digits=12, decimal_places=2)
+    avg_order_value       = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_orders          = serializers.IntegerField()
+
+
+class LanguagePairStatsSerializer(serializers.Serializer):
+    pair_name       = serializers.CharField()
+    total_orders    = serializers.IntegerField()
+    total_revenue   = serializers.DecimalField(max_digits=12, decimal_places=2)
+    avg_order_value = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class EditorStatsSerializer(serializers.Serializer):
+    id            = serializers.IntegerField()
+    full_name     = serializers.CharField()
+    total_checked = serializers.IntegerField()
