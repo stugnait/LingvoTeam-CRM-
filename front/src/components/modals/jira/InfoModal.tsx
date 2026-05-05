@@ -4,10 +4,10 @@ import {
     Dialog,
     DialogContent,
 } from "../../ui/dialog"
-import { Button } from "../../ui/button"
-import { Badge } from "../../ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar"
-import { Textarea } from "../../ui/textarea"
+import {Button} from "../../ui/button"
+import {Badge} from "../../ui/badge"
+import {Avatar, AvatarFallback, AvatarImage} from "../../ui/avatar"
+import {Textarea} from "../../ui/textarea"
 import {
     ChevronDown,
     Share2,
@@ -16,35 +16,38 @@ import {
     Paperclip,
     Settings,
     Download,
-    FileText
+    FileText,
+    Calendar
 } from "lucide-react"
 
 interface TaskModalProps {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    taskId: string
-    taskTitle: string
-    taskDescription: string
-    status: string
+    open: boolean,
+    onOpenChange: (open: boolean) => void,
+    taskId: string,
+    taskTitle: string,
+    taskDescription: string,
+    status: string,
     priority: "critical" | "high" | "medium" | "low" | string,
-    priorityName?: string
-    manager: string
+    priorityName?: string,
     translator: string,
-    dueDate?: string
-    labels?: string[]
-    sprint?: string
-    team?: string
-    startDate?: string
-    isLoading?: boolean
-    clientName?: string
-    languagePair?: string
-    onSave: () => void
-    onCancel: () => void
-    onDelete?: () => void
-    onAssignToMe?: () => void
-    onDownloadOriginal?: () => void
-    onDownloadTranslation?: () => void
-    avatar_url?: string | null
+    editor: string,
+    dueDate: string,
+    labels?: string[],
+    sprint?: string,
+    team?: string,
+    startDate?: string,
+    isLoading?: boolean,
+    clientName?: string,
+    languagePair?: string,
+    onSave: () => void,
+    onCancel: () => void,
+    onDelete?: () => void,
+    onAssignToMe?: () => void,
+    onDownloadOriginal?: () => void,
+    onDownloadTranslation?: () => void,
+    avatar_url?: string | null,
+    intake_manager?: { id: number; name: string; avatar?: string } | null,
+    delivery_manager?: { id: number; name: string; avatar?: string } | null,
 }
 
 export function TaskModal({
@@ -56,7 +59,6 @@ export function TaskModal({
                               status,
                               priority,
                               priorityName,
-                              manager,
                               translator,
                               dueDate,
                               labels,
@@ -72,6 +74,9 @@ export function TaskModal({
                               onAssignToMe,
                               onDownloadOriginal,
                               onDownloadTranslation,
+                              intake_manager,
+                              delivery_manager,
+    editor
                           }: TaskModalProps) {
     const getPriorityIcon = () => {
         const icons: Record<string, string> = {
@@ -92,7 +97,7 @@ export function TaskModal({
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500">✓</span>
-                            <span className="text-sm font-medium text-blue-600">{taskId}</span>
+                            <span className="text-sm font-medium text-blue-600">Task #{taskId}</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -100,10 +105,10 @@ export function TaskModal({
                             <span className="text-lg">👁️</span>
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Share2 className="h-4 w-4" />
+                            <Share2 className="h-4 w-4"/>
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4"/>
                         </Button>
                         <Button
                             variant="ghost"
@@ -111,7 +116,7 @@ export function TaskModal({
                             className="h-8 w-8"
                             onClick={() => onOpenChange(false)}
                         >
-                            <X className="h-4 w-4" />
+                            <X className="h-4 w-4"/>
                         </Button>
                     </div>
                 </div>
@@ -147,7 +152,7 @@ export function TaskModal({
                                         onClick={onDownloadOriginal}
                                         className="h-8 text-xs gap-1.5 border-gray-300 hover:bg-gray-50"
                                     >
-                                        <Download className="h-3.5 w-3.5" />
+                                        <Download className="h-3.5 w-3.5"/>
                                         Завантажити оригінал
                                     </Button>
                                     <Button
@@ -156,7 +161,7 @@ export function TaskModal({
                                         onClick={onDownloadTranslation}
                                         className="h-8 text-xs gap-1.5 border-blue-300 text-blue-600 hover:bg-blue-50"
                                     >
-                                        <FileText className="h-3.5 w-3.5" />
+                                        <FileText className="h-3.5 w-3.5"/>
                                         Завантажити переклад
                                     </Button>
                                 </div>
@@ -174,15 +179,16 @@ export function TaskModal({
                                 variant="default"
                             >
                                 <span className="font-medium">{status}</span>
-                                <ChevronDown className="h-4 w-4 ml-2" />
+                                <ChevronDown className="h-4 w-4 ml-2"/>
                             </Button>
                         </div>
 
                         {/* Details Section */}
                         <div className="space-y-1 bg-white rounded-lg border border-gray-200 p-1">
-                            <button className="flex items-center justify-between w-full py-2.5 px-3 hover:bg-gray-50 rounded">
+                            <button
+                                className="flex items-center justify-between w-full py-2.5 px-3 hover:bg-gray-50 rounded">
                                 <span className="text-sm font-semibold text-gray-700">Деталі</span>
-                                <Settings className="h-4 w-4 text-gray-400" />
+                                <Settings className="h-4 w-4 text-gray-400"/>
                             </button>
 
                             {clientName && (
@@ -200,51 +206,30 @@ export function TaskModal({
                             )}
 
                             {/* Assignee */}
+                            {/* Перекладач */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Виконавець</label>
-                                {translator ? (
-                                    <div className="flex items-center gap-2">
-                                        {/*<Avatar className="h-7 w-7">*/}
-                                        {/*    /!*<AvatarImage src={assignee.avatar} />*!/*/}
-                                        {/*    <AvatarFallback className="text-xs bg-blue-100">{manager}</AvatarFallback>*/}
-                                        {/*</Avatar>*/}
-                                        <div>
-                                            <span className="text-sm font-medium">{translator}</span>
-                                            {/*<div className="text-xs text-gray-500">{assignee.role}</div>*/}
-                                        </div>
+                                <label className="text-xs text-gray-600 mb-2 block">Перекладач</label>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-green-100 dark:bg-green-900">
+            <span className="text-xs font-semibold text-green-600">
+                {translator?.charAt(0)?.toUpperCase() || '?'}
+            </span>
                                     </div>
-                                ) : (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={onAssignToMe}
-                                        disabled={isLoading}
-                                        className="h-8 w-full justify-start text-gray-600 hover:bg-gray-50 border border-dashed border-gray-300"
-                                    >
-                                        <span className="text-gray-400">+</span>
-                                        Призначити
-                                    </Button>
-                                )}
+                                    <span className="text-sm font-medium">{translator || 'Не призначено'}</span>
+                                </div>
                             </div>
 
-                            {/* Labels */}
+                            {/* Редактор */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Мітки</label>
-                                {labels && labels.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {labels.map((label, index) => (
-                                            <Badge
-                                                key={index}
-                                                variant="outline"
-                                                className="bg-gray-100 text-xs hover:bg-gray-200 border-gray-300"
-                                            >
-                                                {label}
-                                            </Badge>
-                                        ))}
+                                <label className="text-xs text-gray-600 mb-2 block">Редактор</label>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-orange-100 dark:bg-orange-900">
+            <span className="text-xs font-semibold text-orange-600">
+                {editor?.charAt(0)?.toUpperCase() || '?'}
+            </span>
                                     </div>
-                                ) : (
-                                    <div className="text-sm text-gray-600">Немає</div>
-                                )}
+                                    <span className="text-sm font-medium">{editor || 'Не призначено'}</span>
+                                </div>
                             </div>
 
                             {/* Priority */}
@@ -259,9 +244,30 @@ export function TaskModal({
                             {/* Due Date */}
                             <div className="py-3 px-3 border-t">
                                 <label className="text-xs text-gray-600 mb-2 block">Термін виконання</label>
-                                <div className={`text-sm ${dueDate ? "font-medium" : "text-gray-600"}`}>
-                                    {dueDate || "Немає"}
-                                </div>
+                                {dueDate ? (
+                                    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg w-fit ${
+                                        new Date(dueDate) < new Date()
+                                            ? 'bg-red-50 dark:bg-red-900/20'
+                                            : 'bg-blue-50 dark:bg-blue-900/20'
+                                    }`}>
+                                        <Calendar className={`h-3.5 w-3.5 flex-shrink-0 ${
+                                            new Date(dueDate) < new Date() ? 'text-red-500' : 'text-blue-500'
+                                        }`} />
+                                        <span className={`text-sm font-medium ${
+                                            new Date(dueDate) < new Date()
+                                                ? 'text-red-700 dark:text-red-300'
+                                                : 'text-blue-700 dark:text-blue-300'
+                                        }`}>{dueDate}</span>
+                                        {new Date(dueDate) < new Date() && (
+                                            <span className="text-xs text-red-500 font-semibold">Прострочено</span>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+                                        <Calendar className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                                        <span className="text-sm text-gray-400">Не вказано</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Team */}
@@ -273,28 +279,41 @@ export function TaskModal({
                             )}
 
                             {/* Reporter/Author */}
+                            {/* Менеджер прийому */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Менеджер</label>
-                                {manager && (
-                                    <div className="flex items-center gap-2">
-                                        {/*<Avatar className="h-7 w-7">*/}
-                                        {/*    <AvatarImage src={reporter.avatar} />*/}
-                                        {/*    <AvatarFallback className="text-xs bg-green-100">{manager}</AvatarFallback>*/}
-                                        {/*</Avatar>*/}
-                                        <span className="text-sm font-medium">{manager}</span>
+                                <label className="text-xs text-gray-600 mb-2 block">Менеджер прийому</label>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-blue-100 dark:bg-blue-900">
+                                        {intake_manager?.avatar ? (
+                                            <img src={intake_manager.avatar} alt={intake_manager.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-xs font-semibold text-blue-600">
+                    {intake_manager?.name?.charAt(0)?.toUpperCase() || '?'}
+                </span>
+                                        )}
                                     </div>
-                                )}
+                                    <span className="text-sm font-medium">{intake_manager?.name || 'Не призначено'}</span>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Development Section */}
-                        <div className="mt-6 bg-white rounded-lg border border-gray-200 p-1">
-                            <button className="flex items-center gap-2 w-full py-2.5 px-3 hover:bg-gray-50 rounded">
-                                <ChevronDown className="h-4 w-4" />
-                                <span className="text-sm font-semibold text-gray-700">Розробка</span>
-                            </button>
-                        </div>
+                            {/* Менеджер здачі */}
+                            <div className="py-3 px-3 border-t">
+                                <label className="text-xs text-gray-600 mb-2 block">Менеджер здачі</label>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-purple-100 dark:bg-purple-900">
+                                        {delivery_manager?.avatar ? (
+                                            <img src={delivery_manager.avatar} alt={delivery_manager.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-xs font-semibold text-purple-600">
+                    {delivery_manager?.name?.charAt(0)?.toUpperCase() || '?'}
+                </span>
+                                        )}
+                                    </div>
+                                    <span className="text-sm font-medium">{delivery_manager?.name || 'Не призначено'}</span>
+                                </div>
+                            </div>
                     </div>
+                </div>
                 </div>
             </DialogContent>
         </Dialog>

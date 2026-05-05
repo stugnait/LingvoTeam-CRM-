@@ -4,24 +4,30 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 
 // API Order type from your backend
 export interface OrderListItem {
+    editor_name: string;
     id: number
     client_id: number
-    client_name?: string
     source_language: number
     target_language: number
-    status_id: string  // '1', '2', '3', '4', '5', '6'
-    status_name: string,
-    comment: string,
-    language_pair_name: string
-    deadline?: string
+    status_id: number
+    status_name: string
     created_at: string // ISO
-    client_comment: string
-    translator_id: string
-    language_pair_id: number,
-    priority_display?: string,
-    priority: string,
-    manager_name: string,
-    translator_name: string
+    translator_id: number
+    language_pair_id: number
+    client_name: string
+    deadline: string
+    priority: "low" | "medium" | "high" | "critical"
+    manager_accept_id?: number
+    manager_accept_name?: string
+    manager_delivery_id?: number
+    manager_delivery_name?: string
+    manager_avatar?: string | null
+    translator_avatar?: string | null
+    language_pair_name?: string
+    client_comment?: string
+    translator_name?: string
+    manager_name?: string
+    status?: string
 }
 
 export interface OrderListResponse {
