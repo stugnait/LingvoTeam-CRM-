@@ -17,7 +17,8 @@ import {
     Settings,
     Download,
     FileText,
-    Calendar
+    Calendar,
+    Eye
 } from "lucide-react"
 
 interface TaskModalProps {
@@ -48,6 +49,14 @@ interface TaskModalProps {
     avatar_url?: string | null,
     intake_manager?: { id: number; name: string; avatar?: string } | null,
     delivery_manager?: { id: number; name: string; avatar?: string } | null,
+    orderId?: number,
+    sourceFiles?: { id: number; name: string }[]
+    targetFiles?: { id: number; name: string }[]
+    filesLoading?: boolean
+    downloadLoading?: boolean
+    onLoadFiles?: (orderId: number) => void
+    onDownloadSingleSource?: (orderId: number, fileId: number, filename: string) => void
+    onDownloadSingleTarget?: (orderId: number, fileId: number, filename: string) => void
 }
 
 export function TaskModal({
@@ -76,7 +85,15 @@ export function TaskModal({
                               onDownloadTranslation,
                               intake_manager,
                               delivery_manager,
-    editor
+    editor,
+                              orderId,
+                              sourceFiles = [],
+                              targetFiles = [],
+                              filesLoading,
+                              downloadLoading,
+                              onLoadFiles,
+                              onDownloadSingleSource,
+                              onDownloadSingleTarget,
                           }: TaskModalProps) {
     const getPriorityIcon = () => {
         const icons: Record<string, string> = {
@@ -140,31 +157,125 @@ export function TaskModal({
                         </div>
 
                         {/* Download Buttons Section */}
+                        {/* Files Section */}
+                        {/* Files Section */}
                         <div className="mb-8">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-semibold text-gray-700">Файли</h3>
+                            <div className="flex items-center justify-between gap-3 mb-4">
+                                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                    <Eye className="h-4 w-4 text-gray-500" />
+                                    Файли для завантаження
+                                </h3>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => orderId && onLoadFiles?.(orderId)}
+                                    disabled={filesLoading}
+                                    className="h-7 text-xs border-gray-300 hover:bg-gray-50"
+                                >
+                                    Оновити
+                                </Button>
+                            </div>
 
-                                {/* Кнопки завантаження */}
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={onDownloadOriginal}
-                                        className="h-8 text-xs gap-1.5 border-gray-300 hover:bg-gray-50"
-                                    >
-                                        <Download className="h-3.5 w-3.5"/>
-                                        Завантажити оригінал
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={onDownloadTranslation}
-                                        className="h-8 text-xs gap-1.5 border-blue-300 text-blue-600 hover:bg-blue-50"
-                                    >
-                                        <FileText className="h-3.5 w-3.5"/>
-                                        Завантажити переклад
-                                    </Button>
+                            {/* Source */}
+                            <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="font-semibold text-blue-900">Source</p>
+                                    <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
+                                        {filesLoading ? "..." : sourceFiles.length}
+                                    </Badge>
                                 </div>
+
+                                <div className="space-y-2">
+                                    {filesLoading ? (
+                                        <div className="text-sm text-blue-500">Завантаження…</div>
+                                    ) : sourceFiles.length === 0 ? (
+                                        <div className="text-sm text-blue-400">Файлів немає</div>
+                                    ) : (
+                                        sourceFiles.map(f => (
+                                            <div
+                                                key={f.id}
+                                                className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-blue-100"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
+                                                    <p className="text-xs text-blue-400">ID: {f.id}</p>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                    onClick={() => orderId && onDownloadSingleSource?.(orderId, f.id, f.name)}
+                                                    disabled={downloadLoading}
+                                                >
+                                                    Скачати
+                                                </Button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Target */}
+                            <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="font-semibold text-blue-900">Target</p>
+                                    <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
+                                        {filesLoading ? "..." : targetFiles.length}
+                                    </Badge>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {filesLoading ? (
+                                        <div className="text-sm text-blue-500">Завантаження…</div>
+                                    ) : targetFiles.length === 0 ? (
+                                        <div className="text-sm text-blue-400">Файлів немає</div>
+                                    ) : (
+                                        targetFiles.map(f => (
+                                            <div
+                                                key={f.id}
+                                                className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-blue-100"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
+                                                    <p className="text-xs text-blue-400">ID: {f.id}</p>
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                    onClick={() => orderId && onDownloadSingleTarget?.(orderId, f.id, f.name)}
+                                                    disabled={downloadLoading}
+                                                >
+                                                    Скачати
+                                                </Button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Zip buttons */}
+                            <div className="mt-4 flex justify-end gap-3">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onDownloadOriginal}
+                                    disabled={filesLoading || downloadLoading || sourceFiles.length === 0}
+                                    className="text-xs gap-1.5 border-gray-300 hover:bg-gray-50"
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    Скачати все (source)
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onDownloadTranslation}
+                                    disabled={filesLoading || downloadLoading || targetFiles.length === 0}
+                                    className="text-xs gap-1.5 border-blue-300 text-blue-600 hover:bg-blue-50"
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    Скачати все (target)
+                                </Button>
                             </div>
                         </div>
 

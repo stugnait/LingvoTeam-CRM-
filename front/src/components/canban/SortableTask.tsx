@@ -105,11 +105,11 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
                     )}
                 </div>
 
-                {task.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">
-                        {task.description}
-                    </p>
-                )}
+                {/*{task.description && (*/}
+                {/*    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">*/}
+                {/*        {task.description}*/}
+                {/*    </p>*/}
+                {/*)}*/}
 
                 {/* Client + pair */}
                 <div className="grid grid-cols-2 gap-2 mb-3 text-xs text-gray-500">

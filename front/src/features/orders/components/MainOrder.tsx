@@ -47,6 +47,14 @@ export default function OrdersPage() {
         managerFilter, setManagerFilter,
         dateFromFilter, setDateFromFilter,
         dateToFilter, setDateToFilter,
+
+        sourceFiles,
+        targetFiles,
+        filesLoading,
+        downloadLoading,
+        loadOrderFiles,
+        downloadSingleSourceFile,
+        downloadSingleTargetFile,
     } = useOrders()
 
     const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
@@ -373,12 +381,21 @@ export default function OrdersPage() {
                         avatar: viewingOrder.manager_delivery_avatar ?? undefined
                     } : null}
                     translator={viewingOrder.translator_name || 'Unassigned'}
+                    editor={viewingOrder.editor_name || 'Unassigned'}
+                    dueDate={formatDate(viewingOrder.deadline) || "Unsettled"}
                     onDownloadOriginal={() => downloadOrderSourceFiles(viewingOrder.id)}
                     onDownloadTranslation={() => downloadOrderTargetFiles(viewingOrder.id)}
                     onCancel={() => setIsViewModalOpen(false)}
                     onSave={() => setIsViewModalOpen(false)}
-                    editor={viewingOrder.editor_name || 'Unassigned'}
-                    dueDate={formatDate(viewingOrder.deadline) || "Unsettled"}
+
+                    orderId={viewingOrder.id}
+                    sourceFiles={sourceFiles}
+                    targetFiles={targetFiles}
+                    filesLoading={filesLoading}
+                    downloadLoading={downloadLoading}
+                    onLoadFiles={loadOrderFiles}
+                    onDownloadSingleSource={downloadSingleSourceFile}
+                    onDownloadSingleTarget={downloadSingleTargetFile}
                 />
             )}
         </div>
