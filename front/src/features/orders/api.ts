@@ -39,19 +39,19 @@ export const ordersApi = {
 
     listDownloadFiles: (orderId: number, folder: "source" | "target" = "source") =>
         apiFetch<{ files: { id: number; name: string }[]; count: number }>(
-            `translators/external/orders/${orderId}/download-files/${folder}/?list=1`,
+            `orders/${orderId}/download-files/${folder}/?list=1`, // Змінено тут
             { method: "GET" }
         ),
 
     downloadAllFiles: (orderId: number, folder: "source" | "target" = "source") =>
         apiFetch<Blob>(
-            `translators/external/orders/${orderId}/download-files/${folder}/`,
+            `orders/${orderId}/download-files/${folder}/`, // Змінено тут
             { method: "GET", responseType: "blob" }
         ),
 
     downloadFile: (orderId: number, folder: "source" | "target", fileId: number) =>
         apiFetch<Blob>(
-            `translators/external/orders/${orderId}/download-files/${folder}/${fileId}/`,
+            `orders/${orderId}/download-files/${folder}/${fileId}/`, // Змінено тут
             { method: "GET", responseType: "blob" }
         ),
 

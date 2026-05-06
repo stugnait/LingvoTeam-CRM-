@@ -567,7 +567,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             review_status='approved'
         )
 
-        order.status_id_id = 2
+        order.status_id_id = 9
         order.save(update_fields=['status_id'])
 
         # Оновлюємо рейтинг перекладача
@@ -589,20 +589,19 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return translator.rating
 
+    import mimetypes
+
     @extend_schema(
-        summary="Завантажити файли (ZIP)",
-        description="Збирає файли з Dropbox (джерела або готові переклади) у ZIP-архів.",
-        parameters=[
-            OpenApiParameter("folder", str, OpenApiParameter.PATH, description="Папка: 'source' або 'target'")
-        ],
+        summary="Завантажити файли (ZIP, список або окремий файл)",
         tags=["Order Files"]
     )
-    @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target|final))?')
-    def download_files(self, request, pk=None, folder=None):
+    # Змінено url_path, щоб приймати опціональний file_id
+    @action(detail=True, methods=['get'],
+            url_path=r'download-files(?:/(?P<folder>source|target|final)(?:/(?P<file_id>\d+))?)?')
+    def download_files(self, request, pk=None, folder=None, file_id=None):
         order = self.get_object()
         user = request.user
 
-        # Перевірка прав (використовуємо порівняння об'єктів або ID)
         is_authorized = (
                 user == order.manager_accept_id or
                 user == order.manager_delivery_id or
@@ -613,18 +612,47 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not is_authorized and not user.role.slug in ['admin', 'owner']:
             return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
 
-        files = File.objects.filter(order=order)
-        folder_label = "all"
+        files_qs = File.objects.filter(order=order)
         folder_param = (folder or "").strip().lower()
 
         if folder_param:
-            folder_label = folder_param
             base = f"/orders/order_{order.id}/{folder_param}"
-            files = files.filter(dropbox_url__startswith=base)
+            files_qs = files_qs.filter(dropbox_url__startswith=base)
 
-        if not files.exists():
-            return Response({"detail": "Файли відсутні."}, status=status.HTTP_400_BAD_REQUEST)
+        if not files_qs.exists():
+            return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
 
+        # 1. Якщо фронтенд просить просто список файлів (?list=1)
+        if request.query_params.get("list") == "1":
+            items = [{"id": f.id, "name": os.path.basename(f.dropbox_url or f"file_{f.id}")} for f in
+                     files_qs.order_by("id")]
+            return Response({"order_id": order.id, "folder": folder_param, "count": len(items), "files": items},
+                            status=status.HTTP_200_OK)
+
+        # 2. Якщо фронтенд просить один конкретний файл (/source/15/)
+        if file_id is not None:
+            file_obj = get_object_or_404(files_qs, id=file_id)
+            if not file_obj.dropbox_url:
+                return Response({"detail": "Файл недоступний."}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                dbx = get_dbx()
+                _md, resp = dbx.files_download(file_obj.dropbox_url)
+
+                filename = os.path.basename(file_obj.dropbox_url)
+                content_type = getattr(resp, "headers", {}).get("Content-Type") or mimetypes.guess_type(filename)[
+                    0] or "application/octet-stream"
+
+                tmp = tempfile.SpooledTemporaryFile(max_size=50 * 1024 * 1024, mode="w+b")
+                tmp.write(resp.content)
+                tmp.seek(0)
+
+                return FileResponse(tmp, as_attachment=True, filename=filename, content_type=content_type)
+            except Exception as e:
+                return Response({"detail": f"Помилка завантаження файлу: {str(e)}"},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 3. Якщо немає параметрів вище — віддаємо ZIP-архів (Ваша класична логіка)
         try:
             dbx = get_dbx()
             tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
@@ -632,7 +660,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             tmp.close()
 
             with zipfile.ZipFile(zip_filename, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                for f in files:
+                for f in files_qs:
                     if f.dropbox_url:
                         dropbox_path = f.dropbox_url
                         filename = os.path.basename(dropbox_path)
@@ -650,7 +678,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             return Response({"detail": f"Error generating zip: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     @extend_schema(
         summary="Аналіз зображень",
         tags=["Order Files"]
