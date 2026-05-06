@@ -83,13 +83,15 @@ class OrderTrafficFilter(filters.FilterSet):
 
 class OrderFilter(filters.FilterSet):
     status = filters.ModelChoiceFilter(field_name='status_id', queryset=Status.objects.all())
-    manager = filters.ModelChoiceFilter(field_name='manager_id', queryset=User.objects.all())
+    # Використовуємо manager_accept_id для фільтрації по менеджеру
+    manager = filters.ModelChoiceFilter(field_name='manager_accept_id', queryset=User.objects.all())
     date_from = filters.DateFilter(field_name='created_at', lookup_expr='gte')
     date_to = filters.DateFilter(field_name='created_at', lookup_expr='lte')
 
     class Meta:
         model = Order
         fields = ['status', 'manager', 'created_at']
+
 
 @extend_schema_view(
     list=extend_schema(summary="Список трафіку замовлень", tags=["Order Pricing"]),
@@ -136,7 +138,6 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
     partial_update=extend_schema(summary="Частково змінити замовлення", tags=["Orders"]),
     destroy=extend_schema(summary="Видалити замовлення", tags=["Orders"]),
 )
-
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     permission_classes = [HasPermission]
@@ -156,7 +157,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'approve_translation': ['order.approve_translation'],
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
-            'upload_files' : ['order.view'],
+            'upload_files': ['order.view'],
             'margins': ['order.view'],
             'editors_by_language_pair': ['order.view'],
         }
@@ -188,11 +189,11 @@ class OrderViewSet(viewsets.ModelViewSet):
             # Менеджери за замовчуванням бачать всі замовлення
             queryset = Order.objects.all()
 
-        # 👉 ДОДАНО: Перевірка параметра ?my_orders=true
+        # Перевірка параметра ?my_orders=true
         my_orders_only = self.request.query_params.get('my_orders')
         if my_orders_only and my_orders_only.lower() == 'true':
-            # Відфільтровуємо лише ті замовлення, де manager_id — це поточний юзер
-            queryset = queryset.filter(manager_id=user)
+            # Відфільтровуємо лише ті замовлення, де manager_accept_id або manager_delivery_id — це поточний юзер
+            queryset = queryset.filter(Q(manager_accept_id=user) | Q(manager_delivery_id=user))
 
         return queryset
 
@@ -236,8 +237,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         status_in_progress = get_object_or_404(Status, slug="in_translation")
 
         order = serializer.save(
-            manager_accept_id=request.get('manager_accept_id'),
-            manager_delivery_id=data.get('manager_delivery_id'),
+            manager_accept_id_id=request.data.get('manager_accept_id'),
+            manager_delivery_id_id=data.get('manager_delivery_id'),
             language_pair_id=language_pair_instance,
 
             status_id=status_in_progress,
@@ -406,7 +407,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             logger.error(f"Upload failed: {e}")
             uploaded_paths = [None] * len(files)
 
-
         for i, f in enumerate(files):
             stats = analyze_file_content(f)
 
@@ -479,7 +479,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         request=RejectTranslationSerializer,
         tags=["Order Workflow"]
     )
-
     @action(detail=True, methods=['post'], url_path='reject-translation')
     def reject_translation(self, request, pk=None):
         order = self.get_object()
@@ -501,13 +500,13 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.status_id = rejected_status
             order.save()
 
-        if order.manager_id:
+        if order.manager_accept_id:
             try:
                 send_mail(
                     subject=f"УВАГА: Переклад замовлення #{order.id} відхилено!",
                     message=f"Редактор {request.user.full_name} відхилив переклад.\nКоментар: {comment}",
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[order.manager.email],
+                    recipient_list=[order.manager_accept_id.email],
                     fail_silently=True
                 )
             except Exception as e:
@@ -598,7 +597,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         ],
         tags=["Order Files"]
     )
-
     @action(detail=True, methods=['get'], url_path=r'download-files(?:/(?P<folder>source|target|final))?')
     def download_files(self, request, pk=None, folder=None):
         order = self.get_object()
@@ -606,7 +604,8 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         # Перевірка прав (використовуємо порівняння об'єктів або ID)
         is_authorized = (
-                user == order.manager_id or
+                user == order.manager_accept_id or
+                user == order.manager_delivery_id or
                 user == order.translator_id or
                 user == order.editor_id
         )
@@ -656,7 +655,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         summary="Аналіз зображень",
         tags=["Order Files"]
     )
-    
     @action(
         detail=False,
         methods=["post"],
@@ -796,7 +794,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         user = request.user
 
         is_authorized = (
-                user == order.manager_id or
+                user == order.manager_accept_id or
+                user == order.manager_delivery_id or
                 user == order.translator_id or
                 user == order.editor_id
         )
@@ -819,7 +818,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 subdir="final",
             )
             uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
-        
+
         for i, f in enumerate(files):
             ext = os.path.splitext(f.name)[1].lstrip(".").lower()
             dropbox_url = uploaded[i]["dropbox_path"]
@@ -857,9 +856,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({"detail": "traffic_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
 
         ot = (OrderTraffic.objects
-            .filter(id=traffic_id_int)
-            .values("id", "price_per_page", "currency_id_id", "language_pair_id", "category_id")
-            .first())
+              .filter(id=traffic_id_int)
+              .values("id", "price_per_page", "currency_id_id", "language_pair_id", "category_id")
+              .first())
 
         if not ot:
             return Response({"detail": "OrderTraffic not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -944,7 +943,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             "category_id": category_id,
             "results": results,
         }, status=status.HTTP_200_OK)
-    
+
     @extend_schema(
         summary="Редактори по мовній парі",
         parameters=[
@@ -997,9 +996,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             by_editor.setdefault(row["editor_id"], row["id"])
 
         editors = (User.objects
-                .filter(role_id=2)
-                .only("id", "full_name")
-                .order_by("id"))
+                   .filter(role_id=2)
+                   .only("id", "full_name")
+                   .order_by("id"))
 
         results = []
         for ed in editors:
@@ -1098,7 +1097,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             try:
                 new_path = move_file_from_target_to_final(from_path)
 
-                
                 f.dropbox_url = new_path
                 f.save(update_fields=["dropbox_url"])
 
@@ -1124,7 +1122,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
 
     # --- Private Helpers ---
-
 
     def _get_language_pair(self, raw_lp_id):
         if not raw_lp_id:
@@ -1185,7 +1182,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         main_became_done = (old_status_int != new_status_int) and (main_slug in DONE_SLUGS)
         trans_became_done = (old_translator_status_int != new_trans_int) and (trans_slug in DONE_SLUGS)
 
-        manager_obj = updated_instance.manager_id
+        manager_obj = updated_instance.manager_accept_id
         current_user = self.request.user
 
         if main_became_done or trans_became_done:
@@ -1228,7 +1225,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             else:
                 print("DEBUG: Notification SKIPPED (No manager or Self-update)")
 
-    #TODO full_link to change order.translator_id
+    # TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
         try:
             subject = f"Нове замовлення - LingvoTeam"
@@ -1249,7 +1246,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f"Email error: {e}")
-    
+
     def _send_client_invite(self, order, full_link, password, expire_date, recipient):
         try:
             subject = f"Нове замовлення - LingvoTeam"

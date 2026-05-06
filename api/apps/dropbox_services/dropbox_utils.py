@@ -33,15 +33,16 @@ def ensure_folder(path: str):
 
 
 def create_order_folder(order):
-
     dbx = get_dbx()
     ensure_folder(ORDERS_ROOT)
     path = f"{ORDERS_ROOT}/order_{order.id}"
     ensure_folder(path)
 
-    translator_email = order.translator_id.email
-    editor_email = order.editor_id.email
-    manager_email = order.manager_id.email
+    # 1. БЕЗПЕЧНО ОТРИМУЄМО ВСІ EMAIL-И
+    translator_email = order.translator_id.email if getattr(order, 'translator_id', None) else None
+    editor_email = order.editor_id.email if getattr(order, 'editor_id', None) else None
+    manager_accept_email = order.manager_accept_id.email if getattr(order, 'manager_accept_id', None) else None
+    manager_delivery_email = order.manager_delivery_id.email if getattr(order, 'manager_delivery_id', None) else None
 
     try:
         dbx.files_create_folder_v2(path)
@@ -52,25 +53,25 @@ def create_order_folder(order):
         launch = dbx.sharing_share_folder(path, force_async=False)
         shared_folder_id = launch.get_complete().shared_folder_id
 
-        dbx.sharing_add_folder_member(
-            shared_folder_id,
-            members=[
-                AddMember(
-                    member=MemberSelector.email(translator_email),
-                    access_level=AccessLevel.editor
-                ),
-                AddMember(
-                    member=MemberSelector.email(editor_email),
-                    access_level=AccessLevel.editor
-                ),
-                AddMember(
-                    member=MemberSelector.email(manager_email),
-                    access_level=AccessLevel.editor
-                )
+        # 2. ЗБИРАЄМО УНІКАЛЬНІ EMAIL-И ДЛЯ ДОСТУПУ В DROPBOX (через set, щоб уникнути дублів)
+        dropbox_emails = set()
+        if translator_email: dropbox_emails.add(translator_email)
+        if editor_email: dropbox_emails.add(editor_email)
+        if manager_accept_email: dropbox_emails.add(manager_accept_email)
+        if manager_delivery_email: dropbox_emails.add(manager_delivery_email)
 
-            ],
-            quiet=True
-        )
+        members_to_add = [
+            AddMember(member=MemberSelector.email(email), access_level=AccessLevel.editor)
+            for email in dropbox_emails
+        ]
+
+        if members_to_add:
+            dbx.sharing_add_folder_member(
+                shared_folder_id,
+                members=members_to_add,
+                quiet=True
+            )
+
         folder_link = None
         try:
             links = dbx.sharing_list_shared_links(path=path, direct_only=True).links
@@ -81,19 +82,28 @@ def create_order_folder(order):
         except dropbox.exceptions.ApiError:
             pass
 
-        subject = f"Доступ до папки замовлення №{order.id}"
-        message = (
-            f"Вітаємо!\n\n"
-            f"Вам надано доступ до папки Dropbox для замовлення №{order.id}.\n\n"
-            f"Посилання на папку: {folder_link}\n\n"
-            f"Якщо виникнуть запитання — звертайтеся до менеджера.\n\n"
-            f"З повагою,\n"
-            f"команда LingvoTeam."
-        )
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [editor_email, manager_email], fail_silently=False)
+        # 3. ЗБИРАЄМО УНІКАЛЬНІ EMAIL-И ДЛЯ ВІДПРАВКИ ЛИСТА (Без перекладача)
+        mail_emails = set()
+        if editor_email: mail_emails.add(editor_email)
+        if manager_accept_email: mail_emails.add(manager_accept_email)
+        if manager_delivery_email: mail_emails.add(manager_delivery_email)
+
+        recipient_list = list(mail_emails)
+
+        if recipient_list and folder_link:
+            subject = f"Доступ до папки замовлення №{order.id}"
+            message = (
+                f"Вітаємо!\n\n"
+                f"Вам надано доступ до папки Dropbox для замовлення №{order.id}.\n\n"
+                f"Посилання на папку: {folder_link}\n\n"
+                f"Якщо виникнуть запитання — звертайтеся до керівника.\n\n"
+                f"З повагою,\n"
+                f"команда LingvoTeam."
+            )
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=False)
 
     except dropbox.exceptions.ApiError as e:
-        pass
+        print(f"Dropbox Sharing Error: {e}")
 
     return path
 
