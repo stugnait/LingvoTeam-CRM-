@@ -3,16 +3,42 @@
 
 import React, { useMemo } from 'react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus } from 'lucide-react';
-import { KanbanColumn as KanbanColumnType, KanbanTask } from '../../types';
 import SortableTask from './SortableTask';
 import ColumnDropZone from './ColumnDropZone';
-import {useEditor} from "@/src/features/editor/hooks/useEditor";
-import { cn } from '@/src/lib/utils';
-import { SideModal } from '@/src/components/modals/SideModal';
+
+export type TaskStatus = 'planned' | 'todo' | 'in_progress' | 'reject' | 'pause' | 'done';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+interface KanbanColumn {
+    id: string;
+    title: string;
+    status: TaskStatus;
+    status_id: string; // '1', '2', '3', '4', '5', '6'
+    taskIds: string[];
+    color: string;
+    icon: React.ReactNode;
+}
+
+interface KanbanTask {
+    id: string
+    title: string
+    description?: string
+    status: TaskStatus
+    status_id: number
+    priority: TaskPriority
+    deadline?: string
+    client_name: string
+    avatar_url?: string | null
+
+    // 👇 Нові поля
+    intake_manager?: string | null
+    delivery_manager?: string | null
+
+    tags: string[]
+    subtasks: any[]
+}
 
 interface KanbanColumnProps {
-    column: KanbanColumnType
+    column: KanbanColumn
     tasks: KanbanTask[]
     onTaskOpen: (id: number) => void
 }
@@ -67,7 +93,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                         <SortableTask
                             key={task.id}
                             task={task}
-                            onClick={() => onTaskOpen(Number(task.id))}
+                            onClick={() => onTaskOpen(Math.abs(Number(task.id)))}
                         />
                     ))}
                 </SortableContext>

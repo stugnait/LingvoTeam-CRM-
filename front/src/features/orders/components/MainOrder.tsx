@@ -9,7 +9,7 @@ import { Plus, LayoutList, KanbanSquare } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CreateOrderModal } from "./CreateOrderForm"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
-import { Priority } from "@/src/components/ui/PrioritySelector"
+import type { Priority } from "@/src/components/ui/PrioritySelector"
 import { cn } from "@/src/lib/utils"
 
 import OrdersKanbanBoard from "./OrdersKanbanBoard"
@@ -47,6 +47,14 @@ export default function OrdersPage() {
         managerFilter, setManagerFilter,
         dateFromFilter, setDateFromFilter,
         dateToFilter, setDateToFilter,
+
+        sourceFiles,
+        targetFiles,
+        filesLoading,
+        downloadLoading,
+        loadOrderFiles,
+        downloadSingleSourceFile,
+        downloadSingleTargetFile,
     } = useOrders()
 
     const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
@@ -92,6 +100,22 @@ export default function OrdersPage() {
 
         return () => clearTimeout(timer)
     }, [highlightId, router])
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) {return 'Не вказано';}
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('uk-UA', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            }).format(date);
+        } catch (e) {
+            return dateString;
+        }
+    };
 
     const resetForm = () => {
         setClientId("")
@@ -346,13 +370,32 @@ export default function OrdersPage() {
                     taskDescription={viewingOrder.client_comment || 'No comment'}
                     status={viewingOrder.status_name || viewingOrder.status || 'all_orders'}
                     priority={viewingOrder.priority || 'medium'}
-                    avatar_url={viewingOrder.avatar_url}
-                    manager={viewingOrder.manager_name || 'Unassigned'}
+                    intake_manager={viewingOrder.manager_accept_id ? {
+                        id: viewingOrder.manager_accept_id,
+                        name: viewingOrder.manager_accept_name || 'Сук',
+                        avatar: viewingOrder.manager_accept_avatar ?? undefined
+                    } : null}
+                    delivery_manager={viewingOrder.manager_delivery_id ? {
+                        id: viewingOrder.manager_delivery_id,
+                        name: viewingOrder.manager_delivery_name || 'Сук',
+                        avatar: viewingOrder.manager_delivery_avatar ?? undefined
+                    } : null}
                     translator={viewingOrder.translator_name || 'Unassigned'}
+                    editor={viewingOrder.editor_name || 'Unassigned'}
+                    dueDate={formatDate(viewingOrder.deadline) || "Unsettled"}
                     onDownloadOriginal={() => downloadOrderSourceFiles(viewingOrder.id)}
                     onDownloadTranslation={() => downloadOrderTargetFiles(viewingOrder.id)}
                     onCancel={() => setIsViewModalOpen(false)}
                     onSave={() => setIsViewModalOpen(false)}
+
+                    orderId={viewingOrder.id}
+                    sourceFiles={sourceFiles}
+                    targetFiles={targetFiles}
+                    filesLoading={filesLoading}
+                    downloadLoading={downloadLoading}
+                    onLoadFiles={loadOrderFiles}
+                    onDownloadSingleSource={downloadSingleSourceFile}
+                    onDownloadSingleTarget={downloadSingleTargetFile}
                 />
             )}
         </div>

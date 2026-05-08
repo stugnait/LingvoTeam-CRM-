@@ -26,13 +26,11 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'name',
-
             'language_pair',
             'currency_id',
             'category',
             'price_per_page',
             'price_per_action',
-
             'language_pair_name',
             'source_language',
             'target_language',
@@ -45,7 +43,6 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
         if obj.language_pair:
             return str(obj.language_pair)
         return "-"
-
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -69,12 +66,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'flex_deadline',
             'page_count',
             'symbols_count',
-            'status_id',
             'files',
-            "translator_id",
-            "total_amount",
-            'client_status',
-            'translator_status',
+            'translator_id',
+            'total_amount',
             'traffic_id',
             'translator_traffic_id',
             'editor_id',
@@ -92,7 +86,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'client_status': {'required': False},
             'status_id': {'required': False},
         }
-
 
 
 class RejectTranslationSerializer(serializers.Serializer):
@@ -183,6 +176,7 @@ class FileCreateSerializer(serializers.ModelSerializer):
         model = File
         fields = ['id', 'order', 'file_type', 'dropbox_url']
         read_only_fields = ['id']
+
 
 class UploadFileSerializer(serializers.Serializer):
     files = serializers.ListField(child=serializers.FileField(), write_only=True)

@@ -18,6 +18,7 @@ import {
 
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import {translatorOrderApi} from "@/src/features/translator_order/api";
 
 export function useOrders() {
 
@@ -31,6 +32,10 @@ export function useOrders() {
     const [loading, setLoading] = useState(false)
     const [deleteLoading, setDeleteLoading] = useState<number | null>(null)
     const [updateLoading, setUpdateLoading] = useState<number | null>(null)
+    const [sourceFiles, setSourceFiles] = useState<{ id: number; name: string }[]>([])
+    const [targetFiles, setTargetFiles] = useState<{ id: number; name: string }[]>([])
+    const [filesLoading, setFilesLoading] = useState(false)
+    const [downloadLoading, setDownloadLoading] = useState(false)
 
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
@@ -140,7 +145,7 @@ export function useOrders() {
 
     const downloadOrderSourceFiles = useCallback(async (orderId: number) => {
         try {
-            const blob = await ordersApi.downloadFilesSource(orderId)
+            const blob = await ordersApi.downloadAllFiles(orderId, "source")
             downloadBlob(blob, `order_${orderId}_source.zip`)
             handleSuccess("Success", "Source files downloaded")
         } catch (e) {
@@ -150,11 +155,68 @@ export function useOrders() {
 
     const downloadOrderTargetFiles = useCallback(async (orderId: number) => {
         try {
-            const blob = await ordersApi.downloadFilesTarget(orderId)
+            const blob = await ordersApi.downloadAllFiles(orderId, "target")
             downloadBlob(blob, `order_${orderId}_target.zip`)
             handleSuccess("Success", "Target files downloaded")
         } catch (e) {
             handleError(e, "Failed to download target files")
+        }
+    }, [handleError, handleSuccess])
+
+    const loadOrderFiles = useCallback(async (orderId: number) => {
+        setFilesLoading(true)
+        try {
+            const results = await Promise.allSettled([
+                ordersApi.listDownloadFiles(orderId, "source"),
+                ordersApi.listDownloadFiles(orderId, "target"),
+            ])
+
+            const isFolderEmptyError = (err: any) =>
+                typeof err?.detail === "string" &&
+                err.detail.includes("Файли") &&
+                err.detail.includes("відсутні")
+
+            const [sourceResult, targetResult] = results
+
+            if (sourceResult.status === "fulfilled") {
+                setSourceFiles(sourceResult.value.files ?? [])
+            } else if (isFolderEmptyError(sourceResult.reason)) {
+                setSourceFiles([])
+            }
+
+            if (targetResult.status === "fulfilled") {
+                setTargetFiles(targetResult.value.files ?? [])
+            } else if (isFolderEmptyError(targetResult.reason)) {
+                setTargetFiles([])
+            }
+        } finally {
+            setFilesLoading(false)
+        }
+    }, [])
+
+    const downloadSingleSourceFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
+        try {
+            setDownloadLoading(true)
+            const blob = await ordersApi.downloadFile(orderId, "source", fileId)
+            downloadBlob(blob, filename)
+            handleSuccess("Success", "File downloaded")
+        } catch (e) {
+            handleError(e, "Failed to download source file")
+        } finally {
+            setDownloadLoading(false)
+        }
+    }, [handleError, handleSuccess])
+
+    const downloadSingleTargetFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
+        try {
+            setDownloadLoading(true)
+            const blob = await ordersApi.downloadFile(orderId, "target", fileId)
+            downloadBlob(blob, filename)
+            handleSuccess("Success", "File downloaded")
+        } catch (e) {
+            handleError(e, "Failed to download target file")
+        } finally {
+            setDownloadLoading(false)
         }
     }, [handleError, handleSuccess])
 
@@ -484,5 +546,12 @@ export function useOrders() {
         pricePreview,
         pricePreviewLoading,
         previewPrice,
+        sourceFiles,
+        targetFiles,
+        filesLoading,
+        downloadLoading,
+        loadOrderFiles,
+        downloadSingleSourceFile,
+        downloadSingleTargetFile,
     }
 }

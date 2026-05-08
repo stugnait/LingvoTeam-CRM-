@@ -2,7 +2,18 @@
 'use client';
 
 import React from 'react';
-import { KanbanColumn } from '../../types';
+
+type TaskStatus = 'planned' | 'todo' | 'in_progress' | 'reject' | 'pause' | 'done';
+
+interface KanbanColumn {
+    id: string;
+    title: string;
+    status: TaskStatus;
+    status_id: string; // '1', '2', '3', '4', '5', '6'
+    taskIds: string[];
+    color: string;
+    icon: React.ReactNode;
+}
 
 interface KanbanStatsProps {
     columns: KanbanColumn[];
