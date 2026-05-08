@@ -1,13 +1,15 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { usePathname, useSearchParams } from "next/navigation"
-import { useMe } from "@/src/features/auth/hooks/useMe"
+import { useState, useEffect, ElementType } from "react";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useMe } from "@/src/features/auth/hooks/useMe";
+import { Button } from "../ui/button";
 import {
     LayoutDashboard,
     FileText,
-    DollarSign,
+    Receipt,
+    Wallet,
     Languages,
     Users,
     UserCog,
@@ -15,185 +17,277 @@ import {
     CheckSquare,
     ChevronLeft,
     ChevronDown,
-} from "lucide-react"
+    Menu,
+    X,
+} from "lucide-react";
 
-const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["admin", "manager", "editor"] },
-    { name: "Orders", href: "/dashboard/orders", icon: FileText, roles: ["admin", "manager"] },
-    { name: "Tariffs", href: "/dashboard/tariffs", icon: DollarSign, roles: ["admin", "financier"] },
-    { name: "Translators", href: "/dashboard/translations", icon: Languages, roles: ["admin", "manager"] },
-    { name: "Clients", href: "/dashboard/clients", icon: Users, roles: ["admin", "manager"] },
-    { name: "Users", href: "/dashboard/users", icon: UserCog, roles: ["admin"] },
-    { name: "Profile", href: "/dashboard/profile", icon: User, roles: ["admin", "editor"] },
-    { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, roles: ["editor"] },
-    { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier"] },
-    { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, roles: ["admin", "manager"] },
+interface NavItem {
+    name: string;
+    href: string;
+    icon: ElementType;
+    roles: string[];
+    children?: { name: string; roleId?: number; tabId?: string; roles?: string[] }[];
+}
+
+interface NavGroup {
+    name: string;
+    items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
     {
-        name: "Salary",
-        href: "/dashboard/salary",
-        icon: CheckSquare,
-        roles: ["admin", "manager"],
-        children: [
-            { name: "Менеджер", roleId: 1 },
-            { name: "Редактор", roleId: 2 },
-            { name: "Перекладачі", roleId: 5 },
-        ]
+        name: "Головне",
+        items: [
+            {
+                name: "Dashboard",
+                href: "/dashboard",
+                icon: LayoutDashboard,
+                roles: ["admin", "manager", "editor", "financier", "owner"],
+                children: [
+                    { name: "Фінанси (P&L)", tabId: "finance", roles: ["admin", "financier", "owner"] },
+                    { name: "Ефективність команди", tabId: "team", roles: ["admin", "financier", "owner"] },
+                    { name: "Аналітика клієнтів", tabId: "clients", roles: ["admin", "financier", "owner"] },
+                ]
+            },
+            { name: "Orders", href: "/dashboard/orders", icon: FileText, roles: ["admin", "manager", "owner"] },
+            { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, roles: ["editor"] },
+            { name: "Clients", href: "/dashboard/clients", icon: Users, roles: ["admin", "manager", "owner"] },
+            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, roles: ["admin", "manager", "owner"] },
+        ],
     },
-]
+    {
+        name: "Фінанси",
+        items: [
+            { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, roles: ["admin", "financier", "owner"] },
+            { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier", "owner", "admin"] },
+            {
+                name: "Salary",
+                href: "/dashboard/salary",
+                icon: Wallet,
+                roles: ["admin", "manager", "owner"],
+                children: [
+                    { name: "Менеджер", roleId: 1 },
+                    { name: "Редактор", roleId: 2 },
+                    { name: "Перекладачі", roleId: 5 },
+                ],
+            },
+        ],
+    },
+    {
+        name: "Команда",
+        items: [
+            { name: "Translators", href: "/dashboard/translations", icon: Languages, roles: ["admin", "manager", "owner"] },
+            { name: "Users", href: "/dashboard/users", icon: UserCog, roles: ["admin", "owner"] },
+            { name: "Profile", href: "/dashboard/profile", icon: User, roles: ["admin", "editor", "owner"] },
+        ],
+    },
+];
 
-export function CrmSidebar({
-                               collapsed,
-                               toggle,
-                           }: {
-    collapsed: boolean
-    toggle: () => void
-}) {
-    const pathname = usePathname()
-    const searchParams = useSearchParams()
-    const { role, loading } = useMe()
+interface CrmSidebarProps {
+    collapsed: boolean;
+    toggle: () => void;
+}
 
-    const [salaryOpen, setSalaryOpen] = useState(pathname.startsWith("/dashboard/salary"))
+export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const { role, loading } = useMe();
 
-    // 🔥 ОПЕРАЦІЯ "АВТО-ЗАКРИТТЯ":
-    // Стежимо за зміною шляху. Якщо ми йдемо з Salary на іншу вкладку — згортаємо підменю.
+    const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+
     useEffect(() => {
-        if (!pathname.startsWith("/dashboard/salary")) {
-            setSalaryOpen(false)
-        } else {
-            setSalaryOpen(true)
-        }
-    }, [pathname])
+        setOpenMenus({
+            "/dashboard": pathname === "/dashboard",
+            "/dashboard/salary": pathname.startsWith("/dashboard/salary"),
+        });
+    }, [pathname]);
 
-    if (loading || !role) {return null}
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
-    const filteredNavigation = navigation.filter(item =>
-        item.roles.includes(role)
-    )
+    if (loading || !role) {
+        return null;
+    }
+
+    const toggleMenu = (href: string) => {
+        setOpenMenus(prev => ({ ...prev, [href]: !prev[href] }));
+    };
+
+    const hasAccess = (item: NavItem): boolean => {
+        return item.roles.includes(role);
+    };
+
+    const filteredNavGroups = navGroups
+        .map((group) => ({
+            ...group,
+            items: group.items.filter(hasAccess),
+        }))
+        .filter((group) => group.items.length > 0);
 
     return (
         <>
-            {/* САЙДБАР */}
+            <Button
+                variant="ghost"
+                size="icon"
+                className={`
+                    fixed top-4 z-50 transition-all duration-300 lg:hidden
+                    ${isMobileOpen ? "left-[13rem]" : "left-4"}
+                `}
+                onClick={() => setIsMobileOpen(!isMobileOpen)}
+            >
+                {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+
             <aside
                 className={`
-                    fixed left-0 top-0 z-40 h-screen w-64 border-r bg-sidebar
-                    transition-transform duration-300 ease-in-out
-                    ${collapsed ? "-translate-x-full" : "translate-x-0"}
+                    fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-background transition-all duration-300 ease-in-out
+                    ${isMobile ? (isMobileOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full") : collapsed ? "w-20 translate-x-0" : "w-64 translate-x-0"}
                 `}
             >
-                <div className="flex h-full flex-col">
-                    {/* Logo */}
-                    <div className="flex h-16 items-center border-b px-6">
-                        <Link href="/dashboard" className="flex items-center gap-3">
-                            <Languages className="h-5 w-5"/>
-                            <span className="font-bold">TranslateCRM</span>
-                        </Link>
-                    </div>
+                {!isMobile && (
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={toggle}
+                        className="absolute -right-4 top-6 z-50 flex h-8 w-8 items-center justify-center rounded-full border bg-background shadow-sm transition-transform hover:bg-muted"
+                    >
+                        <ChevronLeft
+                            className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`}
+                        />
+                    </Button>
+                )}
 
-                    {/* Navigation */}
-                    <nav className="flex-1 space-y-1 px-3 py-6">
-                        {filteredNavigation.map((item) => {
-                            const Icon = item.icon
-                            const hasChildren = !!item.children
-                            const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
+                <div className="flex h-16 shrink-0 items-center border-b px-6 overflow-hidden whitespace-nowrap">
+                    <Link href="/dashboard" className="flex items-center gap-3">
+                        <Languages className="h-5 w-5 shrink-0 text-primary" />
+                        <span className={`font-bold tracking-tight transition-opacity duration-300 ${collapsed && !isMobile ? "opacity-0 w-0" : "opacity-100"}`}>
+                            TranslateCRM
+                        </span>
+                    </Link>
+                </div>
 
-                            if (hasChildren) {
-                                return (
-                                    <div key={item.name} className="space-y-1">
-                                        <button
-                                            onClick={() => setSalaryOpen(!salaryOpen)}
-                                            className={`
-                                                w-full flex items-center justify-between rounded-lg px-4 py-3 text-sm
-                                                transition-colors hover:bg-muted
-                                                ${isActive ? "text-primary font-medium" : ""}
-                                            `}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <Icon className="h-4 w-4"/>
-                                                {item.name}
+                <nav className={`flex-1 space-y-4 overflow-y-auto overflow-x-hidden py-4 ${collapsed && !isMobile ? "px-2" : "px-4"}`}>
+                    {filteredNavGroups.map((group) => (
+                        <div key={group.name} className="space-y-1">
+                            {(!collapsed || isMobile) && (
+                                <div className="px-3 py-1">
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                                        {group.name}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                {group.items.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard");
+
+                                    // Фільтруємо дочірні елементи по ролі поточного юзера
+                                    const visibleChildren = item.children?.filter(child => !child.roles || child.roles.includes(role));
+                                    const hasChildren = visibleChildren && visibleChildren.length > 0;
+                                    const isOpen = openMenus[item.href];
+
+                                    if (hasChildren) {
+                                        return (
+                                            <div key={item.name} className="space-y-1 overflow-hidden">
+                                                <button
+                                                    onClick={() => toggleMenu(item.href)}
+                                                    className={`
+                                                        relative flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 overflow-hidden
+                                                        ${isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}
+                                                        ${collapsed && !isMobile ? "justify-center" : ""}
+                                                    `}
+                                                >
+                                                    {isActive && (
+                                                        <span className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r bg-primary" />
+                                                    )}
+                                                    <div className="flex items-center gap-3 whitespace-nowrap">
+                                                        <Icon className="h-5 w-5 shrink-0" />
+                                                        {(!collapsed || isMobile) && <span>{item.name}</span>}
+                                                    </div>
+                                                    {(!collapsed || isMobile) && (
+                                                        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                                                    )}
+                                                </button>
+
+                                                {isOpen && (!collapsed || isMobile) && (
+                                                    <div className="ml-9 mt-1 space-y-1 animate-in slide-in-from-top-1 duration-200">
+                                                        {visibleChildren.map((child, idx) => {
+                                                            const query = child.tabId ? { tab: child.tabId } : { role: child.roleId?.toString() };
+
+                                                            // Якщо таб не вибраний в URL, finance вважаємо дефолтним
+                                                            const isChildActive = child.tabId
+                                                                ? (searchParams.get("tab") === child.tabId || (!searchParams.get("tab") && child.tabId === "finance" && pathname === item.href))
+                                                                : searchParams.get("role") === String(child.roleId);
+
+                                                            return (
+                                                                <Link
+                                                                    key={idx}
+                                                                    href={{ pathname: item.href, query }}
+                                                                    onClick={() => isMobile && setIsMobileOpen(false)}
+                                                                    className={`
+                                                                        flex items-center rounded-md px-3 py-2 text-sm transition-colors whitespace-nowrap
+                                                                        ${isChildActive ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"}
+                                                                    `}
+                                                                >
+                                                                    {child.name}
+                                                                </Link>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <ChevronDown className={`h-4 w-4 transition-transform ${salaryOpen ? "rotate-180" : ""}`} />
-                                        </button>
-
-                                        {salaryOpen && (
-                                            <div className="ml-6 space-y-1 border-l pl-2 animate-in slide-in-from-top-1 duration-200">
-                                                {item.children?.map((child) => {
-                                                    const isChildActive = pathname === item.href && searchParams.get("role") === String(child.roleId)
-                                                    return (
-                                                        <Link
-                                                            key={child.roleId}
-                                                            href={`${item.href}?role=${child.roleId}`}
-                                                            className={`
-                                                                flex items-center rounded-lg px-4 py-2 text-xs
-                                                                transition-colors
-                                                                ${isChildActive ? "bg-primary text-white" : "hover:bg-muted text-muted-foreground"}
-                                                            `}
-                                                        >
-                                                            {child.name}
-                                                        </Link>
-                                                    )
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            }
-
-                            return (
-                                <Link
-                                    key={item.name}
-                                    href={item.href}
-                                    className={`
-                                        flex items-center gap-3 rounded-lg px-4 py-3 text-sm
-                                        transition-colors
-                                        ${
-                                        isActive
-                                            ? "bg-primary text-white"
-                                            : "hover:bg-muted"
+                                        );
                                     }
-                                    `}
-                                >
-                                    <Icon className="h-4 w-4"/>
-                                    {item.name}
-                                </Link>
-                            )
-                        })}
-                    </nav>
 
-                    {/* Footer */}
-                    <div className="border-t p-4 text-sm">
-                        Role: <b>{role}</b>
-                    </div>
+                                    return (
+                                        <Link
+                                            key={item.name}
+                                            href={item.href}
+                                            onClick={() => isMobile && setIsMobileOpen(false)}
+                                            className={`
+                                                relative flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 overflow-hidden
+                                                ${isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}
+                                                ${collapsed && !isMobile ? "justify-center" : ""}
+                                            `}
+                                            title={collapsed ? item.name : undefined}
+                                        >
+                                            {isActive && (
+                                                <span className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r bg-primary" />
+                                            )}
+                                            <Icon className="h-5 w-5 shrink-0" />
+                                            {(!collapsed || isMobile) && (
+                                                <span className="ml-3 whitespace-nowrap">{item.name}</span>
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </nav>
+
+                <div className={`border-t p-4 text-sm text-muted-foreground overflow-hidden whitespace-nowrap ${collapsed && !isMobile ? "px-2 text-center" : ""}`}>
+                    {(!collapsed || isMobile) ? (
+                        <span>Role: <b className="text-foreground">{role}</b></span>
+                    ) : (
+                        <b className="uppercase text-foreground">{role.charAt(0)}</b>
+                    )}
                 </div>
             </aside>
 
-            {/* КНОПКА - тепер окремо від сайдбару */}
-            <button
-                onClick={toggle}
-                style={{
-                    left: collapsed ? 0 : 256,
-                }}
-                className="
-                    fixed top-1/2 -translate-y-1/2 z-50
-                    flex items-center justify-center
-                    h-10 w-6
-                    rounded-r-full rounded-l-none
-                    bg-primary text-white
-                    shadow-lg
-                    hover:w-10
-                    transition-all duration-300
-                    group
-                    cursor-pointer
-                "
-            >
-                <ChevronLeft
-                    className={`
-                        h-4 w-4
-                        transition-all duration-300
-                        ${collapsed ? "rotate-180" : ""}
-                        group-hover:scale-110
-                    `}
+            {isMobileOpen && isMobile && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/50 duration-200 animate-in fade-in"
+                    onClick={() => setIsMobileOpen(false)}
                 />
-            </button>
+            )}
         </>
-    )
+    );
 }
