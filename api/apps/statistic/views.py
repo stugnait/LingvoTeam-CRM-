@@ -5,6 +5,8 @@ from django.db.models import Q, Count, Sum, Value, F, ExpressionWrapper, Decimal
 from django.db.models.functions import Coalesce, Concat, TruncDay, Cast
 from django.utils import timezone
 
+from django.db.models import Case, When
+
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -269,12 +271,15 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
                 output_field=IntegerField()
             ),
         ).annotate(
-            # Середній чек: total_revenue / total_orders (захист від ділення на 0 через Case/When або Python)
-            avg_order_value=ExpressionWrapper(
-                F('total_revenue') / F('total_orders'),
-                output_field=DecimalField(max_digits=12, decimal_places=2)
-            )
-        ).order_by('-total_revenue')
+    avg_order_value=Case(
+        When(total_orders=0, then=Value(Decimal('0.00'))),
+        default=ExpressionWrapper(
+            F('total_revenue') / F('total_orders'),
+            output_field=DecimalField(max_digits=12, decimal_places=2)
+        ),
+        output_field=DecimalField(max_digits=12, decimal_places=2)
+    )
+)
 
         # avg_order_value може бути None якщо total_orders = 0 — фіксуємо на Python
         result = []
@@ -303,7 +308,7 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='clients-stats')
     def client_stats(self, request):
         start_date = request.query_params.get('start_date')
-        end_date   = request.query_params.get('end_date')
+        end_date = request.query_params.get('end_date')
 
         order_filters = Q()
         if start_date and end_date:
@@ -320,8 +325,12 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
                 filter=order_filters & ~Q(order__client_status=PAID_STATUS_ID)
             )
         ).annotate(
-            avg_order_value=ExpressionWrapper(
-                F('total_revenue') / F('total_orders'),
+            avg_order_value=Case(
+                When(total_orders=0, then=Value(Decimal('0.00'))),
+                default=ExpressionWrapper(
+                    F('total_revenue') / F('total_orders'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                ),
                 output_field=DecimalField(max_digits=12, decimal_places=2)
             )
         ).order_by('-total_revenue')
@@ -329,11 +338,11 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         result = []
         for client in stats:
             result.append({
-                'id':                 client.id,
-                'full_name':          client.full_name,
-                'total_orders':       client.total_orders,
-                'total_revenue':      client.total_revenue,
-                'avg_order_value':    client.avg_order_value if client.total_orders > 0 else Decimal('0.00'),
+                'id': client.id,
+                'full_name': client.full_name,
+                'total_orders': client.total_orders,
+                'total_revenue': client.total_revenue,
+                'avg_order_value': client.avg_order_value,
                 'unpaid_orders_count': client.unpaid_orders_count,
             })
 
