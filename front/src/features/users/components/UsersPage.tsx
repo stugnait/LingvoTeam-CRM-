@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Plus, Upload, User as UserIcon } from "lucide-react"
+import { PatternFormat } from 'react-number-format';
 
 import { UserTable } from "./UserTable"
 import { UserFilters } from "./UserFilter"
@@ -246,15 +247,19 @@ export function UsersPage() {
                         }
                     />
 
-                    <Input
-                        placeholder="Phone"
+                    <PatternFormat
+                        format="+38 (###) ###-##-##"
+                        allowEmptyFormatting
+                        mask="_"
                         value={form.phone}
-                        onChange={(e) =>
+                        customInput={Input} // 👈 Ми передаємо сам компонент, він візьме всі стилі
+                        type="tel"
+                        onValueChange={(values) => {
                             setForm(prev => ({
                                 ...prev,
-                                phone: e.target.value,
+                                phone: values.formattedValue, // зберігає відформатований рядок '+38 (067) ...'
                             }))
-                        }
+                        }}
                     />
 
                     <div className="flex items-center gap-2">

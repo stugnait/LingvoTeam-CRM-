@@ -203,17 +203,8 @@ export default function OrdersPage() {
         <div className="w-full max-w-full min-w-0 flex flex-col">
             <DashboardHeader />
 
-            <div className="fixed bottom-8 right-8 z-40">
-                <Button
-                    onClick={handleCreateClick}
-                    className="rounded-full w-14 h-14 p-0 shadow-lg bg-blue-600 hover:bg-blue-700 text-white transition-all hover:scale-110 active:scale-95"
-                >
-                    <Plus className="h-6 w-6" />
-                </Button>
-            </div>
-
-            <div className="space-y-6 w-full min-w-0 overflow-hidden px-1">
-                <div className="flex justify-start pt-4 pl-4">
+            <div className="space-y-6 w-full min-w-0 overflow-hidden px-4 md:px-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-6">
                     <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                         <button
                             onClick={() => setViewMode("table")}
@@ -225,7 +216,7 @@ export default function OrdersPage() {
                             )}
                         >
                             <LayoutList className="w-4 h-4"/>
-                            Table
+                            Таблиця
                         </button>
                         <button
                             onClick={() => setViewMode("kanban")}
@@ -237,9 +228,17 @@ export default function OrdersPage() {
                             )}
                         >
                             <KanbanSquare className="w-4 h-4"/>
-                            Board
+                            Канбан
                         </button>
                     </div>
+
+                    <Button
+                        onClick={handleCreateClick}
+                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center gap-2 px-6"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Створити замовлення
+                    </Button>
                 </div>
 
                 <div className="w-full min-w-0 pb-6">
