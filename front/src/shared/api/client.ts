@@ -27,10 +27,18 @@ export async function apiFetch<T>(
         headers.set('Content-Type', 'application/json')
     }
 
+    const isFormData = fetchOptions.body instanceof FormData
+
     const res = await fetch(`${API_URL}${url}`, {
         credentials: 'include',
         ...fetchOptions,
         headers,
+        body:
+            fetchOptions.body &&
+            !isFormData &&
+            typeof fetchOptions.body !== "string"
+                ? JSON.stringify(fetchOptions.body)
+                : fetchOptions.body,
     })
 
     if (!res.ok) {

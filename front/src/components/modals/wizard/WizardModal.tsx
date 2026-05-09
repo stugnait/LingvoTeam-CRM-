@@ -26,6 +26,8 @@ interface WizardModalProps {
     children: React.ReactNode
     isLoading?: boolean
     onClose?: () => void
+    stepValidation?: (step: number) => boolean
+    stepError?: (step: number) => string | null
 }
 
 export function WizardModal({
@@ -37,6 +39,8 @@ export function WizardModal({
                                 children,
                                 isLoading,
                                 onClose,
+                                stepValidation,
+    stepError
                             }: WizardModalProps) {
 
     const [currentStep, setCurrentStep] = React.useState(0)
@@ -46,8 +50,10 @@ export function WizardModal({
     const isLast = currentStep === stepArray.length - 1
     const isFirst = currentStep === 0
 
+    const isStepValid = stepValidation ? stepValidation(currentStep) : true
+
     const next = () => {
-        if (!isLast) setCurrentStep(prev => prev + 1)
+        if (!isLast && isStepValid) setCurrentStep(prev => prev + 1)
     }
 
     const back = () => {
@@ -144,18 +150,26 @@ export function WizardModal({
                     </Button>
 
                     <div className="flex items-center gap-3">
+                        {/* Помилка показується завжди поруч з кнопкою */}
+                        {stepError && (
+                            <span className="text-xs text-red-500">{stepError}</span>
+                        )}
+
                         <span className="text-xs text-gray-500">
-                            Крок {currentStep + 1} з {steps.length}
-                        </span>
+        Крок {currentStep + 1} з {steps.length}
+    </span>
 
                         {!isLast ? (
                             <Button
                                 onClick={next}
                                 size="sm"
-                                className="gap-1.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                                disabled={!isStepValid}
+                                className="gap-1.5 px-4 bg-gradient-to-r from-blue-600 to-blue-700
+                       hover:from-blue-700 hover:to-blue-800
+                       disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Далі
-                                <ChevronRight className="w-3.5 h-3.5" />
+                                <ChevronRight className="w-3.5 h-3.5"/>
                             </Button>
                         ) : (
                             <Button
@@ -166,12 +180,12 @@ export function WizardModal({
                             >
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin"/>
                                         Обробка...
                                     </>
                                 ) : (
                                     <>
-                                        <Check className="w-3.5 h-3.5" />
+                                        <Check className="w-3.5 h-3.5"/>
                                         Завершити
                                     </>
                                 )}

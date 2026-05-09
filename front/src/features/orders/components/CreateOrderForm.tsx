@@ -132,15 +132,23 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         managers,
     } = props
 
-    // Додаємо логіку створення перекладача
     const {
         form, setForm, isFormOpen, openAddTranslator, closeModals, submitTranslator
     } = useTranslators()
 
     const handleQuickCreateTranslator = async () => {
         await submitTranslator(form)
-        if (onRefreshTranslators) {await onRefreshTranslators()}
+        if (onRefreshTranslators) { await onRefreshTranslators() }
         closeModals()
+    }
+
+    const handleModalClose = (open: boolean) => {
+        if (!open) {
+            resetStats()
+            setFilesConfirmed(false)
+            setImagesAnalyzed(false)
+        }
+        onOpenChange(open)
     }
 
     const {
@@ -150,49 +158,86 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         analyzeOrderFiles,
         analysisResult,
         analysisLoading,
+        resetStats
     } = useOrderAnalysis()
 
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
-
-    const [editingOrder, setEditingOrder] = useState<any | null>(null)
-    const [modalOpen, setModalOpen] = useState(false)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
-
     const [priceCalculated, setPriceCalculated] = useState(false)
     const [priceData, setPriceData] = useState<any>(null)
     const [priceLoading, setPriceLoading] = useState(false)
 
+    // ─── Валідація кроків ────────────────────────────────────────────────────
+
+    const stepValidation = (step: number): boolean => {
+        switch (step) {
+            case 0:
+                return !!clientId && !!sourceLanguage && !!targetLanguage && files.length > 0 && filesConfirmed
+            case 1:
+                return !!trafficId && !!currencyId
+            case 2:
+                return !!selectedTranslatorId && !!editor && !!managerAccept && !!managerDelivery
+            case 3:
+                return !!deadline && !!priority
+            default:
+                return true
+        }
+    }
+
+    const stepError = (step: number): string | null => {
+        switch (step) {
+            case 0:
+                if (!clientId) return "Оберіть клієнта"
+                if (!sourceLanguage) return "Оберіть мову оригіналу"
+                if (!targetLanguage) return "Оберіть мову перекладу"
+                if (!files.length) return "Завантажте хоча б один файл"
+                if (!filesConfirmed) return "Підтвердіть файли кнопкою «Confirm files»"
+                return null
+            case 1:
+                if (!trafficId) return "Оберіть тариф"
+                if (!currencyId) return "Оберіть валюту"
+                return null
+            case 2:
+                if (!selectedTranslatorId) return "Оберіть перекладача"
+                if (!editor) return "Оберіть редактора"
+                if (!managerAccept) return "Оберіть менеджера на прийом"
+                if (!managerDelivery) return "Оберіть менеджера на здачу"
+                return null
+            case 3:
+                if (!priority) return "Оберіть пріоритет"
+                if (!deadline) return "Вкажіть дедлайн"
+                return null
+            default:
+                return null
+        }
+    }
+
+    // ─── Handlers ───────────────────────────────────────────────────────────
+
     const handleConfirmFiles = async () => {
-        if (!files.length) {return}
+        if (!files.length) { return }
         await calculateStats(files)
         setFilesConfirmed(true)
     }
 
     const handleCalculatePrice = async () => {
-        if (!files.length || !trafficId) {return}
+        if (!files.length || !trafficId) { return }
 
         try {
             setPriceLoading(true)
-
             const formData = new FormData()
-
             files.forEach(f => formData.append("files", f))
             formData.append("traffic_id", trafficId)
-
             if (selectedTranslatorId) {
                 formData.append("translator_id", String(selectedTranslatorId))
             }
-
             if (translatorTrafficId) {
                 formData.append("translator_traffic_id", translatorTrafficId)
             }
-
             const res = await ordersApi.previewPrice(formData)
-
             setPriceData(res)
             setPriceCalculated(true)
-
         } catch (e) {
             console.error(e)
         } finally {
@@ -201,14 +246,15 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     }
 
     const handleAnalyzeImages = async () => {
-        if (!files.length) {return}
-
+        if (!files.length) { return }
         await analyzeOrderFiles(files, sourceLanguage ? Number(sourceLanguage) : undefined)
         setImagesAnalyzed(true)
     }
 
+    // ─── Effects ────────────────────────────────────────────────────────────
+
     useEffect(() => {
-        if (!trafficId) {return}
+        if (!trafficId) { return }
         const selectedTariff = tariffs?.find((t) => String(t.id) === trafficId)
         if (selectedTariff?.currency_id) {
             setCurrencyId(String(selectedTariff.currency_id))
@@ -218,10 +264,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     useEffect(() => {
         if (!sourceLanguage || !targetLanguage) {
             setEditorOptions(
-                editors.map((ed) => ({
-                    value: String(ed.id),
-                    label: ed.full_name,
-                }))
+                editors.map((ed) => ({ value: String(ed.id), label: ed.full_name }))
             )
             return
         }
@@ -231,44 +274,34 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         ordersApi
             .getEditorsByLanguagePair(Number(sourceLanguage), Number(targetLanguage))
             .then((res: any) => {
-                if (cancelled) {return}
+                if (cancelled) { return }
                 const results = Array.isArray(res?.results) ? res.results : []
-
                 setEditorOptions(
                     results.map((r: any) => ({
                         value: String(r.editor_id),
                         label: `${r.editor_name ?? `Editor #${r.editor_id}`} (${r.language_pair_label})`,
-                        description: r.editor_language_pair_id
-                            ? "Є мовна пара"
-                            : "Нема мовної пари",
+                        description: r.editor_language_pair_id ? "Є мовна пара" : "Нема мовної пари",
                     }))
                 )
             })
             .catch(() => {
-                if (cancelled) {return}
+                if (cancelled) { return }
                 setEditorOptions(
-                    editors.map((ed) => ({
-                        value: String(ed.id),
-                        label: ed.full_name,
-                    }))
+                    editors.map((ed) => ({ value: String(ed.id), label: ed.full_name }))
                 )
             })
 
-        return () => {
-            cancelled = true
-        }
+        return () => { cancelled = true }
     }, [sourceLanguage, targetLanguage, editors])
 
     useEffect(() => {
         if (!filesConfirmed) return
         if (!trafficId) return
         if (!files.length) return
-
-        // якщо хочеш тільки коли вибраний перекладач — розкоментуй
-        // if (!selectedTranslatorId) return
-
         handleCalculatePrice()
     }, [filesConfirmed, trafficId, selectedTranslatorId])
+
+    // ─── Render ─────────────────────────────────────────────────────────────
 
     return (
         <>
@@ -283,8 +316,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     { title: "Deadline" },
                 ]}
                 isLoading={loading}
+                onClose={handleModalClose}
                 onSubmit={() => onSubmit()}
+                stepValidation={stepValidation}
+                stepError={stepError}
             >
+                {/* ── Крок 1: Client & Files ── */}
                 <WizardStep>
                     <div className="space-y-6">
                         <div>
@@ -303,151 +340,147 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             />
                         </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <Combobox
-                            value={sourceLanguage}
-                            onChange={setSourceLanguage}
-                            placeholder="Source language"
-                            options={languages.map((l) => ({
-                                value: String(l.id),
-                                label: l.name,
-                            }))}
-                        />
-                        <Combobox
-                            value={targetLanguage}
-                            onChange={setTargetLanguage}
-                            placeholder="Target language"
-                            options={languages.map((l) => ({
-                                value: String(l.id),
-                                label: l.name,
-                            }))}
-                        />
-                    </div>
-
-                    <FileUpload
-                        files={files}
-                        onFilesChange={(f) => {
-                            setFiles(f)
-                            setFilesConfirmed(false)
-                            setImagesAnalyzed(false)
-                        }}
-                    />
-
-                    {!filesConfirmed && (
-                        <button
-                            type="button"
-                            onClick={handleConfirmFiles}
-                            disabled={!files.length || statsLoading}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md"
-                        >
-                            {statsLoading ? "Calculating..." : "Confirm files"}
-                        </button>
-                    )}
-
-                    {statsResult && (
-                        <div className="bg-gray-100 p-4 rounded-lg text-sm">
-                            <p>Pages: {statsResult.total_stats.physical_pages}</p>
-                            <p>Chars (with spaces): {statsResult.total_stats.chars_with_spaces}</p>
-                            <p>Images: {statsResult.total_stats.images}</p>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Combobox
+                                value={sourceLanguage}
+                                onChange={setSourceLanguage}
+                                placeholder="Source language"
+                                options={languages.map((l) => ({
+                                    value: String(l.id),
+                                    label: l.name,
+                                }))}
+                            />
+                            <Combobox
+                                value={targetLanguage}
+                                onChange={setTargetLanguage}
+                                placeholder="Target language"
+                                options={languages.map((l) => ({
+                                    value: String(l.id),
+                                    label: l.name,
+                                }))}
+                            />
                         </div>
-                    )}
 
-                    {filesConfirmed && !imagesAnalyzed && (
-                        <button
-                            type="button"
-                            onClick={handleAnalyzeImages}
-                            disabled={analysisLoading}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-md"
-                        >
-                            {analysisLoading ? "Analyzing images..." : "Analyze images (OCR)"}
-                        </button>
-                    )}
+                        <FileUpload
+                            files={files}
+                            onFilesChange={(f) => {
+                                setFiles(f)
+                                setFilesConfirmed(false)
+                                setImagesAnalyzed(false)
+                            }}
+                        />
 
-                    {analysisResult && (
-                        <div className="bg-purple-50 p-4 rounded-lg text-sm">
-                            <p className="text-purple-700 font-medium">OCR completed successfully</p>
-                            {analysisResult.total_words && (
-                                <p>Total words detected: {analysisResult.total_words}</p>
-                            )}
-                            <p>Total images found: {analysisResult.total_images_found}</p>
-                            <p>Total detected symbols: {analysisResult.total_detected_symbols_from_images}</p>
+                        {!filesConfirmed && (
+                            <button
+                                type="button"
+                                onClick={handleConfirmFiles}
+                                disabled={!files.length || statsLoading}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50"
+                            >
+                                {statsLoading ? "Calculating..." : "Confirm files"}
+                            </button>
+                        )}
 
-                            <div className="mt-3 space-y-2">
-                                {analysisResult.results?.map((r, idx) => (
-                                    <div key={idx} className="p-2 bg-white rounded border">
-                                        <div className="font-medium">
-                                            {r.filename} ({r.file_type})
-                                        </div>
-
-                                        {r.error ? (
-                                            <div className="text-red-600">{r.error}</div>
-                                        ) : (
-                                            <>
-                                                <div>Images: {r.images_found}</div>
-                                                <div>Symbols: {r.detected_symbols_from_images}</div>
-                                                {r.preview_text && <div className="text-gray-600">{r.preview_text}</div>}
-                                            </>
-                                        )}
-                                    </div>
-                                ))}
+                        {statsResult && (
+                            <div className="bg-gray-100 p-4 rounded-lg text-sm">
+                                <p>Pages: {statsResult.total_stats.physical_pages}</p>
+                                <p>Chars (with spaces): {statsResult.total_stats.chars_with_spaces}</p>
+                                <p>Images: {statsResult.total_stats.images}</p>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {imagesAnalyzed && !analysisLoading && (
-                        <div className="text-green-600 text-sm font-medium">Images analysis completed</div>
-                    )}
-                </div>
-            </WizardStep>
+                        {filesConfirmed && !imagesAnalyzed && (
+                            <button
+                                type="button"
+                                onClick={handleAnalyzeImages}
+                                disabled={analysisLoading}
+                                className="px-4 py-2 bg-purple-600 text-white rounded-md disabled:opacity-50"
+                            >
+                                {analysisLoading ? "Analyzing images..." : "Analyze images (OCR)"}
+                            </button>
+                        )}
 
-            <WizardStep>
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <Tag className="h-4 w-4 text-blue-600" />
-                            Tariff <span className="text-red-500">*</span>
-                        </label>
-                        <Combobox
-                            value={trafficId}
-                            onChange={setTrafficId}
-                            placeholder="Select tariff"
-                            searchPlaceholder="Search tariff..."
-                            options={tariffs?.map((tariff) => ({
-                                value: String(tariff.id),
-                                label: tariff.category_name,
-                                description: `${tariff.price_per_word} USD/word`,
-                            }))}
-                            renderOption={(option) => (
-                                <div className="flex items-center justify-between w-full">
-                                    <span>{option.label}</span>
+                        {analysisResult && (
+                            <div className="bg-purple-50 p-4 rounded-lg text-sm">
+                                <p className="text-purple-700 font-medium">OCR completed successfully</p>
+                                {analysisResult.total_words && (
+                                    <p>Total words detected: {analysisResult.total_words}</p>
+                                )}
+                                <p>Total images found: {analysisResult.total_images_found}</p>
+                                <p>Total detected symbols: {analysisResult.total_detected_symbols_from_images}</p>
+                                <div className="mt-3 space-y-2">
+                                    {analysisResult.results?.map((r, idx) => (
+                                        <div key={idx} className="p-2 bg-white rounded border">
+                                            <div className="font-medium">{r.filename} ({r.file_type})</div>
+                                            {r.error ? (
+                                                <div className="text-red-600">{r.error}</div>
+                                            ) : (
+                                                <>
+                                                    <div>Images: {r.images_found}</div>
+                                                    <div>Symbols: {r.detected_symbols_from_images}</div>
+                                                    {r.preview_text && <div className="text-gray-600">{r.preview_text}</div>}
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
-                            )}
-                        />
-                    </div>
+                            </div>
+                        )}
 
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <DollarSign className="h-4 w-4 text-blue-600" />
-                            Currency
-                        </label>
-                        <Combobox
-                            value={currencyId}
-                            onChange={setCurrencyId}
-                            placeholder="Select currency"
-                            searchPlaceholder="Search currency..."
-                            options={currencies.map((currency) => ({
-                                value: String(currency.id),
-                                label: `${currency.code} - ${currency.name}`,
-                            }))}
-                        />
+                        {imagesAnalyzed && !analysisLoading && (
+                            <div className="text-green-600 text-sm font-medium">Images analysis completed</div>
+                        )}
                     </div>
-                </div>
-            </WizardStep>
+                </WizardStep>
 
+                {/* ── Крок 2: Tariff ── */}
                 <WizardStep>
                     <div className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <Tag className="h-4 w-4 text-blue-600" />
+                                Tariff <span className="text-red-500">*</span>
+                            </label>
+                            <Combobox
+                                value={trafficId}
+                                onChange={setTrafficId}
+                                placeholder="Select tariff"
+                                searchPlaceholder="Search tariff..."
+                                options={tariffs?.map((tariff) => ({
+                                    value: String(tariff.id),
+                                    label: tariff.category_name,
+                                    description: `${tariff.price_per_word} USD/word`,
+                                }))}
+                                renderOption={(option) => (
+                                    <div className="flex items-center justify-between w-full">
+                                        <span>{option.label}</span>
+                                    </div>
+                                )}
+                            />
+                        </div>
 
-                        {/* TRANSLATOR */}
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <DollarSign className="h-4 w-4 text-blue-600" />
+                                Currency
+                            </label>
+                            <Combobox
+                                value={currencyId}
+                                onChange={setCurrencyId}
+                                placeholder="Select currency"
+                                searchPlaceholder="Search currency..."
+                                options={currencies.map((currency) => ({
+                                    value: String(currency.id),
+                                    label: `${currency.code} - ${currency.name}`,
+                                }))}
+                            />
+                        </div>
+                    </div>
+                </WizardStep>
+
+                {/* ── Крок 3: Assignment ── */}
+                <WizardStep>
+                    <div className="space-y-6">
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -465,7 +498,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     Quick Create
                                 </Button>
                             </div>
-
                             <TranslatorSelect
                                 value={selectedTranslatorId}
                                 translators={translators}
@@ -480,7 +512,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             />
                         </div>
 
-                        {/* EDITOR */}
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <Users className="h-4 w-4 text-green-600" />
@@ -494,7 +525,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             />
                         </div>
 
-                        {/* 🔥 MANAGER 1 */}
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <User className="h-4 w-4 text-indigo-600" />
@@ -511,7 +541,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             />
                         </div>
 
-                        {/* 🔥 MANAGER 2 */}
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <User className="h-4 w-4 text-purple-600" />
@@ -543,23 +572,15 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         )}
                     </div>
 
-                    {/* PRICE BLOCK */}
                     {priceLoading && (
-                        <div className="text-sm text-gray-500">
-                            Calculating price...
-                        </div>
+                        <div className="text-sm text-gray-500 mt-4">Calculating price...</div>
                     )}
 
                     {priceData && !priceLoading && (
-                        <div className="bg-green-50 p-4 rounded-lg text-sm space-y-1">
+                        <div className="bg-green-50 p-4 rounded-lg text-sm space-y-1 mt-4">
                             <p className="font-medium text-green-700">Price Preview</p>
-
                             <p>Pages: {priceData.pages}</p>
-
-                            <p>
-                                Client price: {priceData.total_client_price}
-                            </p>
-
+                            <p>Client price: {priceData.total_client_price}</p>
                             {priceData.translator_rate_per_page && (
                                 <>
                                     <p>Translator: {priceData.translator_total}</p>
@@ -570,30 +591,31 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     )}
                 </WizardStep>
 
-            <WizardStep>
-                <div className="space-y-6">
-                    <PrioritySelector value={priority} onChange={setPriority} required />
+                {/* ── Крок 4: Deadline ── */}
+                <WizardStep>
+                    <div className="space-y-6">
+                        <PrioritySelector value={priority} onChange={setPriority} required />
 
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <CalendarClock className="h-4 w-4 text-blue-600" />
-                            Deadline <span className="text-red-500">*</span>
-                        </label>
-                        <DeadlineSelector value={deadline} onChange={setDeadline} minDate={new Date()} />
-                    </div>
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <CalendarClock className="h-4 w-4 text-blue-600" />
+                                Deadline <span className="text-red-500">*</span>
+                            </label>
+                            <DeadlineSelector value={deadline} onChange={setDeadline} minDate={new Date()} />
+                        </div>
 
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                            <MessageSquare className="h-4 w-4 text-blue-600" />
-                            Comment
-                        </label>
-                        <textarea
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            placeholder="Add any additional notes or instructions..."
-                            className="w-full px-3 py-2 border rounded-md min-h-[120px] resize-y"
-                        />
-                    </div>
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                <MessageSquare className="h-4 w-4 text-blue-600" />
+                                Comment
+                            </label>
+                            <textarea
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                placeholder="Add any additional notes or instructions..."
+                                className="w-full px-3 py-2 border rounded-md min-h-[120px] resize-y"
+                            />
+                        </div>
 
                         <div className="bg-gray-50 p-4 rounded-lg">
                             <h4 className="text-sm font-medium mb-2">Order Summary</h4>
