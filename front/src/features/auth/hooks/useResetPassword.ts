@@ -14,12 +14,11 @@ export function useResetPassword({ uid, token }: UseResetPasswordProps) {
     const submit = async (new_password: string, new_password_confirm: string) => {
         setIsLoading(true)
         try {
-            await authApi.resetPassword({
-                uid,
-                token,
-                new_password,
-                new_password_confirm
-            })
+            await authApi.resetPassword({ uid, token, new_password, new_password_confirm })
+        } catch (err: any) {
+            // Бекенд поверне щось типу { detail: "Invalid token" }
+            const message = err?.detail || err?.token?.[0] || "Invalid or expired reset link"
+            throw new Error(message)
         } finally {
             setIsLoading(false)
         }

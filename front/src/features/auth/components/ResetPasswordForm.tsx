@@ -33,9 +33,8 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
 
             // Якщо ми дійшли до цього рядка, значить submit пройшов успішно
             setSuccessOpen(true)
-        } catch (error) {
-            // Тут ви можете обробити помилку (наприклад, показати якесь повідомлення)
-            console.error("Помилка скидання пароля:", error)
+        } catch (error: any) {
+            console.log(error.message || "Something went wrong")
         }
     }
 
