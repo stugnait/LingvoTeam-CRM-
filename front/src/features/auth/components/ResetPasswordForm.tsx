@@ -4,7 +4,8 @@ import { useState } from "react"
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { Input } from "@/src/components/ui/input"
 import { Label } from "@/src/components/ui/label"
-import { CheckCircle2 } from "lucide-react"
+import { Button } from "@/src/components/ui/button"
+import { CheckCircle2, Lock, Eye, EyeOff, ShieldCheck, ArrowRight } from "lucide-react"
 import { useResetPassword } from "../hooks/useResetPassword"
 import { useRouter } from "next/navigation"
 
@@ -18,100 +19,142 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
 
     const [password, setPassword] = useState("")
     const [confirm, setConfirm] = useState("")
-    const [successOpen, setSuccessOpen] = useState(false)
+    const [isSuccess, setIsSuccess] = useState(false)
+
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirm, setShowConfirm] = useState(false)
 
     const { submit, isLoading } = useResetPassword({ uid, token })
 
     const onSubmit = async () => {
-        if (password !== confirm) {
-            return
-        }
+        if (password !== confirm || !password.trim()) return
 
         try {
-            // Просто чекаємо виконання. Якщо буде помилка, код перерветься і стрибне в catch
             await submit(password, confirm)
-
-            // Якщо ми дійшли до цього рядка, значить submit пройшов успішно
-            setSuccessOpen(true)
+            setIsSuccess(true)
         } catch (error: any) {
             console.log(error.message || "Something went wrong")
         }
     }
 
-    const handleCloseSuccess = () => {
-        setSuccessOpen(false)
-        router.replace("/login") // або "/"
+    // Кастомний екран успіху в стилі PasswordForm
+    if (isSuccess) {
+        return (
+            <div className="max-w-md mx-auto mt-24 p-8 rounded-xl border bg-card shadow-lg animate-slide-up text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 mb-6">
+                    <CheckCircle2 className="h-8 w-8 text-green-500" />
+                </div>
+
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Пароль оновлено
+                </h1>
+
+                <div className="space-y-4 mt-4">
+                    <p className="text-muted-foreground">
+                        Ваш пароль було успішно змінено. <br />
+                        <span className="font-medium text-foreground">Ви можете закрити дану сторінку</span>
+                    </p>
+                </div>
+            </div>
+        )
     }
 
     return (
-        <>
-            {/* ===== SUCCESS MODAL ===== */}
-            <BaseFormModal
-                open={successOpen}
-                onOpenChange={handleCloseSuccess}
-                title="Password updated"
-                submitLabel="Go to login"
-                cancelLabel=""
-                onSubmit={handleCloseSuccess}
+        <div className="max-w-md mx-auto mt-24 p-8 rounded-xl border bg-card shadow-lg animate-slide-up">
+            <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                    <ShieldCheck className="h-8 w-8 text-primary" />
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight">
+                    Новий пароль
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                    Встановіть новий надійний пароль для вашого акаунту
+                </p>
+            </div>
+
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault()
+                    onSubmit()
+                }}
+                className="space-y-6"
             >
-                <div className="space-y-4 text-center py-4">
-                    <div className="flex justify-center">
-                        <CheckCircle2 className="h-16 w-16 text-green-500" />
+                {/* New Password */}
+                <div className="space-y-3">
+                    <Label htmlFor="new-password" className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Новий пароль
+                    </Label>
+                    <div className="relative">
+                        <Input
+                            id="new-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={isLoading}
+                            className="pl-10 pr-10 h-11"
+                        />
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                     </div>
+                </div>
 
-                    <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                            Your password has been successfully changed.
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            You can now sign in with your new password.
-                        </p>
+                {/* Confirm Password */}
+                <div className="space-y-3">
+                    <Label htmlFor="confirm-password" className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Підтвердження
+                    </Label>
+                    <div className="relative">
+                        <Input
+                            id="confirm-password"
+                            type={showConfirm ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={confirm}
+                            onChange={(e) => setConfirm(e.target.value)}
+                            required
+                            disabled={isLoading}
+                            className="pl-10 pr-10 h-11"
+                        />
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirm(!showConfirm)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                     </div>
                 </div>
-            </BaseFormModal>
 
-            {/* ===== RESET PASSWORD FORM ===== */}
-            <BaseFormModal
-                open
-                onOpenChange={() => {}}
-                title="Reset password"
-                submitLabel={isLoading ? "Saving..." : "Save new password"}
-                cancelLabel=""
-                isLoading={isLoading}
-                onSubmit={onSubmit}
-            >
-                <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                        Enter your new password below.
-                    </p>
-                </div>
+                <Button
+                    type="submit"
+                    className="w-full h-11 text-base"
+                    disabled={isLoading || !password.trim() || password !== confirm}
+                >
+                    {isLoading ? (
+                        <>
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                            Оновлення...
+                        </>
+                    ) : (
+                        "Зберегти зміни"
+                    )}
+                </Button>
 
-                <div className="space-y-2">
-                    <Label htmlFor="new-password">New password</Label>
-                    <Input
-                        id="new-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isLoading}
-                        required
-                    />
+                <div className="text-center text-xs text-muted-foreground pt-4 border-t">
+                    Використовуйте щонайменше 8 символів
                 </div>
-
-                <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm password</Label>
-                    <Input
-                        id="confirm-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={confirm}
-                        onChange={(e) => setConfirm(e.target.value)}
-                        disabled={isLoading}
-                        required
-                    />
-                </div>
-            </BaseFormModal>
-        </>
+            </form>
+        </div>
     )
 }
