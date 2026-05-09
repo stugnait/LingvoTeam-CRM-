@@ -68,6 +68,11 @@ export const usersApi = {
             body: buildFormData(data),
         }),
 
+    resetPass: (id: string) =>
+        apiFetch<void>(`users/users/${id}/reset-password/`, {
+            method: "POST"
+        }),
+
     remove: (id: string) =>
         apiFetch<void>(`users/users/${id}/`, { method: "DELETE" }),
 

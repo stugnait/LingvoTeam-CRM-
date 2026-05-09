@@ -100,6 +100,22 @@ export function useUsers() {
         setIsFormOpen(true)
     }
 
+    const resetPassword = async (userId: string) => {
+        try {
+            await usersApi.resetPass(userId)
+            toast({
+                title: "Пароль скинуто",
+                description: "Новий пароль надіслано на пошту користувача",
+            })
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to reset password",
+                variant: "error",
+            })
+        }
+    }
+
     const openEditUser = (user: User) => {
         setSelectedUser(user)
 
@@ -289,5 +305,6 @@ export function useUsers() {
         confirmDeactivation,
         handleConfirm,
         closeModals,
+        resetPassword,
     }
 }
