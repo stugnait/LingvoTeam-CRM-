@@ -57,7 +57,7 @@ export function UserFilters({ filters, setFilters }: UserFiltersProps) {
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="editor">Editor</SelectItem>
-                    <SelectItem value="finance">Finance</SelectItem>
+                    <SelectItem value="financier">Finance</SelectItem>
                 </SelectContent>
             </Select>
 
