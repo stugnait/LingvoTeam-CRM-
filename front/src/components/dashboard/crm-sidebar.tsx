@@ -19,6 +19,7 @@ import {
     ChevronDown,
     Menu,
     X,
+    BarChart2
 } from "lucide-react";
 
 interface NavItem {
@@ -59,6 +60,7 @@ const navGroups: NavGroup[] = [
         name: "Фінанси",
         items: [
             { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, roles: ["admin", "financier", "owner"] },
+            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, roles: ["admin", "financier", "owner"] },
             { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier", "owner", "admin"] },
             {
                 name: "Salary",
