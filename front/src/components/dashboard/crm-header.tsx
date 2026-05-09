@@ -7,18 +7,17 @@ import { cn } from "@/src/lib/utils";
 
 interface CrmHeaderProps {
     title: string;
-    collapsed: boolean;
+    collapsed: boolean; // Залишаємо, щоб у вас не світилися помилки в інших файлах
 }
 
 export function CrmHeader({ title, collapsed }: CrmHeaderProps) {
     return (
         <header
             className={cn(
-                // h-16 (64px) - фіксована висота
-                "fixed top-0 right-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-white/80 backdrop-blur-xl px-6 transition-all duration-300 ease-in-out",
-                // Розраховуємо відступ зліва залежно від сайдбару
-                collapsed ? "left-20" : "left-64",
-                "max-lg:left-0"
+                // 1. ЗАМІНИЛИ fixed на sticky
+                // 2. ДОДАЛИ w-full та shrink-0
+                // 3. ПРИБРАЛИ left-20 та left-64 (вони більше не потрібні)
+                "sticky top-0 z-40 flex w-full shrink-0 h-16 items-center gap-4 border-b border-border bg-white/80 backdrop-blur-xl px-6 transition-all duration-300 ease-in-out"
             )}
         >
             <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent overflow-hidden whitespace-nowrap">

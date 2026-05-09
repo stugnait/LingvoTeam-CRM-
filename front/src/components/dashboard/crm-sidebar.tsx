@@ -43,30 +43,30 @@ const navGroups: NavGroup[] = [
                 name: "Dashboard",
                 href: "/dashboard",
                 icon: LayoutDashboard,
-                roles: ["admin", "manager", "editor", "financier", "owner"],
+                roles: ["admin", "manager", "editor", "financier"],
                 children: [
-                    { name: "Фінанси (P&L)", tabId: "finance", roles: ["admin", "financier", "owner"] },
-                    { name: "Ефективність команди", tabId: "team", roles: ["admin", "financier", "owner"] },
-                    { name: "Аналітика клієнтів", tabId: "clients", roles: ["admin", "financier", "owner"] },
+                    { name: "Фінанси (P&L)", tabId: "finance", roles: ["admin", "financier"] },
+                    { name: "Ефективність команди", tabId: "team", roles: ["admin", "financier"] },
+                    { name: "Аналітика клієнтів", tabId: "clients", roles: ["admin", "financier"] },
                 ]
             },
-            { name: "Orders", href: "/dashboard/orders", icon: FileText, roles: ["admin", "manager", "owner"] },
+            { name: "Orders", href: "/dashboard/orders", icon: FileText, roles: ["admin", "manager"] },
             { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, roles: ["editor"] },
-            { name: "Clients", href: "/dashboard/clients", icon: Users, roles: ["admin", "manager", "owner"] },
-            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, roles: ["admin", "manager", "owner"] },
+            { name: "Clients", href: "/dashboard/clients", icon: Users, roles: ["admin", "manager"] },
+            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, roles: ["admin", "manager"] },
         ],
     },
     {
         name: "Фінанси",
         items: [
-            { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, roles: ["admin", "financier", "manager"] },
-            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, roles: ["admin", "financier", "owner"] },
-            { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier", "owner", "admin"] },
+            { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, roles: ["admin", "financier"] },
+            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, roles: ["admin", "financier"] },
+            { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier"] },
             {
                 name: "Salary",
                 href: "/dashboard/salary",
                 icon: Wallet,
-                roles: ["admin", "manager", "owner"],
+                roles: ["admin", "manager"],
                 children: [
                     { name: "Менеджер", roleId: 1 },
                     { name: "Редактор", roleId: 2 },
@@ -78,9 +78,9 @@ const navGroups: NavGroup[] = [
     {
         name: "Команда",
         items: [
-            { name: "Translators", href: "/dashboard/translations", icon: Languages, roles: ["admin", "manager", "owner"] },
-            { name: "Users", href: "/dashboard/users", icon: UserCog, roles: ["admin", "owner"] },
-            { name: "Profile", href: "/dashboard/profile", icon: User, roles: ["admin", "editor", "owner"] },
+            { name: "Translators", href: "/dashboard/translations", icon: Languages, roles: ["admin", "manager"] },
+            { name: "Users", href: "/dashboard/users", icon: UserCog, roles: ["admin"] },
+            { name: "Profile", href: "/dashboard/profile", icon: User, roles: ["admin", "editor", "manager"] },
         ],
     },
 ];

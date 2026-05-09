@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation" // ДОДАНО
+import { useSearchParams } from "next/navigation"
 import { useMe } from "@/src/features/auth/hooks/useMe"
 import { apiFetch } from "@/src/shared/api/client"
 import { CrmHeader } from "@/src/components/dashboard/crm-header"
@@ -59,7 +59,6 @@ export default function DashboardPage() {
     const userRole = String(role)
     const searchParams = useSearchParams()
 
-    // Отримуємо поточний таб з URL, по дефолту "finance"
     const currentTab = searchParams.get("tab") || "finance"
 
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
@@ -69,7 +68,7 @@ export default function DashboardPage() {
         let isMounted = true;
 
         const fetchDashboardData = async () => {
-            if (userRole !== "admin" && userRole !== "financier" && userRole !== "owner") {
+            if (userRole !== "admin") {
                 setIsLoadingData(false);
                 return;
             }
@@ -134,9 +133,6 @@ export default function DashboardPage() {
         )
     }
 
-    // ==========================================
-    // --- 1. EDITOR DASHBOARD ---
-    // ==========================================
     if (userRole === "editor") {
         const editorStats = {
             backlogCount: 8,
@@ -209,9 +205,6 @@ export default function DashboardPage() {
         )
     }
 
-    // ==========================================
-    // --- 2. MANAGER DASHBOARD ---
-    // ==========================================
     if (userRole === "manager") {
         const stats = {
             inProgress: 14,
@@ -292,15 +285,12 @@ export default function DashboardPage() {
         )
     }
 
-    // ==========================================
-    // --- 3. OWNER / ADMIN DASHBOARD ---
-    // ==========================================
-    if (userRole === "admin" || userRole === "financier" || userRole === "owner") {
+    if (userRole === "admin" ) {
 
         if (isLoadingData || !dashboardData) {
             return (
                 <>
-                    <CrmHeader title="Owner Dashboard" collapsed={false} />
+                    <CrmHeader title="Dashboard" collapsed={false} />
                     <main className="flex-1 p-6 flex items-center justify-center">
                         <p className="text-muted-foreground animate-pulse">Завантаження аналітики...</p>
                     </main>
@@ -309,8 +299,6 @@ export default function DashboardPage() {
         }
 
         const { pnl, salesChart, managers, translators, editors, languages } = dashboardData
-
-        // НАЛАШТУВАННЯ APEXCHARTS
         const salesSeries = [
             { name: 'Дохід', data: salesChart?.map((d: SalesChartData) => d.daily_revenue) || [] }
         ]
@@ -344,11 +332,9 @@ export default function DashboardPage() {
 
         return (
             <>
-                <CrmHeader title="Owner Dashboard" collapsed={false} />
+                <CrmHeader title="Dashboard" collapsed={false} />
                 <main className="flex-1 overflow-y-auto p-6">
                     <div className="mx-auto max-w-7xl space-y-8 pb-10">
-
-                        {/* Вкладка 1: ФІНАНСИ */}
                         {currentTab === "finance" && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -432,8 +418,6 @@ export default function DashboardPage() {
                                 </Card>
                             </div>
                         )}
-
-                        {/* Вкладка 2: КОМАНДА */}
                         {currentTab === "team" && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -549,8 +533,6 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         )}
-
-                        {/* Вкладка 3: КЛІЄНТИ / МОВНІ ПАРИ */}
                         {currentTab === "clients" && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -598,8 +580,6 @@ export default function DashboardPage() {
             </>
         )
     }
-
-    // Fallback
     return (
         <>
             <CrmHeader title="Dashboard" collapsed={false} />
