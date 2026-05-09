@@ -69,7 +69,7 @@ export const usersApi = {
         }),
 
     remove: (id: string) =>
-        apiFetch<void>(`users/${id}/`, { method: "DELETE" }),
+        apiFetch<void>(`users/users/${id}/`, { method: "DELETE" }),
 
     deactivate: (id: string) =>
         apiFetch<void>(`users/admin/users/${id}/toggle-status/`, { method: "POST" }),

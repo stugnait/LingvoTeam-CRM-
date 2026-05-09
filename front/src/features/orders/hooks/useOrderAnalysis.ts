@@ -44,6 +44,11 @@ export function useOrderAnalysis() {
     }
   }
 
+  const resetStats = () => {
+    setStatsResult(null)
+  }
+
+
   /* =========================
      ANALYZE UPLOADED FILES (OCR)
      sends local uploaded files (FormData) to backend
@@ -83,5 +88,6 @@ export function useOrderAnalysis() {
     analyzeOrderFiles,
     analysisResult,
     analysisLoading,
+    resetStats
   }
 }

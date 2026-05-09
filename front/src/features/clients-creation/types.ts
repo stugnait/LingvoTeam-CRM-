@@ -13,10 +13,10 @@ export interface Client {
 }
 
 export interface ClientFormData {
-    name: string
+    full_name: string
     email: string
-    phone?: string
-    category: number
+    phone_number: string
+    category: number | null
 }
 
 export interface ClientsListResponse {

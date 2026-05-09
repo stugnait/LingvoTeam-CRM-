@@ -162,16 +162,20 @@ export function ClientPage() {
                     <div>
                         <Input
                             placeholder="Client name"
-                            value={form.name}
-                            className={errors?.name ? "border-red-500" : ""}
+                            value={form.full_name}
+                            className={errors?.full_name ? "border-red-500" : ""}
                             onChange={(e) =>
                                 setForm(prev => ({
                                     ...prev,
-                                    name: e.target.value,
+                                    full_name: e.target.value,
                                 }))
                             }
                         />
-                        {errors?.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+                        {errors.full_name && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.full_name}
+                            </p>
+                        )}
                     </div>
 
                     <div>
@@ -186,22 +190,30 @@ export function ClientPage() {
                                 }))
                             }
                         />
-                        {errors?.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                        {errors.email && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.email}
+                            </p>
+                        )}
                     </div>
 
                     <div>
                         <Input
                             placeholder="Phone"
-                            value={form.phone}
-                            className={errors?.phone ? "border-red-500" : ""}
+                            value={form.phone_number}
+                            className={errors?.phone_number ? "border-red-500" : ""}
                             onChange={(e) =>
                                 setForm(prev => ({
                                     ...prev,
-                                    phone: e.target.value,
+                                    phone_number: e.target.value,
                                 }))
                             }
                         />
-                        {errors?.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                        {errors.phone_number && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.phone_number}
+                            </p>
+                        )}
                     </div>
 
                     <div>
@@ -216,7 +228,11 @@ export function ClientPage() {
                             }
                             placeholder="Select category"
                         />
-                        {errors?.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
+                        {errors.category && (
+                            <p className="text-red-500 text-sm mt-1">
+                                {errors.category}
+                            </p>
+                        )}
                     </div>
 
                 </div>

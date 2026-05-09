@@ -25,10 +25,10 @@ export function useClientsCreation() {
     const [totalPages, setTotalPages] = useState(1)
 
     const [form, setForm] = useState<ClientFormData>({
-        name: "",
+        full_name: "",
         email: "",
-        phone: "",
-        category: 0
+        phone_number: "",
+        category: null
     })
 
     const [errors, setErrors] = useState<Partial<Record<keyof ClientFormData, string>>>({})
@@ -91,10 +91,10 @@ export function useClientsCreation() {
         setSelectedClient(null)
 
         setForm({
-            name: "",
+            full_name: "",
             email: "",
-            phone: "",
-            category: 0
+            phone_number: "",
+            category: null
         })
 
         setErrors({})
@@ -107,9 +107,9 @@ export function useClientsCreation() {
         setSelectedClient(client)
 
         setForm({
-            name: client.full_name,
+            full_name: client.full_name,
             email: client.email,
-            phone: client.phone_number || "",
+            phone_number: client.phone_number || "",
             category: client.category.id
         })
 
@@ -142,8 +142,8 @@ export function useClientsCreation() {
         try {
             const newErrors: Partial<Record<keyof ClientFormData, string>> = {}
 
-            if (!data.name.trim()) {
-                newErrors.name = "Full name is required"
+            if (!data.full_name.trim()) {
+                newErrors.full_name = "Full name is required"
             }
             if (!data.email.trim()) {
                 newErrors.email = "Email is required"
@@ -156,11 +156,6 @@ export function useClientsCreation() {
 
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors)
-                toast({
-                    title: "Validation error",
-                    description: "Please check the form fields",
-                    variant: "error",
-                })
                 return
             }
 
@@ -171,7 +166,7 @@ export function useClientsCreation() {
 
                 toast({
                     title: "Client updated",
-                    description: `${data.name} updated successfully`
+                    description: `${data.full_name} updated successfully`
                 })
 
             } else {
@@ -180,7 +175,7 @@ export function useClientsCreation() {
 
                 toast({
                     title: "Client created",
-                    description: `${data.name} created successfully`
+                    description: `${data.full_name} created successfully`
                 })
 
             }

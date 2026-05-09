@@ -142,7 +142,7 @@ class UserViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
     # 👇 Додаємо парсери сюди також
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     search_fields = ['first_name', 'last_name', 'full_name']
     ordering_fields = ['id', 'email', 'first_name', 'last_name']
