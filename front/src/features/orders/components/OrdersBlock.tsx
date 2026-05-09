@@ -427,13 +427,37 @@ export function OrdersTable({
                                     <div className="flex items-center justify-end gap-2">
                                         {order.status_id === 9 && (
                                             <>
-                                                <Button size="sm" variant="outline" onClick={() => downloadOrderSourceFiles(order.id)} className="h-8">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // <--- ДОДАТИ ЦЕ
+                                                        downloadOrderSourceFiles(order.id);
+                                                    }}
+                                                    className="h-8"
+                                                >
                                                     Original
                                                 </Button>
-                                                <Button size="sm" variant="outline" onClick={() => downloadOrderTargetFiles(order.id)} className="h-8">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // <--- ДОДАТИ ЦЕ
+                                                        downloadOrderTargetFiles(order.id);
+                                                    }}
+                                                    className="h-8"
+                                                >
                                                     Translation
                                                 </Button>
-                                                <Button size="sm" variant="default" onClick={() => confirmOrder(order.id)} className="h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary">
+                                                <Button
+                                                    size="sm"
+                                                    variant="default"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // <--- ДОДАТИ ЦЕ
+                                                        confirmOrder(order.id);
+                                                    }}
+                                                    className="h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
+                                                >
                                                     Send
                                                 </Button>
                                             </>

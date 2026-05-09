@@ -380,28 +380,21 @@ export interface AnalyzeUploadedImagesResponse {
 
 export interface KanbanTask {
     id: string
-
     title: string
     description?: string
-
     status: TaskStatus
     status_id: number
-
     priority: TaskPriority
-
     deadline?: string
     client_name: string
-
     avatar_url?: string | null
 
-    assignee?: {
-        id: number
-        name: string
-        avatar?: string
-    } | null
+    // 👇 Нові поля
+    intake_manager?: string | null
+    delivery_manager?: string | null
 
     tags: string[]
-    subtasks: any[] // 🔥 щоб не падало
+    subtasks: any[]
 }
 
 export interface KanbanColumn {

@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, Suspense } from "react" // Додали Suspense
+import { useState, Suspense } from "react"
 import { CrmSidebar } from "@/src/components/dashboard/crm-sidebar"
+import { CrmHeader } from "@/src/components/dashboard/crm-header" // Імпортуємо хедер сюди
+import { cn } from "@/src/lib/utils"
 
 export default function DashboardLayout({
                                             children,
@@ -11,24 +13,32 @@ export default function DashboardLayout({
     const [collapsed, setCollapsed] = useState(false)
 
     return (
-        <div className="flex">
-            <Suspense fallback={<div className={collapsed ? "w-0" : "w-64"} />}>
+        <div className="flex min-h-screen bg-background">
+            {/* САЙДБАР */}
+            <Suspense fallback={<div className={collapsed ? "w-20" : "w-64"} />}>
                 <CrmSidebar
                     collapsed={collapsed}
                     toggle={() => setCollapsed(prev => !prev)}
                 />
             </Suspense>
 
-            {/* CONTENT */}
-            <main
-                className={`
-                    w-full min-h-screen
-                    transition-all duration-300 ease-in-out
-                    ${collapsed ? "ml-0" : "ml-64"}
-                `}
+            {/* КОНТЕНТНА ОБЛАСТЬ */}
+            <div
+                className={cn(
+                    "flex flex-col flex-1 min-w-0 transition-all duration-300 ease-in-out",
+                    collapsed ? "lg:ml-20" : "lg:ml-64", // Жорсткий відступ для всього блоку
+                    "ml-0" // На мобілці відступу немає
+                )}
             >
-                {children}
-            </main>
+                {/* ХЕДЕР ТЕПЕР ТУТ (передаємо стан) */}
+                <CrmHeader title="" collapsed={collapsed} />
+
+                {/* ВМІСТ СТОРІНКИ */}
+                <main className="p-6 pt-20">
+                    {/* pt-20 резервує місце під фіксованим хедером, щоб нічого не залазило */}
+                    {children}
+                </main>
+            </div>
         </div>
     )
 }

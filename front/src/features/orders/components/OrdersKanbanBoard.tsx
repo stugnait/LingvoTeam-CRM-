@@ -1,11 +1,12 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react'
+import type {
+    DragEndEvent,
+    DragStartEvent} from '@dnd-kit/core';
 import {
     DndContext,
-    DragEndEvent,
     DragOverlay,
-    DragStartEvent,
     PointerSensor,
     useSensor,
     useSensors,
@@ -13,11 +14,11 @@ import {
     MeasuringStrategy
 } from '@dnd-kit/core'
 
-import KanbanColumn from '@/src/features/editor/components/canban/KanbanColumn'
-import KanbanStats from '@/src/features/editor/components/canban/KanbanStats'
+import KanbanColumn from '@/src/components/canban/KanbanColumn'
+import KanbanStats from '@/src/components/canban/KanbanStats'
 
 import { List, User, Target, Eye, CheckSquare, PauseCircle, XCircle } from 'lucide-react'
-import { KanbanTask } from '@/src/features/editor/types'
+import type { KanbanTask } from '@/src/components/canban/SortableTask'
 
 const MANAGER_COLUMNS = [
     { id: 'all_orders', title: 'All Orders', status: 'all_orders', color: '#8b5cf6', icon: <List className="w-4 h-4" /> },
@@ -70,15 +71,14 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                 client_name: order.client_name || "none",
                 language_pair_id: order.language_pair_id || 'N/A',
                 tags: [],
-                dueDate: order.deadline,
+                deadline: order.deadline,
 
-                // 🔥 ГОЛОВНЕ
-                assignee: order.manager_name
-                    ? {
-                        name: order.manager_name,
-                        avatar: order.manager_avatar || undefined
-                    }
-                    : undefined
+                intake_manager: order.manager_accept_name
+                    ? { name: order.manager_accept_name, avatar: order.manager_accept_avatar ?? undefined }
+                    : null,
+                delivery_manager: order.manager_delivery_name && order.manager_delivery_name !== '-'
+                    ? { name: order.manager_delivery_name, avatar: order.manager_delivery_avatar ?? undefined }
+                    : null,
             };
 
             // 1. ЗАВЖДИ створюємо картку-копію для колонки "All Orders"
@@ -91,12 +91,12 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
 
             // 2. Створюємо основну картку для інших колонок, ТІЛЬКИ ЯКЩО статус співпадає
             let frontendStatus = '';
-            if (order.status_id === 6) frontendStatus = 'to_do';
-            else if (order.status_id === 5) frontendStatus = 'planned';
-            else if (order.status_id === 7) frontendStatus = 'in_progress';
-            else if (order.status_id === 4) frontendStatus = 'pause';
-            else if (order.status_id === 3) frontendStatus = 'rejected';
-            else if (order.status_id === 2) frontendStatus = 'done';
+            if (order.status_id === 6) {frontendStatus = 'to_do';}
+            else if (order.status_id === 5) {frontendStatus = 'planned';}
+            else if (order.status_id === 7) {frontendStatus = 'in_progress';}
+            else if (order.status_id === 4) {frontendStatus = 'pause';}
+            else if (order.status_id === 3) {frontendStatus = 'rejected';}
+            else if (order.status_id === 2) {frontendStatus = 'done';}
 
             if (frontendStatus) {
                 tasks.push({

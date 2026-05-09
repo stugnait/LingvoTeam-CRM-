@@ -15,9 +15,9 @@ import {
 } from '@dnd-kit/core';
 
 // Components
-import KanbanHeader from '@/src/features/editor/components/canban/KanbanHeader';
-import KanbanColumn from '@/src/features/editor/components/canban/KanbanColumn';
-import KanbanStats from '@/src/features/editor/components/canban/KanbanStats';
+import KanbanHeader from '@/src/components/canban/KanbanHeader';
+import KanbanColumn from '@/src/components/canban/KanbanColumn';
+import KanbanStats from '@/src/components/canban/KanbanStats';
 import {SideModal} from "@/src/components/modals/SideModal";
 import { Search } from 'lucide-react';
 import {TaskModal} from "@/src/components/modals/jira/InfoModal";
@@ -50,7 +50,7 @@ const COLUMN_ICONS = {
 };
 
 const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Не вказано';
+    if (!dateString) {return 'Не вказано';}
     try {
         const date = new Date(dateString);
         return new Intl.DateTimeFormat('uk-UA', {
@@ -269,14 +269,19 @@ export default function EditorMain() {
                             status={selectedTask.status_name}
 
                             priority={formatPriority(selectedTask.priority)}
-                            priorityName={formatPriority(selectedTask.priority_display || selectedTask.priority)}
+                            // priorityName={formatPriority(selectedTask.priority_display || selectedTask.priority)}
 
-                            manager={selectedTask.manager_name}
                             translator={selectedTask.translator_name}
+                            intake_manager={selectedTask.manager_accept_name
+                                ? { id: 0, name: selectedTask.manager_accept_name, avatar: undefined }
+                                : null}
+                            delivery_manager={selectedTask.manager_delivery_name && selectedTask.manager_delivery_name !== '-'
+                                ? { id: 0, name: selectedTask.manager_delivery_name, avatar: undefined }
+                                : null}
 
                             clientName={selectedTask.client_name}
                             languagePair={selectedTask.language_pair_name}
-                            dueDate={formatDate(selectedTask.deadline)}
+                            dueDate={formatDate(selectedTask.deadline) || "Unsettled"}
 
                             onDownloadOriginal={() =>
                                 downloadOrderSourceFiles(selectedTask.id)
@@ -286,6 +291,7 @@ export default function EditorMain() {
                             }
                             onCancel={closeModal}
                             onSave={closeModal}
+                            editor={selectedTask.editor_name || 'Unassigned'}
                         />
                     )}
 

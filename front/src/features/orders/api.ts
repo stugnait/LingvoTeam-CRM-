@@ -21,6 +21,7 @@ import {
     Currency, ClientListResponse, LanguageListResponse, EditorListResponse, CurrencyListResponse, CalculateStatsResponse, EditorsByLanguagePairResponse,
     AnalyzeUploadedImagesResponse
 } from "./types"
+import type {ExternalOrderFilesListResponse, ExternalOrderFolder} from "@/src/features/translator_order/types";
 
 
 export const ordersApi = {
@@ -35,6 +36,24 @@ export const ordersApi = {
         apiFetch<TranslatorListResponse>("translators/", {
             method: "GET",
         }),
+
+    listDownloadFiles: (orderId: number, folder: "source" | "target" = "source") =>
+        apiFetch<{ files: { id: number; name: string }[]; count: number }>(
+            `orders/${orderId}/download-files/${folder}/?list=1`, // Змінено тут
+            { method: "GET" }
+        ),
+
+    downloadAllFiles: (orderId: number, folder: "source" | "target" = "source") =>
+        apiFetch<Blob>(
+            `orders/${orderId}/download-files/${folder}/`, // Змінено тут
+            { method: "GET", responseType: "blob" }
+        ),
+
+    downloadFile: (orderId: number, folder: "source" | "target", fileId: number) =>
+        apiFetch<Blob>(
+            `orders/${orderId}/download-files/${folder}/${fileId}/`, // Змінено тут
+            { method: "GET", responseType: "blob" }
+        ),
 
     // Додаємо параметр onlyMine
     listOrders: (filters: {
