@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useMe } from "@/src/features/auth/hooks/useMe"
 import { apiFetch } from "@/src/shared/api/client"
-import { CrmHeader } from "@/src/components/dashboard/crm-header"
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import {
     Table,
@@ -68,7 +68,7 @@ export default function DashboardPage() {
         let isMounted = true;
 
         const fetchDashboardData = async () => {
-            if (userRole !== "admin") {
+            if (userRole !== "admin" && userRole !== "financier") {
                 setIsLoadingData(false);
                 return;
             }
@@ -125,7 +125,7 @@ export default function DashboardPage() {
     if (loading) {
         return (
             <>
-                <CrmHeader title="Dashboard" collapsed={false} />
+                <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
                     <p className="text-muted-foreground animate-pulse">Loading...</p>
                 </main>
@@ -146,7 +146,7 @@ export default function DashboardPage() {
 
         return (
             <>
-                <CrmHeader title="Editor Dashboard" collapsed={false} />
+                <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-6">
                     <div className="mx-auto max-w-7xl space-y-6">
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -216,7 +216,7 @@ export default function DashboardPage() {
 
         return (
             <>
-                <CrmHeader title="Manager Dashboard" collapsed={false} />
+                <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-6">
                     <div className="mx-auto max-w-7xl space-y-6">
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -285,12 +285,12 @@ export default function DashboardPage() {
         )
     }
 
-    if (userRole === "admin" ) {
+    if (userRole === "admin"|| userRole === "financier" ) {
 
         if (isLoadingData || !dashboardData) {
             return (
                 <>
-                    <CrmHeader title="Dashboard" collapsed={false} />
+                    <DashboardHeader />
                     <main className="flex-1 p-6 flex items-center justify-center">
                         <p className="text-muted-foreground animate-pulse">Завантаження аналітики...</p>
                     </main>
@@ -332,7 +332,7 @@ export default function DashboardPage() {
 
         return (
             <>
-                <CrmHeader title="Dashboard" collapsed={false} />
+                <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-6">
                     <div className="mx-auto max-w-7xl space-y-8 pb-10">
                         {currentTab === "finance" && (
@@ -582,7 +582,7 @@ export default function DashboardPage() {
     }
     return (
         <>
-            <CrmHeader title="Dashboard" collapsed={false} />
+            <DashboardHeader />
             <main className="flex-1 p-6 flex items-center justify-center">
                 <p className="text-muted-foreground">Оновіть сторінку або перевірте права доступу.</p>
             </main>
