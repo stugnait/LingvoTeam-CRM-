@@ -11,11 +11,10 @@ interface ComboboxOption {
     label: string
     searchText?: string
     meta?: any
-    description?: string
 }
 
 interface ComboboxProps {
-    options?: ComboboxOption[] | null  // Дозволяємо null та undefined
+    options?: ComboboxOption[] | null
     value?: string
     onChange: (value: string) => void
     placeholder?: string
@@ -29,7 +28,7 @@ interface ComboboxProps {
 }
 
 export function Combobox({
-                             options = [],  // Значення за замовчуванням
+                             options = [],
                              value,
                              onChange,
                              placeholder = "Select option",
@@ -42,20 +41,20 @@ export function Combobox({
     const [open, setOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")
 
-    // Безпечний пошук вибраної опції
     const selected = React.useMemo(() => {
-        if (!options || !Array.isArray(options)) {return undefined}
+        if (!options || !Array.isArray(options)) { return undefined }
         return options.find(o => o.value === value)
     }, [options, value])
 
-    // Фільтрація опцій
     const filteredOptions = React.useMemo(() => {
-        if (!options || !Array.isArray(options)) {return []}
-        if (!searchQuery) {return options}
+        if (!options || !Array.isArray(options)) { return [] }
+        if (!searchQuery) { return options }
 
         return options.filter(option => {
-            const searchText = (option.searchText || option.label).toLowerCase()
-            return searchText.includes(searchQuery.toLowerCase())
+            const searchText = (option.searchText || option.label || "").toLowerCase()
+            const query = searchQuery.toLowerCase()
+
+            return searchText.includes(query)
         })
     }, [options, searchQuery])
 
@@ -102,7 +101,6 @@ export function Combobox({
                         "data-[side=top]:slide-in-from-bottom-2"
                     )}
                 >
-                    {/* Пошук */}
                     {searchable && (
                         <div className="p-2 border-b bg-white">
                             <div className="relative">
@@ -119,7 +117,6 @@ export function Combobox({
                         </div>
                     )}
 
-                    {/* Список опцій з скролом */}
                     <ScrollArea.Root className="w-full" type="auto">
                         <ScrollArea.Viewport className="w-full max-h-[280px]">
                             <div className="p-2">
@@ -149,12 +146,11 @@ export function Combobox({
                                                         setSearchQuery("")
                                                     }}
                                                     className={cn(
-                                                        "relative flex w-full cursor-default select-none items-center rounded-lg py-2.5 pl-10 pr-4 text-sm",
-                                                        "outline-none transition-all duration-200",
-                                                        "focus:bg-accent/20 focus:text-accent-foreground",
-                                                        "hover:bg-accent/10 hover:pl-12",
+                                                        "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2.5 pl-9 pr-3 text-sm",
+                                                        "outline-none transition-colors duration-200",
+                                                        "hover:bg-accent/50",
                                                         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                                                        isSelected && "bg-accent/20 font-medium",
+                                                        isSelected && "bg-accent/20 font-medium text-accent-foreground",
                                                         "active:scale-[0.98]"
                                                     )}
                                                 >
@@ -163,10 +159,16 @@ export function Combobox({
                                                             <Check className="h-4 w-4 animate-in zoom-in-50 fade-in-0 duration-200 text-primary" />
                                                         )}
                                                     </span>
-                                                    <span className="flex-1 truncate">
-                                                        {option.label}
-                                                    </span>
-                                                    {renderOption && renderOption(option, isSelected)}
+
+                                                    {renderOption ? (
+                                                        <div className="flex-1 min-w-0 truncate">
+                                                            {renderOption(option, isSelected)}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="flex-1 min-w-0 truncate">
+                                                            {option.label}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             )
                                         })}
