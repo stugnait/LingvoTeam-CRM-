@@ -271,7 +271,6 @@ export function useOrders() {
                     return updated
                 })
             }
-
         } catch (e) {
             handleError(e, "Failed to load orders")
         } finally {
@@ -280,6 +279,31 @@ export function useOrders() {
     }, [handleError, languagePairs, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter])
 
 
+
+    const handleStatusChange = (val: string | number) => {
+        setStatusFilter(val)
+        loadOrders(1, isOnlyMineFilter, val, managerFilter, dateFromFilter, dateToFilter)
+    }
+
+    const handleManagerChange = (val: string | number) => {
+        setManagerFilter(val)
+        loadOrders(1, isOnlyMineFilter, statusFilter, val, dateFromFilter, dateToFilter)
+    }
+
+    const handleFilterChange = (onlyMine: boolean) => {
+        setIsOnlyMineFilter(onlyMine)
+        loadOrders(1, onlyMine, statusFilter, managerFilter, dateFromFilter, dateToFilter)
+    }
+
+    const handleDateFromChange = (val: string) => {
+        setDateFromFilter(val)
+        loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, val, dateToFilter)
+    }
+
+    const handleDateToChange = (val: string) => {
+        setDateToFilter(val)
+        loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, val)
+    }
 
     const refreshTranslators = useCallback(async () => {
         try {
@@ -514,6 +538,8 @@ export function useOrders() {
 
         page,
         totalPages,
+
+        // Стан фільтрів
         isOnlyMineFilter,
         setIsOnlyMineFilter,
         statusFilter,
@@ -523,7 +549,12 @@ export function useOrders() {
         dateFromFilter,
         setDateFromFilter,
         dateToFilter,
-        setDateToFilter,
+
+        handleFilterChange,
+        handleStatusChange,
+        handleManagerChange,
+        handleDateFromChange,
+        handleDateToChange,
 
         createOrder,
         loadOrders,

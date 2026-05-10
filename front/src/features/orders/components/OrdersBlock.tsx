@@ -35,6 +35,12 @@ import {
 } from "@/src/components/ui/dropdown-menu"
 
 import { Calendar } from "@/src/components/ui/calendar"
+// ДОДАНО ІМПОРТИ POPOVER
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/src/components/ui/popover"
 
 import type {
     OrderListItem,
@@ -66,7 +72,7 @@ interface OrdersTableProps {
     dateToFilter?: string
     onDateToChange?: (val: string) => void
 
-    editors?: any[]
+    managers?: any[]
 
     onOpen: (orderId: number) => Promise<Details>
     languagePairs: Record<number, LanguagePair>
@@ -98,7 +104,7 @@ export function OrdersTable({
                                 onDateFromChange,
                                 dateToFilter,
                                 onDateToChange,
-                                editors = [],
+                                managers = [],
                                 onOpen,
                                 languagePairs,
                                 translatorsCache,
@@ -160,7 +166,7 @@ export function OrdersTable({
     }
 
     return (
-        <div className="border border-border rounded-lg bg-card mx-4 my-6 shadow-soft overflow-hidden">
+        <div className="border border-border rounded-lg bg-card mx-4 my-6 shadow-soft relative z-10">
 
             {/* ПАНЕЛЬ ФІЛЬТРІВ */}
             <div className="flex flex-col xl:flex-row items-center justify-between p-4 border-b border-border bg-muted/10 gap-4">
@@ -203,14 +209,14 @@ export function OrdersTable({
                         <SelectTrigger className="w-full lg:w-[160px] bg-background">
                             <SelectValue placeholder="All Statuses" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[101]">
                             <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="1">Planned</SelectItem>
-                            <SelectItem value="2">To Do</SelectItem>
-                            <SelectItem value="3">In Progress</SelectItem>
-                            <SelectItem value="4">Reject</SelectItem>
-                            <SelectItem value="5">Pause</SelectItem>
-                            <SelectItem value="6">Done</SelectItem>
+                            <SelectItem value="5">Planned</SelectItem>
+                            <SelectItem value="6">To Do</SelectItem>
+                            <SelectItem value="7">In Progress</SelectItem>
+                            <SelectItem value="3">Reject</SelectItem>
+                            <SelectItem value="4">Pause</SelectItem>
+                            <SelectItem value="2">Done</SelectItem>
                         </SelectContent>
                     </Select>
 
@@ -222,11 +228,11 @@ export function OrdersTable({
                         <SelectTrigger className="w-full lg:w-[180px] bg-background">
                             <SelectValue placeholder="All Managers" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[101]">
                             <SelectItem value="all">All Managers</SelectItem>
-                            {editors.map(ed => (
-                                <SelectItem key={ed.id} value={String(ed.id)}>
-                                    {ed.full_name || ed.email}
+                            {managers.map(manager => (
+                                <SelectItem key={manager.id} value={String(manager.id)}>
+                                    {manager.full_name || manager.email}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -234,38 +240,31 @@ export function OrdersTable({
 
                     {/* Дати */}
                     <div className="flex flex-col lg:flex-row items-center gap-2 w-full xl:w-auto">
-                        {/* Дата Від */}
-                        <div
-                            className="relative w-full lg:w-auto group"
-                            tabIndex={-1}
-                            onBlur={(e) => {
-                                if (!e.currentTarget.contains(e.relatedTarget)) {
-                                    setIsFromCalendarOpen(false)
-                                }
-                            }}
-                        >
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                onClick={() => setIsFromCalendarOpen(!isFromCalendarOpen)}
-                                className={cn(
-                                    "flex h-10 w-full lg:w-[160px] items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-2 text-sm font-normal",
-                                    "backdrop-blur-sm transition-all duration-300",
-                                    "focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring",
-                                    "hover:bg-accent/10 hover:border-accent/30 shadow-sm hover:shadow-md"
-                                )}
-                            >
-                                <div className="flex items-center gap-2 truncate">
-                                    <CalendarIcon className="h-4 w-4 opacity-50" />
-                                    <span className={cn("truncate", dateFromFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
-                                        {dateFromFilter ? new Date(dateFromFilter).toLocaleDateString() : "Date From"}
-                                    </span>
-                                </div>
-                                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
-                            </Button>
 
-                            {isFromCalendarOpen && (
-                                <div className="absolute z-50 mt-1 bg-white border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+                        {/* ЗМІНЕНО НА POPOVER: Дата Від */}
+                        <div className="relative w-full lg:w-auto group">
+                            <Popover open={isFromCalendarOpen} onOpenChange={setIsFromCalendarOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                            "flex h-10 w-full lg:w-[170px] items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-2 text-sm font-normal",
+                                            "backdrop-blur-sm transition-all duration-300",
+                                            "focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring",
+                                            "hover:bg-accent/10 hover:border-accent/30 shadow-sm hover:shadow-md"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-2 truncate">
+                                            <CalendarIcon className="h-4 w-4 opacity-50" />
+                                            <span className={cn("truncate", dateFromFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
+                                                {dateFromFilter ? new Date(dateFromFilter).toLocaleDateString() : "Date From"}
+                                            </span>
+                                        </div>
+                                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 z-[150] rounded-2xl shadow-2xl border-border bg-white" align="start">
                                     <Calendar
                                         mode="single"
                                         selected={dateFromFilter ? new Date(dateFromFilter) : undefined}
@@ -277,44 +276,36 @@ export function OrdersTable({
                                         }}
                                         initialFocus
                                     />
-                                </div>
-                            )}
+                                </PopoverContent>
+                            </Popover>
                         </div>
 
                         <span className="text-muted-foreground hidden lg:inline-block">-</span>
 
-                        {/* Дата До */}
-                        <div
-                            className="relative w-full lg:w-auto group"
-                            tabIndex={-1}
-                            onBlur={(e) => {
-                                if (!e.currentTarget.contains(e.relatedTarget)) {
-                                    setIsToCalendarOpen(false)
-                                }
-                            }}
-                        >
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                onClick={() => setIsToCalendarOpen(!isToCalendarOpen)}
-                                className={cn(
-                                    "flex h-10 w-full lg:w-[160px] items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-2 text-sm font-normal",
-                                    "backdrop-blur-sm transition-all duration-300",
-                                    "focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring",
-                                    "hover:bg-accent/10 hover:border-accent/30 shadow-sm hover:shadow-md"
-                                )}
-                            >
-                                <div className="flex items-center gap-2 truncate">
-                                    <CalendarIcon className="h-4 w-4 opacity-50" />
-                                    <span className={cn("truncate", dateToFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
-                                        {dateToFilter ? new Date(dateToFilter).toLocaleDateString() : "Date To"}
-                                    </span>
-                                </div>
-                                <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
-                            </Button>
-
-                            {isToCalendarOpen && (
-                                <div className="absolute right-0 z-50 mt-1 bg-white border border-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95">
+                        {/* ЗМІНЕНО НА POPOVER: Дата До */}
+                        <div className="relative w-full lg:w-auto group">
+                            <Popover open={isToCalendarOpen} onOpenChange={setIsToCalendarOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                            "flex h-10 w-full lg:w-[170px] items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-2 text-sm font-normal",
+                                            "backdrop-blur-sm transition-all duration-300",
+                                            "focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring",
+                                            "hover:bg-accent/10 hover:border-accent/30 shadow-sm hover:shadow-md"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-2 truncate">
+                                            <CalendarIcon className="h-4 w-4 opacity-50" />
+                                            <span className={cn("truncate", dateToFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
+                                                {dateToFilter ? new Date(dateToFilter).toLocaleDateString() : "Date To"}
+                                            </span>
+                                        </div>
+                                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 z-[150] rounded-2xl shadow-2xl border-border bg-white" align="start">
                                     <Calendar
                                         mode="single"
                                         selected={dateToFilter ? new Date(dateToFilter) : undefined}
@@ -326,8 +317,8 @@ export function OrdersTable({
                                         }}
                                         initialFocus
                                     />
-                                </div>
-                            )}
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     </div>
                 </div>
@@ -470,7 +461,7 @@ export function OrdersTable({
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
+                                                <DropdownMenuContent align="end" className="z-[101]">
                                                     <DropdownMenuItem onClick={() => onEdit(order)}>
                                                         <Pencil className="h-4 w-4 mr-2" /> Edit
                                                     </DropdownMenuItem>
