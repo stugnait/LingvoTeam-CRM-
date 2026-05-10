@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
 import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
+import { PatternFormat } from 'react-number-format'
 import {
     User,
     Languages,
@@ -653,10 +654,19 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         value={form.email}
                         onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                     />
-                    <Input
-                        placeholder="Phone"
+                    <PatternFormat
+                        format="+38 (###) ###-##-##"
+                        allowEmptyFormatting
+                        mask="_"
                         value={form.phone}
-                        onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                        customInput={Input}
+                        type="tel"
+                        onValueChange={(values) => {
+                            setForm(prev => ({
+                                ...prev,
+                                phone: values.formattedValue,
+                            }))
+                        }}
                     />
                     <div className="grid grid-cols-2 gap-4">
                         <Input

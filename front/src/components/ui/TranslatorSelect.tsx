@@ -240,13 +240,17 @@ export function TranslatorSelect({
                                                         <span className="whitespace-nowrap">• {Number(mi.percent).toFixed(1)}%</span>
                                                     )}
 
-                                                    {match && (
-                                                        <span className="whitespace-nowrap">| {match.lp} {match.cat}</span>
+                                                    {/* ФОЛБЕК ДЛЯ МОВНОЇ ПАРИ (працює і для Quick Create) */}
+                                                    {orderTrafficId && (
+                                                        <span className="whitespace-nowrap">
+                                                            | {match?.lp || "Нема мовної пари"} {match?.cat || "Нема категорії"}
+                                                        </span>
                                                     )}
 
-                                                    {translator.rating && (
-                                                        <span className="whitespace-nowrap">| ⭐ {translator.rating}</span>
-                                                    )}
+                                                    {/* ВИПРАВЛЕНИЙ РЕЙТИНГ (відобразить 0, якщо значення немає або воно = 0) */}
+                                                    <span className="whitespace-nowrap">
+                                                        | ⭐ {translator.rating ?? 0}
+                                                    </span>
 
                                                     {translator.specializations && translator.specializations.length > 0 && (
                                                         <span className="truncate">| {translator.specializations.slice(0, 2).join(", ")}</span>
