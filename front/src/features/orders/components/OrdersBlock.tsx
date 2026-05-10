@@ -568,19 +568,19 @@ export function OrdersTable({
                                                                 <span className="text-xl font-bold text-foreground">{details.page_count}</span>
                                                             </div>
                                                             <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Symbols</span>
+                                                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Images</span>
                                                                 {/* Використовуй chars_with_spaces, якщо symbols_count не приходить окремо */}
                                                                 <span className="text-xl font-bold text-foreground">
-                                                                    {details.symbols_count ?? details.chars_with_spaces}
+                                                                    {details.images_count}
                                                                 </span>
                                                             </div>
                                                             <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
-                                                                <span className="text-xl font-bold text-foreground">{details.chars_with_spaces}</span>
+                                                                <span className="text-xl font-bold text-foreground">{details.symbols_with_spaces_count}</span>
                                                             </div>
                                                             <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (no spaces)</span>
-                                                                <span className="text-xl font-bold text-foreground">{details.chars_no_spaces}</span>
+                                                                <span className="text-xl font-bold text-foreground">{details.symbols_count}</span>
                                                             </div>
                                                         </div>
 

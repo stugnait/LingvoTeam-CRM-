@@ -23,7 +23,8 @@ import { Combobox } from "@/src/components/ui/Combobox"
 import { TranslatorSelect } from "@/src/components/ui/TranslatorSelect"
 import { FileUpload } from "@/src/components/ui/FileUpload"
 import { DeadlineSelector } from "@/src/components/ui/DeadlineSelector"
-import { Priority, PrioritySelector } from "@/src/components/ui/PrioritySelector"
+import type { Priority} from "@/src/components/ui/PrioritySelector";
+import { PrioritySelector } from "@/src/components/ui/PrioritySelector"
 import { useOrderAnalysis } from "@/src/features/orders/hooks/useOrderAnalysis"
 import { ordersApi } from "@/src/features/orders/api"
 
@@ -188,25 +189,25 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const stepError = (step: number): string | null => {
         switch (step) {
             case 0:
-                if (!clientId) return "Оберіть клієнта"
-                if (!sourceLanguage) return "Оберіть мову оригіналу"
-                if (!targetLanguage) return "Оберіть мову перекладу"
-                if (!files.length) return "Завантажте хоча б один файл"
-                if (!filesConfirmed) return "Підтвердіть файли кнопкою «Confirm files»"
+                if (!clientId) {return "Оберіть клієнта"}
+                if (!sourceLanguage) {return "Оберіть мову оригіналу"}
+                if (!targetLanguage) {return "Оберіть мову перекладу"}
+                if (!files.length) {return "Завантажте хоча б один файл"}
+                if (!filesConfirmed) {return "Підтвердіть файли кнопкою «Confirm files»"}
                 return null
             case 1:
-                if (!trafficId) return "Оберіть тариф"
-                if (!currencyId) return "Оберіть валюту"
+                if (!trafficId) {return "Оберіть тариф"}
+                if (!currencyId) {return "Оберіть валюту"}
                 return null
             case 2:
-                if (!selectedTranslatorId) return "Оберіть перекладача"
-                if (!editor) return "Оберіть редактора"
-                if (!managerAccept) return "Оберіть менеджера на прийом"
-                if (!managerDelivery) return "Оберіть менеджера на здачу"
+                if (!selectedTranslatorId) {return "Оберіть перекладача"}
+                if (!editor) {return "Оберіть редактора"}
+                if (!managerAccept) {return "Оберіть менеджера на прийом"}
+                if (!managerDelivery) {return "Оберіть менеджера на здачу"}
                 return null
             case 3:
-                if (!priority) return "Оберіть пріоритет"
-                if (!deadline) return "Вкажіть дедлайн"
+                if (!priority) {return "Оберіть пріоритет"}
+                if (!deadline) {return "Вкажіть дедлайн"}
                 return null
             default:
                 return null
@@ -295,9 +296,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     }, [sourceLanguage, targetLanguage, editors])
 
     useEffect(() => {
-        if (!filesConfirmed) return
-        if (!trafficId) return
-        if (!files.length) return
+        if (!filesConfirmed) {return}
+        if (!trafficId) {return}
+        if (!files.length) {return}
         handleCalculatePrice()
     }, [filesConfirmed, trafficId, selectedTranslatorId])
 
@@ -385,6 +386,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             <div className="bg-gray-100 p-4 rounded-lg text-sm">
                                 <p>Pages: {statsResult.total_stats.physical_pages}</p>
                                 <p>Chars (with spaces): {statsResult.total_stats.chars_with_spaces}</p>
+                                <p>Chars (without spaces): {statsResult.total_stats.chars_no_spaces}</p>
                                 <p>Images: {statsResult.total_stats.images}</p>
                             </div>
                         )}

@@ -56,9 +56,8 @@ export interface Details {
     // Поля статистики
     page_count: number
     images_count: number
-    chars_with_spaces: number
-    chars_no_spaces: number
-    symbols_count?: number
+    symbols_with_spaces_count: number
+    symbols_count: number
     client_id?: number
     translator_id?: number
 }

@@ -285,8 +285,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Розділяємо збереження символів
         order.symbols_count = stats_data["total_stats"]["chars_no_spaces"]
         order.symbols_with_spaces_count = stats_data["total_stats"]["chars_with_spaces"]
-
         order.page_count = stats_data["total_stats"]["physical_pages"]
+        order.images_count = stats_data["total_stats"]["images"]  # ← додати
 
         if order.traffic_id:
             order.total_amount = Decimal(order.page_count) * Decimal(order.traffic_id.price_per_page)
