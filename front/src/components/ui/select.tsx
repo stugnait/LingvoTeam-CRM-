@@ -56,10 +56,10 @@ const SelectContent = React.forwardRef<
     const contentRef = React.useRef<HTMLDivElement>(null)
 
     const filteredChildren = React.useMemo(() => {
-        if (!searchable || !search) return children
+        if (!searchable || !search) {return children}
 
         return React.Children.map(children, (child: any) => {
-            if (!child?.props?.children) return child
+            if (!child?.props?.children) {return child}
 
             const text = String(child.props.children).toLowerCase()
 
@@ -135,8 +135,15 @@ const SelectContent = React.forwardRef<
                 )}
 
                 <SelectPrimitive.Viewport className="p-2 max-h-72">
-                {filteredChildren}
+                    {React.Children.count(filteredChildren) === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground/70">
+                            Нічого немає
+                        </div>
+                    ) : (
+                        filteredChildren
+                    )}
                 </SelectPrimitive.Viewport>
+
             </SelectPrimitive.Content>
         </SelectPrimitive.Portal>
     )
