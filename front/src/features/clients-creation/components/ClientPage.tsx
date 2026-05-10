@@ -11,6 +11,8 @@ import {
 
 import { Plus } from "lucide-react"
 
+import { PatternFormat } from 'react-number-format'
+
 import { ClientTable } from "./ClientTable"
 
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
@@ -43,7 +45,7 @@ export function ClientPage() {
 
         form,
         setForm,
-        errors, 
+        errors,
 
         openAddClient,
         openEditClient,
@@ -198,16 +200,20 @@ export function ClientPage() {
                     </div>
 
                     <div>
-                        <Input
-                            placeholder="Phone"
+                        <PatternFormat
+                            format="+38 (###) ###-##-##"
+                            allowEmptyFormatting
+                            mask="_"
                             value={form.phone_number}
+                            customInput={Input} // 👈 Використовуємо твій Input
+                            type="tel"
                             className={errors?.phone_number ? "border-red-500" : ""}
-                            onChange={(e) =>
+                            onValueChange={(values) => {
                                 setForm(prev => ({
                                     ...prev,
-                                    phone_number: e.target.value,
+                                    phone_number: values.formattedValue,
                                 }))
-                            }
+                            }}
                         />
                         {errors.phone_number && (
                             <p className="text-red-500 text-sm mt-1">

@@ -10,6 +10,8 @@ import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
 
+import { PatternFormat } from 'react-number-format'
+
 import {
     Card,
     CardContent,
@@ -100,7 +102,6 @@ export default function TranslatorsPage() {
                                 Search translators by name or email
                             </CardDescription>
                         </CardHeader>
-
                         <CardContent>
                             <TranslatorsFilters
                                 search={search}
@@ -189,16 +190,20 @@ export default function TranslatorsPage() {
                     </div>
 
                     <div>
-                        <Input
-                            placeholder="Phone"
+                        <PatternFormat
+                            format="+38 (###) ###-##-##"
+                            allowEmptyFormatting
+                            mask="_"
                             value={form.phone}
+                            customInput={Input}
+                            type="tel"
                             className={errors?.phone ? "border-red-500" : ""}
-                            onChange={(e) =>
+                            onValueChange={(values) => {
                                 setForm(prev => ({
                                     ...prev,
-                                    phone: e.target.value,
+                                    phone: values.formattedValue,
                                 }))
-                            }
+                            }}
                         />
                         {errors?.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
                     </div>
