@@ -213,8 +213,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        source_id = serializer.validated_data.pop('source_language')
-        target_id = serializer.validated_data.pop('target_language')
+        source_id = serializer.validated_data.pop('source_language_id')
+        target_id = serializer.validated_data.pop('target_language_id')
 
         serializer.validated_data.pop('files', None)
 

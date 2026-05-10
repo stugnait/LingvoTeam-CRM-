@@ -25,20 +25,38 @@ class LanguageSerializer(serializers.ModelSerializer):
 class LanguagePairSelectSerializer(serializers.ModelSerializer):
     source_language = serializers.PrimaryKeyRelatedField(queryset=Language.objects.all())
     target_language = serializers.PrimaryKeyRelatedField(queryset=Language.objects.all())
-
     pair_name = serializers.SerializerMethodField()
 
     class Meta:
         model = LanguagePair
         fields = ['id', 'source_language', 'target_language', 'pair_name']
 
-    def __str__(self):
-        return f"{self.source_language} -> {self.target_language}"
-
     def get_pair_name(self, obj):
         s_name = obj.source_language.name if obj.source_language else "???"
         t_name = obj.target_language.name if obj.target_language else "???"
         return f"{s_name} -> {t_name}"
+
+    def validate(self, attrs):
+        source = attrs.get('source_language')
+        target = attrs.get('target_language')
+
+        if source and target:
+            if source == target:
+                raise serializers.ValidationError({
+                    "non_field_errors": ["Мови джерела і перекладу не можуть бути однаковими."]
+                })
+
+            # При створенні — перевіряємо чи вже існує
+            if not self.instance:
+                if LanguagePair.objects.filter(
+                    source_language=source,
+                    target_language=target
+                ).exists():
+                    raise serializers.ValidationError({
+                        "non_field_errors": ["Така мовна пара вже існує."]
+                    })
+
+        return attrs
 
 
 class TransactionSerializer(serializers.ModelSerializer):

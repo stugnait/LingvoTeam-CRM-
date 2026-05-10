@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction, models
 
+from apps.core.models.language_pair import LanguagePair
 from apps.orders.models import OrderTraffic, Order, File, OrderStatusHistory, Status
 
 
@@ -16,33 +17,67 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
     currency_sign = serializers.CharField(source='currency_id.code_name', read_only=True, default="")
     category_name = serializers.CharField(source='category.name', read_only=True, default="Загальна")
 
-    source_language = serializers.CharField(source='language_pair.source_language.name', default="-", read_only=True)
-    target_language = serializers.CharField(source='language_pair.target_language.name', default="-", read_only=True)
-
+    # read-only — повертає назви мов
+    source_language_name = serializers.CharField(source='language_pair.source_language.name', default="-", read_only=True)
+    target_language_name = serializers.CharField(source='language_pair.target_language.name', default="-", read_only=True)
     language_pair_name = serializers.SerializerMethodField()
+
+    # write-only — приймає ID мов
+    source_language = serializers.IntegerField(write_only=True, required=False)
+    target_language = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = OrderTraffic
         fields = [
-            'id',
-            'name',
+            'id', 'name',
             'language_pair',
-            'currency_id',
-            'category',
-            'price_per_page',
-            'price_per_action',
-            'language_pair_name',
             'source_language',
             'target_language',
-            'currency_name',
-            'currency_sign',
-            'category_name',
+            'currency_id', 'category',
+            'price_per_page', 'price_per_action',
+            'language_pair_name',
+            'source_language_name',
+            'target_language_name',
+            'currency_name', 'currency_sign', 'category_name',
         ]
+        extra_kwargs = {
+            'language_pair': {'read_only': True},
+        }
 
     def get_language_pair_name(self, obj):
         if obj.language_pair:
             return str(obj.language_pair)
         return "-"
+
+    def _resolve_language_pair(self, validated_data):
+        source_id = validated_data.pop('source_language')
+        target_id = validated_data.pop('target_language')
+        pair, _ = LanguagePair.objects.get_or_create(
+            source_language_id=source_id,
+            target_language_id=target_id,
+        )
+        return pair
+
+    def create(self, validated_data):
+        if 'source_language' not in validated_data or 'target_language' not in validated_data:
+            raise serializers.ValidationError({
+                "source_language": "This field is required on create."
+            })
+        validated_data['language_pair'] = self._resolve_language_pair(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if 'source_language' in validated_data or 'target_language' in validated_data:
+            validated_data.setdefault(
+                'source_language',
+                instance.language_pair.source_language_id if instance.language_pair else None
+            )
+            validated_data.setdefault(
+                'target_language',
+                instance.language_pair.target_language_id if instance.language_pair else None
+            )
+            instance.language_pair = self._resolve_language_pair(validated_data)
+        return super().update(instance, validated_data)
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -79,7 +114,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'translator_status',
         ]
         read_only_fields = ['page_count', 'symbols_count']
-
         extra_kwargs = {
             'language_pair_id': {'read_only': True},
             'translator_status': {'required': False},
@@ -107,12 +141,9 @@ class OrderStatusHistorySerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'created_at',
-            'status',
-            'status_name',
-            'client_status',
-            'client_status_name',
-            'translator_status',
-            'translator_status_name'
+            'status', 'status_name',
+            'client_status', 'client_status_name',
+            'translator_status', 'translator_status_name',
         ]
 
 
@@ -132,7 +163,6 @@ class OrderListSerializer(serializers.ModelSerializer):
     target_language = serializers.CharField(source='language_pair_id.target_language.name', default="-", read_only=True)
 
     language_pair_name = serializers.SerializerMethodField()
-
     manager_avatar = serializers.ImageField(source='manager_id.avatar', read_only=True)
 
     class Meta:
@@ -147,17 +177,14 @@ class OrderListSerializer(serializers.ModelSerializer):
             'status_id', 'status_name',
             'history',
             'traffic_id', 'translator_traffic_id',
-
             'language_pair_id', 'language_pair_name',
-            'source_language',
-            'target_language',
-
+            'source_language', 'target_language',
             'priority', 'priority_display',
             'page_count', 'symbols_count',
             'deadline', 'flex_deadline',
             'created_at',
             'client_comment', 'translator_comment',
-            'manager_avatar'
+            'manager_avatar',
         ]
 
     def get_language_pair_name(self, order):
