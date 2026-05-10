@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { cn } from "@/src/lib/utils"
+import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 
 import {
     Table,
@@ -167,6 +168,8 @@ export default function FinanceTablePage() {
     const colSpanCount = isManager ? 8 : (isTranslator ? 11 : 10);
 
     return (
+        <>
+        <DashboardHeader />
         <div className="flex flex-col h-full min-h-screen bg-background p-6">
             <div className="mb-6 mx-4 flex items-center justify-between">
                 <div>
@@ -369,5 +372,6 @@ export default function FinanceTablePage() {
                 </div>
             </div>
         </div>
+        </>
     )
 }
