@@ -213,8 +213,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        source_id = serializer.validated_data.pop('source_language_id')
-        target_id = serializer.validated_data.pop('target_language_id')
+        source_id = serializer.validated_data.pop('source_language')
+        target_id = serializer.validated_data.pop('target_language')
 
         serializer.validated_data.pop('files', None)
 
@@ -288,7 +288,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.page_count = stats_data["total_stats"]["physical_pages"]
         order.images_count = stats_data["total_stats"]["images"]  # ← додати
 
-        if order.traffic_id:
+        if raw_amount and str(raw_amount).strip():
+            # Ціна прийшла з фронту — залишаємо як є
+            pass
+        elif order.traffic_id:
+            # Ціна не передана — рахуємо автоматично
             order.total_amount = Decimal(order.page_count) * Decimal(order.traffic_id.price_per_page)
 
         order.save()

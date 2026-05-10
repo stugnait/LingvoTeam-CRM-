@@ -16,6 +16,7 @@ export interface CreateOrderPayload {
     files?: File[]
     manager_accept_id?: number
     manager_delivery_id?: number
+    total_amount?: string
 }
 
 export interface CreateOrderResponse {
