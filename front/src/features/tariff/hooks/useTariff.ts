@@ -2,19 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useToast } from "@/src/hooks/use-toast"
-import { tariffApi } from "../api"
+import { tariffApi, languagePairApi } from "../api"
 import { ordersApi } from "@/src/features/orders/api"
 
-import type {
-    Tariff,
-    TariffsFormData,
-    Categories
-} from "../types"
-
-import type {
-    Currency,
-    Language,
-} from "@/src/features/orders/types"
+import type { Tariff, TariffsFormData, Categories } from "../types"
+import type { Currency, Language, LanguagePair } from "@/src/features/orders/types"
 
 export function useTariffs() {
     const { toast } = useToast()
@@ -23,6 +15,7 @@ export function useTariffs() {
     const [currencies, setCurrencies] = useState<Currency[]>([])
     const [languages, setLanguages] = useState<Language[]>([])
     const [categories, setCategories] = useState<Categories[]>([])
+    const [languagePairs, setLanguagePairs] = useState<LanguagePair[]>([])
 
     const [loading, setLoading] = useState(false)
 
@@ -30,12 +23,18 @@ export function useTariffs() {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
+    const [isNewPairModalOpen, setIsNewPairModalOpen] = useState(false)
+    const [newPairForm, setNewPairForm] = useState({ source_language: 0, target_language: 0 })
+    const [newPairLoading, setNewPairLoading] = useState(false)
+
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
 
     const [form, setForm] = useState<TariffsFormData>({
         name: "",
-        language_pair: 0,
+        language_pair_id: 0,
+        source_language: 0,
+        target_language: 0,
         currency_id: 0,
         category: 0,
         price_per_page: "",
@@ -43,6 +42,78 @@ export function useTariffs() {
     })
 
     const [errors, setErrors] = useState<Partial<Record<keyof TariffsFormData, string>>>({})
+
+    // -------------------------
+    // Load
+    // -------------------------
+    const loadTariffs = useCallback(async (pageNumber: number = 1) => {
+        try {
+            const response = await tariffApi.listTariff(pageNumber)
+            setAllTariffs(response.results)
+            setTotalPages(Math.ceil((response.count || 0) / 10))
+            setPage(pageNumber)
+        } catch {
+            toast({ title: "Error", description: "Failed to load tariffs", variant: "error" })
+        }
+    }, [toast])
+
+    const loadCurrencies = useCallback(async () => {
+        try {
+            const response = await ordersApi.listCurrency()
+            setCurrencies(response.results)
+        } catch {
+            toast({ title: "Error", description: "Failed to load currencies", variant: "error" })
+        }
+    }, [toast])
+
+    const loadCategories = useCallback(async () => {
+        try {
+            const response = await tariffApi.listCategories()
+            setCategories(response.results)
+        } catch {
+            toast({ title: "Error", description: "Failed to load categories", variant: "error" })
+        }
+    }, [toast])
+
+    const loadLanguages = useCallback(async () => {
+        try {
+            const response = await ordersApi.listLanguages()
+            setLanguages(response.results)
+        } catch {
+            toast({ title: "Error", description: "Failed to load languages", variant: "error" })
+        }
+    }, [toast])
+
+    const loadLanguagePairs = useCallback(async () => {
+        try {
+            const response = await languagePairApi.list()
+            setLanguagePairs(response.results)
+        } catch {
+            toast({ title: "Error", description: "Failed to load language pairs", variant: "error" })
+        }
+    }, [toast])
+
+    useEffect(() => {
+        const init = async () => {
+            setLoading(true)
+            await Promise.all([
+                loadTariffs(1),
+                loadCurrencies(),
+                loadLanguages(),
+                loadCategories(),
+                loadLanguagePairs(),
+            ])
+            setLoading(false)
+        }
+        void init()
+    }, [loadTariffs, loadCurrencies, loadLanguages, loadCategories, loadLanguagePairs])
+
+    // -------------------------
+    // Modals
+    // -------------------------
+    const onPageChange = (newPage: number) => {
+        void loadTariffs(newPage)
+    }
 
     const openDeleteTariff = (tariff: Tariff) => {
         setSelectedTariff(tariff)
@@ -56,121 +127,13 @@ export function useTariffs() {
         setErrors({})
     }
 
-    const confirmDelete = async () => {
-        if (!selectedTariff) {return}
-
-        try {
-            await tariffApi.deleteTariff(selectedTariff.id)
-
-            toast({
-                title: "Tariff deleted",
-                description: `${selectedTariff.name} removed`,
-            })
-
-            closeModals()
-            await loadTariffs(page)
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to delete tariff",
-                variant: "error",
-            })
-        }
-    }
-
-    // -------------------------
-    // Load tariffs
-    // -------------------------
-    const loadTariffs = useCallback(async (pageNumber: number = 1) => {
-        try {
-            const response = await tariffApi.listTariff(pageNumber)
-            setAllTariffs(response.results)
-            setTotalPages(Math.ceil((response.count || 0) / 10))
-            setPage(pageNumber)
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to load tariffs",
-                variant: "error",
-            })
-        }
-    }, [toast])
-
-    const onPageChange = (newPage: number) => {
-        void loadTariffs(newPage)
-    }
-
-    // -------------------------
-    // Load currencies
-    // -------------------------
-    const loadCurrencies = useCallback(async () => {
-        try {
-            const response = await ordersApi.listCurrency()
-            setCurrencies(response.results)
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to load categories",
-                variant: "error",
-            })
-        }
-    }, [toast])
-
-    const loadCategories = useCallback(async () => {
-        try {
-            const response = await tariffApi.listCategories()
-            setCategories(response.results)
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to load currencies",
-                variant: "error",
-            })
-        }
-    }, [toast])
-
-    // -------------------------
-    // Load languages
-    // -------------------------
-    const loadLanguages = useCallback(async () => {
-        try {
-            const response = await ordersApi.listLanguages()
-            setLanguages(response.results)
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to load languages",
-                variant: "error",
-            })
-        }
-    }, [toast])
-
-    // -------------------------
-    // Initial load
-    // -------------------------
-    useEffect(() => {
-        const init = async () => {
-            setLoading(true)
-            await Promise.all([
-                loadTariffs(1),
-                loadCurrencies(),
-                loadLanguages(),
-                loadCategories()
-            ])
-            setLoading(false)
-        }
-
-        void init()
-    }, [loadTariffs, loadCurrencies, loadLanguages, loadCategories])
-
-    // -------------------------
-    // Modal handlers
-    // -------------------------
     const openAddTariff = () => {
         setSelectedTariff(null)
         setForm({
             name: "",
-            language_pair: 0,
+            language_pair_id: 0,
+            source_language: 0,
+            target_language: 0,
             currency_id: 0,
             category: 0,
             price_per_page: "",
@@ -184,7 +147,9 @@ export function useTariffs() {
         setSelectedTariff(tariff)
         setForm({
             name: tariff.name,
-            language_pair: tariff.language_pair,
+            language_pair_id: tariff.language_pair?.id ?? 0,
+            source_language: tariff.language_pair?.source_language ?? 0,
+            target_language: tariff.language_pair?.target_language ?? 0,
             currency_id: tariff.currency_id,
             category: tariff.category,
             price_per_page: tariff.price_per_page,
@@ -194,84 +159,119 @@ export function useTariffs() {
         setIsFormOpen(true)
     }
 
+    const confirmDelete = async () => {
+        if (!selectedTariff) return
+
+        try {
+            await tariffApi.deleteTariff(selectedTariff.id)
+            toast({ title: "Tariff deleted", description: `${selectedTariff.name} removed` })
+            closeModals()
+            await loadTariffs(page)
+        } catch {
+            toast({ title: "Error", description: "Failed to delete tariff", variant: "error" })
+        }
+    }
 
     // -------------------------
-    // Submit
+    // New language pair
+    // -------------------------
+    const createAndSelectPair = async () => {
+        if (!newPairForm.source_language || !newPairForm.target_language) {
+            toast({ title: "Error", description: "Select both languages", variant: "error" })
+            return
+        }
+        if (newPairForm.source_language === newPairForm.target_language) {
+            toast({ title: "Error", description: "Languages must be different", variant: "error" })
+            return
+        }
+
+        setNewPairLoading(true)
+        try {
+            const created = await languagePairApi.create(
+                newPairForm.source_language,
+                newPairForm.target_language
+            )
+
+            await loadLanguagePairs()
+
+            setForm(prev => ({
+                ...prev,
+                language_pair_id: created.id,
+                source_language: newPairForm.source_language,  // ← беремо з форми, бо в LanguagePair немає цих полів
+                target_language: newPairForm.target_language,
+            }))
+
+            setIsNewPairModalOpen(false)
+            setNewPairForm({ source_language: 0, target_language: 0 })  // ← виправлено
+
+            toast({
+                title: "Пару створено",
+                description: created.pair_name,  // ← просто pair_name
+            })
+        } catch (err: any) {
+            const msg = err?.non_field_errors?.[0]
+                ?? err?.detail
+                ?? "Failed to create language pair"
+            toast({ title: "Помилка", description: msg, variant: "error" })
+        } finally {
+            setNewPairLoading(false)
+        }
+    }
+
+    // -------------------------
+    // Submit tariff
     // -------------------------
     const submitTariff = async (data: TariffsFormData) => {
         try {
-            // -------- Validation --------
             const newErrors: Partial<Record<keyof TariffsFormData, string>> = {}
 
-            if (!data.name.trim()) {
-                newErrors.name = "Tariff name is required"
-            }
-            if (!data.language_pair) {
-                newErrors.language_pair = "Please select a language pair"
-            }
-            if (!data.currency_id) {
-                newErrors.currency_id = "Please select a currency"
-            }
-            if (!data.category) {
-                newErrors.category = "Please select a category"
-            }
-
-            if (!data.price_per_page || Number(data.price_per_page) <= 0) {
+            if (!data.name.trim()) newErrors.name = "Tariff name is required"
+            if (!data.language_pair_id) newErrors.language_pair_id = "Please select a language pair"
+            if (!data.currency_id) newErrors.currency_id = "Please select a currency"
+            if (!data.category) newErrors.category = "Please select a category"
+            if (!data.price_per_page || Number(data.price_per_page) <= 0)
                 newErrors.price_per_page = "Price per page must be greater than 0"
-            }
-            if (!data.price_per_action || Number(data.price_per_action) <= 0) {
+            if (!data.price_per_action || Number(data.price_per_action) <= 0)
                 newErrors.price_per_action = "Price per action must be greater than 0"
-            }
 
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors)
-                toast({
-                    title: "Validation error",
-                    description: "Please check the form fields",
-                    variant: "error",
-                })
+                toast({ title: "Validation error", description: "Please check the form fields", variant: "error" })
                 return
             }
 
             setErrors({})
 
-            // -------- Transform payload --------
             const payload = {
-                ...data,
+                name: data.name,
+                source_language: data.source_language,
+                target_language: data.target_language,
+                currency_id: data.currency_id,
+                category: data.category,
                 price_per_page: Number(data.price_per_page),
                 price_per_action: Number(data.price_per_action),
             }
 
-            // -------- API --------
             if (selectedTariff) {
-                await tariffApi.updateTariff(
-                    selectedTariff.id,
-                    JSON.stringify(payload)
-                )
-
-                toast({
-                    title: "Tariff updated",
-                    description: `${data.name} updated successfully`,
-                })
+                await tariffApi.updateTariff(selectedTariff.id, JSON.stringify(payload))
+                toast({ title: "Tariff updated", description: `${data.name} updated successfully` })
             } else {
-                await tariffApi.createTariff(
-                    JSON.stringify(payload)
-                )
-
-                toast({
-                    title: "Tariff created",
-                    description: `${data.name} created successfully`,
-                })
+                await tariffApi.createTariff(JSON.stringify(payload))
+                toast({ title: "Tariff created", description: `${data.name} created successfully` })
             }
 
             closeModals()
             await loadTariffs(page)
-        } catch {
-            toast({
-                title: "Error",
-                description: "Failed to save tariff",
-                variant: "error",
-            })
+        } catch (err: any) {
+            const detail = err?.response?.data?.language_pair?.[0]
+                ?? err?.response?.data?.detail
+                ?? "Failed to save tariff"
+
+            if (err?.response?.data?.language_pair) {
+                setErrors(prev => ({ ...prev, language_pair_id: detail }))
+            }
+
+            toast({ title: "Error", description: detail, variant: "error" })
         }
     }
 
@@ -280,7 +280,9 @@ export function useTariffs() {
         currencies,
         categories,
         languages,
+        languagePairs,
         loading,
+
         isDeleteOpen,
         openDeleteTariff,
         confirmDelete,
@@ -291,13 +293,20 @@ export function useTariffs() {
 
         selectedTariff,
         isFormOpen,
-
         openAddTariff,
         openEditTariff,
         closeModals,
         submitTariff,
+
         page,
         totalPages,
         onPageChange,
+
+        isNewPairModalOpen,
+        setIsNewPairModalOpen,
+        newPairForm,
+        setNewPairForm,
+        newPairLoading,
+        createAndSelectPair,
     }
 }
