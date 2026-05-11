@@ -235,14 +235,24 @@ export function MainPnL() {
 
                     <Input
                         type="number"
+                        min="0"
+                        step="any"
                         placeholder="Amount"
-                        value={form.amount}
-                        onChange={(e) =>
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        onKeyDown={(e) => {
+                            if (["-", "e", "E", "+"].includes(e.key)) {
+                                e.preventDefault();
+                            }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        value={form.amount === 0 ? "" : form.amount}
+                        onChange={(e) => {
+                            const val = e.target.value;
                             setForm(prev => ({
                                 ...prev,
-                                amount: Number(e.target.value),
+                                amount: val === "" ? 0 : Math.max(0, Number(val)),
                             }))
-                        }
+                        }}
                     />
 
                     <Select

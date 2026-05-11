@@ -109,14 +109,27 @@ export default function ClientCategoriesPage() {
 
                     <Input
                         type="number"
+                        min="0"
                         placeholder="Discount (%)"
-                        value={form.discount}
-                        onChange={(e) =>
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        onKeyDown={(e) => {
+                            if (["-", "e", "E", "+"].includes(e.key)) {
+                                e.preventDefault();
+                            }
+                        }}
+                        // При фокусі виділяємо текст, щоб нове число затирало "0"
+                        onFocus={(e) => e.target.select()}
+                        value={form.discount === 0 ? "" : form.discount}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            // Якщо поле порожнє, залишаємо 0, інакше парсимо в число
+                            const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
+
                             setForm((prev) => ({
                                 ...prev,
-                                discount: Number(e.target.value),
+                                discount: numericValue,
                             }))
-                        }
+                        }}
                     />
                 </div>
             </BaseFormModal>

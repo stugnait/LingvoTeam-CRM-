@@ -670,15 +670,40 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     />
                     <div className="grid grid-cols-2 gap-4">
                         <Input
+                            type="number"
+                            min="0"
                             placeholder="Work type"
-                            value={form.work_type}
-                            onChange={(e) => setForm(prev => ({ ...prev, work_type: Number(e.target.value) }))}
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            onKeyDown={(e) => {
+                                if (["-", "e", "E", "+"].includes(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            value={form.work_type === 0 ? "" : form.work_type}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
+                                setForm(prev => ({ ...prev, work_type: numericValue }))
+                            }}
                         />
                         <Input
-                            placeholder="Currency ID"
                             type="number"
-                            value={form.currency_id}
-                            onChange={(e) => setForm(prev => ({ ...prev, currency_id: Number(e.target.value) }))}
+                            min="0"
+                            placeholder="Currency ID"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            onKeyDown={(e) => {
+                                if (["-", "e", "E", "+"].includes(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            value={form.currency_id === 0 ? "" : form.currency_id}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
+                                setForm(prev => ({ ...prev, currency_id: numericValue }))
+                            }}
                         />
                     </div>
                 </div>
