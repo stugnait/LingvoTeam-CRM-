@@ -172,16 +172,30 @@ export function TariffsPage() {
                     )}
 
                     {/* Price per page */}
+                    {/* Price per page */}
                     <Input
-                        type="text"
+
+                        type="number"
+                        min="0"
+                        step="any"
                         placeholder="Price per page"
-                        value={form.price_per_page}
-                        className={errors?.price_per_page ? "border-red-500" : ""}
-                        onChange={(e) => {
-                            const value = e.target.value
-                            if (value === "" || Number(value) > 0) {
-                                setForm(prev => ({ ...prev, price_per_page: value }))
+                        className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.price_per_page ? "border-red-500" : ""}`}
+                        onKeyDown={(e) => {
+                            if (["-", "e", "E", "+"].includes(e.key)) {
+                                e.preventDefault();
+
                             }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        // Переводимо у рядок для безпечного порівняння з "0"
+                        value={String(form.price_per_page) === "0" ? "" : form.price_per_page}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setForm(prev => ({
+                                ...prev,
+                                // Зберігаємо як рядок ("0" замість 0)
+                                price_per_page: val === "" ? "0" : val,
+                            }))
                         }}
                     />
                     {errors?.price_per_page && (
@@ -190,15 +204,26 @@ export function TariffsPage() {
 
                     {/* Price per action */}
                     <Input
-                        type="text"
+                        type="number"
+                        min="0"
+                        step="any"
                         placeholder="Price per action"
-                        value={form.price_per_action}
-                        className={errors?.price_per_action ? "border-red-500" : ""}
-                        onChange={(e) => {
-                            const value = e.target.value
-                            if (value === "" || Number(value) > 0) {
-                                setForm(prev => ({ ...prev, price_per_action: value }))
+                        className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.price_per_action ? "border-red-500" : ""}`}
+                        onKeyDown={(e) => {
+                            if (["-", "e", "E", "+"].includes(e.key)) {
+                                e.preventDefault();
                             }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        // Переводимо у рядок для безпечного порівняння з "0"
+                        value={String(form.price_per_action) === "0" ? "" : form.price_per_action}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setForm(prev => ({
+                                ...prev,
+                                // Зберігаємо як рядок ("0" замість 0)
+                                price_per_action: val === "" ? "0" : val,
+                            }))
                         }}
                     />
                     {errors?.price_per_action && (

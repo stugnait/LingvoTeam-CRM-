@@ -41,12 +41,16 @@ export default function OrdersPage() {
         loadOrders,
         refreshTranslators,
 
-        // Дістаємо всі наші стани для фільтрів з хука
-        isOnlyMineFilter, setIsOnlyMineFilter,
-        statusFilter, setStatusFilter,
-        managerFilter, setManagerFilter,
-        dateFromFilter, setDateFromFilter,
-        dateToFilter, setDateToFilter,
+        isOnlyMineFilter,
+        statusFilter,
+        managerFilter,
+        dateFromFilter,
+        dateToFilter,
+        handleFilterChange,
+        handleStatusChange,
+        handleManagerChange,
+        handleDateFromChange,
+        handleDateToChange,
 
         sourceFiles,
         targetFiles,
@@ -257,31 +261,18 @@ export default function OrdersPage() {
 
                             // 👉 ПЕРЕДАЄМО ФІЛЬТРИ В ТАБЛИЦЮ:
                             isOnlyMineFilter={isOnlyMineFilter}
-                            onFilterChange={(onlyMine) => {
-                                setIsOnlyMineFilter(onlyMine)
-                                loadOrders(1, onlyMine, statusFilter, managerFilter, dateFromFilter, dateToFilter)
-                            }}
+                            onFilterChange={handleFilterChange}
                             statusFilter={statusFilter}
-                            onStatusChange={(val) => {
-                                setStatusFilter(val)
-                                loadOrders(1, isOnlyMineFilter, val, managerFilter, dateFromFilter, dateToFilter)
-                            }}
+                            onStatusChange={handleStatusChange}
                             managerFilter={managerFilter}
-                            onManagerChange={(val) => {
-                                setManagerFilter(val)
-                                loadOrders(1, isOnlyMineFilter, statusFilter, val, dateFromFilter, dateToFilter)
-                            }}
+                            onManagerChange={handleManagerChange}
                             dateFromFilter={dateFromFilter}
-                            onDateFromChange={(val) => {
-                                setDateFromFilter(val)
-                                loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, val, dateToFilter)
-                            }}
+                            onDateFromChange={handleDateFromChange}
                             dateToFilter={dateToFilter}
-                            onDateToChange={(val) => {
-                                setDateToFilter(val)
-                                loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, val)
-                            }}
-                            editors={editors} // Для списку менеджерів
+                            onDateToChange={handleDateToChange}
+
+                            // ТУТ ЗМІНА: передаємо managers замість editors
+                            managers={managers || []}
 
                             onOpen={loadOrderDetails}
                             languagePairs={languagePairs}

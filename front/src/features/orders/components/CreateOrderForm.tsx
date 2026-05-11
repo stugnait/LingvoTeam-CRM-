@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
 import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
+import { PatternFormat } from 'react-number-format'
 import {
     User,
     Tag,
@@ -778,22 +779,56 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         value={form.email}
                         onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                     />
-                    <Input
-                        placeholder="Phone"
+                    <PatternFormat
+                        format="+38 (###) ###-##-##"
+                        allowEmptyFormatting
+                        mask="_"
                         value={form.phone}
-                        onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                        customInput={Input}
+                        type="tel"
+                        onValueChange={(values) => {
+                            setForm(prev => ({
+                                ...prev,
+                                phone: values.formattedValue,
+                            }))
+                        }}
                     />
                     <div className="grid grid-cols-2 gap-4">
                         <Input
+                            type="number"
+                            min="0"
                             placeholder="Work type"
-                            value={form.work_type}
-                            onChange={(e) => setForm(prev => ({ ...prev, work_type: Number(e.target.value) }))}
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            onKeyDown={(e) => {
+                                if (["-", "e", "E", "+"].includes(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            value={form.work_type === 0 ? "" : form.work_type}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
+                                setForm(prev => ({ ...prev, work_type: numericValue }))
+                            }}
                         />
                         <Input
-                            placeholder="Currency ID"
                             type="number"
-                            value={form.currency_id}
-                            onChange={(e) => setForm(prev => ({ ...prev, currency_id: Number(e.target.value) }))}
+                            min="0"
+                            placeholder="Currency ID"
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            onKeyDown={(e) => {
+                                if (["-", "e", "E", "+"].includes(e.key)) {
+                                    e.preventDefault();
+                                }
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            value={form.currency_id === 0 ? "" : form.currency_id}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
+                                setForm(prev => ({ ...prev, currency_id: numericValue }))
+                            }}
                         />
                     </div>
                 </div>
