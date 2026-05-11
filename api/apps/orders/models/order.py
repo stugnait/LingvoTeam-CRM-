@@ -114,6 +114,8 @@ class Order(models.Model):
 
     position = models.FloatField(default=0.0, db_index=True)
 
+    images_count = models.IntegerField(default=0, verbose_name="Кількість зображень")
+
     class Meta:
         db_table = 'orders'
         ordering = ['position']

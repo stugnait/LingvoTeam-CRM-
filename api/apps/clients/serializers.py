@@ -9,6 +9,7 @@ class ClientCategorySerializer(serializers.ModelSerializer):
 
 class ClientSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True, default="---")
+    discount_percent = serializers.FloatField(source='category.discount_percent', read_only=True, default=0)
 
     class Meta:
         model = Client
@@ -19,6 +20,7 @@ class ClientSerializer(serializers.ModelSerializer):
             'phone_number',
             'category',
             'category_name',
-            'created_at'
+            'created_at',
+            'discount_percent'
         ]
         read_only_fields = ['created_at']

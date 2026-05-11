@@ -12,6 +12,7 @@ import { Plus } from "lucide-react"
 
 import { TariffTable } from "./TariffTable"
 import { useTariffs } from "../hooks/useTariff"
+import { TariffForm } from "./TariffForm"
 
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { Input } from "@/src/components/ui/input"
@@ -32,6 +33,7 @@ export function TariffsPage() {
         categories,
         currencies,
         languages,
+        languagePairs,
         isFormOpen,
         selectedTariff,
         form,
@@ -47,6 +49,12 @@ export function TariffsPage() {
         page,
         totalPages,
         onPageChange,
+        isNewPairModalOpen,
+        setIsNewPairModalOpen,
+        newPairForm,
+        setNewPairForm,
+        newPairLoading,
+        createAndSelectPair,
     } = useTariffs()
 
     return (
@@ -58,14 +66,11 @@ export function TariffsPage() {
 
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-2xl font-bold tracking-tight">
-                                Tariffs
-                            </h2>
+                            <h2 className="text-2xl font-bold tracking-tight">Tariffs</h2>
                             <p className="text-muted-foreground">
                                 Manage pricing plans and configurations
                             </p>
                         </div>
-
                         <Button onClick={openAddTariff}>
                             <Plus className="h-4 w-4 mr-2" />
                             Add Tariff
@@ -75,11 +80,8 @@ export function TariffsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Tariffs List</CardTitle>
-                            <CardDescription>
-                                All available system tariffs
-                            </CardDescription>
+                            <CardDescription>All available system tariffs</CardDescription>
                         </CardHeader>
-
                         <CardContent className="p-0">
                             <TariffTable
                                 tariffs={tariffs}
@@ -108,97 +110,71 @@ export function TariffsPage() {
                         placeholder="Tariff name"
                         value={form.name}
                         className={errors?.name ? "border-red-500" : ""}
-                        onChange={(e) =>
-                            setForm(prev => ({
-                                ...prev,
-                                name: e.target.value,
-                            }))
-                        }
+                        onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                     />
-                    {errors?.name && <p className="text-xs text-red-500 -mt-2">{errors.name}</p>}
+                    {errors?.name && (
+                        <p className="text-xs text-red-500 -mt-2">{errors.name}</p>
+                    )}
 
-                    {/* Language Pair (поки що просто по id, якщо нема pairs endpoint) */}
-                    <Select
-                        value={String(form.language_pair || "")}
-                        onValueChange={(value) =>
-                            setForm(prev => ({
-                                ...prev,
-                                language_pair: Number(value),
-                            }))
-                        }
-                    >
-                        <SelectTrigger className={errors?.language_pair ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {languages.map(lang => (
-                                <SelectItem
-                                    key={lang.id}
-                                    value={String(lang.id)}
-                                >
-                                    {lang.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors?.language_pair && <p className="text-xs text-red-500 -mt-2">{errors.language_pair}</p>}
+                    {/* Language Pair + кнопка нової пари */}
+                    <TariffForm
+                        form={form}
+                        setForm={setForm}
+                        errors={errors}
+                        languages={languages}
+                        languagePairs={languagePairs}
+                        isNewPairModalOpen={isNewPairModalOpen}
+                        setIsNewPairModalOpen={setIsNewPairModalOpen}
+                        newPairForm={newPairForm}
+                        setNewPairForm={setNewPairForm}
+                        newPairLoading={newPairLoading}
+                        createAndSelectPair={createAndSelectPair}
+                    />
 
                     {/* Currency */}
                     <Select
                         value={String(form.currency_id || "")}
-                        onValueChange={(value) =>
-                            setForm(prev => ({
-                                ...prev,
-                                currency_id: Number(value),
-                            }))
-                        }
+                        onValueChange={(val) => setForm(prev => ({ ...prev, currency_id: Number(val) }))}
                     >
                         <SelectTrigger className={errors?.currency_id ? "border-red-500" : ""}>
                             <SelectValue placeholder="Currency" />
                         </SelectTrigger>
                         <SelectContent>
                             {currencies.map(currency => (
-                                <SelectItem
-                                    key={currency.id}
-                                    value={String(currency.id)}
-                                >
+                                <SelectItem key={currency.id} value={String(currency.id)}>
                                     {currency.code}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                    {errors?.currency_id && <p className="text-xs text-red-500 -mt-2">{errors.currency_id}</p>}
-
+                    {errors?.currency_id && (
+                        <p className="text-xs text-red-500 -mt-2">{errors.currency_id}</p>
+                    )}
 
                     {/* Category */}
                     <Select
                         value={String(form.category || "")}
-                        onValueChange={(value) =>
-                            setForm(prev => ({
-                                ...prev,
-                                category: Number(value),
-                            }))
-                        }
+                        onValueChange={(val) => setForm(prev => ({ ...prev, category: Number(val) }))}
                     >
                         <SelectTrigger className={errors?.category ? "border-red-500" : ""}>
                             <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
                             {categories.map(category => (
-                                <SelectItem
-                                    key={category.id}
-                                    value={String(category.id)}
-                                >
+                                <SelectItem key={category.id} value={String(category.id)}>
                                     {category.name}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                    {errors?.category && <p className="text-xs text-red-500 -mt-2">{errors.category}</p>}
+                    {errors?.category && (
+                        <p className="text-xs text-red-500 -mt-2">{errors.category}</p>
+                    )}
 
                     {/* Price per page */}
                     {/* Price per page */}
                     <Input
+
                         type="number"
                         min="0"
                         step="any"
@@ -207,6 +183,7 @@ export function TariffsPage() {
                         onKeyDown={(e) => {
                             if (["-", "e", "E", "+"].includes(e.key)) {
                                 e.preventDefault();
+
                             }
                         }}
                         onFocus={(e) => e.target.select()}
@@ -221,7 +198,9 @@ export function TariffsPage() {
                             }))
                         }}
                     />
-                    {errors?.price_per_page && <p className="text-xs text-red-500 -mt-2">{errors.price_per_page}</p>}
+                    {errors?.price_per_page && (
+                        <p className="text-xs text-red-500 -mt-2">{errors.price_per_page}</p>
+                    )}
 
                     {/* Price per action */}
                     <Input
@@ -247,10 +226,13 @@ export function TariffsPage() {
                             }))
                         }}
                     />
-                    {errors?.price_per_action && <p className="text-xs text-red-500 -mt-2">{errors.price_per_action}</p>}
+                    {errors?.price_per_action && (
+                        <p className="text-xs text-red-500 -mt-2">{errors.price_per_action}</p>
+                    )}
 
                 </div>
             </BaseFormModal>
+
             <ConfirmModal
                 open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}

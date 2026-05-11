@@ -73,11 +73,11 @@ export function TariffTable({
                             <TableCell>
                                 <div className="flex items-center gap-1.5">
                                     <span className="px-2 py-1 bg-primary/5 rounded-md text-sm font-medium">
-                                        {tariff.source_language}
+                                        {tariff.source_language_name}
                                     </span>
                                     <span className="text-muted-foreground">→</span>
                                     <span className="px-2 py-1 bg-primary/5 rounded-md text-sm font-medium">
-                                        {tariff.target_language}
+                                        {tariff.target_language_name}
                                     </span>
                                 </div>
                             </TableCell>

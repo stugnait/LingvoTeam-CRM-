@@ -32,6 +32,15 @@ export function UserBasicInfo() {
                     }
                 />
 
+                <Input
+                    placeholder="Phone"
+                    type="phone"
+                    value={profileForm.phone}
+                    onChange={(e) =>
+                        setProfileForm((v) => ({ ...v, phone: e.target.value }))
+                    }
+                />
+
                 <Button onClick={saveProfile}>Save changes</Button>
             </CardContent>
         </Card>

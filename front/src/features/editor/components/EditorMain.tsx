@@ -130,9 +130,6 @@ export default function EditorMain() {
     };
 
     // Handle refresh
-    const handleRefresh = () => {
-        refreshOrders();
-    };
 
     return (
         <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -164,14 +161,6 @@ export default function EditorMain() {
                                 </div>
                             )}
 
-                            <button
-                                onClick={handleRefresh}
-                                disabled={isLoading}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isLoading ? 'Refreshing...' : 'Refresh Orders'}
-                            </button>
-
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
@@ -194,18 +183,6 @@ export default function EditorMain() {
                         <div className="text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
                             <p className="mt-4 text-gray-500">Loading orders...</p>
-                        </div>
-                    </div>
-                ) : tasks.length === 0 ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="text-center">
-                            <p className="text-gray-500">No orders found</p>
-                            <button
-                                onClick={handleRefresh}
-                                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                            >
-                                Refresh
-                            </button>
                         </div>
                     </div>
                 ) : (

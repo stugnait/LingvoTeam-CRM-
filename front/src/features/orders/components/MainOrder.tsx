@@ -92,6 +92,8 @@ export default function OrdersPage() {
     const [managerDelivery, setManagerDelivery] = useState("")
     const router = useRouter()
 
+    const [totalAmount, setTotalAmount] = useState("")
+
     useEffect(() => {
         if (!highlightId) {return}
 
@@ -138,6 +140,7 @@ export default function OrdersPage() {
         setEditingOrder(null)
         setManagerAccept("")
         setManagerDelivery("")
+        setTotalAmount("")
     }
 
     const handleCreateClick = () => {
@@ -181,6 +184,9 @@ export default function OrdersPage() {
             client_comment: comment,
             manager_accept_id: managerAccept ? Number(managerAccept) : undefined,
             manager_delivery_id: managerDelivery ? Number(managerDelivery) : undefined,
+
+            // 👇 ДОДАЙ ЦЕЙ РЯДОК (якщо пуста строка, передаємо undefined, щоб бек сам порахував)
+            total_amount: totalAmount ? totalAmount : undefined,
         }
 
         if (editingOrder) {
@@ -349,6 +355,9 @@ export default function OrdersPage() {
                 managers={managers || []}
 
                 onRefreshTranslators={refreshTranslators}
+
+                totalAmount={totalAmount}
+                setTotalAmount={setTotalAmount}
             />
 
             {viewingOrder && (

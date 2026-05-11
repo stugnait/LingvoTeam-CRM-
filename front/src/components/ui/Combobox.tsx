@@ -21,10 +21,8 @@ interface ComboboxProps {
     searchPlaceholder?: string
     emptyMessage?: string
     searchable?: boolean
-    renderOption?: (
-        option: ComboboxOption,
-        isSelected: boolean
-    ) => React.ReactNode
+    renderOption?: (option: ComboboxOption, isSelected: boolean) => React.ReactNode
+    renderSelected?: (option: ComboboxOption) => React.ReactNode
 }
 
 export function Combobox({
@@ -35,7 +33,8 @@ export function Combobox({
                              searchPlaceholder = "Search...",
                              emptyMessage = "No results found.",
                              searchable = true,
-                             renderOption
+                             renderOption,
+                             renderSelected,
                          }: ComboboxProps) {
 
     const [open, setOpen] = React.useState(false)
@@ -53,7 +52,6 @@ export function Combobox({
         return options.filter(option => {
             const searchText = (option.searchText || option.label || "").toLowerCase()
             const query = searchQuery.toLowerCase()
-
             return searchText.includes(query)
         })
     }, [options, searchQuery])
@@ -75,8 +73,13 @@ export function Combobox({
                         open && "border-ring ring-2 ring-ring/50"
                     )}
                 >
-                    <span className="truncate">
-                        {selected?.label ?? placeholder}
+                    <span className="truncate flex-1 text-left">
+                        {selected
+                            ? renderSelected
+                                ? renderSelected(selected)
+                                : selected.label
+                            : placeholder
+                        }
                     </span>
                     <ChevronsUpDown className={cn(
                         "ml-2 h-4 w-4 shrink-0 opacity-50 transition-all duration-300",
@@ -161,7 +164,7 @@ export function Combobox({
                                                     </span>
 
                                                     {renderOption ? (
-                                                        <div className="flex-1 min-w-0 truncate">
+                                                        <div className="flex-1 min-w-0">
                                                             {renderOption(option, isSelected)}
                                                         </div>
                                                     ) : (
