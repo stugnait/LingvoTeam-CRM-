@@ -28,7 +28,7 @@ import {
 import type { Client } from "../types"
 
 interface ClientTableProps {
-    clients: (Client & { category_name?: string })[]
+    clients: (Client & { category_name?: string; discount_percent?: number })[]
     onEdit: (client: Client) => void
     onDelete: (client: Client) => void
     page: number
@@ -69,11 +69,16 @@ export function ClientTable({
                             </TableCell>
 
                             <TableCell>
-                                {client.category && (
-                                    <Badge variant="secondary">
-                                        {client.category_name}
+                                <div className="flex items-center gap-2">
+                                    <Badge variant={client.category ? "secondary" : "outline"}>
+                                        {client.category ? client.category_name : "Без категорії"}
                                     </Badge>
-                                )}
+                                    {client.category && client.discount_percent !== null && (
+                                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                                            -{client.discount_percent}%
+                                        </Badge>
+                                    )}
+                                </div>
                             </TableCell>
 
                             <TableCell>

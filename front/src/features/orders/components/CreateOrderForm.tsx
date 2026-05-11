@@ -129,9 +129,24 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [priceLoading, setPriceLoading] = useState(false)
     const [useManualPrice, setUseManualPrice] = useState(false)
 
-    const effectivePrice = useManualPrice && totalAmount !== ""
-        ? totalAmount
-        : priceData?.total_client_price ?? "-"
+    // --- Логіка підрахунку знижки ---
+    const selectedClient = clients.find((c) => String(c.id) === clientId)
+    const discountPercent = selectedClient?.discount_percent ? Number(selectedClient.discount_percent) : 0
+
+    const baseAutoPrice = priceData?.total_client_price ? parseFloat(priceData.total_client_price) : 0
+    const discountedAutoPrice = discountPercent > 0 && baseAutoPrice > 0
+        ? (baseAutoPrice * (1 - discountPercent / 100)).toFixed(2)
+        : priceData?.total_client_price ?? ""
+
+    // 🔥 ДОДАНО: Автоматично записуємо пораховану суму в стейт, який полетить на бекенд
+    useEffect(() => {
+        if (!useManualPrice && discountedAutoPrice) {
+            setTotalAmount(String(discountedAutoPrice))
+        }
+    }, [discountedAutoPrice, useManualPrice, setTotalAmount])
+
+    // Тепер effectivePrice завжди дорівнює totalAmount, бо стейт синхронізовано
+    const effectivePrice = totalAmount || discountedAutoPrice || "-"
 
     // ─── Handlers ───────────────────────────────────────────────────────────
 
@@ -300,7 +315,38 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 value={clientId}
                                 onChange={setClientId}
                                 placeholder="Select client"
-                                options={clients.map((c) => ({ value: String(c.id), label: c.full_name }))}
+                                options={clients.map((c) => ({
+                                    value: String(c.id),
+                                    label: c.full_name,
+                                }))}
+                                renderSelected={(option) => {
+                                    const c = clients.find((cl) => String(cl.id) === option.value)
+                                    if (!c) {return option.label}
+                                    return (
+                                        <div className="flex items-center gap-2">
+                                            <span>{c.full_name}</span>
+                                            {c.category_name && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    Категорія: {c.category_name}{c.discount_percent ? ` · Знижка: ${c.discount_percent}%` : ""}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )
+                                }}
+                                renderOption={(option) => {
+                                    const c = clients.find((cl) => String(cl.id) === option.value)
+                                    return (
+                                        <div className="flex flex-col">
+                                            <span>{c?.full_name}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {c?.category_name
+                                                    ? `Категорія: ${c.category_name}${c.discount_percent ? ` · Знижка: ${c.discount_percent}%` : ""}`
+                                                    : "Без категорії"
+                                                }
+                                            </span>
+                                        </div>
+                                    )
+                                }}
                             />
                         </div>
 
@@ -626,7 +672,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             checked={useManualPrice}
                                             onChange={(e) => {
                                                 setUseManualPrice(e.target.checked)
-                                                if (!e.target.checked) setTotalAmount("")
+                                                // Якщо вимкнули ручну ціну, одразу повертаємо авто-ціну
+                                                if (!e.target.checked) setTotalAmount(String(discountedAutoPrice))
                                             }}
                                             className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
                                         />
@@ -670,17 +717,32 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             <span className="text-gray-600">Сторінок (авто):</span>
                                             <span className="font-medium">{priceData.pages}</span>
                                         </div>
+
+                                        {/* Відображення авто-ціни та знижки */}
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Авто-ціна для клієнта:</span>
+                                            <span className="text-gray-600">Базова авто-ціна:</span>
                                             <span className="font-medium">{priceData.total_client_price}</span>
                                         </div>
+                                        {discountPercent > 0 && (
+                                            <div className="flex justify-between text-blue-600 mt-1">
+                                                <span className="font-medium">Знижка клієнта ({discountPercent}%):</span>
+                                                <span className="font-bold">
+                                                    -{ (baseAutoPrice * (discountPercent / 100)).toFixed(2) }
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between border-t border-green-200 pt-2 mt-2">
+                                            <span className="text-gray-800 font-semibold">Ціна до сплати:</span>
+                                            <span className="font-bold text-green-700">{discountedAutoPrice}</span>
+                                        </div>
+
                                         {priceData.translator_rate_per_page && (
                                             <>
-                                                <div className="flex justify-between">
+                                                <div className="flex justify-between mt-4">
                                                     <span className="text-gray-600">Вартість перекладача:</span>
                                                     <span className="font-medium">{priceData.translator_total}</span>
                                                 </div>
-                                                <div className="flex justify-between border-t pt-2 mt-1">
+                                                <div className="flex justify-between border-t border-green-200 pt-2 mt-1">
                                                     <span className="text-gray-600">Маржа:</span>
                                                     <span className="font-semibold text-green-700">{priceData.margin}</span>
                                                 </div>
