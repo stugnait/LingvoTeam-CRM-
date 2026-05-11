@@ -226,13 +226,17 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"detail": f"Помилка з мовною парою: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # 🔥 Спрощена обробка суми — просто беремо те, що прислав фронтенд
         raw_amount = data.get('total_amount')
         final_total_amount = Decimal('0.00')
-        if raw_amount and str(raw_amount).strip():
-            try:
-                final_total_amount = Decimal(str(raw_amount))
-            except:
-                pass
+
+        if raw_amount:
+            raw_str = str(raw_amount).strip().lower()
+            if raw_str not in ['', 'null', 'none', 'undefined']:
+                try:
+                    final_total_amount = Decimal(raw_str)
+                except InvalidOperation:
+                    pass
 
         status_in_progress = get_object_or_404(Status, slug="in_translation")
 
@@ -245,7 +249,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             client_status=status_in_progress,
             translator_status=status_in_progress,
 
-            total_amount=final_total_amount,
+            total_amount=final_total_amount,  # <--- Одразу зберігаємо готову суму з фронту
 
             editor_id_id=data.get('editor_id'),
             traffic_id_id=data.get('traffic_id'),
@@ -282,19 +286,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         print("=== DEBUG СТАТИСТИКИ ФАЙЛІВ ===")
         print(stats_data["total_stats"])
 
-        # Розділяємо збереження символів
+        # Зберігаємо статистику файлів
         order.symbols_count = stats_data["total_stats"]["chars_no_spaces"]
         order.symbols_with_spaces_count = stats_data["total_stats"]["chars_with_spaces"]
         order.page_count = stats_data["total_stats"]["physical_pages"]
-        order.images_count = stats_data["total_stats"]["images"]  # ← додати
+        order.images_count = stats_data["total_stats"]["images"]
 
-        if raw_amount and str(raw_amount).strip():
-            # Ціна прийшла з фронту — залишаємо як є
-            pass
-        elif order.traffic_id:
-            # Ціна не передана — рахуємо автоматично
-            order.total_amount = Decimal(order.page_count) * Decimal(order.traffic_id.price_per_page)
-
+        # Логіка з повторним розрахунком суми тут ПОВНІСТЮ ВИДАЛЕНА
         order.save()
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')

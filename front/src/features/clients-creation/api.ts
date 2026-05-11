@@ -47,15 +47,26 @@ export const clientsCreationApi = {
     // ========================
 
     // GET /client-categories/
-    listCategories: () =>
+    listCategories: (pageNumber: number, debouncedSearch: string) =>
         apiFetch<ClientCategoriesListResponse>("clients/categories/", {
             method: "GET",
         }),
 
     // POST /client-categories/
     createCategory: (data: ClientCategoryFormData) =>
-        apiFetch<ClientCategory>("client-categories/", {
+        apiFetch<ClientCategory>("clients/categories/", {
             method: "POST",
+            body: JSON.stringify(data),
+        }),
+
+    deleteCategory: (id: number) =>
+        apiFetch<void>(`clients/categories/${id}/`, {
+            method: "DELETE",
+        }),
+
+    updateCategory: (id: number, data: ClientCategoryFormData) =>
+        apiFetch<ClientCategory>(`clients/categories/${id}/`, {
+            method: "PATCH",
             body: JSON.stringify(data),
         }),
 }
