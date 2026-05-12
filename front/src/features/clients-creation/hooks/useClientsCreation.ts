@@ -150,9 +150,6 @@ export function useClientsCreation() {
             } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
                 newErrors.email = "Invalid email format"
             }
-            if (!data.category) {
-                newErrors.category = "Please select a category"
-            }
 
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors)

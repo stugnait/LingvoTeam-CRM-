@@ -1,7 +1,7 @@
 export interface ClientCategory {
     id: number
     name: string
-    discount: number
+    discount_percent: number
 }
 
 export interface Client {
@@ -28,7 +28,7 @@ export interface ClientsListResponse {
 
 export interface ClientCategoryFormData {
     name: string
-    discount: number
+    discount_percent: number
 }
 
 export interface ClientCategoriesListResponse {

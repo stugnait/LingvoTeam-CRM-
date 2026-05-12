@@ -17,6 +17,7 @@ export function useProfile() {
     const [profileForm, setProfileForm] = useState({
         full_name: "",
         email: "",
+        phone: ""
     })
 
     const [passwordForm, setPasswordForm] = useState({
@@ -35,6 +36,7 @@ export function useProfile() {
                 setProfileForm({
                     full_name: data.full_name,
                     email: data.email,
+                    phone: data.phone
                 })
             })
             .finally(() => setLoading(false))
