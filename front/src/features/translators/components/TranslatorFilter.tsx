@@ -15,7 +15,7 @@ interface Props {
     setSearch: (value: string) => void
 
     ordering: string | null
-    setOrdering: (value: "orders_count" | "-orders_count" | null) => void
+    setOrdering: (value: "orders_count" | "-orders_count" | "created_at" | "-created_at" | null) => void
 
     sourceLanguage: number | null
     setSourceLanguage: (value: number | null) => void
@@ -23,7 +23,6 @@ interface Props {
     targetLanguage: number | null
     setTargetLanguage: (value: number | null) => void
 
-    // можна передати з API
     languages: { id: number; name: string }[]
 }
 
@@ -38,6 +37,17 @@ export function TranslatorsFilters({
                                        setTargetLanguage,
                                        languages,
                                    }: Props) {
+
+    const handleSearchChange = (value: string) => {
+        setSearch(value)
+
+        if (value.trim().length > 0) {
+            setOrdering(null)
+            setSourceLanguage(null)
+            setTargetLanguage(null)
+        }
+    }
+
     return (
         <div className="flex flex-col lg:flex-row gap-4">
 
@@ -48,7 +58,7 @@ export function TranslatorsFilters({
                 <Input
                     placeholder="Search translators..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     className="pl-9"
                 />
             </div>
@@ -76,7 +86,7 @@ export function TranslatorsFilters({
 
             {/* 🌐 Source Language */}
             <Select
-                value={sourceLanguage?.toString() ?? "all"}
+                value={sourceLanguage !== null ? String(sourceLanguage) : "all"}
                 onValueChange={(val) =>
                     setSourceLanguage(val === "all" ? null : Number(val))
                 }
@@ -96,7 +106,7 @@ export function TranslatorsFilters({
 
             {/* 🌐 Target Language */}
             <Select
-                value={targetLanguage?.toString() ?? "all"}
+                value={targetLanguage !== null ? String(targetLanguage) : "all"}
                 onValueChange={(val) =>
                     setTargetLanguage(val === "all" ? null : Number(val))
                 }
