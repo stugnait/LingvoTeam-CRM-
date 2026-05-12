@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
 import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
 import { PatternFormat } from 'react-number-format'
@@ -281,8 +281,19 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     useEffect(() => {
         if (!filesConfirmed || !trafficId || !files.length) { return }
         handleCalculatePrice()
-    }, [filesConfirmed, trafficId, selectedTranslatorId])
+    }, [filesConfirmed, trafficId, selectedTranslatorId, translatorTrafficId])
 
+
+const translatorTrafficOptions = useMemo(() => {
+        const currentTranslator = translators.find(t => t.id === selectedTranslatorId);
+        if (!currentTranslator?.traffic) return [];
+
+        return currentTranslator.traffic.map((t: any) => ({
+            value: String(t.id),
+            label: t.name || 'Особистий тариф',
+            description: `Ставка: ${t.rate_per_page || t.rate_per_action} ${t.currency_sign}`
+        }));
+    }, [selectedTranslatorId, translators]);
     // ─── Render ─────────────────────────────────────────────────────────────
 
     return (
@@ -521,9 +532,21 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 targetLanguage={targetLanguage}
                                 placeholder="Select translator (optional)"
                                 orderTrafficId={trafficId ? Number(trafficId) : null}
-                                onChange={(translatorId, translatorTrafficId) => {
+                                onChange={(translatorId) => {
                                     setSelectedTranslatorId(translatorId)
-                                    setTranslatorTrafficId(translatorTrafficId ? String(translatorTrafficId) : "")
+
+                                    if (!translatorId) {
+                                        setTranslatorTrafficId("")
+                                        return
+                                    }
+
+                                    const selectedTranslator = translators.find(t => t.id === translatorId)
+
+                                    if (selectedTranslator?.traffic && selectedTranslator.traffic.length > 0) {
+                                        setTranslatorTrafficId(String(selectedTranslator.traffic[0].id))
+                                    } else {
+                                        setTranslatorTrafficId("")
+                                    }
                                 }}
                             />
                         </div>
@@ -569,15 +592,23 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                         {selectedTranslatorId && (
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">
-                                    Translator Traffic ID
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                    <Tag className="h-4 w-4 text-orange-500" />
+                                    Translator Traffic
                                 </label>
-                                <input
-                                    type="text"
+
+                                <Combobox
                                     value={translatorTrafficId}
-                                    onChange={(e) => setTranslatorTrafficId(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md"
+                                    onChange={setTranslatorTrafficId}
+                                    placeholder="Select Traffic"
+                                    options={translatorTrafficOptions}
                                 />
+
+                                {translatorTrafficOptions.length === 0 && (
+                                    <p className="text-xs text-red-500">
+                                        У цього перекладача немає тарифу!
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
