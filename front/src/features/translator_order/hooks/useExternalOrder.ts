@@ -29,7 +29,7 @@ export function useExternalOrder(slug: string) {
             setError(null)
             setRemainingAttempts(null)
         } catch (e: any) {
-            const data = e  // ← просто e, без .response.data
+            const data = e
 
             if (!data?.message) {
                 setError("Помилка з'єднання")
@@ -61,7 +61,6 @@ export function useExternalOrder(slug: string) {
                 formData.append('files', file)
             })
 
-            // Симуляція прогресу
             const progressInterval = setInterval(() => {
                 setUploadProgress(prev => Math.min(prev + 10, 90))
             }, 200)
@@ -81,6 +80,20 @@ export function useExternalOrder(slug: string) {
         }
     }
 
+    // 👇 НОВА ФУНКЦІЯ
+    async function completeOrder() {
+        if (!order) return false
+        try {
+            await translatorOrderApi.completeOrder(order.id)
+            // Оптимістично оновлюємо статус в UI (можеш змінити ключ на той, що приходить з беку)
+            setOrder({ ...order, status_id: 10, status: "completed" } as any)
+            return true
+        } catch (e: any) {
+            setError(e?.message || "Помилка при зміні статусу")
+            return false
+        }
+    }
+
     return {
         step,
         order,
@@ -90,6 +103,7 @@ export function useExternalOrder(slug: string) {
         init,
         submitPassword,
         uploadFiles,
+        completeOrder,
         remainingAttempts,
     }
 }

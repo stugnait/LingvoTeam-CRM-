@@ -53,4 +53,10 @@ export const translatorOrderApi = {
             `translators/external/orders/${orderId}/download-files/${folder}/${fileId}/`,
             { method: "GET", responseType: "blob" }
         ),
+
+    completeOrder: (orderId: number) =>
+        apiFetch<{ detail: string }>(
+            `translators/external/orders/${orderId}/complete/`,
+            { method: "POST" }
+        ),
 }

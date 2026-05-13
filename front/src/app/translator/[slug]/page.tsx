@@ -22,7 +22,8 @@ export default function TranslatorExternalOrderPage({
         init,
         submitPassword,
         uploadFiles,
-        remainingAttempts
+        remainingAttempts,
+        completeOrder
     } = useExternalOrder(slug)
 
     useEffect(() => {
@@ -49,6 +50,7 @@ export default function TranslatorExternalOrderPage({
         <ExternalOrderView
             order={order!}
             onUpload={uploadFiles}
+            onComplete={completeOrder}
             isUploading={isUploading}
             uploadProgress={uploadProgress}
             error={error}

@@ -11,13 +11,13 @@ import {
     X,
     CheckCircle2,
     AlertCircle,
-    Clock,
+    Hourglass,
     AlertTriangle,
     FileUp,
     Eye,
-    Hourglass,
     Trash2,
     Archive,
+    Check
 } from "lucide-react"
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
@@ -31,20 +31,22 @@ interface Props {
     onUpload: (files: File[]) => Promise<boolean>
     onDelete?: () => Promise<boolean>
     onArchive?: () => Promise<boolean>
+    onComplete?: () => Promise<boolean>
     isUploading: boolean
     uploadProgress: number
     error?: string | null
 }
 
 export function ExternalOrderView({
-    order,
-    onUpload,
-    onDelete,
-    onArchive,
-    isUploading,
-    uploadProgress,
-    error,
-}: Props) {
+                                      order,
+                                      onUpload,
+                                      onDelete,
+                                      onArchive,
+                                      onComplete,
+                                      isUploading,
+                                      uploadProgress,
+                                      error,
+                                  }: Props) {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([])
     const [uploadSuccess, setUploadSuccess] = useState(false)
     const [isDragging, setIsDragging] = useState(false)
@@ -72,6 +74,9 @@ export function ExternalOrderView({
     const [filesLoading, setFilesLoading] = useState(false)
     const [filesError, setFilesError] = useState<string | null>(null)
     const [downloadLoading, setDownloadLoading] = useState(false)
+
+    // Перевірка, чи статус є завершеним
+    const isCompleted = order.status_id === 10
 
     const refreshFiles = async () => {
         setFilesLoading(true)
@@ -183,7 +188,6 @@ export function ExternalOrderView({
         }
     }
 
-    // ----------------- EXISTING HANDLERS -----------------
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || [])
         setSelectedFiles(prev => [...prev, ...files])
@@ -198,7 +202,7 @@ export function ExternalOrderView({
     }
 
     const handleUpload = async () => {
-        if (selectedFiles.length === 0) {return}
+        if (selectedFiles.length === 0) return
 
         setShowConfirmModal(false)
         const success = await onUpload(selectedFiles)
@@ -207,8 +211,6 @@ export function ExternalOrderView({
             if (fileInputRef.current) fileInputRef.current.value = ""
             setUploadSuccess(true)
             setTimeout(() => setUploadSuccess(false), 3000)
-
-            // після успішного upload — оновимо списки файлів
             void refreshFiles()
         }
     }
@@ -220,7 +222,7 @@ export function ExternalOrderView({
             title: "Підтвердження завантаження",
             description: `Ви впевнені, що хочете завантажити ${selectedFiles.length} ${
                 selectedFiles.length === 1 ? "файл" : "файлів"
-            }? Після завантаження ви не зможете його видалити.`,
+            }?`,
             confirmLabel: "Завантажити",
             confirmVariant: "default",
             onConfirm: handleUpload,
@@ -230,7 +232,6 @@ export function ExternalOrderView({
 
     const handleDeleteClick = () => {
         if (!onDelete) return
-
         setModalConfig({
             title: "Видалення замовлення",
             description: "Ви впевнені, що хочете видалити це замовлення? Цю дію неможливо скасувати.",
@@ -246,7 +247,6 @@ export function ExternalOrderView({
 
     const handleArchiveClick = () => {
         if (!onArchive) return
-
         setModalConfig({
             title: "Архівування замовлення",
             description: "Ви впевнені, що хочете перемістити це замовлення в архів?",
@@ -255,6 +255,21 @@ export function ExternalOrderView({
             onConfirm: async () => {
                 setShowConfirmModal(false)
                 await onArchive()
+            },
+        })
+        setShowConfirmModal(true)
+    }
+
+    const handleCompleteClick = () => {
+        if (!onComplete) return
+        setModalConfig({
+            title: "Відправити на перевірку?",
+            description: "Ви підтверджуєте, що завершили роботу і завантажили всі необхідні файли? Замовлення буде передано редактору.",
+            confirmLabel: "Відправити",
+            confirmVariant: "success",
+            onConfirm: async () => {
+                setShowConfirmModal(false)
+                await onComplete()
             },
         })
         setShowConfirmModal(true)
@@ -278,32 +293,24 @@ export function ExternalOrderView({
     }
 
     const formatFileSize = (bytes: number) => {
-        if (bytes === 0) {return '0 Bytes'}
+        if (bytes === 0) return '0 Bytes'
         const k = 1024
         const sizes = ["Bytes", "KB", "MB", "GB"]
         const i = Math.floor(Math.log(bytes) / Math.log(k))
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i]
     }
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status: string | number) => {
         switch (status) {
-            case "completed":
-                return "bg-green-500"
-            case "in_progress":
-                return "bg-blue-500"
-            default:
-                return "bg-amber-500"
+            case "in_progress": return "bg-blue-500"
+            default: return "bg-amber-500"
         }
     }
 
-    const getStatusText = (status: string) => {
+    const getStatusText = (status: string | number) => {
         switch (status) {
-            case "completed":
-                return "Завершено"
-            case "in_progress":
-                return "В роботі"
-            default:
-                return "Очікує"
+            case "in_progress": return "В роботі"
+            default: return "Очікує"
         }
     }
 
@@ -369,8 +376,30 @@ export function ExternalOrderView({
         )
     }
 
+    // ==========================================
+    // ПОВНОЕКРАННИЙ РЕЖИМ ПРИ ЗАВЕРШЕННІ РОБОТИ
+    // ==========================================
+    if (isCompleted) {
+        return (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-white px-4">
+                <div className="w-32 h-32 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-green-200/50 animate-bounce">
+                    <CheckCircle2 className="w-16 h-16" />
+                </div>
+                <h1 className="text-4xl md:text-6xl font-extrabold text-green-800 mb-6 text-center tracking-tight">
+                    Переклад відправлено!
+                </h1>
+                <p className="text-xl md:text-2xl text-green-600/90 text-center max-w-2xl mb-8 font-medium leading-relaxed">
+                    Дякуємо за виконану роботу. Замовлення передано редактору на перевірку. Ви можете закрити цю сторінку.
+                </p>
+            </div>
+        )
+    }
+
+    // ==========================================
+    // ЗВИЧАЙНИЙ РЕЖИМ (РОБОТА НАД ЗАМОВЛЕННЯМ)
+    // ==========================================
     return (
-        <div className="max-w-4xl mx-auto mt-8 p-6 animate-fade-in">
+        <div className="max-w-4xl mx-auto mt-8 p-6 animate-fade-in pb-32">
             <ConfirmModal
                 open={showConfirmModal}
                 onOpenChange={setShowConfirmModal}
@@ -434,6 +463,7 @@ export function ExternalOrderView({
             </div>
 
             <div className="grid gap-6">
+
                 {/* Основна інформація */}
                 <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
@@ -499,14 +529,14 @@ export function ExternalOrderView({
                     </div>
                 </div>
 
-                
+                {/* Список завантажених файлів */}
                 <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between gap-3 mb-4">
                         <h2 className="text-lg font-semibold flex items-center gap-2 text-blue-800">
                             <div className="p-2 rounded-lg bg-blue-50">
                                 <Eye className="h-5 w-5 text-blue-600" />
                             </div>
-                            <span>Файли для завантаження</span>
+                            <span>Файли замовлення</span>
                         </h2>
 
                         <Button
@@ -529,7 +559,7 @@ export function ExternalOrderView({
 
                     <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
                         <div className="flex items-center justify-between mb-3">
-                            <p className="font-semibold text-blue-900">Source</p>
+                            <p className="font-semibold text-blue-900">Оригінали (Source)</p>
                             <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
                                 {filesLoading ? "..." : sourceFiles.length}
                             </Badge>
@@ -548,7 +578,6 @@ export function ExternalOrderView({
                                     >
                                         <div className="min-w-0">
                                             <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
-                                            <p className="text-xs text-blue-400">ID: {f.id}</p>
                                         </div>
                                         <Button
                                             size="sm"
@@ -556,7 +585,7 @@ export function ExternalOrderView({
                                             className="border-blue-200 text-blue-700 hover:bg-blue-50"
                                             onClick={() => void handleDownloadSourceFile(f.id, f.name)}
                                             disabled={downloadLoading}
-                                            >
+                                        >
                                             Скачати
                                         </Button>
                                     </div>
@@ -567,7 +596,7 @@ export function ExternalOrderView({
 
                     <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
                         <div className="flex items-center justify-between mb-3">
-                            <p className="font-semibold text-blue-900">Target</p>
+                            <p className="font-semibold text-blue-900">Ваш переклад (Target)</p>
                             <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
                                 {filesLoading ? "..." : targetFiles.length}
                             </Badge>
@@ -586,7 +615,6 @@ export function ExternalOrderView({
                                     >
                                         <div className="min-w-0">
                                             <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
-                                            <p className="text-xs text-blue-400">ID: {f.id}</p>
                                         </div>
                                         <Button
                                             size="sm"
@@ -607,18 +635,18 @@ export function ExternalOrderView({
                         <Button
                             className="bg-blue-600 hover:bg-blue-700"
                             onClick={() => void handleDownloadAllSource()}
-                            disabled={filesLoading || downloadLoading}
-                            >
+                            disabled={filesLoading || downloadLoading || sourceFiles.length === 0}
+                        >
                             <FileUp className="h-4 w-4 mr-2" />
-                            Скачати все (source)
+                            Скачати всі оригінали
                         </Button>
                         <Button
                             className="bg-blue-600 hover:bg-blue-700"
                             onClick={() => void handleDownloadAllTarget()}
-                            disabled={filesLoading || downloadLoading}
+                            disabled={filesLoading || downloadLoading || targetFiles.length === 0}
                         >
                             <FileUp className="h-4 w-4 mr-2" />
-                            Скачати все (target)
+                            Скачати всі переклади
                         </Button>
                     </div>
                 </div>
@@ -639,7 +667,7 @@ export function ExternalOrderView({
                             </div>
                             <div>
                                 <p className="font-semibold">Файли успішно завантажено!</p>
-                                <p className="text-sm text-green-600 mt-1">Дякуємо, ваш переклад отримано</p>
+                                <p className="text-sm text-green-600 mt-1">Ви можете додати ще або натиснути &#34;Відправити на перевірку&#34; внизу</p>
                             </div>
                         </div>
                     )}
@@ -665,9 +693,9 @@ export function ExternalOrderView({
                             border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
                             transition-all duration-200 relative overflow-hidden
                             ${isDragging
-                                ? "border-blue-400 bg-blue-50 scale-[1.02]"
-                                : "border-blue-200 hover:border-blue-300 hover:bg-blue-50"
-                            }
+                            ? "border-blue-400 bg-blue-50 scale-[1.02]"
+                            : "border-blue-200 hover:border-blue-300 hover:bg-blue-50"
+                        }
                             ${isUploading ? "pointer-events-none opacity-50" : ""}
                         `}
                     >
@@ -770,31 +798,34 @@ export function ExternalOrderView({
                     </Button>
                 </div>
 
-                {/* Інструкція */}
-                <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
-                        <div className="p-2 rounded-lg bg-blue-50">
-                            <Eye className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <span>Як завантажити переклад</span>
-                    </h2>
+                {/* ВЕЛИКА КНОПКА ЗАВЕРШЕННЯ (Відправити на перевірку) */}
+                {onComplete && (
+                    <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-lg flex flex-col items-center text-center mt-4">
+                        <h3 className="text-xl font-bold text-blue-900 mb-2">Готові здати роботу?</h3>
+                        <p className="text-sm text-blue-500 mb-6 max-w-md">
+                            Переконайтеся, що ви завантажили всі необхідні файли. Після відправки замовлення буде передано на перевірку редактору.
+                        </p>
 
-                    <div className="grid sm:grid-cols-3 gap-4">
-                        {[
-                            { step: 1, title: "Виберіть файли", description: "Перетягніть файли або натисніть на область завантаження" },
-                            { step: 2, title: "Перевірте", description: "Переконайтесь, що вибрали всі потрібні файли" },
-                            { step: 3, title: "Підтвердьте", description: "Натисніть кнопку та підтвердьте завантаження" },
-                        ].map((item) => (
-                            <div key={item.step} className="text-center p-4 rounded-lg bg-blue-50">
-                                <div className="w-8 h-8 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center mx-auto mb-3">
-                                    {item.step}
-                                </div>
-                                <p className="font-medium text-sm mb-1 text-blue-700">{item.title}</p>
-                                <p className="text-xs text-blue-500">{item.description}</p>
-                            </div>
-                        ))}
+                        <Button
+                            onClick={handleCompleteClick}
+                            disabled={targetFiles.length === 0 || filesLoading || isUploading}
+                            className="w-full sm:w-2/3 h-16 text-lg font-bold bg-green-600 hover:bg-green-700 text-white shadow-xl shadow-green-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            size="lg"
+                        >
+                            <CheckCircle2 className="w-6 h-6 mr-3" />
+                            Відправити на перевірку
+                        </Button>
+
+                        {/* Попередження, якщо немає файлів */}
+                        {(targetFiles.length === 0 && !filesLoading) && (
+                            <p className="text-red-500 text-sm mt-4 font-medium flex items-center gap-1">
+                                <AlertCircle className="w-4 h-4"/>
+                                Спочатку завантажте хоча б один файл з перекладом (Target)
+                            </p>
+                        )}
                     </div>
-                </div>
+                )}
+
             </div>
         </div>
     )
