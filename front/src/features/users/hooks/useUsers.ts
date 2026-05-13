@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useToast } from "@/src/hooks/use-toast"
-import { usersApi } from "../api"
-import type { User, UserFormData, UsersFilters } from "../types"
+import { usersApi, rolesApi } from "../api"
+import type { User, UserFormData, UsersFilters, Role } from "../types"
 import { useDebounce } from "@/src/shared/hooks/useDebounce"
 
 export function useUsers() {
@@ -14,6 +14,8 @@ export function useUsers() {
     // -------------------------
     const [users, setUsers] = useState<User[]>([])
     const [loading, setLoading] = useState(false)
+
+    const [roles, setRoles] = useState<Role[]>([])
 
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
@@ -32,7 +34,7 @@ export function useUsers() {
         email: "",
         role: 0,
         is_active: false,
-        avatar: null // 👈 Додаємо аватар сюди
+        avatar: null,
     })
 
     const [errors, setErrors] = useState<Partial<Record<keyof UserFormData, string>>>({})
@@ -45,7 +47,20 @@ export function useUsers() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
     // -------------------------
-    // Load users (через API filters)
+    // Load roles
+    // -------------------------
+    const loadRoles = useCallback(async () => {
+        try {
+            const res = await rolesApi.list()
+            // Беремо масив із поля results, або порожній масив, якщо щось піде не так
+            setRoles(res.results || [])
+        } catch (error) {
+            console.error("Failed to load roles", error)
+        }
+    }, [])
+
+    // -------------------------
+    // Load users
     // -------------------------
     const loadUsers = useCallback(async (pageNumber: number = 1) => {
         try {
@@ -55,7 +70,7 @@ export function useUsers() {
                 search: debouncedSearch,
                 role: filters.role,
                 status: filters.status,
-                page: pageNumber
+                page: pageNumber,
             })
 
             setUsers(response.results)
@@ -77,6 +92,10 @@ export function useUsers() {
         loadUsers(1)
     }, [loadUsers])
 
+    useEffect(() => {
+        loadRoles()
+    }, [loadRoles])
+
     const onPageChange = (newPage: number) => {
         loadUsers(newPage)
     }
@@ -86,17 +105,15 @@ export function useUsers() {
     // -------------------------
     const openAddUser = () => {
         setSelectedUser(null)
-
         setForm({
             full_name: "",
             phone: "",
             email: "",
             role: 0,
             is_active: true,
-            avatar: null // 👈 Очищаємо аватар при створенні нового
+            avatar: null,
         })
         setErrors({})
-
         setIsFormOpen(true)
     }
 
@@ -118,17 +135,15 @@ export function useUsers() {
 
     const openEditUser = (user: User) => {
         setSelectedUser(user)
-
         setForm({
             full_name: user.full_name,
             email: user.email,
             phone: user.phone,
             role: user.role.id,
             is_active: user.is_active,
-            avatar: null // 👈 Очищаємо, бо якщо юзер не вибере новий файл, старий збережеться на бекенді
+            avatar: null,
         })
         setErrors({})
-
         setIsFormOpen(true)
     }
 
@@ -188,15 +203,12 @@ export function useUsers() {
 
             if (selectedUser) {
                 await usersApi.update(selectedUser.id, data)
-
                 toast({
                     title: "User updated",
                     description: `${data.full_name} updated successfully`,
                 })
-
             } else {
                 await usersApi.register(data)
-
                 toast({
                     title: "User created",
                     description: `${data.full_name} created successfully`,
@@ -216,19 +228,16 @@ export function useUsers() {
     }
 
     const confirmDelete = async () => {
-        if (!selectedUser) {return}
+        if (!selectedUser) { return }
 
         try {
             await usersApi.remove(selectedUser.id)
-
             toast({
                 title: "User deleted",
                 description: `${selectedUser.full_name} removed`,
             })
-
             closeModals()
             await loadUsers(page)
-
         } catch {
             toast({
                 title: "Error",
@@ -239,19 +248,16 @@ export function useUsers() {
     }
 
     const confirmDeactivation = async () => {
-        if (!selectedUser) {return}
+        if (!selectedUser) { return }
 
         try {
             await usersApi.deactivate(selectedUser.id)
-
             toast({
                 title: "User deactivated",
                 description: `${selectedUser.full_name} deactivated`,
             })
-
             closeModals()
             await loadUsers(page)
-
         } catch {
             toast({
                 title: "Error",
@@ -262,7 +268,7 @@ export function useUsers() {
     }
 
     const handleConfirm = async () => {
-        if (!selectedUser || !confirmAction) {return}
+        if (!selectedUser || !confirmAction) { return }
 
         if (confirmAction === "delete") {
             await confirmDelete()
@@ -282,6 +288,8 @@ export function useUsers() {
         page,
         totalPages,
         onPageChange,
+
+        roles,
 
         filters,
         setFilters,

@@ -47,3 +47,22 @@ export interface UserFormData {
     is_active: boolean
     avatar?: File | null | string // 👈 File при завантаженні нового, string якщо беремо існуючий, null якщо видаляємо/порожньо
 }
+
+export interface Permission {
+    id: number
+    name: string
+    slug: string
+}
+
+export interface Role {
+    id: number
+    name: string
+    slug: string
+    permissions: Permission[]
+}
+
+export interface RoleFormData {
+    name: string
+    slug: string
+    permission_ids: number[]
+}

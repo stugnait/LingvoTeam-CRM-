@@ -80,7 +80,7 @@ const navGroups: NavGroup[] = [
         items: [
             { name: "Translators", href: "/dashboard/translations", icon: Languages, roles: ["admin", "manager"] },
             { name: "Users", href: "/dashboard/users", icon: UserCog, roles: ["admin"] },
-            { name: "Profile", href: "/dashboard/profile", icon: User, roles: ["admin", "editor", "manager"] },
+            { name: "Profile", href: "/dashboard/profile", icon: User, roles: ["admin", "editor", "manager", "adminnnn"] },
         ],
     },
 ];

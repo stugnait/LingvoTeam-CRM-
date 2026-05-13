@@ -12,10 +12,10 @@ import {
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu"
-import {
-    Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/src/components/ui/dialog"
 import type { User } from "../types"
+
+// Імпорт модалки
+import { RoleInfoModal } from "./RoleInfoModal"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
@@ -25,37 +25,6 @@ export const getImageUrl = (path: string | null | undefined) => {
     const cleanPath = path.startsWith("/") ? path.substring(1) : path
     if (!cleanPath.startsWith("media/")) return `${BACKEND_URL}/media/${cleanPath}`
     return `${BACKEND_URL}/${cleanPath}`
-}
-
-// 👇 Той самий об'єкт що й у UsersPage
-const ROLE_PERMISSIONS: Record<string, { label: string; perms: string[] }> = {
-    admin: { label: "Admin", perms: [
-            "Перегляд та редагування всіх замовлень",
-            "Управління користувачами (створення, редагування, видалення)",
-            "Доступ до статистики та дашборду",
-            "Управління клієнтами та категоріями",
-            "Перегляд тарифів та фінансів",
-            "Доступ до P&L звіту",
-            "Управління перекладачами",
-        ]},
-    manager: { label: "Manager", perms: [
-            "Перегляд та ведення своїх замовлень",
-            "Робота з клієнтами та категоріями",
-            "Перегляд перекладачів",
-            "Перегляд зарплат менеджерів",
-            "Доступ до дашборду",
-        ]},
-    editor: { label: "Editor", perms: [
-            "Перегляд своїх завдань (Tasks)",
-            "Редагування та перевірка замовлень",
-            "Перегляд свого профілю",
-        ]},
-    finance: { label: "Finance", perms: [
-            "Перегляд фінансового дашборду",
-            "Доступ до P&L звіту",
-            "Перегляд тарифів та статистики",
-            "Аналітика клієнтів та команди",
-        ]},
 }
 
 interface UserTableProps {
@@ -72,7 +41,7 @@ interface UserTableProps {
 export function UserTable({
                               users, onEdit, onDelete, onDeactivate, page, totalPages, onPageChange, onResetPassword
                           }: UserTableProps) {
-    // 👇 Стан для модалки дозволів
+
     const [permUser, setPermUser] = useState<User | null>(null)
 
     const getRoleVariant = (slug: string) => {
@@ -148,7 +117,6 @@ export function UserTable({
                                         </DropdownMenuTrigger>
 
                                         <DropdownMenuContent align="end">
-                                            {/* 👇 Нова кнопка */}
                                             <DropdownMenuItem onClick={() => setPermUser(user)}>
                                                 <ShieldCheck className="h-4 w-4 mr-2" />
                                                 View permissions
@@ -209,33 +177,12 @@ export function UserTable({
                 </div>
             </div>
 
-            {/* 👇 Модалка дозволів */}
-            <Dialog open={!!permUser} onOpenChange={(open) => !open && setPermUser(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <ShieldCheck className="h-5 w-5 text-muted-foreground" />
-                            {permUser?.full_name} — {permUser?.role?.name}
-                        </DialogTitle>
-                    </DialogHeader>
-
-                    <ul className="space-y-2 mt-2">
-                        {(ROLE_PERMISSIONS[permUser?.role?.slug ?? ""]?.perms ?? []).map((perm, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm">
-                                <span className="text-green-500 mt-0.5">✓</span>
-                                {perm}
-                            </li>
-                        ))}
-
-                        {/* Якщо роль невідома */}
-                        {!ROLE_PERMISSIONS[permUser?.role?.slug ?? ""] && (
-                            <li className="text-sm text-muted-foreground">
-                                Дозволи для цієї ролі не визначені.
-                            </li>
-                        )}
-                    </ul>
-                </DialogContent>
-            </Dialog>
+            {/* Виклик модалки */}
+            <RoleInfoModal
+                open={!!permUser}
+                onOpenChange={(open) => !open && setPermUser(null)}
+                roleData={permUser?.role as any}
+            />
         </>
     )
 }

@@ -1,5 +1,5 @@
 import { apiFetch } from "@/src/shared/api/client"
-import type { User, UserFormData, UsersListResponse } from "./types"
+import type {Permission, Role, RoleFormData, User, UserFormData, UsersListResponse} from "./types"
 
 // 👇 Допоміжна функція для створення FormData
 const buildFormData = (data: UserFormData): FormData => {
@@ -78,4 +78,38 @@ export const usersApi = {
 
     deactivate: (id: string) =>
         apiFetch<void>(`users/admin/users/${id}/toggle-status/`, { method: "POST" }),
+}
+
+export const permissionsApi = {
+    list: () =>
+        apiFetch<Permission[]>("users/permissions/", { method: "GET" }),
+}
+
+export const rolesApi = {
+    list: () =>
+        apiFetch<Role[]>("users/roles/", { method: "GET" }),
+
+    create: (data: RoleFormData) =>
+        apiFetch<Role>("users/roles/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        }),
+
+    update: (id: number, data: RoleFormData) =>
+        apiFetch<Role>(`users/roles/${id}/`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        }),
+
+    remove: (id: number) =>
+        apiFetch<void>(`users/roles/${id}/`, { method: "DELETE" }),
+
+    setPermissions: (id: number, permission_ids: number[]) =>
+        apiFetch<Role>(`users/roles/${id}/set-permissions/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ permission_ids }),
+        }),
 }
