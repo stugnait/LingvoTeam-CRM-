@@ -75,7 +75,6 @@ export function ExternalOrderView({
     const [filesError, setFilesError] = useState<string | null>(null)
     const [downloadLoading, setDownloadLoading] = useState(false)
 
-    // Перевірка, чи статус є завершеним
     const isCompleted = order.status_id === 10
 
     const refreshFiles = async () => {
