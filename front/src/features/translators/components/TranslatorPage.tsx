@@ -1,17 +1,12 @@
 "use client"
 
 import { useTranslators } from "../hooks/useTranslators"
-
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
-
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
-
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
-
 import { PatternFormat } from 'react-number-format'
-
 import {
     Card,
     CardContent,
@@ -20,10 +15,17 @@ import {
     CardTitle,
 } from "@/src/components/ui/card"
 
+// 👇 1. Додаємо імпорти для Select
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/src/components/ui/select"
+
 import { TranslatorsTable } from "./TranslatorsTable"
-
 import { Plus } from "lucide-react"
-
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { TranslatorsFilters } from "@/src/features/translators/components/TranslatorFilter";
 
@@ -57,10 +59,12 @@ export default function TranslatorsPage() {
         targetLanguage,
         setTargetLanguage,
 
-        // Змінні та функції пагінації
         page,
         totalPages,
         onPageChange,
+
+        // 👇 Беремо валюти з хука
+        currencies
     } = useTranslators()
 
     const {
@@ -104,17 +108,13 @@ export default function TranslatorsPage() {
                             <TranslatorsFilters
                                 search={search}
                                 setSearch={setSearch}
-
                                 ordering={ordering}
                                 setOrdering={setOrdering}
-
                                 sourceLanguage={sourceLanguage}
                                 setSourceLanguage={setSourceLanguage}
-
                                 targetLanguage={targetLanguage}
                                 setTargetLanguage={setTargetLanguage}
-
-                                languages={languages} // масив з API
+                                languages={languages}
                             />
                         </CardContent>
                     </Card>
@@ -133,7 +133,6 @@ export default function TranslatorsPage() {
                                 translators={translators}
                                 onEdit={openEditTranslator}
                                 onDelete={openDeleteTranslator}
-                                // Передаємо пропси пагінації
                                 page={page}
                                 totalPages={totalPages}
                                 onPageChange={onPageChange}
@@ -230,27 +229,23 @@ export default function TranslatorsPage() {
                         {errors?.work_type && <p className="text-xs text-red-500 mt-1">{errors.work_type}</p>}
                     </div>
 
+                    {/* 👇 2. Замінюємо Input на Select для валюти */}
                     <div>
-                        <Input
-                            type="number"
-                            min="0"
-                            placeholder="Currency ID"
-                            className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.currency_id ? "border-red-500" : ""}`}
-                            onKeyDown={(e) => {
-                                if (["-", "e", "E", "+"].includes(e.key)) {
-                                    e.preventDefault();
-                                }
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            value={form.currency_id === 0 ? "" : form.currency_id}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                setForm(prev => ({
-                                    ...prev,
-                                    currency_id: val === "" ? 0 : Math.max(0, parseInt(val, 10)),
-                                }))
-                            }}
-                        />
+                        <Select
+                            value={form.currency_id === 0 ? "" : String(form.currency_id)}
+                            onValueChange={(value) => setForm(prev => ({ ...prev, currency_id: Number(value) }))}
+                        >
+                            <SelectTrigger className={errors?.currency_id ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {currencies.map((currency) => (
+                                    <SelectItem key={currency.id} value={String(currency.id)}>
+                                        {currency.name} {/* Або currency.code, залежно від того, що повертає бекенд */}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         {errors?.currency_id && <p className="text-xs text-red-500 mt-1">{errors.currency_id}</p>}
                     </div>
 

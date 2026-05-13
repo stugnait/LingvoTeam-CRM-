@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react"
 import { useToast } from "@/src/hooks/use-toast"
 import { translatorsApi } from "../api"
 import type { Translator, TranslatorPayload } from "../types"
+import {Currency} from "@/src/features/orders/types";
+import {ordersApi} from "@/src/features/orders/api";
 
 export function useTranslators() {
     const { toast } = useToast()
@@ -27,6 +29,7 @@ export function useTranslators() {
     const [languagePairId, setLanguagePairId] = useState<number | null>(null)
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
+    const [currencies, setCurrencies] = useState<Currency[]>([])
 
     const [confirmAction, setConfirmAction] =
         useState<"delete" | "deactivate" | null>(null)
@@ -57,6 +60,15 @@ export function useTranslators() {
 
         return () => clearTimeout(timer)
     }, [search])
+
+    const loadCurrencies = useCallback(async () => {
+        try {
+            const response = await ordersApi.listCurrency()
+            setCurrencies(response.results)
+        } catch {
+            toast({ title: "Error", description: "Failed to load currencies", variant: "error" })
+        }
+    }, [toast])
 
     // -------------------------
     // Load translators
@@ -100,7 +112,8 @@ export function useTranslators() {
 
     useEffect(() => {
         loadTranslators(1)
-    }, [loadTranslators])
+        loadCurrencies()
+    }, [loadTranslators, loadCurrencies])
 
     const onPageChange = (newPage: number) => {
         loadTranslators(newPage)
@@ -221,7 +234,7 @@ export function useTranslators() {
     }
 
     const confirmActionHandler = async () => {
-        if (!selectedTranslator || !confirmAction) return
+        if (!selectedTranslator || !confirmAction) {return}
 
         try {
             await translatorsApi.remove(selectedTranslator.id)
@@ -289,5 +302,6 @@ export function useTranslators() {
         page,
         totalPages,
         onPageChange,
+        currencies
     }
 }

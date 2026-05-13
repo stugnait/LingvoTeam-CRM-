@@ -6,6 +6,7 @@ import type {
     TranslatorTraffic,
     TranslatorTrafficPayload
 } from "./types"
+import type {CurrencyListResponse} from "@/src/features/orders/types";
 
 export const translatorsApi = {
     // Додано page як перший аргумент, щоб String(page) не викликав помилку
@@ -72,6 +73,11 @@ export const translatorsApi = {
         apiFetch<Translator>(`translators/${id}/`, {
             method: "PATCH",
             body: JSON.stringify(data),
+        }),
+
+    listCurrency: () =>
+        apiFetch<CurrencyListResponse>(`core/currencies/`, {
+            method: "GET"
         }),
 
     // DELETE /translators/:id/
