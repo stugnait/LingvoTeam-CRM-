@@ -19,7 +19,7 @@ import KanbanHeader from '@/src/components/canban/KanbanHeader';
 import KanbanColumn from '@/src/components/canban/KanbanColumn';
 import KanbanStats from '@/src/components/canban/KanbanStats';
 import { Search } from 'lucide-react';
-import {TaskModal} from "@/src/components/modals/jira/InfoModal";
+import { TaskModal } from "@/src/components/modals/jira/InfoModal";
 
 // Hooks and types
 import { useEditor } from '../hooks/useEditor';
@@ -35,8 +35,8 @@ import {
     PauseCircle,
     CheckSquare
 } from 'lucide-react';
-import {RejectOrderModal} from "@/src/components/modals/jira/RejectOrderModal";
-import {RatingModal} from "@/src/components/modals/jira/RatingModal";
+import { RejectOrderModal } from "@/src/components/modals/jira/RejectOrderModal";
+import { RatingModal } from "@/src/components/modals/jira/RatingModal";
 
 const COLUMN_ICONS = {
     planned: <Target className="w-4 h-4" />,
@@ -48,7 +48,7 @@ const COLUMN_ICONS = {
 };
 
 const formatDate = (dateString?: string) => {
-    if (!dateString) {return 'Не вказано';}
+    if (!dateString) { return 'Не вказано'; }
     try {
         const date = new Date(dateString);
         return new Intl.DateTimeFormat('uk-UA', {
@@ -88,6 +88,15 @@ export default function EditorMain() {
         setIsApproveModalOpen,
         rejectTranslation,
         approveTranslation,
+
+        // Змінні та функції для файлів
+        sourceFiles,
+        targetFiles,
+        filesLoading,
+        downloadLoading,
+        loadOrderFiles,
+        downloadSingleSourceFile,
+        downloadSingleTargetFile,
     } = useEditor();
 
     const sensors = useSensors(
@@ -195,11 +204,11 @@ export default function EditorMain() {
                         open={isModalOpen}
                         onOpenChange={closeModal}
                         taskId={selectedTask.id.toString()}
-                        taskTitle={selectedTask.language_pair_name}
-                        taskDescription={selectedTask.client_comment}
+                        taskTitle={selectedTask.language_pair_name || `Order #${selectedTask.id}`}
+                        taskDescription={selectedTask.client_comment || 'Немає коментаря'}
                         status={selectedTask.status_name}
                         priority={formatPriority(selectedTask.priority)}
-                        translator={selectedTask.translator_name}
+                        translator={selectedTask.translator_name || 'Не призначено'}
                         intake_manager={selectedTask.manager_accept_name
                             ? { id: 0, name: selectedTask.manager_accept_name, avatar: undefined }
                             : null}
@@ -209,11 +218,23 @@ export default function EditorMain() {
                         clientName={selectedTask.client_name}
                         languagePair={selectedTask.language_pair_name}
                         dueDate={formatDate(selectedTask.deadline)}
+
                         onDownloadOriginal={() => downloadOrderSourceFiles(selectedTask.id)}
                         onDownloadTranslation={() => downloadOrderTargetFiles(selectedTask.id)}
+
                         onCancel={closeModal}
                         onSave={closeModal}
-                        editor={selectedTask.editor_name || 'Unassigned'}
+                        editor={selectedTask.editor_name || 'Не призначено'}
+
+                        // 👇 ПРОПСИ ДЛЯ ФАЙЛІВ
+                        orderId={selectedTask.id}
+                        sourceFiles={sourceFiles}
+                        targetFiles={targetFiles}
+                        filesLoading={filesLoading}
+                        downloadLoading={downloadLoading}
+                        onLoadFiles={loadOrderFiles}
+                        onDownloadSingleSource={downloadSingleSourceFile}
+                        onDownloadSingleTarget={downloadSingleTargetFile}
                     />
                 )}
 
@@ -236,10 +257,6 @@ export default function EditorMain() {
                         onCancel={() => setIsApproveModalOpen(false)}
                     />
                 )}
-
-
-
-
             </div>
 
             {/* Stats Bar */}

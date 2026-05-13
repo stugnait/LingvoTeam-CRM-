@@ -86,6 +86,10 @@ export const useEditor = () => {
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
     const [isEditorActionLoading, setIsEditorActionLoading] = useState(false)
+    const [sourceFiles, setSourceFiles] = useState<any[]>([])
+    const [targetFiles, setTargetFiles] = useState<any[]>([])
+    const [filesLoading, setFilesLoading] = useState(false)
+    const [downloadLoading, setDownloadLoading] = useState(false)
 
 
 
@@ -272,6 +276,61 @@ export const useEditor = () => {
             console.error('❌ Failed to download TARGET files:', error)
         }
     }, [])
+
+    // --- ФУНКЦІЇ ДЛЯ РОБОТИ З ФАЙЛАМИ ---
+    const loadOrderFiles = useCallback(async (orderId: number) => {
+        setFilesLoading(true);
+        try {
+            const results = await Promise.allSettled([
+                ordersApi.listDownloadFiles(orderId, 'source'),
+                ordersApi.listDownloadFiles(orderId, 'target')
+            ]);
+
+            const [sourceRes, targetRes] = results;
+
+            // Обробка Source
+            if (sourceRes.status === 'fulfilled') {
+                setSourceFiles(sourceRes.value.files || []);
+            } else {
+                setSourceFiles([]); // Якщо папка порожня або помилка
+            }
+
+            // Обробка Target
+            if (targetRes.status === 'fulfilled') {
+                setTargetFiles(targetRes.value.files || []);
+            } else {
+                setTargetFiles([]);
+            }
+        } catch (error) {
+            console.error("Failed to load files", error);
+        } finally {
+            setFilesLoading(false);
+        }
+    }, []);
+
+    const downloadSingleSourceFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
+        setDownloadLoading(true);
+        try {
+            const blob = await ordersApi.downloadFile(orderId, 'source', fileId);
+            downloadBlob(blob, filename);
+        } catch (error) {
+            console.error('Failed to download source file', error);
+        } finally {
+            setDownloadLoading(false);
+        }
+    }, []);
+
+    const downloadSingleTargetFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
+        setDownloadLoading(true);
+        try {
+            const blob = await ordersApi.downloadFile(orderId, 'target', fileId);
+            downloadBlob(blob, filename);
+        } catch (error) {
+            console.error('Failed to download target file', error);
+        } finally {
+            setDownloadLoading(false);
+        }
+    }, []);
 
 
     // Create maps for fast access
@@ -485,6 +544,8 @@ export const useEditor = () => {
 
             setSelectedTask(order)
 
+            await loadOrderFiles(orderId)
+
             const statusId = String(order.status_id)
 
             if (['1', '2', '3', '5'].includes(statusId)) {
@@ -616,6 +677,14 @@ export const useEditor = () => {
         approveTranslation,
 
         openEditorActionModal,
+        sourceFiles,
+        targetFiles,
+        filesLoading,
+        downloadLoading,
+        loadOrderFiles,
+        downloadSingleSourceFile,
+        downloadSingleTargetFile,
+
     };
 };
 

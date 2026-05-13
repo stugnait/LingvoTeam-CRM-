@@ -206,7 +206,8 @@ class ExternalOrderAccessView(APIView):
                     "deadline": str(order.deadline),
                     "target_language": order.language_pair_id.target_language.name if order.language_pair_id and order.language_pair_id.target_language else "-",
                     "source_language": order.language_pair_id.source_language.name if order.language_pair_id and order.language_pair_id.source_language else "-",
-                    "comment": getattr(order, 'client_comment', "Коментар відсутній")
+                    "comment": getattr(order, 'client_comment', "Коментар відсутній"),
+                    "status_id": order.status_id.id if order.status_id else None
                 }
             }, status=http_status.HTTP_200_OK)
 
@@ -268,7 +269,8 @@ class ExternalOrderAccessView(APIView):
                         "deadline": str(order.deadline),
                         "target_language": order.language_pair_id.target_language.name if order.language_pair_id and order.language_pair_id.target_language else "-",
                         "source_language": order.language_pair_id.source_language.name if order.language_pair_id and order.language_pair_id.source_language else "-",
-                        "comment": getattr(order, 'client_comment', "Коментар відсутній")
+                        "comment": getattr(order, 'client_comment', "Коментар відсутній"),
+                        "status_id": order.status_id.id if order.status_id else None
                     }
                 }, status=http_status.HTTP_200_OK)
 
@@ -368,6 +370,71 @@ class TranslatorUploadView(APIView):
             },
             status=http_status.HTTP_201_CREATED,
         )
+
+
+class ExternalOrderStatusUpdateView(APIView):
+    """
+    Змінює статус замовлення на ID 10 для зовнішнього користувача (перекладача).
+    Перевіряє доступ по куках, аналогічно до завантаження файлів.
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def _check_access(self, request, order: Order):
+        # Перевірка доступу (точна копія твоєї логіки з DownloadView)
+        provided_password = request.COOKIES.get(f"order_auth_{order.id}")
+        if not provided_password:
+            return None, Response({"detail": "Немає доступу."}, status=http_status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+
+        link_qs = OrderLink.objects.filter(order=order, assignee=OrderLink.Assignee.TRANSLATOR)
+        link_obj = None
+        for candidate in link_qs.order_by("-id"):
+            expire_at = getattr(candidate, "expire_at", None) or getattr(candidate, "expire_date", None)
+            if expire_at and expire_at < now:
+                continue
+            if candidate.password and secrets.compare_digest(candidate.password, provided_password):
+                link_obj = candidate
+                break
+
+        if not link_obj:
+            return None, Response({"detail": "Невірний пароль."}, status=http_status.HTTP_403_FORBIDDEN)
+
+        return link_obj, None
+
+    @extend_schema(
+        summary="Встановити статус замовлення = 10",
+        description="Перевіряє куку і змінює статус замовлення на 10.",
+        tags=["External Access"],
+        request=None,
+        responses={200: OpenApiTypes.OBJECT}
+    )
+    def post(self, request, order_id: int):
+        order = get_object_or_404(Order, id=order_id)
+
+        _link, denied = self._check_access(request, order)
+        if denied:
+            return denied
+
+        try:
+            # Отримуємо об'єкт статусу з ID 10
+            new_status = Status.objects.get(id=10)
+
+            # Якщо статус ще не 10, оновлюємо його
+            if order.status_id != new_status:
+                order.status_id = new_status
+                order.save(update_fields=["status_id"])
+
+            return Response(
+                {"detail": "Статус замовлення успішно оновлено на 10."},
+                status=http_status.HTTP_200_OK
+            )
+        except Status.DoesNotExist:
+            return Response(
+                {"detail": "Статус з ID 10 не знайдено в базі даних."},
+                status=http_status.HTTP_400_BAD_REQUEST
+            )
         
 
 class ExternalTranslatorDownloadView(APIView):

@@ -12,6 +12,7 @@ export interface ExternalOrder {
     deadline: string
     comment: string
     status: string
+    status_id?: number;
 }
 
 export interface ExternalOrderLoginResponse {

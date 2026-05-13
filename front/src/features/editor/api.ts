@@ -90,4 +90,16 @@ export const ordersApi = {
                 body: JSON.stringify(data),
             }
         ),
+
+    listDownloadFiles: (orderId: number, folder: "source" | "target") =>
+        apiFetch<{ files: any[] }>(`orders/${orderId}/download-files/${folder}/?list=1`, {
+            method: "GET",
+        }),
+
+    // Скачування конкретного файлу
+    downloadFile: (orderId: number, folder: "source" | "target", fileId: number) =>
+        apiFetch<Blob>(`orders/${orderId}/download-files/${folder}/${fileId}/`, {
+            method: "GET",
+            responseType: "blob",
+        }),
 }
