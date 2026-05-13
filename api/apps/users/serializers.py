@@ -94,28 +94,28 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         write_only=True
     )
     role = RoleSerializer(read_only=True)
-    avatar = serializers.ImageField(
-        required=False,
-        allow_null=True,
-        write_only=True,
-        source='avatar_upload'  # 👈 фіктивне ім'я, щоб не конфліктувало з полем моделі
-    )
+
+    # Вказуємо, що чекаємо файл, але не зберігаємо його стандартно
+    avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['avatar'] = instance.avatar or None
+        # Виводимо URL з бази
+        rep['avatar'] = instance.avatar if instance.avatar else None
         return rep
 
     def update(self, instance, validated_data):
-        avatar_file = validated_data.pop('avatar_upload', None)  # 👈 той самий фіктивний ключ
+        # 1. ЗАБИРАЄМО ФАЙЛ ДО ТОГО, ЯК DRF ПОЧНЕ ОНОВЛЕННЯ
+        avatar_file = validated_data.pop('avatar', None)
 
+        # 2. Оновлюємо всі інші текстові поля
         instance = super().update(instance, validated_data)
 
+        # 3. Власноруч вантажимо аватарку в Dropbox
         if avatar_file:
             from ..dropbox_services.dropbox_utils import upload_user_avatar
-            print("UPLOADING AVATAR:", avatar_file.name)
             avatar_url = upload_user_avatar(instance, avatar_file)
-            print("AVATAR URL:", avatar_url)
+
             if avatar_url:
                 instance.avatar = avatar_url
                 instance.save(update_fields=['avatar'])
@@ -127,13 +127,13 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'full_name', 'phone', 'role_id', 'role', 'avatar')
         read_only_fields = ('id',)
 
-
 class UserSelfUpdateSerializer(serializers.ModelSerializer):
+    # Те саме тут
     avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['avatar'] = instance.avatar or None
+        rep['avatar'] = instance.avatar if instance.avatar else None
         return rep
 
     def update(self, instance, validated_data):
@@ -143,9 +143,7 @@ class UserSelfUpdateSerializer(serializers.ModelSerializer):
 
         if avatar_file:
             from ..dropbox_services.dropbox_utils import upload_user_avatar
-            print("UPLOADING AVATAR:", avatar_file.name)
             avatar_url = upload_user_avatar(instance, avatar_file)
-            print("AVATAR URL:", avatar_url)
             if avatar_url:
                 instance.avatar = avatar_url
                 instance.save(update_fields=['avatar'])
