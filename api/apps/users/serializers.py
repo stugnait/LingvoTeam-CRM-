@@ -15,7 +15,72 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 
+from .models import Permission, RolePermission
+
 from ..dropbox_services.dropbox_utils import get_dbx
+
+
+class PermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Permission
+        fields = ('id', 'name', 'slug')
+
+
+class RoleWithPermissionsSerializer(serializers.ModelSerializer):
+    permissions = serializers.SerializerMethodField()
+
+    def get_permissions(self, obj):
+        perms = Permission.objects.filter(rolepermission__role=obj)
+        return PermissionSerializer(perms, many=True).data
+
+    class Meta:
+        model = Role
+        fields = ('id', 'name', 'slug', 'permissions')
+
+
+class RoleCreateUpdateSerializer(serializers.ModelSerializer):
+    permission_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+
+    class Meta:
+        model = Role
+        fields = ('id', 'name', 'slug', 'permission_ids')
+
+    def create(self, validated_data):
+        permission_ids = validated_data.pop('permission_ids', [])
+        role = Role.objects.create(**validated_data)
+        for perm_id in permission_ids:
+            RolePermission.objects.create(role=role, permission_id=perm_id)
+        return role
+
+    def update(self, instance, validated_data):
+        permission_ids = validated_data.pop('permission_ids', None)
+        instance.name = validated_data.get('name', instance.name)
+        instance.slug = validated_data.get('slug', instance.slug)
+        instance.save()
+
+        if permission_ids is not None:
+            RolePermission.objects.filter(role=instance).delete()
+            for perm_id in permission_ids:
+                RolePermission.objects.create(role=instance, permission_id=perm_id)
+
+        return instance
+
+
+class RolePermissionSerializer(serializers.ModelSerializer):
+    permission = PermissionSerializer(read_only=True)
+    permission_id = serializers.PrimaryKeyRelatedField(
+        queryset=Permission.objects.all(),
+        source='permission',
+        write_only=True
+    )
+
+    class Meta:
+        model = RolePermission
+        fields = ('id', 'role', 'permission', 'permission_id')
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
