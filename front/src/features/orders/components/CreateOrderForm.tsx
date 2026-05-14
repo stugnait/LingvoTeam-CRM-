@@ -79,8 +79,7 @@ interface CreateOrderModalProps {
     setComment: (value: string) => void
     priority: Priority | undefined
     setPriority: (value: Priority) => void
-    onRefreshTranslators?: () => Promise<void>
-
+    onRefreshTranslators?: () => Promise<any[]>
     totalAmount: string
     setTotalAmount: (value: string) => void
 }
@@ -153,7 +152,28 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const handleQuickCreateTranslator = async () => {
         await submitTranslator(form)
-        if (onRefreshTranslators) { await onRefreshTranslators() }
+
+        // 2. Оновлюємо список і отримуємо його результат
+        if (onRefreshTranslators) {
+            const freshTranslators = await onRefreshTranslators()
+
+            // Перевіряємо, чи повернувся масив і чи він не порожній
+            if (Array.isArray(freshTranslators) && freshTranslators.length > 0) {
+                // Шукаємо за email (найбільш унікальний параметр з форми)
+                const newTranslator = freshTranslators.find((t: any) => t.email === form.email);
+
+                if (newTranslator) {
+                    // Встановлюємо ID перекладача
+                    setSelectedTranslatorId(newTranslator.id);
+
+                    // Якщо є тарифи — обираємо перший
+                    if (newTranslator.traffic && newTranslator.traffic.length > 0) {
+                        setTranslatorTrafficId(String(newTranslator.traffic[0].id));
+                    }
+                }
+            }
+        }
+
         closeModals()
     }
 

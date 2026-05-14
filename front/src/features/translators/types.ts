@@ -2,12 +2,6 @@
    TRANSLATOR
    ========================================================= */
 
-import {User} from "@/src/features/users/types";
-
-/**
- * Відповідає TranslatorSerializer
- */
-
 export interface TranslatorTraffic {
     id: number
     name: string | null
@@ -27,6 +21,9 @@ export interface TranslatorTraffic {
     currency_id: number
     currency_name: string
     currency_sign: string
+
+    rate_per_page: number
+    rate_per_action: number
 }
 
 export interface Translator {
@@ -69,46 +66,39 @@ export interface TranslatorListResponse {
 
 export interface TranslatorFilters {
     work_type?: number
-    source_language?: number
-    target_language?: number
+    source_language?: number | null
+    target_language?: number | null
+    language_pair_id?: number | null
     search?: string
-}
-
-export interface TranslatorTrafficPayload {
-    translator: number
-    language_pair: number
-    rate_per_page?: number
-    rate_per_action?: number
-    currency_id: number
-    category?: number | null
-    name?: string | null
-}
-
-/* =========================================================
-   TRANSLATOR TRAFFIC
-   ========================================================= */
-
-/**
- * Відповідає TranslatorTrafficSerializer
- */
-export interface TranslatorTraffic {
-    id: number
-
-    translator_id: number
-    language_pair: number
-    language_pair_name: string
-
-    currency_id: number
-    currency_name: string
-
-    rate_per_page?: number | null
-    rate_per_action?: number | null
 }
 
 /* =========================================================
    TRANSLATOR TRAFFIC — CREATE / UPDATE PAYLOAD
    ========================================================= */
 
+export interface TranslatorTrafficPayload {
+    name: string
+    translator: number
+    language_pair: number | null
+    category: number | null
+    currency_id: number
+    rate_per_page: number
+    rate_per_action: number
+}
+
+/* =========================================================
+   HELPERS FOR SELECTS
+   ========================================================= */
+
+export interface LanguagePairOption {
+    id: number
+    name: string
+}
+
+export interface CategoryOption {
+    id: number
+    name: string
+}
 
 /* =========================================================
    COMMON API RESPONSES
