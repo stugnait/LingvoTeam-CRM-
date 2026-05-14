@@ -315,8 +315,12 @@ export function useOrders() {
                 cache[t.id] = t
             })
             setTranslatorsCache(cache)
+
+            // 🔥 ВАЖЛИВО: повертаємо результат, щоб компонент міг його використати
+            return res.results
         } catch (e) {
             handleError(e, "Failed to refresh translators")
+            return []
         }
     }, [handleError])
 
