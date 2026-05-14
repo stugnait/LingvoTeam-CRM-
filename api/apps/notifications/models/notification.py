@@ -8,6 +8,7 @@ class Notification(models.Model):
         on_delete=models.CASCADE,
         related_name='notifications'
     )
+
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
