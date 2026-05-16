@@ -476,12 +476,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             "margin": str(margin) if margin else None,
         })
 
-    @extend_schema(
-        summary="Відхилити переклад",
-        description="Метод для редактора. Змінює статус на 'Відхилено' та надсилає email менеджеру.",
-        request=RejectTranslationSerializer,
-        tags=["Order Workflow"]
-    )
     @action(detail=True, methods=['post'], url_path='reject-translation')
     def reject_translation(self, request, pk=None):
         order = self.get_object()
@@ -489,7 +483,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         comment = serializer.validated_data['review_comment']
-        # Краще використовувати slug або константу, ніж ID 6
         rejected_status = Status.objects.filter(id=6).first()
 
         OrderEditorReview.objects.create(
@@ -503,17 +496,47 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.status_id = rejected_status
             order.save()
 
-        if order.manager_accept_id:
+        # --- Нотифікація менеджеру ---
+        current_user = request.user
+        manager_accept = order.manager_accept_id
+        manager_delivery = order.manager_delivery_id
+
+        # msg_text = f"Замовлення #{order.id} відхилено редактором. Коментар: {comment}"
+
+        recipients = set()
+        if manager_accept and manager_accept != current_user:
+            recipients.add(manager_accept)
+        if manager_delivery and manager_delivery != current_user:
+            recipients.add(manager_delivery)
+
+        for manager_obj in recipients:
+            try:
+                Notification.objects.create(
+                    recipient=manager_obj,
+                    order=order,
+                    title="Переклад відхилено",
+                    message=comment,
+                    status="rejected"
+                )
+            except Exception as e:
+                logger.error(f"Failed to create notification: {e}")
+
             try:
                 send_mail(
-                    subject=f"УВАГА: Переклад замовлення #{order.id} відхилено!",
-                    message=f"Редактор {request.user.full_name} відхилив переклад.\nКоментар: {comment}",
+                    subject=f"Замовлення #{order.id}: Переклад відхилено — LingvoTeam",
+                    message=(
+                        f"Вітаємо, {manager_obj.full_name}!\n\n"
+                        f"Редактор {current_user.full_name} відхилив переклад замовлення #{order.id}.\n"
+                        f"Коментар: {comment}\n\n"
+                        f"З повагою, команда LingvoTeam."
+                    ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[order.manager_accept_id.email],
+                    recipient_list=[manager_obj.email],
                     fail_silently=True
                 )
             except Exception as e:
                 logger.error(f"Failed to send rejection email: {e}")
+        # --- кінець нотифікації ---
 
         return Response({"message": "Переклад відхилено, менеджер повідомлений."}, status=status.HTTP_200_OK)
 
@@ -637,7 +660,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                     recipient=manager_obj,
                     order=order,
                     title="Замовлення перевірено",
-                    message=msg_text
+                    message=comment,
+                    status = "rejected"
                 )
             except Exception as e:
                 logger.error(f"Failed to create notification: {e}")

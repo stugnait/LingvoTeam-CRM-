@@ -13,7 +13,7 @@ export const useErrorInterceptor = () => {
             const response = await originalFetch(...args);
 
             if (!response.ok) {
-                if ([401, 403, 405].includes(response.status)) {
+                if ([401, 405].includes(response.status)) {
                     router.push(`/${response.status}`);
                 }
             }

@@ -1,7 +1,7 @@
 // features/notifications/components/NotificationsDropdown.tsx
 "use client"
 
-import { Bell } from "lucide-react"
+import { Bell, CheckCircle, XCircle, Clock } from "lucide-react"
 import { useRouter } from "next/navigation"
 import {
     DropdownMenu,
@@ -13,14 +13,30 @@ import {
 import { Button } from "@/src/components/ui/button"
 import { useNotifications } from "../hooks/useNotification"
 
+const STATUS_CONFIG = {
+    approved: {
+        icon: CheckCircle,
+        iconClass: "text-green-500",
+        borderClass: "border-l-2 border-green-500",
+        bgClass: "bg-green-50 dark:bg-green-950/20",
+    },
+    rejected: {
+        icon: XCircle,
+        iconClass: "text-red-500",
+        borderClass: "border-l-2 border-red-500",
+        bgClass: "bg-red-50 dark:bg-red-950/20",
+    },
+    pending: {
+        icon: Clock,
+        iconClass: "text-muted-foreground",
+        borderClass: "border-l-2 border-muted",
+        bgClass: "",
+    },
+}
+
 export function NotificationsDropdown() {
     const router = useRouter()
-    const {
-        notifications,
-        unreadCount,
-        readNotification,
-        markAllRead,
-    } = useNotifications()
+    const { notifications, unreadCount, readNotification, markAllRead } = useNotifications()
 
     return (
         <DropdownMenu>
@@ -39,27 +55,38 @@ export function NotificationsDropdown() {
                         No new notifications
                     </div>
                 ) : (
-                    notifications.map(n => (
-                        <DropdownMenuItem
-                            key={n.id}
-                            onClick={async () => {
-                                await readNotification(n)
-                                router.push(`/dashboard/orders?highlight=${n.order}`)
-                            }}
-                            className="flex flex-col items-start"
-                        >
-                            <span className="font-medium">{n.title}</span>
-                            <span className="text-xs text-muted-foreground">
-                                Order #{n.id}
-                            </span>
-                        </DropdownMenuItem>
-                    ))
+                    notifications.map(n => {
+                        const config = STATUS_CONFIG[n.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending
+                        const Icon = config.icon
+
+                        return (
+                            <DropdownMenuItem
+                                key={n.id}
+                                onClick={async () => {
+                                    await readNotification(n)
+                                    router.push(`/dashboard/orders?highlight=${n.order}`)
+                                }}
+                                className={`flex items-start gap-3 px-3 py-2 ${config.borderClass} ${config.bgClass} ${!n.is_read ? "font-medium" : "opacity-70"}`}
+                            >
+                                <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${config.iconClass}`} />
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm leading-tight">{n.title}</span>
+                                    <span className="text-xs text-muted-foreground mt-0.5">
+                                        Order #{n.order}
+                                    </span>
+                                </div>
+                                {!n.is_read && (
+                                    <span className="ml-auto h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
+                                )}
+                            </DropdownMenuItem>
+                        )
+                    })
                 )}
 
                 {notifications.length > 0 && (
                     <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={markAllRead}>
+                        <DropdownMenuItem onClick={markAllRead} className="justify-center text-sm text-muted-foreground">
                             Mark all as read
                         </DropdownMenuItem>
                     </>
