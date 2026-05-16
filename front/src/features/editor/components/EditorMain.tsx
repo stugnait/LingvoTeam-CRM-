@@ -253,7 +253,9 @@ export default function EditorMain() {
                         open={isApproveModalOpen}
                         onOpenChange={setIsApproveModalOpen}
                         isLoading={isEditorActionLoading}
-                        onConfirm={(score, comment) => approveTranslation(selectedTask.id, score, comment)}
+                        onConfirm={(rating, comment, files) =>
+                            approveTranslation(selectedTask.id, rating, comment, files)
+                        }
                         onCancel={() => setIsApproveModalOpen(false)}
                     />
                 )}
