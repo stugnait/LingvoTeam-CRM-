@@ -382,9 +382,11 @@ export const useEditor = () => {
             // Update task status in local state
             const taskId = activeId; // string, не parseInt
             const newStatusId = targetColumn.status_id;
+            const newStatus = targetColumn.status;
 
             setTasks(prev => prev.map(task =>
                 task.id === taskId
+
                     ? {
                         ...task,
                         status_id: Number(newStatusId),
@@ -446,6 +448,7 @@ export const useEditor = () => {
         else {
             const taskId = activeId
             const newStatusId = targetColumn.status_id;
+            const newStatus = targetColumn.status;
 
             // Update task status in local state
             setTasks(prev => prev.map(task =>
