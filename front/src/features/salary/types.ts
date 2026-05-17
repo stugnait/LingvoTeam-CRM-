@@ -43,6 +43,10 @@ export interface SalaryPreview {
     orders_count: number;
     overdue_orders_count: number;
     margin: string | number;
+    pages_count?: number;
+    chars_count?: number;
+    chars_with_spaces_count?: number;
+    average_score?: number;
 }
 
 export interface SalaryCreatePayload {

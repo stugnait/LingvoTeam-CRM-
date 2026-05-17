@@ -37,8 +37,8 @@ export interface OrderListResponse {
 
 // Our Kanban Task now extends OrderListItem
 export interface KanbanTask extends Omit<OrderListItem, 'id'> {
-    id: number | string;
-    status: TaskStatus | 'all_orders';
+    id: string;
+    status: TaskStatus;
     client_name: string;
     title: string;
     description?: string;

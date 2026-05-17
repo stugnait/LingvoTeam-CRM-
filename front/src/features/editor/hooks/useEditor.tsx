@@ -380,15 +380,15 @@ export const useEditor = () => {
             if (!targetColumn || sourceColumn.id === targetColumn.id) {return;}
 
             // Update task status in local state
-            const taskId = parseInt(activeId);
+            const taskId = activeId; // string, не parseInt
             const newStatusId = targetColumn.status_id;
 
             setTasks(prev => prev.map(task =>
                 task.id === taskId
                     ? {
                         ...task,
-                        status_id: newStatusId,
-                        status: statusIdToTaskStatus[newStatusId] // ← додати це
+                        status_id: Number(newStatusId),
+                        status: statusIdToTaskStatus(newStatusId)
                     }
                     : task
             ));
@@ -411,7 +411,7 @@ export const useEditor = () => {
 
             // Update status on server
             try {
-                await updateOrderStatus(taskId, newStatusId);
+                await updateOrderStatus(parseInt(activeId), newStatusId);
             } catch (error) {
                 console.error('Failed to update order status:', error);
                 // Optionally revert the change on error
@@ -444,13 +444,13 @@ export const useEditor = () => {
         }
         // Between columns - update status
         else {
-            const taskId = parseInt(activeId);
+            const taskId = activeId
             const newStatusId = targetColumn.status_id;
 
             // Update task status in local state
             setTasks(prev => prev.map(task =>
                 task.id === taskId
-                    ? { ...task, status_id: newStatusId }
+                    ? { ...task, status_id: Number(newStatusId), status: statusIdToTaskStatus(newStatusId) }
                     : task
             ));
 
@@ -477,7 +477,7 @@ export const useEditor = () => {
 
             // Update status on server
             try {
-                await updateOrderStatus(taskId, newStatusId);
+                await updateOrderStatus(parseInt(taskId), newStatusId);
             } catch (error) {
                 console.error('Failed to update order status:', error);
             }
@@ -621,7 +621,7 @@ export const useEditor = () => {
             const newColumns = initialColumns.map(column => ({
                 ...column,
                 taskIds: fetchedTasks
-                    .filter(task => task.status_id === column.status_id)
+                    .filter(task => String(task.status_id) === column.status_id)
                     .map(task => task.id.toString())
             }));
 

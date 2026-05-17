@@ -25,7 +25,7 @@ interface WizardModalProps {
     onSubmit: () => void
     children: React.ReactNode
     isLoading?: boolean
-    onClose?: () => void
+    onClose?: (open: boolean) => void
     stepValidation?: (step: number) => boolean
     stepError?: (step: number) => string | null
 }
@@ -53,17 +53,17 @@ export function WizardModal({
     const isStepValid = stepValidation ? stepValidation(currentStep) : true
 
     const next = () => {
-        if (!isLast && isStepValid) setCurrentStep(prev => prev + 1)
+        if (!isLast && isStepValid) {setCurrentStep(prev => prev + 1)}
     }
 
     const back = () => {
-        if (!isFirst) setCurrentStep(prev => prev - 1)
+        if (!isFirst) {setCurrentStep(prev => prev - 1)}
     }
 
     const handleClose = () => {
         setCurrentStep(0)
         onOpenChange(false)
-        onClose?.()
+        onClose?.(false)
     }
 
     return (
@@ -151,8 +151,8 @@ export function WizardModal({
 
                     <div className="flex items-center gap-3">
                         {/* Помилка показується завжди поруч з кнопкою */}
-                        {stepError && (
-                            <span className="text-xs text-red-500">{stepError}</span>
+                        {stepError && stepError(currentStep) && (
+                            <span className="text-xs text-red-500">{stepError(currentStep)}</span>
                         )}
 
                         <span className="text-xs text-gray-500">

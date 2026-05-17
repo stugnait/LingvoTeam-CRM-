@@ -273,7 +273,6 @@ export function OrdersTable({
                                             }
                                             setIsFromCalendarOpen(false)
                                         }}
-                                        initialFocus
                                     />
                                 </PopoverContent>
                             </Popover>
@@ -314,7 +313,6 @@ export function OrdersTable({
                                             }
                                             setIsToCalendarOpen(false)
                                         }}
-                                        initialFocus
                                     />
                                 </PopoverContent>
                             </Popover>

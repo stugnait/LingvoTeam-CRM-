@@ -31,7 +31,7 @@ import {
     Star // Додаємо іконку зірки для оцінки
 } from "lucide-react"
 
-import { User } from "@/src/features/users/types"
+import type { User } from "@/src/features/salary/types"
 import { useSalaryManagement } from "@/src/features/salary/hooks/useSalary"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -75,9 +75,9 @@ export default function FinanceTablePage() {
 
     // Визначаємо підпис для бейджика під іменем
     const getRoleLabel = () => {
-        if (isManager) return "Менеджер"
-        if (isEditor) return "Редактор"
-        if (isTranslator) return "Перекладач"
+        if (isManager) {return "Менеджер"}
+        if (isEditor) {return "Редактор"}
+        if (isTranslator) {return "Перекладач"}
         return "Працівник"
     }
 
@@ -133,7 +133,7 @@ export default function FinanceTablePage() {
     const handlePrevMonth = () => setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
 
     const handleNextMonth = () => {
-        if (currentMonthDate.getTime() >= maxMonthDate.getTime()) return
+        if (currentMonthDate.getTime() >= maxMonthDate.getTime()) {return}
         setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
     }
 
@@ -159,7 +159,7 @@ export default function FinanceTablePage() {
 
     const handleSaveUserSalary = async (userId: number) => {
         const draft = drafts[userId]
-        if (!draft) return
+        if (!draft) {return}
         const { startDate, endDate } = getMonthDates(currentMonthDate)
         await saveSalary(userId, draft, startDate, endDate, activeRole)
     }
@@ -292,7 +292,7 @@ export default function FinanceTablePage() {
                                                     </TableCell>
                                                     <TableCell className="align-middle">
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-semibold text-foreground">{formatCurrency(stats.revenue)}</span>
+                                                            <span className="text-sm font-semibold text-foreground">{formatCurrency(Number(stats.revenue))}</span>
                                                             <span className="text-xs text-emerald-600 font-medium">Маржа: {stats.margin || 0}%</span>
                                                         </div>
                                                     </TableCell>
@@ -304,7 +304,7 @@ export default function FinanceTablePage() {
                                                     </TableCell>
                                                     <TableCell className="align-middle">
                                                         <div className="flex flex-col">
-                                                            <span className="text-sm font-semibold text-foreground">{formatCurrency(stats.revenue)}</span>
+                                                            <span className="text-sm font-semibold text-foreground">{formatCurrency(Number(stats.revenue))}</span>
                                                             {/* Маржу показуємо тільки редакторам */}
                                                             {isEditor && (
                                                                 <span className="text-xs text-emerald-600 font-medium">Маржа: {stats.margin || 0}%</span>
@@ -322,7 +322,7 @@ export default function FinanceTablePage() {
                                                         <TableCell className="align-middle text-center">
                                                             <Badge variant="secondary" className="gap-1.5 font-medium px-2.5 py-0.5">
                                                                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                                                                {stats.average_score > 0 ? stats.average_score.toFixed(1) : "—"}
+                                                                {(stats.average_score ?? 0) > 0 ? stats.average_score!.toFixed(1) : "—"}
                                                             </Badge>
                                                         </TableCell>
                                                     )}

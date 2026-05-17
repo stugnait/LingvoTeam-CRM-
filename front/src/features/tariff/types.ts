@@ -3,16 +3,15 @@
 export interface Tariff {
     id: number
     name: string
-    // language_pair: {
-    //     id: number
-    //     source_language_name: number
-    //     target_language_name: number
-    // } | null
+    language_pair: {
+        id: number
+        source_language: number
+        target_language: number
+    } | null
     currency_id: number
     category: number
     price_per_page: string
     price_per_action: string
-    // read-only поля з бека
     language_pair_name: string
     source_language_name: string
     target_language_name: string

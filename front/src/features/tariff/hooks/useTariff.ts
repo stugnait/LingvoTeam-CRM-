@@ -160,7 +160,7 @@ export function useTariffs() {
     }
 
     const confirmDelete = async () => {
-        if (!selectedTariff) return
+        if (!selectedTariff) {return}
 
         try {
             await tariffApi.deleteTariff(selectedTariff.id)
@@ -225,14 +225,14 @@ export function useTariffs() {
         try {
             const newErrors: Partial<Record<keyof TariffsFormData, string>> = {}
 
-            if (!data.name.trim()) newErrors.name = "Tariff name is required"
-            if (!data.language_pair_id) newErrors.language_pair_id = "Please select a language pair"
-            if (!data.currency_id) newErrors.currency_id = "Please select a currency"
-            if (!data.category) newErrors.category = "Please select a category"
+            if (!data.name.trim()) {newErrors.name = "Tariff name is required"}
+            if (!data.language_pair_id) {newErrors.language_pair_id = "Please select a language pair"}
+            if (!data.currency_id) {newErrors.currency_id = "Please select a currency"}
+            if (!data.category) {newErrors.category = "Please select a category"}
             if (!data.price_per_page || Number(data.price_per_page) <= 0)
-                newErrors.price_per_page = "Price per page must be greater than 0"
+                {newErrors.price_per_page = "Price per page must be greater than 0"}
             if (!data.price_per_action || Number(data.price_per_action) <= 0)
-                newErrors.price_per_action = "Price per action must be greater than 0"
+                {newErrors.price_per_action = "Price per action must be greater than 0"}
 
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors)

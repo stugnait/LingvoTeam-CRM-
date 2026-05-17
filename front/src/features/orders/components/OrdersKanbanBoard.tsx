@@ -143,10 +143,10 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
             if (targetTask) { newStatus = targetTask.status }
         }
 
-        const currentTask = formattedTasks.find(t => t.id === taskId)
+        const currentTask = formattedTasks.find(t => String(t.id) === String(taskId))
 
         // Блокуємо будь-які спроби потягнути з/в All Orders
-        if (currentTask?.status === 'all_orders' || newStatus === 'all_orders') {
+        if ((currentTask?.status as string) === 'all_orders' || newStatus === 'all_orders') {
             return;
         }
 
@@ -199,7 +199,7 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                     {activeTask && (
                         <div
                             className={`shadow-2xl rounded-lg border-2 bg-white dark:bg-gray-800 rotate-2 opacity-90 p-4 w-[280px] ${
-                                activeTask.status === 'all_orders' ? 'border-red-500' : 'border-blue-500'
+                                (activeTask.status as string) === 'all_orders' ? 'border-red-500' : 'border-blue-500'
                             }`}
                         >
                             <div className="flex items-center gap-2 mb-3">
@@ -217,7 +217,7 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                                 Order #{Math.abs(Number(activeTask.id))} • {activeTask.client_name}
                             </div>
 
-                            {activeTask.status === 'all_orders' && (
+                            {(activeTask.status as string) === 'all_orders' && (
                                 <div className="mt-2 text-[10px] text-red-500 font-bold uppercase">
                                     Перетягування заборонено
                                 </div>

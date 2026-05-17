@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import {useState, useEffect, Suspense} from "react"
 import { useSearchParams } from "next/navigation"
 import { useMe } from "@/src/features/auth/hooks/useMe"
 import { apiFetch } from "@/src/shared/api/client"
@@ -53,8 +53,7 @@ interface DashboardData {
 }
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false })
-
-export default function DashboardPage() {
+function DashboardPage() {
     const { role, loading } = useMe()
     const userRole = String(role)
     const searchParams = useSearchParams()
@@ -587,5 +586,13 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Оновіть сторінку або перевірте права доступу.</p>
             </main>
         </>
+    )
+}
+
+export default function Page() {
+    return (
+        <Suspense fallback={<div className="p-6 text-muted-foreground">Завантаження...</div>}>
+            <DashboardPage />
+        </Suspense>
     )
 }

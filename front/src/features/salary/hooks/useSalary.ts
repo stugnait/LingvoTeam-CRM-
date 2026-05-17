@@ -3,25 +3,26 @@ import { salaryApi, usersApi, translatorsApi } from "@/src/features/salary/api";
 import {
     Salary,
     SalaryCreatePayload,
+    SalaryPreview,
     User,
 } from "@/src/features/salary/types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface SalaryPreview {
-    user: number;
-    full_name: string;
-    base_salary: number;
-    bonus: number;
-    premium: number;
-    revenue: number;
-    orders_count: number;
-    overdue_orders_count: number;
-    margin: number;
-    pages_count?: number;
-    chars_count?: number;
-    chars_with_spaces_count?: number;
-}
+// export interface SalaryPreview {
+//     user: number;
+//     full_name: string;
+//     base_salary: number;
+//     bonus: number;
+//     premium: number;
+//     revenue: number;
+//     orders_count: number;
+//     overdue_orders_count: number;
+//     margin: number;
+//     pages_count?: number;
+//     chars_count?: number;
+//     chars_with_spaces_count?: number;
+// }
 
 export interface SalaryListState {
     items: Salary[];

@@ -22,7 +22,7 @@ export interface KanbanTask {
     intake_manager?: { name: string; avatar?: string } | null
     delivery_manager?: { name: string; avatar?: string } | null
     tags: string[]
-    subtasks: any[]
+    subtasks?: any[]
 }
 
 interface SortableTaskProps {

@@ -108,6 +108,7 @@ export default function EditorMain() {
     const formattedTasks = useMemo(() => {
         return tasks.map(task => ({
             ...task,
+            id: task.id.toString(),
             title: task.language_pair_name || `Order #${task.id}`,
             priority: (task.priority?.toLowerCase() || 'medium') as any,
             intake_manager: task.manager_accept_name && task.manager_accept_name !== '-'
@@ -130,7 +131,9 @@ export default function EditorMain() {
 
     // Таски для колонки — з урахуванням deadlineFilter
     const getFormattedTasksForColumn = useCallback((column: any) => {
-        const columnTasks = formattedTasks.filter(t => t.status === column.status);
+        const columnTasks = formattedTasks.filter(
+            t => t.status === column.status
+        ) as KanbanTask[];
         return filterTasksByDeadline(columnTasks, deadlineFilter);
     }, [formattedTasks, deadlineFilter]);
 
