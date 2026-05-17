@@ -1,10 +1,10 @@
-// src/shared/api/client.ts
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 type ResponseType = 'json' | 'blob'
 
-interface ApiFetchOptions extends RequestInit {
+export interface ApiFetchOptions extends RequestInit {
     responseType?: ResponseType
+    skipGlobalError?: boolean // 👈 Додали наш прапорець
 }
 
 export async function apiFetch<T>(
@@ -13,6 +13,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
     const {
         responseType = 'json',
+        skipGlobalError, // 👈 Дістаємо з options
         headers: customHeaders,
         ...fetchOptions
     } = options
@@ -39,7 +40,10 @@ export async function apiFetch<T>(
             typeof fetchOptions.body !== "string"
                 ? JSON.stringify(fetchOptions.body)
                 : fetchOptions.body,
-    })
+
+        // 👈 Передаємо прапорець у fetch, щоб його побачив Interceptor
+        skipGlobalError: skipGlobalError
+    } as any) // Додаємо as any, щоб TypeScript не сварився на нестандартне поле
 
     if (!res.ok) {
         // ⚠️ error може бути НЕ json (наприклад 403 з text)

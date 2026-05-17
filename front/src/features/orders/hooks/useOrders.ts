@@ -245,7 +245,8 @@ export function useOrders() {
                 date_to: dateTo || undefined
             })
 
-            setOrders([...res.results].reverse())
+            const sortedResults = [...res.results].sort((a, b) => b.id - a.id)
+            setOrders(sortedResults)
 
             setTotalPages(Math.ceil((res.count || 0) / 10))
             setPage(pageNumber)

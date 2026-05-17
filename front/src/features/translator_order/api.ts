@@ -14,6 +14,7 @@ export const translatorOrderApi = {
             `translators/${slug}/`,
             {
                 method: "GET",
+                skipGlobalError: true,
             }
         ),
 
@@ -24,6 +25,7 @@ export const translatorOrderApi = {
             {
                 method: "POST",
                 body: JSON.stringify(payload),
+                skipGlobalError: true,
             }
         ),
 
@@ -36,6 +38,7 @@ export const translatorOrderApi = {
                 body: formData,
             }
         ),
+
     listDownloadFiles: (orderId: number, folder: ExternalOrderFolder = "source") =>
         apiFetch<ExternalOrderFilesListResponse>(
             `translators/external/orders/${orderId}/download-files/${folder}/?list=1`,

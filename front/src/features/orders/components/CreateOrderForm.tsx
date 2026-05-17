@@ -128,14 +128,17 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [priceData, setPriceData] = useState<any>(null)
     const [priceLoading, setPriceLoading] = useState(false)
     const [useManualPrice, setUseManualPrice] = useState(false)
+    const [customDiscount, setCustomDiscount] = useState<string>("")
 
     // --- Логіка підрахунку знижки ---
     const selectedClient = clients.find((c) => String(c.id) === clientId)
-    const discountPercent = selectedClient?.discount_percent ? Number(selectedClient.discount_percent) : 0
+    const defaultDiscountPercent = selectedClient?.discount_percent ? Number(selectedClient.discount_percent) : 0
+
+    const activeDiscount = customDiscount !== "" ? Number(customDiscount) : defaultDiscountPercent
 
     const baseAutoPrice = priceData?.total_client_price ? parseFloat(priceData.total_client_price) : 0
-    const discountedAutoPrice = discountPercent > 0 && baseAutoPrice > 0
-        ? (baseAutoPrice * (1 - discountPercent / 100)).toFixed(2)
+    const discountedAutoPrice = activeDiscount > 0 && baseAutoPrice > 0
+        ? (baseAutoPrice * (1 - activeDiscount / 100)).toFixed(2)
         : priceData?.total_client_price ?? ""
 
     // 🔥 ДОДАНО: Автоматично записуємо пораховану суму в стейт, який полетить на бекенд
@@ -185,6 +188,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             setPriceData(null)
             setTotalAmount("")
             setUseManualPrice(false)
+            setCustomDiscount("")
         }
         onOpenChange(open)
     }
@@ -716,6 +720,29 @@ const translatorTrafficOptions = useMemo(() => {
                                     </div>
                                 )}
 
+                                <div className="rounded-xl border p-4 space-y-3">
+                                    <label className="text-sm font-medium text-gray-700 block">
+                                        Знижка на замовлення (%)
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={customDiscount}
+                                            onChange={(e) => {
+                                                setCustomDiscount(e.target.value)
+                                                setUseManualPrice(false)
+                                            }}
+                                            placeholder={`Стандартна: ${defaultDiscountPercent}%`}
+                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="text-xs text-gray-500">
+                                            Залишіть порожнім для стандартної знижки клієнта ({defaultDiscountPercent}%)
+                                        </span>
+                                    </div>
+                                </div>
+
                                 {/* Чекбокс ручної ціни */}
                                 <div className="rounded-xl border p-4 space-y-3">
                                     <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -770,16 +797,18 @@ const translatorTrafficOptions = useMemo(() => {
                                             <span className="font-medium">{priceData.pages}</span>
                                         </div>
 
-                                        {/* Відображення авто-ціни та знижки */}
+                                        {/* 🔥 ОНОВЛЕНО: Відображення авто-ціни та АКТИВНОЇ знижки */}
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Базова авто-ціна:</span>
                                             <span className="font-medium">{priceData.total_client_price}</span>
                                         </div>
-                                        {discountPercent > 0 && (
+                                        {activeDiscount > 0 && (
                                             <div className="flex justify-between text-blue-600 mt-1">
-                                                <span className="font-medium">Знижка клієнта ({discountPercent}%):</span>
+                                                <span className="font-medium">
+                                                    Знижка ({customDiscount !== "" ? "Ручна" : "Клієнта"} {activeDiscount}%):
+                                                </span>
                                                 <span className="font-bold">
-                                                    -{ (baseAutoPrice * (discountPercent / 100)).toFixed(2) }
+                                                    -{ (baseAutoPrice * (activeDiscount / 100)).toFixed(2) }
                                                 </span>
                                             </div>
                                         )}
