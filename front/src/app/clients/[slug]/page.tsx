@@ -1,17 +1,12 @@
 "use client"
 
 import { use, useEffect } from "react"
-import { useExternalOrder } from "@/src/features/translator_order/hooks/useExternalOrder"
 import { useClients } from "@/src/features/clients/hooks/useClients"
 import { PasswordForm } from "@/src/features/translator_order/components/PasswordForm"
 import { MainClient } from "@/src/features/clients/components/MainClient"
 import { ExpiredLink } from "@/src/features/translator_order/components/ExpiredLink"
 
-export default function ClientExternalOrderPage({
-                                                    params,
-                                                }: {
-    params: Promise<{ slug: string }>
-}) {
+export default function ClientExternalOrderPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params)
 
     const {
@@ -21,33 +16,34 @@ export default function ClientExternalOrderPage({
         init,
         submitPassword,
         remainingAttempts,
-        downloadFiles,
-        filesCount,
-        filesLoading,
+        bannedUntil,
+        onBanExpired,
         files,
-        refreshFiles,
-        downloadSingleFile,
-        downloadLoading,
+        filesLoading,
+        downloadFiles,
+        downloadLoading
     } = useClients(slug)
 
     useEffect(() => {
         init()
-    }, [slug])
+    }, [slug, init])
 
     if (step === "loading") {
-        return <>Loading...</>
+        return <div className="p-10 text-center text-muted-foreground animate-pulse">Завантаження...</div>
     }
 
     if (step === "expired") {
         return <ExpiredLink />
     }
 
-    if (step === "password") {
+    if (step === "password" || step === "banned") {
         return (
             <PasswordForm
                 onSubmit={submitPassword}
                 error={error}
                 attempts={remainingAttempts}
+                bannedUntil={bannedUntil}
+                onBanExpired={onBanExpired}
             />
         )
     }
@@ -56,13 +52,9 @@ export default function ClientExternalOrderPage({
         return (
             <MainClient
                 order={order}
-                error={error}
-                onDownload={downloadFiles}
-                filesCount={filesCount}
-                filesLoading={filesLoading}
                 files={files}
-                onRefreshFiles={() => void refreshFiles(order.id)}
-                onDownloadFile={(fileId, filename) => void downloadSingleFile(fileId, filename)}
+                filesLoading={filesLoading}
+                onDownload={downloadFiles}
                 downloadLoading={downloadLoading}
             />
         )
