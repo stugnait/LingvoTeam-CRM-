@@ -84,14 +84,15 @@ class OrderTrafficFilter(filters.FilterSet):
 
 class OrderFilter(filters.FilterSet):
     status = filters.ModelChoiceFilter(field_name='status_id', queryset=Status.objects.all())
-    # Використовуємо manager_accept_id для фільтрації по менеджеру
     manager = filters.ModelChoiceFilter(field_name='manager_accept_id', queryset=User.objects.all())
     date_from = filters.DateFilter(field_name='created_at', lookup_expr='gte')
     date_to = filters.DateFilter(field_name='created_at', lookup_expr='lte')
+    deadline_from = filters.DateFilter(field_name='deadline', lookup_expr='gte')
+    deadline_to = filters.DateFilter(field_name='deadline', lookup_expr='lte')
 
     class Meta:
         model = Order
-        fields = ['status', 'manager', 'created_at']
+        fields = ['status', 'manager', 'created_at', 'deadline']
 
 
 @extend_schema_view(

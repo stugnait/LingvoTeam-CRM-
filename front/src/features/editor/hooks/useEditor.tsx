@@ -385,10 +385,13 @@ export const useEditor = () => {
 
             setTasks(prev => prev.map(task =>
                 task.id === taskId
-                    ? { ...task, status_id: newStatusId }
+                    ? {
+                        ...task,
+                        status_id: newStatusId,
+                        status: statusIdToTaskStatus[newStatusId] // ← додати це
+                    }
                     : task
             ));
-
             // Move task between columns
             setColumns(prev => prev.map(col => {
                 if (col.id === sourceColumn.id) {
