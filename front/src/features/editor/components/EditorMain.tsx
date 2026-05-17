@@ -1,7 +1,6 @@
-// /app/EditorMain.tsx
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
     DndContext,
     DragEndEvent,
@@ -18,8 +17,8 @@ import {
 import KanbanHeader from '@/src/components/canban/KanbanHeader';
 import KanbanColumn from '@/src/components/canban/KanbanColumn';
 import KanbanStats from '@/src/components/canban/KanbanStats';
-import { Search } from 'lucide-react';
 import { TaskModal } from "@/src/components/modals/jira/InfoModal";
+import { filterTasksByDeadline, type DeadlineFilter } from '@/src/components/canban/KanbanDeadlineFilter';
 
 // Hooks and types
 import { useEditor } from '../hooks/useEditor';
@@ -48,7 +47,7 @@ const COLUMN_ICONS = {
 };
 
 const formatDate = (dateString?: string) => {
-    if (!dateString) { return 'Не вказано'; }
+    if (!dateString) return 'Не вказано';
     try {
         const date = new Date(dateString);
         return new Intl.DateTimeFormat('uk-UA', {
@@ -88,8 +87,6 @@ export default function EditorMain() {
         setIsApproveModalOpen,
         rejectTranslation,
         approveTranslation,
-
-        // Змінні та функції для файлів
         sourceFiles,
         targetFiles,
         filesLoading,
@@ -99,17 +96,18 @@ export default function EditorMain() {
         downloadSingleTargetFile,
     } = useEditor();
 
+    const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>('all');
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: { distance: 5 }
         })
     );
 
-    // 👉 ФОРМАТУВАННЯ ЯК В ОРДЕРАХ (OrdersKanbanBoard.tsx)
+    // Форматування тасок — оголошуємо ПЕРШИМ
     const formattedTasks = useMemo(() => {
         return tasks.map(task => ({
             ...task,
-            // Створюємо структуру, яку очікує компонент SortableTask/KanbanTask
             title: task.language_pair_name || `Order #${task.id}`,
             priority: (task.priority?.toLowerCase() || 'medium') as any,
             intake_manager: task.manager_accept_name && task.manager_accept_name !== '-'
@@ -127,14 +125,22 @@ export default function EditorMain() {
         }));
     }, [tasks]);
 
-    const getFormattedTasksForColumn = (column: any) => {
-        return formattedTasks.filter(t => t.status === column.status);
-    };
+    // allTasks для фільтр-бару — всі таски без фільтрації по дедлайну
+    const allTasks = useMemo(() => formattedTasks, [formattedTasks]);
 
-    const columnsWithIcons = columns.map(col => ({
-        ...col,
-        icon: COLUMN_ICONS[col.status as keyof typeof COLUMN_ICONS]
-    }));
+    // Таски для колонки — з урахуванням deadlineFilter
+    const getFormattedTasksForColumn = useCallback((column: any) => {
+        const columnTasks = formattedTasks.filter(t => t.status === column.status);
+        return filterTasksByDeadline(columnTasks, deadlineFilter);
+    }, [formattedTasks, deadlineFilter]);
+
+    const columnsWithIcons = useMemo(() =>
+            columns.map(col => ({
+                ...col,
+                icon: COLUMN_ICONS[col.status as keyof typeof COLUMN_ICONS]
+            })),
+        [columns]
+    );
 
     const onDragStart = (event: DragStartEvent) => {
         handleDragStart(event.active.id as string);
@@ -152,12 +158,15 @@ export default function EditorMain() {
                 isLoading={isLoading}
                 error={error}
                 onRefresh={refreshOrders}
+                deadlineFilter={deadlineFilter}
+                onDeadlineFilterChange={setDeadlineFilter}
+                allTasks={allTasks}
             />
 
             <div className="p-6">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
                     </div>
                 ) : (
                     <DndContext
@@ -218,15 +227,11 @@ export default function EditorMain() {
                         clientName={selectedTask.client_name}
                         languagePair={selectedTask.language_pair_name}
                         dueDate={formatDate(selectedTask.deadline)}
-
                         onDownloadOriginal={() => downloadOrderSourceFiles(selectedTask.id)}
                         onDownloadTranslation={() => downloadOrderTargetFiles(selectedTask.id)}
-
                         onCancel={closeModal}
                         onSave={closeModal}
                         editor={selectedTask.editor_name || 'Не призначено'}
-
-                        // 👇 ПРОПСИ ДЛЯ ФАЙЛІВ
                         orderId={selectedTask.id}
                         sourceFiles={sourceFiles}
                         targetFiles={targetFiles}
@@ -253,13 +258,14 @@ export default function EditorMain() {
                         open={isApproveModalOpen}
                         onOpenChange={setIsApproveModalOpen}
                         isLoading={isEditorActionLoading}
-                        onConfirm={(score, comment) => approveTranslation(selectedTask.id, score, comment)}
+                        onConfirm={(rating, comment, files) =>
+                            approveTranslation(selectedTask.id, rating, comment, files)
+                        }
                         onCancel={() => setIsApproveModalOpen(false)}
                     />
                 )}
             </div>
 
-            {/* Stats Bar */}
             <KanbanStats
                 columns={columnsWithIcons}
                 getTasksForColumn={getFormattedTasksForColumn}

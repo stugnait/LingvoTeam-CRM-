@@ -75,28 +75,36 @@ class NumberInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
     pass
 
 class TranslatorFilter(django_filters.FilterSet):
-
     categories = NumberInFilter(
         field_name='translatortraffic__category',
         lookup_expr='in'
     )
 
-    language_pair_id = django_filters.NumberFilter(
-        field_name='language_pair_relations__language_pair_id'
-    )
-
-    source_language = django_filters.NumberFilter(
-        field_name='language_pair_relations__language_pair__source_language'
-    )
-
-    target_language = django_filters.NumberFilter(
-        field_name='language_pair_relations__language_pair__target_language'
-    )
-
-
     class Meta:
         model = Translator
         fields = ['work_type']
+
+    def filter_queryset(self, queryset):
+        source = self.data.get('source_language')
+        target = self.data.get('target_language')
+
+        queryset = super().filter_queryset(queryset)
+
+        if source and target:
+            queryset = queryset.filter(
+                translatortraffic__language_pair__source_language_id=source,
+                translatortraffic__language_pair__target_language_id=target,
+            )
+        elif source:
+            queryset = queryset.filter(
+                translatortraffic__language_pair__source_language_id=source,
+            )
+        elif target:
+            queryset = queryset.filter(
+                translatortraffic__language_pair__target_language_id=target,
+            )
+
+        return queryset.distinct()
 
 @extend_schema_view(
     list=extend_schema(

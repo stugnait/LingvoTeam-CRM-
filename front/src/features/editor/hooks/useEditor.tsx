@@ -214,11 +214,13 @@ export const useEditor = () => {
         []
     )
 
+    // В useEditor.ts — змінюємо approveTranslation
     const approveTranslation = useCallback(
         async (
             orderId: number,
             score: number,
-            comment?: string
+            comment?: string,
+            files?: File[]
         ) => {
             try {
                 setIsEditorActionLoading(true)
@@ -226,9 +228,8 @@ export const useEditor = () => {
                 await ordersApi.approveTranslation(orderId, {
                     score,
                     comment,
+                    files,  // <-- передаємо файли
                 })
-
-                // 🔄 оновлюємо канбан
 
                 setIsApproveModalOpen(false)
                 setIsModalOpen(false)
@@ -385,10 +386,14 @@ export const useEditor = () => {
 
             setTasks(prev => prev.map(task =>
                 task.id === taskId
-                    ? { ...task, status_id: newStatusId, status: newStatus }
+
+                    ? {
+                        ...task,
+                        status_id: newStatusId,
+                        status: statusIdToTaskStatus[newStatusId] // ← додати це
+                    }
                     : task
             ));
-
             // Move task between columns
             setColumns(prev => prev.map(col => {
                 if (col.id === sourceColumn.id) {

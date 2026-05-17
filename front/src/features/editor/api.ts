@@ -75,21 +75,34 @@ export const ordersApi = {
             }
         ),
 
-    // 🟢 ПРИЙНЯТТЯ + ОЦІНКА
-    approveTranslation: (
-        orderId: number,
-        data: {
-            score: number
-            comment?: string
-        }
-    ) =>
-        apiFetch(
-            `orders/${orderId}/approve-translation/`,
-            {
+    approveTranslation: (orderId: number, data: {
+        score: number
+        comment?: string
+        files?: File[]
+    }) => {
+        const hasFiles = data.files && data.files.length > 0
+
+        if (hasFiles) {
+            const formData = new FormData()
+            formData.append("score", String(data.score))
+            if (data.comment) {formData.append("comment", data.comment)}
+            data.files!.forEach(f => formData.append("files", f))
+
+            return apiFetch(`orders/${orderId}/approve-translation/`, {
                 method: "POST",
-                body: JSON.stringify(data),
-            }
-        ),
+                body: formData,
+                // Content-Type НЕ ставимо — apiFetch сам пропустить для FormData
+            })
+        }
+
+        return apiFetch(`orders/${orderId}/approve-translation/`, {
+            method: "POST",
+            body: JSON.stringify({
+                score: data.score,
+                comment: data.comment ?? "",
+            }),
+        })
+    },
 
     listDownloadFiles: (orderId: number, folder: "source" | "target") =>
         apiFetch<{ files: any[] }>(`orders/${orderId}/download-files/${folder}/?list=1`, {

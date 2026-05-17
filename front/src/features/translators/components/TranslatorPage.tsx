@@ -92,7 +92,18 @@ export default function TranslatorsPage() {
             <main className="flex-1 overflow-y-auto p-6">
                 <div className="mx-auto max-w-6xl space-y-6">
 
-                    <Tabs defaultValue="translators" className="space-y-6">
+                    <Tabs
+                        defaultValue="translators"
+                        className="space-y-6"
+                        onValueChange={(val) => {
+                            if (val === "traffic") {
+                                setSearch("")
+                                setSourceLanguage(null)
+                                setTargetLanguage(null)
+                                setOrdering(null)
+                            }
+                        }}
+                    >
 
                         {/* Header */}
                         <div className="flex items-center justify-between">
