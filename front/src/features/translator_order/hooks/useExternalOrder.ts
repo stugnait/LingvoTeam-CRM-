@@ -172,6 +172,7 @@ export function useExternalOrder(slug: string) {
         remainingAttempts,
         bannedUntil,
         // Додаємо колбек для скидання бану, щоб передати його в PasswordForm
-        onBanExpired: () => updateBanStatus(null)
+        onBanExpired: () => updateBanStatus(null),
+        clearBan: () => updateBanStatus(null)
     }
 }
