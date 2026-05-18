@@ -635,6 +635,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
 
         order.status_id_id = 9
+        order.completed_at = timezone.now()
         order.save(update_fields=['status_id'])
 
         if order.translator_id:
@@ -1243,7 +1244,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 errors.append({"file_id": f.id, "from": from_path, "error": str(e)})
 
-        done_status = Status.objects.get(slug="Done")
+        done_status = Status.objects.get(slug="done")
 
         if order.status_id != done_status:
             order.status_id = done_status

@@ -19,12 +19,13 @@ def calculate_stats(person, start, end, role_slug=None):
     )
 
     # 2. Фільтруємо за роллю
+    # 2. Фільтруємо за роллю
     if role_slug == "editor":
-        orders = base_qs.filter(editor_id=person)
+        orders = base_qs.filter(editor_id=person.id)
     elif role_slug == "manager":
-        orders = base_qs.filter(Q(manager_accept_id=person) | Q(manager_delivery_id=person))
+        orders = base_qs.filter(Q(manager_accept_id=person.id) | Q(manager_delivery_id=person.id))
     elif role_slug == "translator":
-        orders = base_qs.filter(translator_id=person)
+        orders = base_qs.filter(translator_id=person.id)
     elif role_slug in ["admin", "finance"]:
         orders = base_qs
     else:
