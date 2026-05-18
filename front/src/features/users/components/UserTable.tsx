@@ -17,7 +17,7 @@ import {
 } from "@/src/components/ui/dialog"
 import type { User } from "../types"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL
 
 export const getImageUrl = (path: string | null | undefined) => {
     if (!path) return undefined
