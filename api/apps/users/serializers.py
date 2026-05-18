@@ -100,6 +100,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    permissions = serializers.SerializerMethodField()
     role_id = serializers.PrimaryKeyRelatedField(
         queryset=Role.objects.all(),
         source='role',
@@ -117,7 +118,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'full_name', 'phone', 'role', 'role_id', 'is_active', 'avatar']
+        fields = ['id', 'email', 'full_name', 'phone', 'role', 'role_id', 'is_active', 'avatar', 'permissions']
+
+    def get_permissions(self, obj):
+        if not getattr(obj, 'role', None):
+            return []
+
+        # Робимо прямий запит до проміжної таблиці
+        perms = RolePermission.objects.filter(role=obj.role).values_list('permission__slug', flat=True)
+        return list(perms)
 
 
 class UserListSerializer(serializers.ModelSerializer):

@@ -11,6 +11,68 @@ const EMPTY_FORM: RoleFormData = {
     permission_ids: [],
 }
 
+export const TAB_PRESETS: Record<string, { label: string; icon: string; slugs: string[] }> = {
+    Orders: {
+        label: "Замовлення",
+        icon: "📦",
+        slugs: [
+            "ui.tab.orders",
+
+            // Основні права для замовлень
+            "order.view",
+            "order.create",
+            "order.update",
+            "order.change.status",
+            "order.assign",
+
+            // Допоміжні права (щоб не було 403 помилок при завантаженні дропдаунів)
+            "client.view",         // Для /api/clients/
+            "language.view",       // Для /api/core/languages/
+            "language_pair.view",  // Для /api/core/pairs/
+            "currency.view",       // Для /api/core/currencies/
+            "order.traffic.manage" // Для /api/orders/order-traffic/ (як вказано у твоєму бекенді)
+        ],
+    },
+    Tasks: {
+        label: "Перевірка (Tasks)",
+        icon: "✅",
+        slugs: [
+            "ui.tab.tasks",        // Додано
+            "order.view",
+            "order.reject_translation",
+            "order.approve_translation"
+        ],
+    },
+    Clients: {
+        label: "Clients", icon: "🤝",
+        slugs: ["ui.tab.clients", "client.view", "client.create", "client.category.manage"]
+    },
+    Tariffs: {
+        label: "Tariffs", icon: "🏷️",
+        slugs: ["ui.tab.tariffs", "order.traffic.manage", "translator.traffic.manage"]
+    },
+    Translators: {
+        label: "Translators", icon: "✍️",
+        slugs: ["ui.tab.translators", "translator.create"]
+    },
+    Users: {
+        label: "Users", icon: "👤",
+        slugs: ["ui.tab.users", "user.read", "user.write"]
+    },
+    Stats: {
+        label: "Stats", icon: "📊",
+        slugs: ["ui.tab.stats", "statistic.order.view", "statistic.volume.view"]
+    },
+    PnL: {
+        label: "P&L", icon: "💹",
+        slugs: ["ui.tab.pnl", "statistic.pnl.view"]
+    },
+    Salary: {
+        label: "Salary", icon: "💰",
+        slugs: ["ui.tab.salary", "user.read", "statistic.manager.view"]
+    },
+}
+
 export function useRoles() {
     const { toast } = useToast()
 
@@ -21,7 +83,10 @@ export function useRoles() {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedRole, setSelectedRole] = useState<Role | null>(null)
     const [form, setForm] = useState<RoleFormData>(EMPTY_FORM)
-    const [activeTab, setActiveTab] = useState<string>("") // slug активної групи permissions
+    const [activeTab, setActiveTab] = useState<string>("")
+
+    // Хелпер: беремо перший ключ з наших пресетів (наприклад "Orders")
+    const getFirstTab = () => Object.keys(TAB_PRESETS)[0]
 
     const loadData = useCallback(async () => {
         try {
@@ -31,17 +96,14 @@ export function useRoles() {
                 permissionsApi.list(),
             ])
 
-            const rolesArray = rolesRes.results || []
-            const permsArray = permsRes.results || []
+            // 👇 УНІВЕРСАЛЬНА ПЕРЕВІРКА: чи це масив, чи об'єкт з results
+            const rolesArray = Array.isArray(rolesRes) ? rolesRes : (rolesRes.results || [])
+            const permsArray = Array.isArray(permsRes) ? permsRes : (permsRes.results || [])
 
             setRoles(rolesArray)
             setPermissions(permsArray)
 
-            // Перший таб = перша "група" по префіксу slug
-            if (permsArray.length > 0) {
-                const firstGroup = permsArray[0].slug.split(".")[0]
-                setActiveTab(firstGroup)
-            }
+            setActiveTab(prev => prev || getFirstTab())
         } catch (error) {
             console.error(error)
             toast({ title: "Помилка", description: "Не вдалося завантажити ролі", variant: "error" })
@@ -52,17 +114,10 @@ export function useRoles() {
 
     useEffect(() => { loadData() }, [loadData])
 
-    // Групуємо permissions по префіксу slug (user, order, client, ...)
-    const permissionGroups = permissions.reduce<Record<string, Permission[]>>((acc, perm) => {
-        const group = perm.slug.split(".")[0]
-        if (!acc[group]) acc[group] = []
-        acc[group].push(perm)
-        return acc
-    }, {})
-
     const openCreate = () => {
         setSelectedRole(null)
         setForm(EMPTY_FORM)
+        setActiveTab(getFirstTab())
         setIsModalOpen(true)
     }
 
@@ -73,6 +128,7 @@ export function useRoles() {
             slug: role.slug,
             permission_ids: role.permissions.map(p => p.id),
         })
+        setActiveTab(getFirstTab())
         setIsModalOpen(true)
     }
 
@@ -109,7 +165,6 @@ export function useRoles() {
             return
         }
 
-        // Автогенерація slug якщо порожній
         const payload: RoleFormData = {
             ...form,
             slug: form.slug.trim() || form.name.toLowerCase().replace(/\s+/g, "_"),
@@ -118,9 +173,13 @@ export function useRoles() {
         try {
             if (selectedRole) {
                 await rolesApi.update(selectedRole.id, payload)
+                await rolesApi.setPermissions(selectedRole.id, form.permission_ids)
                 toast({ title: "Роль оновлено" })
             } else {
-                await rolesApi.create(payload)
+                const created = await rolesApi.create(payload)
+                if (created?.id && form.permission_ids.length > 0) {
+                    await rolesApi.setPermissions(created.id, form.permission_ids)
+                }
                 toast({ title: "Роль створено" })
             }
             closeModal()
@@ -143,7 +202,6 @@ export function useRoles() {
     return {
         roles,
         permissions,
-        permissionGroups,
         loading,
         isModalOpen,
         selectedRole,

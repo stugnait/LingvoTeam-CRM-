@@ -8,14 +8,17 @@ import { cn } from "@/src/lib/utils"
 import type { Permission, Role } from "../types"
 
 // Спільний словник залишаємо тут, щоб не створювати зайвих файлів
+// Оновіть цей словник у файлах RoleInfoModal.tsx та RolesPage.tsx
 export const GROUP_LABELS: Record<string, string> = {
     user:       "👤 Користувачі",
+    role:       "🔐 Ролі та Доступи",
     order:      "📦 Замовлення",
     client:     "🤝 Клієнти",
     language:   "🌐 Мови",
     currency:   "💱 Валюти",
     translator: "✍️ Перекладачі",
     statistic:  "📊 Статистика",
+    salary:     "💰 Зарплати",
 }
 
 interface RoleInfoModalProps {
@@ -28,7 +31,7 @@ export function RoleInfoModal({ open, onOpenChange, roleData }: RoleInfoModalPro
     const [roleInfoTab, setRoleInfoTab] = useState<string>("")
 
     const rolePermissionGroups = useMemo(() => {
-        if (!roleData) return {}
+        if (!roleData) {return {}}
         const perms = roleData.permissions || []
         return perms.reduce<Record<string, Permission[]>>((acc, perm) => {
             const group = perm.slug.split(".")[0]

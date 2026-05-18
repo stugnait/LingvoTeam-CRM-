@@ -170,8 +170,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
         editors = User.objects.filter(
             id__in=editor_ids,
-            role_id=2
-        ).order_by('id')
+            role__permissions__slug='order.approve_translation'
+        ).distinct().order_by('id')
 
         page = self.paginate_queryset(editors)
 
@@ -585,6 +585,7 @@ class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Permission.objects.all()
     serializer_class = PermissionSerializer
     # permission_classes = [IsAdminUser]
+    pagination_class = None
 
 
 @extend_schema_view(

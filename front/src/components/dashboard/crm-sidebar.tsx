@@ -26,8 +26,8 @@ interface NavItem {
     name: string;
     href: string;
     icon: ElementType;
-    roles: string[];
-    children?: { name: string; roleId?: number; tabId?: string; roles?: string[] }[];
+    permissions?: string[];
+    children?: { name: string; roleId?: number; tabId?: string; permissions?: string[] }[];
 }
 
 interface NavGroup {
@@ -43,34 +43,34 @@ const navGroups: NavGroup[] = [
                 name: "Dashboard",
                 href: "/dashboard",
                 icon: LayoutDashboard,
-                roles: ["admin", "manager", "editor", "financier"],
+                permissions: [],
                 children: [
-                    { name: "Фінанси (P&L)", tabId: "finance", roles: ["admin", "financier"] },
-                    { name: "Ефективність команди", tabId: "team", roles: ["admin", "financier"] },
-                    { name: "Аналітика клієнтів", tabId: "clients", roles: ["admin", "financier"] },
+                    { name: "Фінанси (P&L)", tabId: "finance", permissions: ["statistic.pnl.view"] },
+                    { name: "Ефективність команди", tabId: "team", permissions: ["statistic.kpi.manager", "statistic.kpi.translator"] },
+                    { name: "Аналітика клієнтів", tabId: "clients", permissions: ["statistic.client.view"] },
                 ]
             },
-            { name: "Orders", href: "/dashboard/orders", icon: FileText, roles: ["admin", "manager"] },
-            { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, roles: ["editor"] },
-            { name: "Clients", href: "/dashboard/clients", icon: Users, roles: ["admin", "manager"] },
-            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, roles: ["admin", "manager"] },
+            { name: "Orders", href: "/dashboard/orders", icon: FileText, permissions: ["ui.tab.orders"] },
+            { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, permissions: ["order.update", "order.assign"] },
+            { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["client.view"] },
+            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, permissions: ["client.category.manage"] },
         ],
     },
     {
         name: "Фінанси",
         items: [
-            { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, roles: ["admin", "financier"] },
-            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, roles: ["admin", "financier"] },
-            { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, roles: ["financier"] },
+            { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, permissions: ["order.traffic.manage", "translator.traffic.manage"] },
+            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, permissions: ["statistic.order.view", "statistic.volume.view"] },
+            { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, permissions: ["statistic.pnl.view"] },
             {
                 name: "Salary",
                 href: "/dashboard/salary",
                 icon: Wallet,
-                roles: ["admin", "manager"],
+                permissions: ["user.read", "statistic.manager.view"],
                 children: [
-                    { name: "Менеджер", roleId: 1 },
-                    { name: "Редактор", roleId: 2 },
-                    { name: "Перекладачі", roleId: 5 },
+                    { name: "Менеджер", roleId: 1, permissions: ["user.read"] },
+                    { name: "Редактор", roleId: 2, permissions: ["user.read"] },
+                    { name: "Перекладачі", roleId: 5, permissions: ["user.read"] },
                 ],
             },
         ],
@@ -78,9 +78,9 @@ const navGroups: NavGroup[] = [
     {
         name: "Команда",
         items: [
-            { name: "Translators", href: "/dashboard/translations", icon: Languages, roles: ["admin", "manager"] },
-            { name: "Users", href: "/dashboard/users", icon: UserCog, roles: ["admin"] },
-            { name: "Profile", href: "/dashboard/profile", icon: User, roles: ["admin", "editor", "manager", "adminnnn"] },
+            { name: "Translators", href: "/dashboard/translations", icon: Languages, permissions: ["translator.create"] },
+            { name: "Users", href: "/dashboard/users", icon: UserCog, permissions: ["user.read"] },
+            { name: "Profile", href: "/dashboard/profile", icon: User, permissions: [] },
         ],
     },
 ];
@@ -93,7 +93,11 @@ interface CrmSidebarProps {
 export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { role, loading } = useMe();
+
+    // 🔥 ВИПРАВЛЕНО: Правильно дістаємо дані з хука useMe
+    const { user, loading } = useMe();
+    const role = user?.role;
+    const permissions = user?.permissions || [];
 
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -113,6 +117,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    // Якщо завантажується або немає юзера/ролі
     if (loading || !role) {
         return null;
     }
@@ -121,8 +126,9 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
         setOpenMenus(prev => ({ ...prev, [href]: !prev[href] }));
     };
 
-    const hasAccess = (item: NavItem): boolean => {
-        return item.roles.includes(role);
+    const hasAccess = (item: { permissions?: string[] }): boolean => {
+        if (!item.permissions || item.permissions.length === 0) { return true; }
+        return item.permissions.some(perm => permissions.includes(perm));
     };
 
     const filteredNavGroups = navGroups
@@ -190,8 +196,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                                     const Icon = item.icon;
                                     const isActive = pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard");
 
-                                    // Фільтруємо дочірні елементи по ролі поточного юзера
-                                    const visibleChildren = item.children?.filter(child => !child.roles || child.roles.includes(role));
+                                    const visibleChildren = item.children?.filter(hasAccess);
                                     const hasChildren = visibleChildren && visibleChildren.length > 0;
                                     const isOpen = openMenus[item.href];
 
@@ -223,7 +228,6 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                                                         {visibleChildren.map((child, idx) => {
                                                             const query = child.tabId ? { tab: child.tabId } : { role: child.roleId?.toString() };
 
-                                                            // Якщо таб не вибраний в URL, finance вважаємо дефолтним
                                                             const isChildActive = child.tabId
                                                                 ? (searchParams.get("tab") === child.tabId || (!searchParams.get("tab") && child.tabId === "finance" && pathname === item.href))
                                                                 : searchParams.get("role") === String(child.roleId);
@@ -277,9 +281,9 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
 
                 <div className={`border-t p-4 text-sm text-muted-foreground overflow-hidden whitespace-nowrap ${collapsed && !isMobile ? "px-2 text-center" : ""}`}>
                     {(!collapsed || isMobile) ? (
-                        <span>Role: <b className="text-foreground">{role}</b></span>
+                        <span>Role: <b className="text-foreground">{role?.name || role}</b></span>
                     ) : (
-                        <b className="uppercase text-foreground">{role.charAt(0)}</b>
+                        <b className="uppercase text-foreground">{(role?.name || role)?.charAt(0)}</b>
                     )}
                 </div>
             </aside>

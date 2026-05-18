@@ -526,10 +526,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     def approve_translation(self, request, pk=None):
         order = get_object_or_404(Order, pk=pk)
 
-        is_editor = request.user.is_authenticated and (
-                request.user.is_staff or
-                getattr(request.user, 'role_id', None) == 2
-        )
+        is_editor = False
+        if request.user.is_authenticated:
+            if request.user.is_staff:
+                is_editor = True
+            elif hasattr(request.user, 'role') and request.user.role:
+                # Шукаємо пермішин у ролі юзера
+                is_editor = request.user.role.permissions.filter(slug='order.approve_translation').exists()
 
         provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
         link_obj = OrderLink.objects.filter(order=order).last()
@@ -1025,7 +1028,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             by_editor.setdefault(row["editor_id"], row["id"])
 
         editors = (User.objects
-                   .filter(role_id=2)
+                   .filter(role__permissions__slug='order.approve_translation')
+                   .distinct()
                    .only("id", "full_name")
                    .order_by("id"))
 
@@ -1167,9 +1171,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         request = self.request
 
         # Перевіряємо, чи є користувач адміном, менеджером (1) або редактором (2)
-        has_internal_access = request.user.is_authenticated and (
-                request.user.is_staff or getattr(request.user, 'role_id', None) in [1, 2]
-        )
+        has_internal_access = False
+        if request.user.is_authenticated:
+            if request.user.is_staff:
+                has_internal_access = True
+            elif hasattr(request.user, 'role') and request.user.role:
+                # Доступ є, якщо користувач має хоча б одне з цих прав
+                has_internal_access = request.user.role.permissions.filter(
+                    slug__in=['order.update', 'order.change.status']
+                ).exists()
 
         provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
         link_obj = OrderLink.objects.filter(order=order).last()
