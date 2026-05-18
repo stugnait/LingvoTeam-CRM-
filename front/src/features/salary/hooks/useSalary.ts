@@ -6,23 +6,9 @@ import {
     SalaryPreview,
     User,
 } from "@/src/features/salary/types";
+import { useToast } from "@/src/hooks/use-toast"; // 🔥 Додано імпорт тостів
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-
-// export interface SalaryPreview {
-//     user: number;
-//     full_name: string;
-//     base_salary: number;
-//     bonus: number;
-//     premium: number;
-//     revenue: number;
-//     orders_count: number;
-//     overdue_orders_count: number;
-//     margin: number;
-//     pages_count?: number;
-//     chars_count?: number;
-//     chars_with_spaces_count?: number;
-// }
 
 export interface SalaryListState {
     items: Salary[];
@@ -31,12 +17,14 @@ export interface SalaryListState {
 }
 
 export interface UseSalaryManagementOptions {
-    roleId?: number; // 🔥 Повертаємо на number, бо ми працюємо з ID (1, 2, 5)
+    roleId?: number;
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useSalaryManagement(options?: UseSalaryManagementOptions) {
+    const { toast } = useToast(); // 🔥 Ініціалізація хука тостів
+
     const [users, setUsers] = useState<User[]>([]);
     const [usersLoading, setUsersLoading] = useState(false);
     const [usersError, setUsersError] = useState<string | null>(null);
@@ -58,10 +46,8 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
             const currentRole = roleId ?? options?.roleId;
             let res;
 
-            // 🔥 Перевіряємо на 5 (ID перекладачів)
             if (currentRole === 5 || String(currentRole) === "5") {
                 const response = await translatorsApi.list();
-                // 🔥 Дістаємо масив з об'єкта пагінації (якщо він є), інакше беремо саму response
                 res = (response as any).results ? (response as any).results : response;
             } else {
                 res = await usersApi.getForSalary(currentRole);
@@ -70,19 +56,26 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
             setUsers(res);
             return res;
         } catch (e: any) {
-            setUsersError(e?.message ?? "Помилка завантаження працівників");
+            const errorMessage = e?.message ?? "Помилка завантаження працівників";
+            setUsersError(errorMessage);
+            toast({
+                title: "Помилка завантаження",
+                description: errorMessage,
+                variant: "error",
+            });
+
             return [];
         } finally {
             setUsersLoading(false);
         }
-    }, [options?.roleId]);
+    }, [options?.roleId, toast]);
 
     // ─── Завантаження списку зарплат ────────────────────────────────────────
     const fetchSalaryList = useCallback(async (params?: {
         user?: number;
         start_date?: string;
         end_date?: string;
-        role?: number; // 🔥 Змінено назад на number
+        role?: number;
     }) => {
         setSalaryList(prev => ({ ...prev, loading: true, error: null }));
         try {
@@ -90,13 +83,21 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
             const items = Array.isArray(res) ? res : (res as any).results ?? [];
             setSalaryList({ items, loading: false, error: null });
         } catch (e: any) {
+            const errorMessage = e?.message ?? "Помилка завантаження зарплат";
             setSalaryList(prev => ({
                 ...prev,
                 loading: false,
-                error: e?.message ?? "Помилка завантаження зарплат",
+                error: errorMessage,
             }));
+
+            // 🔥 Тост про помилку
+            toast({
+                title: "Помилка",
+                description: errorMessage,
+                variant: "error",
+            });
         }
-    }, []);
+    }, [toast]);
 
     // ─── Завантаження ПРЕВ'Ю для ВСІХ юзерів ────────────────────────────────
     const fetchAllPreviews = useCallback(async (usersToFetch: User[], startDate: string, endDate: string, roleId: number) => {
@@ -109,23 +110,34 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
         try {
             const results = await Promise.all(
                 usersToFetch.map(u =>
-                    // 🔥 Передаємо roleId (1, 2 або 5)
                     salaryApi.preview({ user: u.id, start_date: startDate, end_date: endDate, role: String(roleId) })
+                        .catch(err => {
+                            console.error(`Помилка завантаження статистики для юзера ${u.id}:`, err);
+                            return null;
+                        })
                 )
             );
 
             const newPreviews: Record<number, SalaryPreview> = {};
             results.forEach((res: any) => {
-                newPreviews[res.user] = res;
+                if (res && res.user) {
+                    newPreviews[res.user] = res;
+                }
             });
             setPreviews(newPreviews);
 
         } catch (e: any) {
             console.error("Помилка завантаження статистики", e);
+            // 🔥 Тост про загальну помилку при зборі статистики
+            toast({
+                title: "Помилка статистики",
+                description: "Не вдалося завантажити попередні розрахунки",
+                variant: "error",
+            });
         } finally {
             setPreviewsLoading(false);
         }
-    }, []);
+    }, [toast]);
 
     // ─── Зберегти зарплату ──────────────────────────────────────────────────
     const saveSalary = useCallback(async (
@@ -133,7 +145,7 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
         draft: { base_salary: number, bonus: number, premium: number },
         startDate: string,
         endDate: string,
-        roleId: number // 🔥 Тут приймаємо number
+        roleId: number
     ): Promise<Salary | null> => {
 
         const payload: any = {
@@ -144,7 +156,6 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
             premium: draft.premium,
         };
 
-        // 🔥 Перевіряємо на 5
         if (roleId === 5 || String(roleId) === "5") {
             payload.translator = userId;
         } else {
@@ -154,12 +165,33 @@ export function useSalaryManagement(options?: UseSalaryManagementOptions) {
         try {
             const salary = await salaryApi.create(payload);
             setSalaryList(prev => ({ ...prev, items: [salary, ...prev.items] }));
+
+            // setPreviews(prev => ({
+            //     ...prev,
+            //     [userId]: {
+            //         ...prev[userId],
+            //         is_saved: true
+            //     }
+            // }));
+
+            // 🔥 Тост про успішне збереження
+            toast({
+                title: "Збережено",
+                description: "Фінансові дані працівника успішно оновлено",
+            });
+
             return salary;
         } catch (e: any) {
             console.error("Помилка збереження зарплати", e);
+            toast({
+                title: "Помилка збереження",
+                description: "Не вдалося оновити фінансові дані",
+                variant: "error",
+            });
+
             return null;
         }
-    }, []);
+    }, [toast]);
 
     return {
         users,
