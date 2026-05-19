@@ -22,12 +22,15 @@ export default function TranslatorExternalOrderPage({
         init,
         submitPassword,
         uploadFiles,
-        remainingAttempts
+        remainingAttempts,
+        completeOrder,
+        bannedUntil,
+        clearBan // 👈 Дістаємо нашу функцію очищення бану
     } = useExternalOrder(slug)
 
     useEffect(() => {
         init()
-    }, [slug])
+    }, [slug, init])
 
     if (step === "loading") {
         return <>Loading...</>
@@ -37,21 +40,29 @@ export default function TranslatorExternalOrderPage({
         return <ExpiredLink />
     }
 
-    if (step === "password") {
+    // Показуємо форму і якщо просто пароль, і якщо бан
+    if (step === "password" || step === "banned") {
         return <PasswordForm
             onSubmit={submitPassword}
             error={error}
             attempts={remainingAttempts}
+            bannedUntil={bannedUntil} // Передаємо час бану
+            onBanExpired={clearBan}   // 👈 Розблоковуємо через clearBan
         />
     }
 
-    return (
-        <ExternalOrderView
-            order={order!}
-            onUpload={uploadFiles}
-            isUploading={isUploading}
-            uploadProgress={uploadProgress}
-            error={error}
-        />
-    )
+    if (step === "order" && order) {
+        return (
+            <ExternalOrderView
+                order={order}
+                onUpload={uploadFiles}
+                onComplete={completeOrder}
+                isUploading={isUploading}
+                uploadProgress={uploadProgress}
+                error={error}
+            />
+        )
+    }
+
+    return null
 }

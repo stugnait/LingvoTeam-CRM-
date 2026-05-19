@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useState } from "react"
 import { useToast } from "@/src/hooks/use-toast"
 import { translatorsApi } from "../api"
-import type { Translator, TranslatorPayload } from "../types"
+import type {
+    Translator,
+    TranslatorPayload,
+    TranslatorTraffic,
+    TranslatorTrafficPayload,
+    LanguagePairOption,
+    CategoryOption
+} from "../types"
+import {Currency} from "@/src/features/orders/types";
+import {ordersApi} from "@/src/features/orders/api";
 
 export function useTranslators() {
     const { toast } = useToast()
@@ -17,9 +26,8 @@ export function useTranslators() {
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
 
-    // 🔥 NEW: sorting + filters
     const [ordering, setOrdering] = useState<
-        "orders_count" | "-orders_count" | null
+        "orders_count" | "-orders_count" | "created_at" | "-created_at" | null
     >(null)
 
     const [sourceLanguage, setSourceLanguage] = useState<number | null>(null)
@@ -28,8 +36,13 @@ export function useTranslators() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
 
+    // Select options
+    const [currencies, setCurrencies] = useState<Currency[]>([])
+    const [languagePairs, setLanguagePairs] = useState<LanguagePairOption[]>([])
+    const [categories, setCategories] = useState<CategoryOption[]>([])
+
     const [confirmAction, setConfirmAction] =
-        useState<"delete" | "deactivate" | null>(null)
+        useState<"delete" | "deactivate" | "delete_traffic" | null>(null)
 
     const [form, setForm] = useState<TranslatorPayload>({
         full_name: "",
@@ -44,8 +57,22 @@ export function useTranslators() {
     // modals
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-    const [selectedTranslator, setSelectedTranslator] =
-        useState<Translator | null>(null)
+    const [selectedTranslator, setSelectedTranslator] = useState<Translator | null>(null)
+
+    // TRAFFIC STATES
+    const [traffic, setTraffic] = useState<TranslatorTraffic[]>([])
+    const [isTrafficFormOpen, setIsTrafficFormOpen] = useState(false)
+    const [selectedTraffic, setSelectedTraffic] = useState<TranslatorTraffic | null>(null)
+    const [trafficForm, setTrafficForm] = useState<TranslatorTrafficPayload>({
+        name: "",
+        translator: 0,
+        currency_id: 0,
+        language_pair: null,
+        category: null,
+        rate_per_page: 0,
+        rate_per_action: 0,
+    })
+    const [trafficErrors, setTrafficErrors] = useState<Partial<Record<keyof TranslatorTrafficPayload, string>>>({})
 
     // -------------------------
     // Debounce search
@@ -57,6 +84,66 @@ export function useTranslators() {
 
         return () => clearTimeout(timer)
     }, [search])
+
+    // -------------------------
+    // Load Helpers (INDEPENDENTLY)
+    // -------------------------
+    const loadHelpers = useCallback(() => {
+        // Оголошуємо проміси для незалежного виконання
+        const fetchCurrencies = ordersApi.listCurrency().catch(err => { console.error("Currencies error", err); return { results: [] }; });
+        const fetchLanguages = translatorsApi.listLanguages().catch(err => { console.error("Languages error", err); return { results: [] }; });
+        const fetchPairs = translatorsApi.listLanguagePairs().catch(err => { console.error("Pairs error", err); return { results: [] }; });
+        const fetchCategories = translatorsApi.listCategories().catch(err => { console.error("Categories error", err); return { results: [] }; });
+
+        Promise.all([fetchCurrencies, fetchLanguages, fetchPairs, fetchCategories]).then(([curRes, langRes, pairRes, catRes]) => {
+            // 1. Валюти
+            setCurrencies(curRes.results || []);
+
+            // 2. Мови (для мапінгу пар)
+            const langs = langRes.results || [];
+
+            // Функція-помічник для пошуку назви мови по ID
+            const getLangName = (val: any) => {
+                if (!val) return "Unknown";
+                if (typeof val === 'string') return val;
+                if (val.name) return val.name; // Якщо це об'єкт { id: 1, name: 'English' }
+                if (typeof val === 'number') {
+                    const found = langs.find((l: any) => l.id === val);
+                    return found ? found.name : `ID:${val}`;
+                }
+                return val;
+            };
+
+            // 3. Мовні пари
+            const pairs = (pairRes.results || []).map((p: any) => {
+                let pairName = `Pair #${p.id}`;
+
+                // Перевіряємо всі можливі варіанти відповіді бекенду
+                if (p.name && typeof p.name === 'string') {
+                    pairName = p.name;
+                } else if (p.language_pair_name) {
+                    pairName = p.language_pair_name;
+                } else if (p.source_language || p.target_language) {
+                    const src = getLangName(p.source_language);
+                    const tgt = getLangName(p.target_language);
+                    pairName = `${src} → ${tgt}`;
+                }
+
+                return {
+                    id: p.id,
+                    name: pairName
+                };
+            });
+            setLanguagePairs(pairs);
+
+            // 4. Категорії (Order Traffic)
+            const cats = (catRes.results || []).map((c: any) => ({
+                id: c.id,
+                name: c.name || `Category #${c.id}`
+            }));
+            setCategories(cats);
+        });
+    }, []);
 
     // -------------------------
     // Load translators
@@ -80,7 +167,6 @@ export function useTranslators() {
             }
         } catch (err) {
             console.error("Failed to load translators:", err)
-
             toast({
                 title: "Error",
                 description: "Failed to load translators",
@@ -89,18 +175,26 @@ export function useTranslators() {
         } finally {
             setLoading(false)
         }
-    }, [
-        debouncedSearch,
-        ordering,
-        sourceLanguage,
-        targetLanguage,
-        languagePairId,
-        toast,
-    ])
+    }, [debouncedSearch, ordering, sourceLanguage, targetLanguage, languagePairId, toast])
+
+    // -------------------------
+    // Load Traffic
+    // -------------------------
+    const loadTraffic = useCallback(async () => {
+        try {
+            const response = await translatorsApi.listTranslatorTraffic()
+            const trafficData = Array.isArray(response) ? response : (response?.results || [])
+            setTraffic(trafficData)
+        } catch (err) {
+            console.error("Failed to load traffic:", err)
+        }
+    }, [])
 
     useEffect(() => {
+        loadHelpers()
         loadTranslators(1)
-    }, [loadTranslators])
+        loadTraffic()
+    }, [loadHelpers, loadTranslators, loadTraffic])
 
     const onPageChange = (newPage: number) => {
         loadTranslators(newPage)
@@ -147,12 +241,52 @@ export function useTranslators() {
         setIsConfirmOpen(true)
     }
 
+    // TRAFFIC MODALS
+    const openAddTraffic = (translator?: Translator) => {
+        setSelectedTraffic(null)
+        setTrafficForm({
+            name: "",
+            translator: translator?.id || 0,
+            currency_id: translator?.currency_id || 0,
+            language_pair: null,
+            category: null,
+            rate_per_page: 0,
+            rate_per_action: 0,
+        })
+        setTrafficErrors({})
+        setIsTrafficFormOpen(true)
+    }
+
+    const openEditTraffic = (trafficItem: TranslatorTraffic) => {
+        setSelectedTraffic(trafficItem)
+        setTrafficForm({
+            name: trafficItem.name || "",
+            translator: trafficItem.translator,
+            currency_id: trafficItem.currency_id,
+            language_pair: trafficItem.language_pair,
+            category: trafficItem.category,
+            rate_per_page: trafficItem.rate_per_page || 0,
+            rate_per_action: trafficItem.rate_per_action || 0,
+        })
+        setTrafficErrors({})
+        setIsTrafficFormOpen(true)
+    }
+
+    const openDeleteTraffic = (trafficItem: TranslatorTraffic) => {
+        setSelectedTraffic(trafficItem)
+        setConfirmAction("delete_traffic")
+        setIsConfirmOpen(true)
+    }
+
     const closeModals = () => {
         setIsFormOpen(false)
+        setIsTrafficFormOpen(false)
         setIsConfirmOpen(false)
         setSelectedTranslator(null)
+        setSelectedTraffic(null)
         setConfirmAction(null)
         setErrors({})
+        setTrafficErrors({})
     }
 
     // -------------------------
@@ -194,55 +328,74 @@ export function useTranslators() {
 
             if (selectedTranslator) {
                 await translatorsApi.update(selectedTranslator.id, data)
-
-                toast({
-                    title: "Translator updated",
-                    description: `${data.full_name} updated successfully`,
-                })
+                toast({ title: "Translator updated", description: `${data.full_name} updated successfully` })
             } else {
                 await translatorsApi.create(data)
-
-                toast({
-                    title: "Translator created",
-                    description: `${data.full_name} created successfully`,
-                })
+                toast({ title: "Translator created", description: `${data.full_name} created successfully` })
             }
 
             closeModals()
             await loadTranslators(page)
         } catch (err) {
             console.error("Save error:", err)
-            toast({
-                title: "Error",
-                description: "Failed to save translator",
-                variant: "error",
-            })
+            toast({ title: "Error", description: "Failed to save translator", variant: "error" })
+        }
+    }
+
+    const submitTraffic = async () => {
+        try {
+            const newErrors: Partial<Record<keyof TranslatorTrafficPayload, string>> = {}
+
+            if (!trafficForm.translator) newErrors.translator = "Required"
+            if (!trafficForm.name) newErrors.name = "Required"
+            if (!trafficForm.currency_id) newErrors.currency_id = "Required"
+            if (!trafficForm.language_pair) newErrors.language_pair = "Required"
+
+            if (Object.keys(newErrors).length > 0) {
+                setTrafficErrors(newErrors)
+                toast({ title: "Validation error", description: "Please check the form fields", variant: "error" })
+                return
+            }
+
+            setTrafficErrors({})
+
+            if (selectedTraffic) {
+                await translatorsApi.updateTranslatorTraffic(selectedTraffic.id, trafficForm)
+                toast({ title: "Rate updated", description: `Successfully updated` })
+            } else {
+                await translatorsApi.createTranslatorTraffic(trafficForm)
+                toast({ title: "Rate created", description: `Successfully created` })
+            }
+
+            closeModals()
+            await loadTraffic()
+            await loadTranslators(page)
+        } catch (err) {
+            console.error("Save traffic error:", err)
+            toast({ title: "Error", description: "Failed to save rate", variant: "error" })
         }
     }
 
     const confirmActionHandler = async () => {
-        if (!selectedTranslator || !confirmAction) return
-
         try {
-            await translatorsApi.remove(selectedTranslator.id)
-
-            toast({
-                title:
-                    confirmAction === "delete"
-                        ? "Translator deleted"
-                        : "Translator deactivated",
-                description: selectedTranslator.full_name,
-            })
+            if (confirmAction === "delete_traffic" && selectedTraffic) {
+                await translatorsApi.removeTranslatorTraffic(selectedTraffic.id)
+                toast({ title: "Rate deleted", description: "The rate has been removed." })
+                await loadTraffic()
+                await loadTranslators(page)
+            } else if (selectedTranslator && confirmAction) {
+                await translatorsApi.remove(selectedTranslator.id)
+                toast({
+                    title: confirmAction === "delete" ? "Translator deleted" : "Translator deactivated",
+                    description: selectedTranslator.full_name,
+                })
+                await loadTranslators(page)
+            }
 
             closeModals()
-            await loadTranslators(page)
         } catch (err) {
             console.error("Action error:", err)
-            toast({
-                title: "Error",
-                description: "Action failed",
-                variant: "error",
-            })
+            toast({ title: "Error", description: "Action failed", variant: "error" })
         }
     }
 
@@ -252,31 +405,39 @@ export function useTranslators() {
     return {
         translators,
         loading,
-
         search,
         setSearch,
-
-        // 🔥 NEW
         ordering,
         setOrdering,
-
         sourceLanguage,
         setSourceLanguage,
-
         targetLanguage,
         setTargetLanguage,
-
         languagePairId,
         setLanguagePairId,
-
         form,
         setForm,
         errors,
-
         isFormOpen,
         isConfirmOpen,
         confirmAction,
         selectedTranslator,
+
+        // Traffic & Select options
+        traffic,
+        isTrafficFormOpen,
+        trafficForm,
+        setTrafficForm,
+        trafficErrors,
+        selectedTraffic,
+        currencies,
+        languagePairs,
+        categories,
+
+        openAddTraffic,
+        openEditTraffic,
+        openDeleteTraffic,
+        submitTraffic,
 
         openAddTranslator,
         openEditTranslator,

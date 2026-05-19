@@ -1,29 +1,45 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { Label } from "@/src/components/ui/label"
 import { Lock, Eye, EyeOff, KeyRound } from "lucide-react"
+import { useCountdown } from "../hooks/useCountdown"
 
 interface Props {
     onSubmit: (password: string) => void
     error?: string | null
-    attempts: number | null
+    attempts?: number | null
+    bannedUntil?: string | null
+    onBanExpired?: () => void
 }
 
-export function PasswordForm({ onSubmit, error, attempts }: Props) {
+export function PasswordForm({ onSubmit, error, attempts, bannedUntil, onBanExpired }: Props) {
     const [password, setPassword] = useState("")
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
+    // Підключаємо відлік часу
+    const countdown = useCountdown(bannedUntil || null)
+
+    // Перевіряємо, чи користувач заблокований (час ще не вийшов)
+    const isBanned = !!bannedUntil && !countdown.expired
+
+    // Коли таймер доходить до нуля — викликаємо колбек, щоб очистити стейт і LocalStorage в хуку
+    useEffect(() => {
+        if (bannedUntil && countdown.expired) {
+            onBanExpired?.()
+        }
+    }, [bannedUntil, countdown.expired, onBanExpired])
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!password.trim()) {return}
+        if (!password.trim() || isBanned) return
 
         setLoading(true)
         try {
-            onSubmit(password)
+            await onSubmit(password)
         } finally {
             setLoading(false)
         }
@@ -57,7 +73,7 @@ export function PasswordForm({ onSubmit, error, attempts }: Props) {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            disabled={loading}
+                            disabled={loading || isBanned}
                             className="pl-10 pr-10 h-11"
                             autoComplete="current-password"
                         />
@@ -67,6 +83,7 @@ export function PasswordForm({ onSubmit, error, attempts }: Props) {
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                             tabIndex={-1}
+                            disabled={loading || isBanned}
                         >
                             {showPassword ? (
                                 <EyeOff className="h-4 w-4" />
@@ -81,10 +98,11 @@ export function PasswordForm({ onSubmit, error, attempts }: Props) {
                     <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                         <p className="text-sm text-destructive flex items-center gap-2">
                             {error}
-                            {attempts && (
-                                <span className="ml-1">
-                    Залишилось спроб: {attempts}
-                </span>
+                            {/* Показуємо кількість спроб тільки якщо користувач НЕ в бані */}
+                            {attempts !== null && attempts !== undefined && !isBanned && (
+                                <span className="ml-1 font-bold">
+                                    (Залишилось спроб: {attempts})
+                                </span>
                             )}
                         </p>
                     </div>
@@ -92,11 +110,13 @@ export function PasswordForm({ onSubmit, error, attempts }: Props) {
 
                 <Button
                     type="submit"
-                    className="w-full h-11 text-base"
-                    disabled={loading || !password.trim()}
+                    className="w-full h-11 text-base transition-all"
+                    disabled={loading || !password.trim() || isBanned}
                     size="lg"
                 >
-                    {loading ? (
+                    {isBanned ? (
+                        `Заблоковано (${countdown.minutes}:${countdown.seconds.toString().padStart(2, '0')})`
+                    ) : loading ? (
                         <>
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
                             Перевірка...

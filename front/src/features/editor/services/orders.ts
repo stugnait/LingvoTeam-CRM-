@@ -24,7 +24,7 @@ const getPriorityFromOrder = (order: OrderListItem): TaskPriority => {
     // You can add logic based on order data
     // For now, using random or based on translator_id
     const priorities: TaskPriority[] = ['low', 'medium', 'high', 'critical'];
-    const index = parseInt(order.translator_id) % priorities.length || 0;
+    const index = order.translator_id % priorities.length || 0;
     return priorities[index] || 'medium';
 };
 
@@ -62,11 +62,12 @@ export const convertOrderToKanbanTask = (order: OrderListItem): KanbanTask => {
     const description = `Translation order for client ${order.client_id}. Language pair: ${order.language_pair_id}`;
 
     // Get assignee (mock for now - you can fetch real translator data)
-    const assignee = mockAssignees[parseInt(order.translator_id) % mockAssignees.length] || mockAssignees[0];
+    const assignee = mockAssignees[order.translator_id % mockAssignees.length] || mockAssignees[0];
 
     return {
         // OrderListItem fields
         ...order,
+        id: order.id.toString(),
         client_name: order.client_name || "Unknown Client",
 
         // KanbanTask fields

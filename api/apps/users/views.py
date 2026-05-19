@@ -208,12 +208,17 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return UserListSerializer
 
+        # 👇 ДОДАЄМО ОБРОБКУ ДЛЯ UPDATE
+        elif self.action in ['update', 'partial_update']:
+            return UserUpdateSerializer
+
         elif self.action == 'update_user':
             return UserSelfUpdateSerializer
 
         elif self.action == 'me':
             return UserSerializer
 
+        # Для action 'create' повернеться RegistrationSerializer
         return RegistrationSerializer
 
     @extend_schema(

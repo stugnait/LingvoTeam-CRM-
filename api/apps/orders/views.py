@@ -1,3 +1,4 @@
+import mimetypes
 from csv import reader
 import re
 from decimal import Decimal, InvalidOperation
@@ -83,14 +84,15 @@ class OrderTrafficFilter(filters.FilterSet):
 
 class OrderFilter(filters.FilterSet):
     status = filters.ModelChoiceFilter(field_name='status_id', queryset=Status.objects.all())
-    # Використовуємо manager_accept_id для фільтрації по менеджеру
     manager = filters.ModelChoiceFilter(field_name='manager_accept_id', queryset=User.objects.all())
     date_from = filters.DateFilter(field_name='created_at', lookup_expr='gte')
     date_to = filters.DateFilter(field_name='created_at', lookup_expr='lte')
+    deadline_from = filters.DateFilter(field_name='deadline', lookup_expr='gte')
+    deadline_to = filters.DateFilter(field_name='deadline', lookup_expr='lte')
 
     class Meta:
         model = Order
-        fields = ['status', 'manager', 'created_at']
+        fields = ['status', 'manager', 'created_at', 'deadline']
 
 
 @extend_schema_view(
@@ -475,12 +477,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             "margin": str(margin) if margin else None,
         })
 
-    @extend_schema(
-        summary="Відхилити переклад",
-        description="Метод для редактора. Змінює статус на 'Відхилено' та надсилає email менеджеру.",
-        request=RejectTranslationSerializer,
-        tags=["Order Workflow"]
-    )
     @action(detail=True, methods=['post'], url_path='reject-translation')
     def reject_translation(self, request, pk=None):
         order = self.get_object()
@@ -488,7 +484,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         comment = serializer.validated_data['review_comment']
-        # Краще використовувати slug або константу, ніж ID 6
         rejected_status = Status.objects.filter(id=6).first()
 
         OrderEditorReview.objects.create(
@@ -502,27 +497,52 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.status_id = rejected_status
             order.save()
 
-        if order.manager_accept_id:
+        # --- Нотифікація менеджеру ---
+        current_user = request.user
+        manager_accept = order.manager_accept_id
+        manager_delivery = order.manager_delivery_id
+
+        # msg_text = f"Замовлення #{order.id} відхилено редактором. Коментар: {comment}"
+
+        recipients = set()
+        if manager_accept and manager_accept != current_user:
+            recipients.add(manager_accept)
+        if manager_delivery and manager_delivery != current_user:
+            recipients.add(manager_delivery)
+
+        for manager_obj in recipients:
+            try:
+                Notification.objects.create(
+                    recipient=manager_obj,
+                    order=order,
+                    title="Переклад відхилено",
+                    message=comment,
+                    status="rejected"
+                )
+            except Exception as e:
+                logger.error(f"Failed to create notification: {e}")
+
             try:
                 send_mail(
-                    subject=f"УВАГА: Переклад замовлення #{order.id} відхилено!",
-                    message=f"Редактор {request.user.full_name} відхилив переклад.\nКоментар: {comment}",
+                    subject=f"Замовлення #{order.id}: Переклад відхилено — LingvoTeam",
+                    message=(
+                        f"Вітаємо, {manager_obj.full_name}!\n\n"
+                        f"Редактор {current_user.full_name} відхилив переклад замовлення #{order.id}.\n"
+                        f"Коментар: {comment}\n\n"
+                        f"З повагою, команда LingvoTeam."
+                    ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[order.manager_accept_id.email],
+                    recipient_list=[manager_obj.email],
                     fail_silently=True
                 )
             except Exception as e:
                 logger.error(f"Failed to send rejection email: {e}")
+        # --- кінець нотифікації ---
 
         return Response({"message": "Переклад відхилено, менеджер повідомлений."}, status=status.HTTP_200_OK)
 
-    @extend_schema(
-        summary="Прийняти переклад",
-        description="Оцінка якості перекладу та закриття замовлення. Доступно по паролю з посилання.",
-        request=ApproveTranslationSerializer,
-        tags=["Order Workflow"]
-    )
-    @action(detail=True, methods=['post'], url_path='approve-translation', permission_classes=[AllowAny])
+    @action(detail=True, methods=['post'], url_path='approve-translation', permission_classes=[AllowAny],
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
     def approve_translation(self, request, pk=None):
         order = get_object_or_404(Order, pk=pk)
 
@@ -553,13 +573,58 @@ class OrderViewSet(viewsets.ModelViewSet):
         score = serializer.validated_data['score']
         comment = serializer.validated_data.get('comment', '')
 
+        # Якщо є файли — замінюємо target
+        uploaded_files = request.FILES.getlist('files')
+        if uploaded_files:
+            # 1. Видаляємо старі файли з target у Dropbox і БД
+            old_target_files = File.objects.filter(
+                order=order,
+                dropbox_url__contains='/target/'
+            ).exclude(dropbox_url__exact="None")
+
+            try:
+                dbx = get_dbx()
+                for f_obj in old_target_files:
+                    try:
+                        dbx.files_delete_v2(f_obj.dropbox_url)
+                    except Exception as e:
+                        logger.warning(f"Could not delete dropbox file {f_obj.dropbox_url}: {e}")
+                old_target_files.delete()
+            except Exception as e:
+                logger.error(f"Failed to clean target files: {e}")
+
+            # 2. Завантажуємо нові файли в target
+            try:
+                base_path = f"/orders/order_{order.id}"
+                for f in uploaded_files:
+                    f.seek(0)
+                    dropbox_path = upload_file_to_order_folder(
+                        order=order,
+                        file=f,
+                        base_path=base_path,
+                        subdir="target",
+                    )
+                    ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+                    File.objects.create(
+                        order=order,
+                        file_type=ext,
+                        dropbox_url=dropbox_path,
+                        detected_pages=0,
+                        detected_symbols=0,
+                    )
+            except Exception as e:
+                logger.error(f"Failed to upload editor files: {e}")
+                return Response(
+                    {"detail": f"Помилка завантаження файлів: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
         acting_user = request.user if request.user.is_authenticated else None
 
-        # 🔥 ЗМІНА ТУТ: Передаємо перекладача (order.translator_id) замість acting_user
         TranslationQuality.objects.update_or_create(
             order=order,
             defaults={
-                'user': order.translator_id,  # Зберігаємо перекладача, який виконував це замовлення
+                'user': order.translator_id,
                 'score': score,
                 'comment': comment
             }
@@ -573,13 +638,59 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
 
         order.status_id_id = 9
+        order.completed_at = timezone.now()
         order.save(update_fields=['status_id'])
 
-        # Оновлюємо рейтинг перекладача
         if order.translator_id:
             self.update_translator_rating(order.translator_id)
 
-        return Response({"message": "Замовлення успішно прийнято та оцінено!"}, status=status.HTTP_200_OK)
+        # визначаємо current_user ДО recipients
+        current_user = request.user if request.user.is_authenticated else None
+        checked_status = Status.objects.filter(id=9).first()
+        status_name = checked_status.name if checked_status else 'Checked'
+        msg_text = f"Замовлення #{order.id} перейшло в статус «{status_name}»"
+
+        manager_accept = order.manager_accept_id
+        manager_delivery = order.manager_delivery_id
+
+        recipients = set()
+        if manager_accept and manager_accept != current_user:
+            recipients.add(manager_accept)
+        if manager_delivery and manager_delivery != current_user:
+            recipients.add(manager_delivery)
+
+        for manager_obj in recipients:
+            try:
+                Notification.objects.create(
+                    recipient=manager_obj,
+                    order=order,
+                    title="Замовлення перевірено",
+                    message=comment,
+                    status = "rejected"
+                )
+            except Exception as e:
+                logger.error(f"Failed to create notification: {e}")
+
+            try:
+                send_mail(
+                    subject=f"Замовлення #{order.id}: Перевірено — LingvoTeam",
+                    message=(
+                        f"Вітаємо, {manager_obj.full_name}!\n\n"
+                        f"{msg_text}.\n\n"
+                        f"З повагою, команда LingvoTeam."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[manager_obj.email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                logger.error(f"Failed to send email: {e}")
+
+        return Response({
+            "message": "Замовлення успішно прийнято та оцінено!",
+            "files_replaced": len(uploaded_files) > 0,
+            "files_count": len(uploaded_files),
+        }, status=status.HTTP_200_OK)
 
     def update_translator_rating(self, translator):
         # 🔥 Тепер можемо рахувати середню оцінку безпосередньо по полю user
@@ -1137,7 +1248,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 errors.append({"file_id": f.id, "from": from_path, "error": str(e)})
 
-        done_status = Status.objects.get(slug="Done")
+        done_status = Status.objects.get(slug="done")
 
         if order.status_id != done_status:
             order.status_id = done_status
@@ -1188,15 +1299,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         if provided_password and link_obj:
             is_password_valid = secrets.compare_digest(link_obj.password, provided_password)
 
-        # Якщо немає ані внутрішнього доступу, ані правильного пароля — блокуємо
         if not (has_internal_access or is_password_valid):
             raise PermissionDenied("У вас немає доступу (потрібна роль Менеджера/Редактора або вірний пароль).")
 
         instance = serializer.instance
-
-        old_status = instance.status_id
-        old_client_status = instance.client_status
-        old_translator_status = instance.translator_status
 
         old_status_int = instance.status_id_id
         old_translator_status_int = instance.translator_status_id
@@ -1204,51 +1310,57 @@ class OrderViewSet(viewsets.ModelViewSet):
         updated_instance = serializer.save()
 
         new_status = updated_instance.status_id
-        new_client_status = updated_instance.client_status
         new_translator_status = updated_instance.translator_status
 
         new_status_int = updated_instance.status_id_id
         new_trans_int = updated_instance.translator_status_id
 
-        print(instance.status_id_id)
-        DONE_SLUGS = ['Done']
-
-        DONE_SLUGS = ['done']
+        NOTIFY_SLUGS = {
+            'done': ("Замовлення виконано", "перейшло в статус «Виконано»"),
+            'checked': ("Замовлення перевірено", "перейшло в статус «Перевірено»"),
+            'rejected': ("Замовлення відхилено", "відхилено редактором"),
+        }
 
         main_slug = new_status.slug if new_status else ""
         trans_slug = new_translator_status.slug if new_translator_status else ""
 
-        main_became_done = (old_status_int != new_status_int) and (main_slug in DONE_SLUGS)
-        trans_became_done = (old_translator_status_int != new_trans_int) and (trans_slug in DONE_SLUGS)
+        main_became_notify = (old_status_int != new_status_int) and (main_slug in NOTIFY_SLUGS)
+        trans_became_notify = (old_translator_status_int != new_trans_int) and (trans_slug in NOTIFY_SLUGS)
 
         manager_obj = updated_instance.manager_accept_id
         current_user = self.request.user
 
-        if main_became_done or trans_became_done:
+        if main_became_notify or trans_became_notify:
             if manager_obj and current_user != manager_obj:
 
-                if trans_became_done:
-                    msg_text = f"Статус перекладача змінено на {new_translator_status.name}"
-                    status_name = new_translator_status.name if new_translator_status else 'None'
+                if trans_became_notify:
+                    active_slug = trans_slug
+                    active_status = new_translator_status
                 else:
-                    msg_text = f"Статус замовлення змінено на {new_status.name}"
-                    status_name = new_status.name if new_status else 'None'
+                    active_slug = main_slug
+                    active_status = new_status
+
+                notif_title, notif_verb = NOTIFY_SLUGS[active_slug]
+                status_name = active_status.name if active_status else active_slug
+
+                msg_text = f"Замовлення #{updated_instance.id} {notif_verb}"
 
                 try:
                     Notification.objects.create(
                         recipient=manager_obj,
                         order=updated_instance,
-                        title="Зміна статусу",
+                        title=notif_title,
                         message=msg_text
                     )
                 except Exception as e:
-                    print(f"DEBUG: ERROR creating notification: {e}")
+                    logger.error(f"Failed to create notification: {e}")
 
                 try:
-                    subject = f"Замовлення #{updated_instance.id} перейшло на новий етап - LingvoTeam"
+                    subject = f"Замовлення #{updated_instance.id}: {notif_title} — LingvoTeam"
                     message = (
                         f"Вітаємо, {manager_obj.full_name}!\n\n"
-                        f"Користувач {current_user.full_name} змінив статус замовлення #{updated_instance.id} на {status_name}.\n\n"
+                        f"Користувач {current_user.full_name} {notif_verb} (#{updated_instance.id}).\n"
+                        f"Статус: {status_name}\n\n"
                         f"З повагою, команда LingvoTeam."
                     )
                     send_mail(
@@ -1262,7 +1374,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     logger.error(f"Failed to send email to manager: {e}")
 
             else:
-                print("DEBUG: Notification SKIPPED (No manager or Self-update)")
+                logger.debug("Notification SKIPPED (No manager or Self-update)")
 
     # TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):

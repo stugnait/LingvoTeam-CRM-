@@ -16,8 +16,7 @@ import type { User } from "../types"
 
 // Імпорт модалки
 import { RoleInfoModal } from "./RoleInfoModal"
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL
 
 export const getImageUrl = (path: string | null | undefined) => {
     if (!path) return undefined

@@ -35,7 +35,6 @@ import {
 } from "@/src/components/ui/dropdown-menu"
 
 import { Calendar } from "@/src/components/ui/calendar"
-// ДОДАНО ІМПОРТИ POPOVER
 import {
     Popover,
     PopoverContent,
@@ -241,7 +240,7 @@ export function OrdersTable({
                     {/* Дати */}
                     <div className="flex flex-col lg:flex-row items-center gap-2 w-full xl:w-auto">
 
-                        {/* ЗМІНЕНО НА POPOVER: Дата Від */}
+                        {/* Дата Від */}
                         <div className="relative w-full lg:w-auto group">
                             <Popover open={isFromCalendarOpen} onOpenChange={setIsFromCalendarOpen}>
                                 <PopoverTrigger asChild>
@@ -274,7 +273,6 @@ export function OrdersTable({
                                             }
                                             setIsFromCalendarOpen(false)
                                         }}
-                                        initialFocus
                                     />
                                 </PopoverContent>
                             </Popover>
@@ -282,7 +280,7 @@ export function OrdersTable({
 
                         <span className="text-muted-foreground hidden lg:inline-block">-</span>
 
-                        {/* ЗМІНЕНО НА POPOVER: Дата До */}
+                        {/* Дата До */}
                         <div className="relative w-full lg:w-auto group">
                             <Popover open={isToCalendarOpen} onOpenChange={setIsToCalendarOpen}>
                                 <PopoverTrigger asChild>
@@ -315,7 +313,6 @@ export function OrdersTable({
                                             }
                                             setIsToCalendarOpen(false)
                                         }}
-                                        initialFocus
                                     />
                                 </PopoverContent>
                             </Popover>
@@ -328,7 +325,7 @@ export function OrdersTable({
                 <TableHeader>
                     <TableRow className="hover:bg-transparent">
                         <TableHead className="font-semibold text-foreground h-14 pl-6">ID</TableHead>
-                        <TableHead className="font-semibold text-foreground h-14">Manager</TableHead>
+                        <TableHead className="font-semibold text-foreground h-14">Managers</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Languages</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Status</TableHead>
                         <TableHead className="font-semibold text-foreground h-14">Deadline</TableHead>
@@ -344,7 +341,7 @@ export function OrdersTable({
                                 No orders found.
                             </TableCell>
                         </TableRow>
-                    ) : orders.map((order) => (
+                    ) : orders.map((order: any) => ( // Зверни увагу, може знадобитись розширення типу OrderListItem у types.ts
                         <Fragment key={order.id}>
                             <TableRow
                                 className={cn(
@@ -353,35 +350,48 @@ export function OrdersTable({
                                     isOverdue(order.deadline) && "bg-red-500/10 hover:bg-red-500/15"
                                 )}
                             >
-                                <TableCell className="align-middle h-16 pl-6">
+                                <TableCell className="align-middle py-3 pl-6">
                                     <div className="font-medium text-foreground">#{order.id}</div>
                                 </TableCell>
 
-                                <TableCell className="align-middle h-16">
-                                    <div className="flex items-center gap-3">
-                                        {order.manager_avatar ? (
-                                            <img
-                                                src={order.manager_avatar}
-                                                alt="manager"
-                                                className="w-9 h-9 rounded-full object-cover border"
-                                            />
-                                        ) : (
-                                            <div className="w-9 h-9 rounded-full bg-blue-500/10 flex items-center justify-center text-sm font-semibold text-blue-600">
-                                                {order.manager_name?.[0] || "M"}
+                                {/* КРАСИВИЙ БЛОК МЕНЕДЖЕРІВ */}
+                                <TableCell className="align-middle py-3">
+                                    <div className="flex flex-col gap-2.5">
+
+                                        {/* Accept Manager */}
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-7 h-7 shrink-0 rounded-full bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-600 border border-blue-500/20">
+                                                {order.manager_accept_name?.[0]?.toUpperCase() || "?"}
                                             </div>
-                                        )}
-                                        <div className="leading-tight">
-                                            <p className="text-sm font-medium text-foreground">
-                                                {order.manager_name || "Manager"}
-                                            </p>
-                                            <p className="text-xs text-blue-600 font-medium">
-                                                Manager
-                                            </p>
+                                            <div className="leading-tight">
+                                                <p className="text-xs font-semibold text-foreground truncate max-w-[120px]" title={order.manager_accept_name}>
+                                                    {order.manager_accept_name || "Unassigned"}
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                                    Accept
+                                                </p>
+                                            </div>
                                         </div>
+
+                                        {/* Delivery Manager */}
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-600 border border-emerald-500/20">
+                                                {order.manager_delivery_name?.[0]?.toUpperCase() || "?"}
+                                            </div>
+                                            <div className="leading-tight">
+                                                <p className="text-xs font-semibold text-foreground truncate max-w-[120px]" title={order.manager_delivery_name}>
+                                                    {order.manager_delivery_name || "Unassigned"}
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                                    Delivery
+                                                </p>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </TableCell>
 
-                                <TableCell className="align-middle h-16">
+                                <TableCell className="align-middle py-3">
                                     <div className="flex items-center gap-2">
                                         <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
                                             {order.source_language}
@@ -393,13 +403,13 @@ export function OrdersTable({
                                     </div>
                                 </TableCell>
 
-                                <TableCell className="align-middle h-16">
+                                <TableCell className="align-middle py-3">
                                     <Badge variant={getStatusVariant("some")} className="transition-smooth hover-lift">
                                         {order.status_name}
                                     </Badge>
                                 </TableCell>
 
-                                <TableCell className="align-middle h-16">
+                                <TableCell className="align-middle py-3">
                                     <div className="flex flex-col">
                                         <span className={cn("text-sm font-medium", isOverdue(order.deadline) ? "text-red-600" : "text-foreground")}>
                                             {new Date(order.deadline).toLocaleDateString()}
@@ -410,11 +420,11 @@ export function OrdersTable({
                                     </div>
                                 </TableCell>
 
-                                <TableCell className="align-middle h-16">
+                                <TableCell className="align-middle py-3">
                                     <Badge variant="outline">{order.priority}</Badge>
                                 </TableCell>
 
-                                <TableCell className="align-middle h-16 pr-6">
+                                <TableCell className="align-middle py-3 pr-6">
                                     <div className="flex items-center justify-end gap-2">
                                         {order.status_id === 9 && (
                                             <>
@@ -422,7 +432,7 @@ export function OrdersTable({
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={(e) => {
-                                                        e.stopPropagation(); // <--- ДОДАТИ ЦЕ
+                                                        e.stopPropagation();
                                                         downloadOrderSourceFiles(order.id);
                                                     }}
                                                     className="h-8"
@@ -433,7 +443,7 @@ export function OrdersTable({
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={(e) => {
-                                                        e.stopPropagation(); // <--- ДОДАТИ ЦЕ
+                                                        e.stopPropagation();
                                                         downloadOrderTargetFiles(order.id);
                                                     }}
                                                     className="h-8"
@@ -444,7 +454,7 @@ export function OrdersTable({
                                                     size="sm"
                                                     variant="default"
                                                     onClick={(e) => {
-                                                        e.stopPropagation(); // <--- ДОДАТИ ЦЕ
+                                                        e.stopPropagation();
                                                         confirmOrder(order.id);
                                                     }}
                                                     className="h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
@@ -462,7 +472,7 @@ export function OrdersTable({
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="z-[101]">
-                                                    <DropdownMenuItem onClick={() => onEdit(order)}>
+                                                    <DropdownMenuItem onClick={() => onEdit(order as any)}>
                                                         <Pencil className="h-4 w-4 mr-2" /> Edit
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => onDelete(order.id)} className="text-destructive">
@@ -508,17 +518,15 @@ export function OrdersTable({
                                                         {/* Client + Translator */}
                                                         <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
                                                             {(() => {
-                                                                // Беремо id з details.client або падаємо на order.client_id
                                                                 const clientId = details.client?.id || order.client_id
-                                                                // Беремо клієнта безпосередньо з details, або шукаємо в масиві clients
                                                                 const client = details.client || clients?.find(c => c.id === clientId)
 
                                                                 return (
                                                                     <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
                                                                         <span className="text-lg font-bold text-foreground">
-                    {client ? client.full_name : `Client #${clientId}`}
-                </span>
+                                                                            {client ? client.full_name : `Client #${clientId}`}
+                                                                        </span>
                                                                         {client?.email && (
                                                                             <span className="text-sm text-muted-foreground">{client.email}</span>
                                                                         )}
@@ -530,9 +538,7 @@ export function OrdersTable({
                                                             })()}
 
                                                             {(() => {
-                                                                // Беремо id з details.translator або падаємо на order.translator_id
                                                                 const translatorId = details.translator?.id || order.translator_id
-                                                                // Беремо перекладача безпосередньо з details, або шукаємо в кеші
                                                                 const translator = details.translator || translatorsCache[translatorId]
 
                                                                 return (
@@ -560,7 +566,6 @@ export function OrdersTable({
                                                             </div>
                                                             <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Images</span>
-                                                                {/* Використовуй chars_with_spaces, якщо symbols_count не приходить окремо */}
                                                                 <span className="text-xl font-bold text-foreground">
                                                                     {details.images_count}
                                                                 </span>

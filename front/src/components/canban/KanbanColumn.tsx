@@ -30,11 +30,11 @@ interface KanbanTask {
     avatar_url?: string | null
 
     // 👇 Нові поля
-    intake_manager?: string | null
-    delivery_manager?: string | null
+    intake_manager?: { name: string; avatar?: string } | null
+    delivery_manager?: { name: string; avatar?: string } | null
 
     tags: string[]
-    subtasks: any[]
+    subtasks?: any[]
 }
 
 interface KanbanColumnProps {

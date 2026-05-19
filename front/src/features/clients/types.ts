@@ -17,6 +17,7 @@ export interface ExternalOrder {
 export interface ExternalOrderLoginResponse {
     access: "granted"
     order_data: ExternalOrder
+    status: string
 }
 
 export interface ExternalOrderFileItem {

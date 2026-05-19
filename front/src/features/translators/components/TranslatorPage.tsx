@@ -1,17 +1,12 @@
 "use client"
 
 import { useTranslators } from "../hooks/useTranslators"
-
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
-
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
-
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
-
 import { PatternFormat } from 'react-number-format'
-
 import {
     Card,
     CardContent,
@@ -20,12 +15,21 @@ import {
     CardTitle,
 } from "@/src/components/ui/card"
 
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/src/components/ui/select"
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs"
+
 import { TranslatorsTable } from "./TranslatorsTable"
-
+import { TranslatorTrafficTable } from "./TranslatorTrafficTable"
 import { Plus } from "lucide-react"
-
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
-import { TranslatorsFilters } from "@/src/features/translators/components/TranslatorFilter";
+import { TranslatorsFilters } from "@/src/features/translators/components/TranslatorFilter"
 
 export default function TranslatorsPage() {
     const {
@@ -57,10 +61,24 @@ export default function TranslatorsPage() {
         targetLanguage,
         setTargetLanguage,
 
-        // Змінні та функції пагінації
         page,
         totalPages,
         onPageChange,
+
+        currencies,
+        languagePairs,
+        categories,
+
+        traffic,
+        isTrafficFormOpen,
+        trafficForm,
+        setTrafficForm,
+        trafficErrors,
+        selectedTraffic,
+        openAddTraffic,
+        openEditTraffic,
+        openDeleteTraffic,
+        submitTraffic,
     } = useTranslators()
 
     const {
@@ -74,76 +92,120 @@ export default function TranslatorsPage() {
             <main className="flex-1 overflow-y-auto p-6">
                 <div className="mx-auto max-w-6xl space-y-6">
 
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold tracking-tight">
-                                Translators
-                            </h2>
+                    <Tabs
+                        defaultValue="translators"
+                        className="space-y-6"
+                        onValueChange={(val) => {
+                            if (val === "traffic") {
+                                setSearch("")
+                                setSourceLanguage(null)
+                                setTargetLanguage(null)
+                                setOrdering(null)
+                            }
+                        }}
+                    >
 
-                            <p className="text-muted-foreground">
-                                Manage translators and their contact details
-                            </p>
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold tracking-tight">
+                                    Translators
+                                </h2>
+                                <p className="text-muted-foreground">
+                                    Manage translators, contacts, and rates
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <TabsList>
+                                    <TabsTrigger value="translators">Translators</TabsTrigger>
+                                    <TabsTrigger value="traffic">Traffic</TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="translators" className="mt-0">
+                                    <Button onClick={openAddTranslator}>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Translator
+                                    </Button>
+                                </TabsContent>
+
+                                <TabsContent value="traffic" className="mt-0">
+                                    <Button onClick={() => openAddTraffic()}>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Traffic
+                                    </Button>
+                                </TabsContent>
+                            </div>
                         </div>
 
-                        <Button onClick={openAddTranslator}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Translator
-                        </Button>
-                    </div>
+                        {/* ВКЛАДКА: ПЕРЕКЛАДАЧІ */}
+                        <TabsContent value="translators" className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Filters</CardTitle>
+                                    <CardDescription>
+                                        Search translators by name or email
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <TranslatorsFilters
+                                        search={search}
+                                        setSearch={setSearch}
+                                        ordering={ordering}
+                                        setOrdering={setOrdering}
+                                        sourceLanguage={sourceLanguage}
+                                        setSourceLanguage={setSourceLanguage}
+                                        targetLanguage={targetLanguage}
+                                        setTargetLanguage={setTargetLanguage}
+                                        languages={languages}
+                                    />
+                                </CardContent>
+                            </Card>
 
-                    {/* Filters */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Filters</CardTitle>
-                            <CardDescription>
-                                Search translators by name or email
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <TranslatorsFilters
-                                search={search}
-                                setSearch={setSearch}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Translators List</CardTitle>
+                                    <CardDescription>
+                                        All translators registered in the system
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <TranslatorsTable
+                                        translators={translators}
+                                        onEdit={openEditTranslator}
+                                        onDelete={openDeleteTranslator}
+                                        page={page}
+                                        totalPages={totalPages}
+                                        onPageChange={onPageChange}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
 
-                                ordering={ordering}
-                                setOrdering={setOrdering}
+                        {/* ВКЛАДКА: ТАРИФИ */}
+                        <TabsContent value="traffic" className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Traffic List</CardTitle>
+                                    <CardDescription>
+                                        Translator rates by language pair and category
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <TranslatorTrafficTable
+                                        traffic={traffic}
+                                        onEdit={openEditTraffic}
+                                        onDelete={openDeleteTraffic}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
 
-                                sourceLanguage={sourceLanguage}
-                                setSourceLanguage={setSourceLanguage}
-
-                                targetLanguage={targetLanguage}
-                                setTargetLanguage={setTargetLanguage}
-
-                                languages={languages} // масив з API
-                            />
-                        </CardContent>
-                    </Card>
-
-                    {/* Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Translators List</CardTitle>
-                            <CardDescription>
-                                All translators registered in the system
-                            </CardDescription>
-                        </CardHeader>
-
-                        <CardContent className="p-0">
-                            <TranslatorsTable
-                                translators={translators}
-                                onEdit={openEditTranslator}
-                                onDelete={openDeleteTranslator}
-                                // Передаємо пропси пагінації
-                                page={page}
-                                totalPages={totalPages}
-                                onPageChange={onPageChange}
-                            />
-                        </CardContent>
-                    </Card>
+                    </Tabs>
                 </div>
             </main>
 
-            {/* FORM MODAL */}
+            {/* FORM MODAL - ПЕРЕКЛАДАЧ */}
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
@@ -156,7 +218,6 @@ export default function TranslatorsPage() {
                 onSubmit={() => submitTranslator(form)}
             >
                 <div className="space-y-4">
-
                     <div>
                         <Input
                             placeholder="Full name"
@@ -231,27 +292,139 @@ export default function TranslatorsPage() {
                     </div>
 
                     <div>
+                        <Select
+                            value={form.currency_id === 0 ? "" : String(form.currency_id)}
+                            onValueChange={(value) => setForm(prev => ({ ...prev, currency_id: Number(value) }))}
+                        >
+                            <SelectTrigger className={errors?.currency_id ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {currencies.map((currency) => (
+                                    <SelectItem key={currency.id} value={String(currency.id)}>
+                                        {currency.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors?.currency_id && <p className="text-xs text-red-500 mt-1">{errors.currency_id}</p>}
+                    </div>
+                </div>
+            </BaseFormModal>
+
+            {/* FORM MODAL - ТАРИФ (TRAFFIC) */}
+            <BaseFormModal
+                open={isTrafficFormOpen}
+                onOpenChange={(open) => !open && closeModals()}
+                title={selectedTraffic ? "Edit Traffic" : "Create Traffic"}
+                submitLabel="Save"
+                onSubmit={submitTraffic}
+            >
+                <div className="space-y-4">
+
+                    <div>
+                        <Select
+                            value={trafficForm.translator === 0 ? "" : String(trafficForm.translator)}
+                            onValueChange={(val) => setTrafficForm(prev => ({ ...prev, translator: Number(val) }))}
+                        >
+                            <SelectTrigger className={trafficErrors?.translator ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Select translator" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {translators.map((t) => (
+                                    <SelectItem key={t.id} value={String(t.id)}>
+                                        {t.full_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {trafficErrors?.translator && <p className="text-xs text-red-500 mt-1">{trafficErrors.translator}</p>}
+                    </div>
+
+                    <div>
+                        <Input
+                            placeholder="Traffic Name "
+                            value={trafficForm.name || ""}
+                            onChange={(e) => setTrafficForm(prev => ({ ...prev, name: e.target.value }))}
+                            className={trafficErrors?.name ? "border-red-500" : ""}
+                        />
+                        {trafficErrors?.name && <p className="text-xs text-red-500 mt-1">{trafficErrors.name}</p>}
+                    </div>
+
+                    <div>
+                        <Select
+                            value={trafficForm.language_pair === null ? "" : String(trafficForm.language_pair)}
+                            onValueChange={(val) => setTrafficForm(prev => ({ ...prev, language_pair: Number(val) }))}
+                        >
+                            <SelectTrigger className={trafficErrors?.language_pair ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Select language pair" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {languagePairs.map((pair) => (
+                                    <SelectItem key={pair.id} value={String(pair.id)}>
+                                        {pair.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {trafficErrors?.language_pair && <p className="text-xs text-red-500 mt-1">{trafficErrors.language_pair}</p>}
+                    </div>
+
+                    <div>
+                        <Select
+                            value={trafficForm.category === null ? "" : String(trafficForm.category)}
+                            onValueChange={(val) => setTrafficForm(prev => ({ ...prev, category: Number(val) }))}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Category (Optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories.map((cat) => (
+                                    <SelectItem key={cat.id} value={String(cat.id)}>
+                                        {cat.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div>
                         <Input
                             type="number"
-                            min="0"
-                            placeholder="Currency ID"
-                            className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.currency_id ? "border-red-500" : ""}`}
-                            onKeyDown={(e) => {
-                                if (["-", "e", "E", "+"].includes(e.key)) {
-                                    e.preventDefault();
-                                }
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            value={form.currency_id === 0 ? "" : form.currency_id}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                setForm(prev => ({
-                                    ...prev,
-                                    currency_id: val === "" ? 0 : Math.max(0, parseInt(val, 10)),
-                                }))
-                            }}
+                            step="0.01"
+                            placeholder="Rate per page"
+                            value={trafficForm.rate_per_page === 0 ? "" : trafficForm.rate_per_page}
+                            onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
                         />
-                        {errors?.currency_id && <p className="text-xs text-red-500 mt-1">{errors.currency_id}</p>}
+                    </div>
+
+                    <div>
+                        <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Rate per action"
+                            value={trafficForm.rate_per_action === 0 ? "" : trafficForm.rate_per_action}
+                            onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
+                        />
+                    </div>
+
+                    <div>
+                        <Select
+                            value={trafficForm.currency_id === 0 ? "" : String(trafficForm.currency_id)}
+                            onValueChange={(val) => setTrafficForm(prev => ({ ...prev, currency_id: Number(val) }))}
+                        >
+                            <SelectTrigger className={trafficErrors?.currency_id ? "border-red-500" : ""}>
+                                <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {currencies.map((currency) => (
+                                    <SelectItem key={currency.id} value={String(currency.id)}>
+                                        {currency.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {trafficErrors?.currency_id && <p className="text-xs text-red-500 mt-1">{trafficErrors.currency_id}</p>}
                     </div>
 
                 </div>
@@ -261,11 +434,11 @@ export default function TranslatorsPage() {
             <ConfirmModal
                 open={isConfirmOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Delete translator"
+                title="Confirm deletion"
                 description={
                     selectedTranslator
                         ? `Are you sure you want to delete "${selectedTranslator.full_name}"?`
-                        : ""
+                        : "Are you sure you want to delete this Traffic?"
                 }
                 confirmLabel="Delete"
                 onConfirm={confirmActionHandler}

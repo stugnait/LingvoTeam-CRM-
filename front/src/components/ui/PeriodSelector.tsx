@@ -134,7 +134,6 @@ export function PeriodSelector({ onPeriodChange }: PeriodSelectorProps) {
 
                 <div className="menu-right">
                     <Calendar
-                        initialFocus
                         mode="range"
                         defaultMonth={dateRange?.from}
                         selected={dateRange}

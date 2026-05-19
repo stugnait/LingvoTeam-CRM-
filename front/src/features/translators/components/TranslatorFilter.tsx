@@ -48,7 +48,14 @@ export function TranslatorsFilters({
                 <Input
                     placeholder="Search translators..."
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => {
+                        setSearch(e.target.value)
+                        // Скидаємо мовні фільтри при введенні імені
+                        if (e.target.value) {
+                            setSourceLanguage(null)
+                            setTargetLanguage(null)
+                        }
+                    }}
                     className="pl-9"
                 />
             </div>
@@ -77,9 +84,10 @@ export function TranslatorsFilters({
             {/* 🌐 Source Language */}
             <Select
                 value={sourceLanguage?.toString() ?? "all"}
-                onValueChange={(val) =>
+                onValueChange={(val) => {
                     setSourceLanguage(val === "all" ? null : Number(val))
-                }
+                    setSearch("")  // скидаємо пошук
+                }}
             >
                 <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Source language" />
@@ -97,9 +105,10 @@ export function TranslatorsFilters({
             {/* 🌐 Target Language */}
             <Select
                 value={targetLanguage?.toString() ?? "all"}
-                onValueChange={(val) =>
+                onValueChange={(val) => {
                     setTargetLanguage(val === "all" ? null : Number(val))
-                }
+                    setSearch("")
+                }}
             >
                 <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Target language" />

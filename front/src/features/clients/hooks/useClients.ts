@@ -1,9 +1,13 @@
 import { useCallback, useState } from "react"
 import { clientApi } from "../api"
 import type { ExternalOrder, ExternalOrderFileItem } from "../types"
-import {translatorOrderApi} from "@/src/features/translator_order/api";
+import { translatorOrderApi } from "@/src/features/translator_order/api"
 
-type Step = "loading" | "password" | "order" | "expired"
+// Додали тип "banned" сюди
+type Step = "loading" | "password" | "order" | "expired" | "banned"
+
+// Окремий ключ у LocalStorage суто для клієнтів, щоб не зламати транслейторів
+const CLIENT_BAN_STORAGE_KEY = "client_order_ban_until"
 
 export function useClients(slug: string) {
     const [step, setStep] = useState<Step>("loading")
@@ -15,39 +19,25 @@ export function useClients(slug: string) {
     const [files, setFiles] = useState<ExternalOrderFileItem[]>([])
     const [downloadLoading, setDownloadLoading] = useState(false)
 
-    // ---------------- INIT ----------------
+    // Читаємо збережений бан клієнта з браузера при завантаженні
+    const [bannedUntil, setBannedUntil] = useState<string | null>(() => {
+        if (typeof window !== "undefined") {
+            return localStorage.getItem(CLIENT_BAN_STORAGE_KEY)
+        }
+        return null
+    })
 
-    async function init() {
-        try {
-            await clientApi.check(slug)
+    // Функція, яка залізобетонно оновить стейт і localStorage
+    const updateBanStatus = useCallback((date: string | null) => {
+        setBannedUntil(date)
+        if (date) {
+            localStorage.setItem(CLIENT_BAN_STORAGE_KEY, date)
+            setStep("banned")
+        } else {
+            localStorage.removeItem(CLIENT_BAN_STORAGE_KEY)
             setStep("password")
-        } catch {
-            setStep("expired")
         }
-    }
-
-    async function submitPassword(password: string) {
-        try {
-            const res = await translatorOrderApi.login(slug, { password })
-            setOrder(res.order_data)
-            setStep("order")
-            setError(null)
-            setRemainingAttempts(null)
-            void refreshFiles(res.order_data.id)
-        } catch (e: any) {
-            const data = e
-
-            if (!data?.message) {
-                setError("Помилка з'єднання")
-                return
-            }
-
-            setError(data.message ?? "Невірний пароль")
-            setRemainingAttempts(
-                typeof data.remaining_attempts === "number" ? data.remaining_attempts : null
-            )
-        }
-    }
+    }, [])
 
     const refreshFiles = async (orderId: number) => {
         setFilesLoading(true)
@@ -64,17 +54,97 @@ export function useClients(slug: string) {
         }
     }
 
+    // ---------------- INIT ----------------
+
+    const init = useCallback(async () => {
+        // Перевіряємо локальний бан клієнта перед запитом
+        if (bannedUntil) {
+            const isExpired = new Date(bannedUntil).getTime() < Date.now()
+            if (!isExpired) {
+                setStep("banned")
+                return
+            } else {
+                updateBanStatus(null)
+            }
+        }
+
+        try {
+            // Викликаємо твою перевірку клієнта
+            const res = await clientApi.check(slug) as any
+
+            // Якщо раптом бекенд каже, що вже заблоковано
+            if (res?.status === "banned" || res?.banned_until) {
+                updateBanStatus(res.banned_until || new Date(Date.now() + 15 * 60 * 1000).toISOString())
+                return
+            }
+
+            // Встановлюємо 3 спроби за замовчуванням (або те, що каже сервер)
+            setRemainingAttempts(res?.remaining_attempts ?? 3)
+            setStep("password")
+        } catch (e: any) {
+            // Перестраховка: якщо check впав з баном
+            if (e?.status === "banned" || e?.banned_until) {
+                updateBanStatus(e.banned_until)
+            } else {
+                setStep("expired")
+            }
+        }
+    }, [slug, bannedUntil, updateBanStatus])
+
+    async function submitPassword(password: string) {
+        try {
+            const res = await clientApi.login(slug, { password })
+
+            if (res.status === "granted" || res.access === "granted" || res.order_data) {
+                setOrder(res.order_data)
+                setStep("order")
+                setError(null)
+                setRemainingAttempts(null)
+                updateBanStatus(null)
+                void refreshFiles(res.order_data.id)
+            }
+        } catch (e: any) {
+            const data = e
+            const errorMessage = data?.message || data?.detail || "Невірний пароль"
+            setError(errorMessage)
+
+            // 1. Рахуємо, скільки спроб має залишитись
+            let nextAttempts: number;
+            if (typeof data?.remaining_attempts === "number") {
+                nextAttempts = data.remaining_attempts; // Пріоритет тому, що каже сервер
+            } else {
+                // Якщо сервер мовчить, віднімаємо 1 від поточного
+                const current = (remainingAttempts !== null && remainingAttempts !== undefined) ? remainingAttempts : 3;
+                nextAttempts = current - 1;
+            }
+
+            // 2. Перевіряємо, чи пора банити
+            const shouldBan = data?.status === "banned" ||
+                data?.banned_until ||
+                nextAttempts <= 0 ||
+                errorMessage.toLowerCase().includes("заблоковано") ||
+                errorMessage.toLowerCase().includes("blocked");
+
+            if (shouldBan) {
+                // Якщо бан — ставимо час і фіксуємо 0 спроб (НЕ 3!)
+                const finalBanTime = data?.banned_until || new Date(Date.now() + 15 * 60 * 1000).toISOString()
+                updateBanStatus(finalBanTime)
+                setRemainingAttempts(0)
+            } else {
+                // Якщо ще є спроби — просто оновлюємо цифру
+                setRemainingAttempts(nextAttempts)
+            }
+        }
+    } // <-- Тут була зайва дужка, я її прибрав
+
     const downloadBlob = (blob: Blob, filename: string) => {
         const url = window.URL.createObjectURL(blob)
-
         const link = document.createElement("a")
         link.href = url
         link.download = filename
-
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-
         window.URL.revokeObjectURL(url)
     }
 
@@ -133,6 +203,12 @@ export function useClients(slug: string) {
         init,
         submitPassword,
         remainingAttempts,
+        bannedUntil,
+        // 👇 Ось тут ми знімаємо бан і повертаємо 3 спроби:
+        onBanExpired: () => {
+            updateBanStatus(null);
+            setRemainingAttempts(3);
+        },
         downloadFiles,
         filesCount,
         filesLoading,

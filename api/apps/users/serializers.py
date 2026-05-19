@@ -230,13 +230,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     )
     role = RoleSerializer(read_only=True)
 
-    # Файл аватарки (write-only, зберігається окремо через Dropbox)
-    avatar = serializers.ImageField(
-        required=False,
-        allow_null=True,
-        write_only=True,
-        source='avatar_upload'
-    )
 
     # Індивідуальні права (write-only при збереженні, read через SerializerMethod)
     extra_permission_ids = serializers.ListField(
@@ -244,6 +237,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    # Вказуємо, що чекаємо файл, але не зберігаємо його стандартно
+    avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     # Read-only поля
     permissions = serializers.SerializerMethodField()
@@ -265,8 +260,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         avatar_file = validated_data.pop('avatar_upload', None)
         extra_permission_ids = validated_data.pop('extra_permission_ids', None)
-
+        # 2. Оновлюємо всі інші текстові поля
         instance = super().update(instance, validated_data)
+
 
         # Оновлення аватарки через Dropbox
         if avatar_file:
@@ -298,17 +294,13 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id',)
 
-
-# ---------------------------------------------------------------------------
-# UserSelfUpdateSerializer  (юзер сам редагує свій профіль)
-# ---------------------------------------------------------------------------
-
 class UserSelfUpdateSerializer(serializers.ModelSerializer):
+    # Те саме тут
     avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['avatar'] = instance.avatar or None
+        rep['avatar'] = instance.avatar if instance.avatar else None
         return rep
 
     def update(self, instance, validated_data):

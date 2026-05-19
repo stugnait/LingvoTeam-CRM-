@@ -1,10 +1,10 @@
 // features/notifications/types.ts
-export type Notification = {
+export interface Notification {
     id: number
     title: string
     order: number
     is_read: boolean
-    created_at: string
+    status: 'approved' | 'rejected' | 'pending' // 👈 додай це
 }
 
 export type NotificationListResponse = {

@@ -86,6 +86,10 @@ export const useEditor = () => {
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
     const [isEditorActionLoading, setIsEditorActionLoading] = useState(false)
+    const [sourceFiles, setSourceFiles] = useState<any[]>([])
+    const [targetFiles, setTargetFiles] = useState<any[]>([])
+    const [filesLoading, setFilesLoading] = useState(false)
+    const [downloadLoading, setDownloadLoading] = useState(false)
 
 
 
@@ -210,11 +214,13 @@ export const useEditor = () => {
         []
     )
 
+    // В useEditor.ts — змінюємо approveTranslation
     const approveTranslation = useCallback(
         async (
             orderId: number,
             score: number,
-            comment?: string
+            comment?: string,
+            files?: File[]
         ) => {
             try {
                 setIsEditorActionLoading(true)
@@ -222,9 +228,8 @@ export const useEditor = () => {
                 await ordersApi.approveTranslation(orderId, {
                     score,
                     comment,
+                    files,  // <-- передаємо файли
                 })
-
-                // 🔄 оновлюємо канбан
 
                 setIsApproveModalOpen(false)
                 setIsModalOpen(false)
@@ -273,6 +278,61 @@ export const useEditor = () => {
         }
     }, [])
 
+    // --- ФУНКЦІЇ ДЛЯ РОБОТИ З ФАЙЛАМИ ---
+    const loadOrderFiles = useCallback(async (orderId: number) => {
+        setFilesLoading(true);
+        try {
+            const results = await Promise.allSettled([
+                ordersApi.listDownloadFiles(orderId, 'source'),
+                ordersApi.listDownloadFiles(orderId, 'target')
+            ]);
+
+            const [sourceRes, targetRes] = results;
+
+            // Обробка Source
+            if (sourceRes.status === 'fulfilled') {
+                setSourceFiles(sourceRes.value.files || []);
+            } else {
+                setSourceFiles([]); // Якщо папка порожня або помилка
+            }
+
+            // Обробка Target
+            if (targetRes.status === 'fulfilled') {
+                setTargetFiles(targetRes.value.files || []);
+            } else {
+                setTargetFiles([]);
+            }
+        } catch (error) {
+            console.error("Failed to load files", error);
+        } finally {
+            setFilesLoading(false);
+        }
+    }, []);
+
+    const downloadSingleSourceFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
+        setDownloadLoading(true);
+        try {
+            const blob = await ordersApi.downloadFile(orderId, 'source', fileId);
+            downloadBlob(blob, filename);
+        } catch (error) {
+            console.error('Failed to download source file', error);
+        } finally {
+            setDownloadLoading(false);
+        }
+    }, []);
+
+    const downloadSingleTargetFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
+        setDownloadLoading(true);
+        try {
+            const blob = await ordersApi.downloadFile(orderId, 'target', fileId);
+            downloadBlob(blob, filename);
+        } catch (error) {
+            console.error('Failed to download target file', error);
+        } finally {
+            setDownloadLoading(false);
+        }
+    }, []);
+
 
     // Create maps for fast access
     const tasksMap = useMemo(() =>
@@ -320,15 +380,20 @@ export const useEditor = () => {
             if (!targetColumn || sourceColumn.id === targetColumn.id) {return;}
 
             // Update task status in local state
-            const taskId = parseInt(activeId);
+            const taskId = activeId; // string, не parseInt
             const newStatusId = targetColumn.status_id;
+            const newStatus = targetColumn.status;
 
             setTasks(prev => prev.map(task =>
                 task.id === taskId
-                    ? { ...task, status_id: newStatusId }
+
+                    ? {
+                        ...task,
+                        status_id: Number(newStatusId),
+                        status: statusIdToTaskStatus(newStatusId)
+                    }
                     : task
             ));
-
             // Move task between columns
             setColumns(prev => prev.map(col => {
                 if (col.id === sourceColumn.id) {
@@ -348,7 +413,7 @@ export const useEditor = () => {
 
             // Update status on server
             try {
-                await updateOrderStatus(taskId, newStatusId);
+                await updateOrderStatus(parseInt(activeId), newStatusId);
             } catch (error) {
                 console.error('Failed to update order status:', error);
                 // Optionally revert the change on error
@@ -381,13 +446,14 @@ export const useEditor = () => {
         }
         // Between columns - update status
         else {
-            const taskId = parseInt(activeId);
+            const taskId = activeId
             const newStatusId = targetColumn.status_id;
+            const newStatus = targetColumn.status;
 
             // Update task status in local state
             setTasks(prev => prev.map(task =>
                 task.id === taskId
-                    ? { ...task, status_id: newStatusId }
+                    ? { ...task, status_id: Number(newStatusId), status: statusIdToTaskStatus(newStatusId) }
                     : task
             ));
 
@@ -414,7 +480,7 @@ export const useEditor = () => {
 
             // Update status on server
             try {
-                await updateOrderStatus(taskId, newStatusId);
+                await updateOrderStatus(parseInt(taskId), newStatusId);
             } catch (error) {
                 console.error('Failed to update order status:', error);
             }
@@ -484,6 +550,8 @@ export const useEditor = () => {
             if (!order) throw new Error('Order not found')
 
             setSelectedTask(order)
+
+            await loadOrderFiles(orderId)
 
             const statusId = String(order.status_id)
 
@@ -556,7 +624,7 @@ export const useEditor = () => {
             const newColumns = initialColumns.map(column => ({
                 ...column,
                 taskIds: fetchedTasks
-                    .filter(task => task.status_id === column.status_id)
+                    .filter(task => String(task.status_id) === column.status_id)
                     .map(task => task.id.toString())
             }));
 
@@ -616,6 +684,14 @@ export const useEditor = () => {
         approveTranslation,
 
         openEditorActionModal,
+        sourceFiles,
+        targetFiles,
+        filesLoading,
+        downloadLoading,
+        loadOrderFiles,
+        downloadSingleSourceFile,
+        downloadSingleTargetFile,
+
     };
 };
 

@@ -6,22 +6,21 @@ from .models.salary import Salary
 
 class SalarySerializer(serializers.ModelSerializer):
     total = serializers.SerializerMethodField()
-    full_name = serializers.CharField(source="user.full_name", read_only=True)
-    role = serializers.IntegerField(source="user.role.id", read_only=True)
+
+    # Підтримка і user, і translator
+    full_name = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = Salary
         fields = [
             "id",
             "user",
+            "translator",
             "full_name",
             "role",
             "start_date",
             "end_date",
-            "revenue",
-            "orders_count",
-            "overdue_orders_count",
-            "margin",
             "base_salary",
             "bonus",
             "premium",
@@ -32,20 +31,31 @@ class SalarySerializer(serializers.ModelSerializer):
         ]
 
         read_only_fields = [
-            "revenue",
-            "orders_count",
-            "overdue_orders_count",
-            "margin",
             "total",
             "created_at",
             "updated_at",
         ]
 
+    def get_full_name(self, obj):
+        if obj.translator:
+            return obj.translator.full_name
+        if obj.user:
+            return obj.user.full_name
+        return None
+
+    def get_role(self, obj):
+        # Перекладач — ID 5 (умовний)
+        if obj.translator:
+            return 5
+        if obj.user and hasattr(obj.user, "role") and obj.user.role:
+            return obj.user.role.id
+        return None
+
     def get_total(self, obj):
-        return (
-            (obj.base_salary or 0)
-            + (obj.bonus or 0)
-            + (obj.premium or 0)
+        return float(
+            (obj.base_salary or Decimal("0"))
+            + (obj.bonus or Decimal("0"))
+            + (obj.premium or Decimal("0"))
         )
 
     def validate(self, data):

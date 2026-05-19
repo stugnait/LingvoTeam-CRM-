@@ -1,5 +1,13 @@
+export type ExternalOrderStatus = "awaiting_password" | "granted" | "banned" | "expired" | "wrong_password" | "error"
+
 export interface CheckExternalOrderResponse {
-    status: "awaiting_password"
+    status: ExternalOrderStatus
+    remaining_attempts?: number
+    remaining_seconds?: number
+    banned_until?: string
+    order_data?: ExternalOrder
+    message?: string
+    error?: string
 }
 
 export interface ExternalOrderLoginPayload {
@@ -12,11 +20,19 @@ export interface ExternalOrder {
     deadline: string
     comment: string
     status: string
+    status_id?: number
 }
 
 export interface ExternalOrderLoginResponse {
-    access: "granted"
-    order_data: ExternalOrder
+    status: ExternalOrderStatus
+    access?: "granted"
+    order_id?: number
+    order_data?: ExternalOrder
+    remaining_attempts?: number
+    remaining_seconds?: number
+    banned_until?: string
+    message?: string
+    error?: string
 }
 
 export type ExternalOrderFolder = "source" | "target"

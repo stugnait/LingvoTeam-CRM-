@@ -1,4 +1,3 @@
-// /components/kanban/KanbanHeader.tsx - оновлений
 'use client';
 
 import React from 'react';
@@ -14,6 +13,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { useToast } from "@/src/hooks/use-toast";
 import { NotificationsDropdown } from "@/src/features/notifications/components/NotificationsDropdown";
+import { KanbanDeadlineFilter, type DeadlineFilter } from './KanbanDeadlineFilter';
 
 interface KanbanHeaderProps {
     searchQuery: string;
@@ -21,6 +21,11 @@ interface KanbanHeaderProps {
     isLoading: boolean;
     error: string | null;
     onRefresh: () => void;
+
+    // Фільтр по дедлайну
+    deadlineFilter: DeadlineFilter;
+    onDeadlineFilterChange: (filter: DeadlineFilter) => void;
+    allTasks: { deadline?: string }[];
 }
 
 const KanbanHeader: React.FC<KanbanHeaderProps> = ({
@@ -28,7 +33,10 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                                                        onSearchChange,
                                                        isLoading,
                                                        error,
-                                                       onRefresh
+                                                       onRefresh,
+                                                       deadlineFilter,
+                                                       onDeadlineFilterChange,
+                                                       allTasks,
                                                    }) => {
     const router = useRouter();
     const { toast } = useToast();
@@ -47,6 +55,7 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
 
     return (
         <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-gray-950/95 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+            {/* Верхній рядок: заголовок + дії */}
             <div className="px-6 py-3">
                 <div className="flex items-center justify-between gap-4">
                     {/* Ліва частина: Заголовок */}
@@ -89,7 +98,9 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                             className="hidden sm:flex items-center gap-2"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                            <span className="hidden lg:inline">{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+                            <span className="hidden lg:inline">
+                                {isLoading ? 'Refreshing...' : 'Refresh'}
+                            </span>
                         </Button>
 
                         {/* Розділювач */}
@@ -132,6 +143,13 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* Нижній рядок: фільтр по дедлайну */}
+            <KanbanDeadlineFilter
+                active={deadlineFilter}
+                onChange={onDeadlineFilterChange}
+                tasks={allTasks}
+            />
         </header>
     );
 };

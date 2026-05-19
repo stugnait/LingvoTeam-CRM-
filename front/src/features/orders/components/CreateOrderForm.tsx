@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { WizardModal } from "@/src/components/modals/wizard/WizardModal"
 import { WizardStep } from "@/src/components/modals/wizard/WizardStep"
 import { PatternFormat } from 'react-number-format'
@@ -79,8 +79,7 @@ interface CreateOrderModalProps {
     setComment: (value: string) => void
     priority: Priority | undefined
     setPriority: (value: Priority) => void
-    onRefreshTranslators?: () => Promise<void>
-
+    onRefreshTranslators?: () => Promise<any[]>
     totalAmount: string
     setTotalAmount: (value: string) => void
 }
@@ -129,14 +128,17 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [priceData, setPriceData] = useState<any>(null)
     const [priceLoading, setPriceLoading] = useState(false)
     const [useManualPrice, setUseManualPrice] = useState(false)
+    const [customDiscount, setCustomDiscount] = useState<string>("")
 
     // --- Логіка підрахунку знижки ---
     const selectedClient = clients.find((c) => String(c.id) === clientId)
-    const discountPercent = selectedClient?.discount_percent ? Number(selectedClient.discount_percent) : 0
+    const defaultDiscountPercent = selectedClient?.discount_percent ? Number(selectedClient.discount_percent) : 0
+
+    const activeDiscount = customDiscount !== "" ? Number(customDiscount) : defaultDiscountPercent
 
     const baseAutoPrice = priceData?.total_client_price ? parseFloat(priceData.total_client_price) : 0
-    const discountedAutoPrice = discountPercent > 0 && baseAutoPrice > 0
-        ? (baseAutoPrice * (1 - discountPercent / 100)).toFixed(2)
+    const discountedAutoPrice = activeDiscount > 0 && baseAutoPrice > 0
+        ? (baseAutoPrice * (1 - activeDiscount / 100)).toFixed(2)
         : priceData?.total_client_price ?? ""
 
     // 🔥 ДОДАНО: Автоматично записуємо пораховану суму в стейт, який полетить на бекенд
@@ -153,7 +155,28 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const handleQuickCreateTranslator = async () => {
         await submitTranslator(form)
-        if (onRefreshTranslators) { await onRefreshTranslators() }
+
+        // 2. Оновлюємо список і отримуємо його результат
+        if (onRefreshTranslators) {
+            const freshTranslators = await onRefreshTranslators()
+
+            // Перевіряємо, чи повернувся масив і чи він не порожній
+            if (Array.isArray(freshTranslators) && freshTranslators.length > 0) {
+                // Шукаємо за email (найбільш унікальний параметр з форми)
+                const newTranslator = freshTranslators.find((t: any) => t.email === form.email);
+
+                if (newTranslator) {
+                    // Встановлюємо ID перекладача
+                    setSelectedTranslatorId(newTranslator.id);
+
+                    // Якщо є тарифи — обираємо перший
+                    if (newTranslator.traffic && newTranslator.traffic.length > 0) {
+                        setTranslatorTrafficId(String(newTranslator.traffic[0].id));
+                    }
+                }
+            }
+        }
+
         closeModals()
     }
 
@@ -165,6 +188,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             setPriceData(null)
             setTotalAmount("")
             setUseManualPrice(false)
+            setCustomDiscount("")
         }
         onOpenChange(open)
     }
@@ -281,8 +305,19 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     useEffect(() => {
         if (!filesConfirmed || !trafficId || !files.length) { return }
         handleCalculatePrice()
-    }, [filesConfirmed, trafficId, selectedTranslatorId])
+    }, [filesConfirmed, trafficId, selectedTranslatorId, translatorTrafficId])
 
+
+const translatorTrafficOptions = useMemo(() => {
+        const currentTranslator = translators.find(t => t.id === selectedTranslatorId);
+        if (!currentTranslator?.traffic) return [];
+
+        return currentTranslator.traffic.map((t: any) => ({
+            value: String(t.id),
+            label: t.name || 'Особистий тариф',
+            description: `Ставка: ${t.rate_per_page || t.rate_per_action} ${t.currency_sign}`
+        }));
+    }, [selectedTranslatorId, translators]);
     // ─── Render ─────────────────────────────────────────────────────────────
 
     return (
@@ -521,9 +556,21 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 targetLanguage={targetLanguage}
                                 placeholder="Select translator (optional)"
                                 orderTrafficId={trafficId ? Number(trafficId) : null}
-                                onChange={(translatorId, translatorTrafficId) => {
+                                onChange={(translatorId) => {
                                     setSelectedTranslatorId(translatorId)
-                                    setTranslatorTrafficId(translatorTrafficId ? String(translatorTrafficId) : "")
+
+                                    if (!translatorId) {
+                                        setTranslatorTrafficId("")
+                                        return
+                                    }
+
+                                    const selectedTranslator = translators.find(t => t.id === translatorId)
+
+                                    if (selectedTranslator?.traffic && selectedTranslator.traffic.length > 0) {
+                                        setTranslatorTrafficId(String(selectedTranslator.traffic[0].id))
+                                    } else {
+                                        setTranslatorTrafficId("")
+                                    }
                                 }}
                             />
                         </div>
@@ -569,15 +616,23 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                         {selectedTranslatorId && (
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-700">
-                                    Translator Traffic ID
+                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                    <Tag className="h-4 w-4 text-orange-500" />
+                                    Translator Traffic
                                 </label>
-                                <input
-                                    type="text"
+
+                                <Combobox
                                     value={translatorTrafficId}
-                                    onChange={(e) => setTranslatorTrafficId(e.target.value)}
-                                    className="w-full px-3 py-2 border rounded-md"
+                                    onChange={setTranslatorTrafficId}
+                                    placeholder="Select Traffic"
+                                    options={translatorTrafficOptions}
                                 />
+
+                                {translatorTrafficOptions.length === 0 && (
+                                    <p className="text-xs text-red-500">
+                                        У цього перекладача немає тарифу!
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
@@ -665,6 +720,29 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     </div>
                                 )}
 
+                                <div className="rounded-xl border p-4 space-y-3">
+                                    <label className="text-sm font-medium text-gray-700 block">
+                                        Знижка на замовлення (%)
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={customDiscount}
+                                            onChange={(e) => {
+                                                setCustomDiscount(e.target.value)
+                                                setUseManualPrice(false)
+                                            }}
+                                            placeholder={`Стандартна: ${defaultDiscountPercent}%`}
+                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="text-xs text-gray-500">
+                                            Залишіть порожнім для стандартної знижки клієнта ({defaultDiscountPercent}%)
+                                        </span>
+                                    </div>
+                                </div>
+
                                 {/* Чекбокс ручної ціни */}
                                 <div className="rounded-xl border p-4 space-y-3">
                                     <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -719,16 +797,18 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             <span className="font-medium">{priceData.pages}</span>
                                         </div>
 
-                                        {/* Відображення авто-ціни та знижки */}
+                                        {/* 🔥 ОНОВЛЕНО: Відображення авто-ціни та АКТИВНОЇ знижки */}
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Базова авто-ціна:</span>
                                             <span className="font-medium">{priceData.total_client_price}</span>
                                         </div>
-                                        {discountPercent > 0 && (
+                                        {activeDiscount > 0 && (
                                             <div className="flex justify-between text-blue-600 mt-1">
-                                                <span className="font-medium">Знижка клієнта ({discountPercent}%):</span>
+                                                <span className="font-medium">
+                                                    Знижка ({customDiscount !== "" ? "Ручна" : "Клієнта"} {activeDiscount}%):
+                                                </span>
                                                 <span className="font-bold">
-                                                    -{ (baseAutoPrice * (discountPercent / 100)).toFixed(2) }
+                                                    -{ (baseAutoPrice * (activeDiscount / 100)).toFixed(2) }
                                                 </span>
                                             </div>
                                         )}
