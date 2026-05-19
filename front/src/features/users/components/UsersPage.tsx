@@ -1,10 +1,9 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
-import { Plus, Upload, User as UserIcon, Info, Users, Shield, ChevronRight, Trash2, Check } from "lucide-react"
-import { PatternFormat } from 'react-number-format'
+import { Plus, Users, Shield, ChevronRight, Trash2, Check } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 
 import { UserTable } from "./UserTable"
@@ -12,25 +11,13 @@ import { UserFilters } from "./UserFilter"
 import { useUsers } from "../hooks/useUsers"
 import { TAB_PRESETS, useRoles } from "../hooks/useRoles"
 
-import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
+import { UserWizardModal } from "./UserWizardModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 import { Input } from "@/src/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/src/components/ui/select"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Dialog, DialogContent } from "@/src/components/ui/dialog"
 
-// Імпорт модалки для перегляду прав (read-only)
-import { RoleInfoModal } from "./RoleInfoModal"
-import type { Permission } from "../types"
-
 export function UsersPage() {
-    // === СТАН ДЛЯ ПЕРЕМИКАННЯ РЕЖИМІВ ===
     const [viewMode, setViewMode] = useState<"users" | "roles">("users")
 
     // === КОРИСТУВАЧІ ===
@@ -38,6 +25,7 @@ export function UsersPage() {
         users, page, totalPages, onPageChange, filters, setFilters,
         roles: dropdownRoles,
         isFormOpen, isDeleteOpen, selectedUser, form, setForm, errors,
+        wizardStep, goToStep1, goToStep2,
         openAddUser, openEditUser, openDeleteUser, openDeactivateUser,
         submitUser, handleConfirm, confirmAction, closeModals, resetPassword,
     } = useUsers()
@@ -49,19 +37,8 @@ export function UsersPage() {
         form: roleForm, setForm: setRoleForm,
         openCreate: openCreateRole, openEdit: openEditRole,
         closeModal: closeRoleModal, toggleGroup,
-        submitRole, removeRole
+        submitRole, removeRole,
     } = useRoles()
-
-    // --- Допоміжні стани для користувачів ---
-    const avatarPreview = useMemo(() => {
-        if (!form.avatar) { return null }
-        if (typeof form.avatar === 'string') { return form.avatar }
-        if (form.avatar instanceof File) { return URL.createObjectURL(form.avatar) }
-        return null
-    }, [form.avatar])
-
-    const [roleInfoOpen, setRoleInfoOpen] = useState(false)
-    const selectedRoleDataForView = (dropdownRoles || []).find(r => r.id === form.role) ?? null
 
     return (
         <>
@@ -83,9 +60,8 @@ export function UsersPage() {
                             </p>
                         </div>
 
-                        {/* Перемикач та Кнопка додавання */}
                         <div className="flex items-center gap-4">
-                            {/* СВІТЧ */}
+                            {/* Світч */}
                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                                 <button
                                     onClick={() => setViewMode("users")}
@@ -113,7 +89,6 @@ export function UsersPage() {
                                 </button>
                             </div>
 
-                            {/* Динамічна кнопка */}
                             <Button onClick={viewMode === "users" ? openAddUser : openCreateRole}>
                                 <Plus className="h-4 w-4 mr-2" />
                                 {viewMode === "users" ? "Додати юзера" : "Створити роль"}
@@ -121,7 +96,7 @@ export function UsersPage() {
                         </div>
                     </div>
 
-                    {/* Фільтри показуємо тільки для юзерів */}
+                    {/* Фільтри — тільки для юзерів */}
                     {viewMode === "users" && (
                         <Card>
                             <CardHeader>
@@ -134,7 +109,7 @@ export function UsersPage() {
                         </Card>
                     )}
 
-                    {/* Table Card */}
+                    {/* Таблиця */}
                     <Card>
                         <CardHeader>
                             <CardTitle>
@@ -152,7 +127,7 @@ export function UsersPage() {
                                     onEdit={openEditUser}
                                     onDelete={(id) => {
                                         const user = users.find(u => u.id === id)
-                                        if (user) { openDeleteUser(user) }
+                                        if (user) {openDeleteUser(user)}
                                     }}
                                     onDeactivate={openDeactivateUser}
                                     page={page}
@@ -188,8 +163,7 @@ export function UsersPage() {
                                                     <ChevronRight className="h-4 w-4 ml-1" />
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="icon"
+                                                    variant="ghost" size="icon"
                                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                     onClick={() => removeRole(role.id)}
                                                 >
@@ -205,121 +179,23 @@ export function UsersPage() {
                 </div>
             </main>
 
-            {/* =============================
-                МОДАЛКИ ДЛЯ КОРИСТУВАЧІВ
-            ============================= */}
-            <BaseFormModal
+            {/* ── Wizard для юзерів ── */}
+            <UserWizardModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={selectedUser ? "Edit User" : "Add User"}
-                submitLabel={selectedUser ? "Update" : "Create"}
+                isEdit={!!selectedUser}
+                step={wizardStep}
+                onNextStep={goToStep2}
+                onPrevStep={goToStep1}
+                form={form}
+                setForm={setForm}
+                errors={errors}
+                roles={dropdownRoles || []}
+                permissions={permissions}
                 onSubmit={() => submitUser(form)}
-            >
-                <div className="space-y-6">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border bg-muted flex items-center justify-center">
-                            {avatarPreview ? (
-                                <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
-                            ) : (
-                                <UserIcon className="h-10 w-10 text-muted-foreground" />
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                id="avatar-upload"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0]
-                                    if (file) { setForm(prev => ({ ...prev, avatar: file })) }
-                                    e.target.value = ""
-                                }}
-                            />
-                            <Button asChild variant="outline" size="sm">
-                                <label htmlFor="avatar-upload" className="cursor-pointer">
-                                    <Upload className="h-4 w-4 mr-2" />
-                                    Upload Avatar
-                                </label>
-                            </Button>
-                            {form.avatar && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => setForm(prev => ({ ...prev, avatar: null }))}
-                                >
-                                    Remove
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-
-                    <Input
-                        placeholder="Full name"
-                        value={form.full_name}
-                        onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
-                    />
-                    {errors.full_name && <p className="text-xs text-destructive -mt-4">{errors.full_name}</p>}
-
-                    <Input
-                        placeholder="Email"
-                        value={form.email}
-                        onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                    />
-                    {errors.email && <p className="text-xs text-destructive -mt-4">{errors.email}</p>}
-
-                    <PatternFormat
-                        format="+38 (###) ###-##-##"
-                        allowEmptyFormatting
-                        mask="_"
-                        value={form.phone}
-                        customInput={Input}
-                        type="tel"
-                        onValueChange={(values) => setForm(prev => ({ ...prev, phone: values.formattedValue }))}
-                    />
-                    {errors.phone && <p className="text-xs text-destructive -mt-4">{errors.phone}</p>}
-
-                    <div className="flex items-center gap-2">
-                        <Select
-                            value={String(form.role || "")}
-                            onValueChange={(value) => setForm(prev => ({ ...prev, role: Number(value) }))}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {(dropdownRoles || []).map(role => (
-                                    <SelectItem key={role.id} value={String(role.id)}>
-                                        {role.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            disabled={!form.role || !selectedRoleDataForView}
-                            onClick={() => setRoleInfoOpen(true)}
-                            title="Переглянути права ролі"
-                        >
-                            <Info className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    {errors.role && <p className="text-xs text-destructive -mt-4">{errors.role}</p>}
-                </div>
-            </BaseFormModal>
-
-            {/* Read-only модалка для перегляду прав (зі словником) */}
-            <RoleInfoModal
-                open={roleInfoOpen}
-                onOpenChange={setRoleInfoOpen}
-                roleData={selectedRoleDataForView as any}
             />
 
+            {/* ── Confirm delete/deactivate ── */}
             <ConfirmModal
                 open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}
@@ -333,13 +209,10 @@ export function UsersPage() {
                 onConfirm={handleConfirm}
             />
 
-            {/* =============================
-                НОВА СПРОЩЕНА МОДАЛКА ДЛЯ РОЛЕЙ
-            ============================= */}
+            {/* ── Модалка ролей (без змін) ── */}
             <Dialog open={isRoleModalOpen} onOpenChange={open => !open && closeRoleModal()}>
                 <DialogContent className="p-0 gap-0 max-w-3xl h-[650px] flex flex-col overflow-hidden bg-background">
 
-                    {/* Хедер та Загальна інформація */}
                     <div className="px-6 pt-6 pb-5 border-b shrink-0 bg-background z-10 space-y-5">
                         <div>
                             <h2 className="text-xl font-semibold">
@@ -376,7 +249,6 @@ export function UsersPage() {
                         </div>
                     </div>
 
-                    {/* Робоча область - Сітка модулів */}
                     <div className="flex-1 overflow-y-auto p-6 bg-muted/10">
                         <div className="mb-4 flex items-center justify-between">
                             <h3 className="text-sm font-semibold text-foreground">Доступні модулі</h3>
@@ -385,11 +257,8 @@ export function UsersPage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {Object.entries(TAB_PRESETS).map(([tabKey, preset]) => {
-                                // Знаходимо пермішини, які відповідають цьому модулю
                                 const tabPerms = permissions.filter(p => preset.slugs.includes(p.slug))
                                 const totalCount = tabPerms.length
-
-                                // Перевіряємо, чи всі доступні пермішини цього модуля вже вибрані
                                 const isSelected = totalCount > 0 && tabPerms.every(p => roleForm.permission_ids.includes(p.id))
 
                                 return (
@@ -431,10 +300,10 @@ export function UsersPage() {
                         </div>
                     </div>
 
-                    {/* Футер */}
                     <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between bg-background">
                         <p className="text-sm text-muted-foreground">
-                            Загалом приховано прав у вибраних модулях: <span className="font-semibold text-foreground px-1">{roleForm.permission_ids.length}</span>
+                            Загалом прав у вибраних модулях:{" "}
+                            <span className="font-semibold text-foreground px-1">{roleForm.permission_ids.length}</span>
                         </p>
                         <div className="flex gap-3">
                             <Button variant="outline" onClick={closeRoleModal}>Скасувати</Button>

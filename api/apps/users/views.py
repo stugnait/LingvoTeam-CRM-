@@ -14,6 +14,8 @@ from LingvoTeam import settings
 from .authentification import set_auth_cookies
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+
+from .models.user_permission import UserPermission
 from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, \
     UserSelfUpdateSerializer, UserListSerializer, EditorLanguagePairsSerializer
 from .serializers import RegistrationSerializer, UserUpdateSerializer, \
@@ -181,6 +183,26 @@ class UserViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(editors, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='set-extra-permissions')
+    def set_extra_permissions(self, request, pk=None):
+        user = self.get_object()
+        permission_ids = request.data.get('permission_ids', [])
+
+        UserPermission.objects.filter(user=user).delete()
+
+        created = []
+        for perm_id in permission_ids:
+            try:
+                UserPermission.objects.create(user=user, permission_id=perm_id)
+                created.append(perm_id)
+            except Exception:
+                pass
+
+        return Response({
+            "detail": f"Оновлено права для {user.full_name}",
+            "permission_ids": created
+        }, status=status.HTTP_200_OK)
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:

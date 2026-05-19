@@ -6,21 +6,42 @@ const buildFormData = (data: UserFormData): FormData => {
     const formData = new FormData()
 
     Object.entries(data).forEach(([key, value]) => {
+        // Аватар — тільки якщо це File
         if (key === "avatar") {
-            // Якщо це новий файл — додаємо
             if (value instanceof File) {
                 formData.append(key, value)
             }
-            // Якщо null — просто не відправляємо взагалі
-            // бекенд залишить старе значення при PATCH
+            // null/string — не відправляємо, бекенд залишить старе
+            return
         }
-        else if (value !== null && value !== undefined) {
+
+        // Масиви (наприклад extra_permission_ids) —
+        // кожен елемент окремим полем, щоб Django правильно розпарсив
+        if (Array.isArray(value)) {
+            if (value.length === 0) {
+                // Порожній масив — надсилаємо порожній рядок,
+                // щоб бекенд знав що треба очистити список
+                formData.append(key, "")
+            } else {
+                value.forEach((item) => {
+                    formData.append(key, String(item))
+                })
+            }
+            return
+        }
+
+        // Решта примітивів
+        if (value !== null && value !== undefined) {
             formData.append(key, String(value))
         }
     })
 
     return formData
 }
+
+// ─────────────────────────────────────────────
+// Users API
+// ─────────────────────────────────────────────
 
 export const usersApi = {
 
@@ -32,7 +53,7 @@ export const usersApi = {
     }) => {
         const query = new URLSearchParams()
 
-        if (params?.page) {query.append("page", params.page.toString())}
+        if (params?.page)   {query.append("page", params.page.toString())}
         if (params?.search) {query.append("search", params.search)}
         if (params?.role && params.role !== "all") {query.append("role__slug", params.role)}
         if (params?.status !== null && params?.status !== undefined) {
@@ -40,28 +61,24 @@ export const usersApi = {
         }
 
         const url = query.toString() ? `users/users/?${query.toString()}` : "users/users/"
-
         return apiFetch<UsersListResponse>(url, { method: "GET" })
     },
 
     getById: (id: string) =>
         apiFetch<User>(`users/${id}/`, { method: "GET" }),
 
-    // 👇 Замінили JSON.stringify на buildFormData(data)
+    register: (data: UserFormData) =>
+        apiFetch<User>("users/auth/register/", {
+            method: "POST",
+            body: buildFormData(data),
+        }),
+
     create: (data: UserFormData) =>
         apiFetch<User>("users/", {
             method: "POST",
             body: buildFormData(data),
         }),
 
-    // 👇 Замінили JSON.stringify на buildFormData(data)
-    register: (data: UserFormData) =>
-        apiFetch("users/auth/register/", {
-            method: "POST",
-            body: buildFormData(data),
-        }),
-
-    // 👇 Замінили JSON.stringify на buildFormData(data)
     update: (id: string, data: UserFormData) =>
         apiFetch<User>(`users/users/${id}/`, {
             method: "PATCH",
@@ -69,9 +86,7 @@ export const usersApi = {
         }),
 
     resetPass: (id: string) =>
-        apiFetch<void>(`users/users/${id}/reset-password/`, {
-            method: "POST"
-        }),
+        apiFetch<void>(`users/users/${id}/reset-password/`, { method: "POST" }),
 
     remove: (id: string) =>
         apiFetch<void>(`users/users/${id}/`, { method: "DELETE" }),
@@ -80,10 +95,18 @@ export const usersApi = {
         apiFetch<void>(`users/admin/users/${id}/toggle-status/`, { method: "POST" }),
 }
 
+// ─────────────────────────────────────────────
+// Permissions API
+// ─────────────────────────────────────────────
+
 export const permissionsApi = {
     list: () =>
         apiFetch<Permission[]>("users/permissions/", { method: "GET" }),
 }
+
+// ─────────────────────────────────────────────
+// Roles API
+// ─────────────────────────────────────────────
 
 export const rolesApi = {
     list: () =>

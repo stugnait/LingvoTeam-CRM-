@@ -27,9 +27,8 @@ export const TAB_PRESETS: Record<string, { label: string; icon: string; slugs: s
 
             // Допоміжні права (щоб не було 403 помилок при завантаженні дропдаунів)
             "client.view",         // Для /api/clients/
-            "language.view",       // Для /api/core/languages/
-            "language_pair.view",  // Для /api/core/pairs/
-            "currency.view",       // Для /api/core/currencies/
+            "language.manage",     // Для /api/core/languages/
+            "currency.manage",       // Для /api/core/currencies/
             "order.traffic.manage" // Для /api/orders/order-traffic/ (як вказано у твоєму бекенді)
         ],
     },

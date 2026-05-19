@@ -51,26 +51,26 @@ const navGroups: NavGroup[] = [
                 ]
             },
             { name: "Orders", href: "/dashboard/orders", icon: FileText, permissions: ["ui.tab.orders"] },
-            { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, permissions: ["order.update", "order.assign"] },
-            { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["client.view"] },
-            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, permissions: ["client.category.manage"] },
+            { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, permissions: ["ui.tab.tasks"] },
+            { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["ui.tab.clients"] },
+            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, permissions: ["ui.tab.clients"] },
         ],
     },
     {
         name: "Фінанси",
         items: [
-            { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, permissions: ["order.traffic.manage", "translator.traffic.manage"] },
-            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, permissions: ["statistic.order.view", "statistic.volume.view"] },
-            { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, permissions: ["statistic.pnl.view"] },
+            { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, permissions: ["ui.tab.tariffs"] },
+            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, permissions: ["ui.tab.stats"] },
+            { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, permissions: ["ui.tab.pnl"] },
             {
                 name: "Salary",
                 href: "/dashboard/salary",
                 icon: Wallet,
-                permissions: ["user.read", "statistic.manager.view"],
+                permissions: ["ui.tab.salary"],
                 children: [
-                    { name: "Менеджер", roleId: 1, permissions: ["user.read"] },
-                    { name: "Редактор", roleId: 2, permissions: ["user.read"] },
-                    { name: "Перекладачі", roleId: 5, permissions: ["user.read"] },
+                    { name: "Менеджер", roleId: 1, permissions: ["ui.tab.salary"] },
+                    { name: "Редактор", roleId: 2, permissions: ["ui.tab.salary"] },
+                    { name: "Перекладачі", roleId: 5, permissions: ["ui.tab.salary"] },
                 ],
             },
         ],
@@ -78,8 +78,8 @@ const navGroups: NavGroup[] = [
     {
         name: "Команда",
         items: [
-            { name: "Translators", href: "/dashboard/translations", icon: Languages, permissions: ["translator.create"] },
-            { name: "Users", href: "/dashboard/users", icon: UserCog, permissions: ["user.read"] },
+            { name: "Translators", href: "/dashboard/translations", icon: Languages, permissions: ["ui.tab.translators"] },
+            { name: "Users", href: "/dashboard/users", icon: UserCog, permissions: ["ui.tab.users"] },
             { name: "Profile", href: "/dashboard/profile", icon: User, permissions: [] },
         ],
     },
