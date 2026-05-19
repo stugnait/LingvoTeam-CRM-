@@ -1,6 +1,9 @@
+from django.db import models
+
 from rest_framework.permissions import BasePermission
 from rest_framework.pagination import PageNumberPagination
 from apps.users.models import User, RolePermission
+from apps.users.models.user_permission import UserPermission
 
 
 class HasPermission(BasePermission):
@@ -21,25 +24,19 @@ class HasPermission(BasePermission):
             return True
 
         if not hasattr(request, '_cached_permission_slugs'):
-            if hasattr(user, 'role') and user.role:
-                slugs = RolePermission.objects.filter(
-                    role=user.role
-                ).values_list('permission__slug', flat=True)
-
-                request._cached_permission_slugs = set(slugs)
-            else:
-                request._cached_permission_slugs = set()
+            request._cached_permission_slugs = _build_permission_slugs(user)
 
         return all(perm in request._cached_permission_slugs for perm in required)
+
 
 class IsOwnerOrHasCustomPermission(BasePermission):
     message = "Ви не маєте прав для редагування цього об'єкта."
 
     def has_object_permission(self, request, view, obj):
         user = request.user
+
         if isinstance(obj, User) and obj.id == user.id:
             return True
-
         if getattr(obj, "manager_id_id", None) == user.id:
             return True
         if getattr(obj, "created_by_id", None) == user.id:
@@ -50,14 +47,32 @@ class IsOwnerOrHasCustomPermission(BasePermission):
             return False
 
         if not hasattr(request, '_cached_permission_slugs'):
-            if hasattr(user, 'role') and user.role:
-                request._cached_permission_slugs = set(
-                    perm.slug for perm in user.role.permissions.all()
-                )
-            else:
-                request._cached_permission_slugs = set()
+            request._cached_permission_slugs = _build_permission_slugs(user)
 
         return any(perm in request._cached_permission_slugs for perm in admin_perms)
+
+
+def _build_permission_slugs(user) -> set:
+    """
+    Об'єднує права ролі + індивідуальні права юзера в один set slug-ів.
+    Кешується на request щоб не робити зайвих запитів.
+    """
+    slugs: set = set()
+
+    # 1. Права з ролі
+    if hasattr(user, 'role') and user.role:
+        role_slugs = RolePermission.objects.filter(
+            role=user.role
+        ).values_list('permission__slug', flat=True)
+        slugs.update(role_slugs)
+
+    # 2. Індивідуальні права юзера
+    extra_slugs = UserPermission.objects.filter(
+        user=user
+    ).values_list('permission__slug', flat=True)
+    slugs.update(extra_slugs)
+
+    return slugs
 
 
 class CustomPageNumberPagination(PageNumberPagination):
