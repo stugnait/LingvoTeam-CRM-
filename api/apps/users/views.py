@@ -14,6 +14,8 @@ from LingvoTeam import settings
 from .authentification import set_auth_cookies
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+
+from .models.user_permission import UserPermission
 from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, \
     UserSelfUpdateSerializer, UserListSerializer, EditorLanguagePairsSerializer
 from .serializers import RegistrationSerializer, UserUpdateSerializer, \
@@ -28,6 +30,12 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.core.mail import send_mail
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+from .models import Permission, RolePermission, Role
+from .serializers import (
+    PermissionSerializer, RoleWithPermissionsSerializer,
+    RoleCreateUpdateSerializer, RolePermissionSerializer
+)
 
 from rest_framework import serializers
 from .models import EditorLanguagePairs
@@ -164,8 +172,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
         editors = User.objects.filter(
             id__in=editor_ids,
-            role_id=2
-        ).order_by('id')
+            role__permissions__slug='order.approve_translation'
+        ).distinct().order_by('id')
 
         page = self.paginate_queryset(editors)
 
@@ -175,6 +183,26 @@ class UserViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(editors, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='set-extra-permissions')
+    def set_extra_permissions(self, request, pk=None):
+        user = self.get_object()
+        permission_ids = request.data.get('permission_ids', [])
+
+        UserPermission.objects.filter(user=user).delete()
+
+        created = []
+        for perm_id in permission_ids:
+            try:
+                UserPermission.objects.create(user=user, permission_id=perm_id)
+                created.append(perm_id)
+            except Exception:
+                pass
+
+        return Response({
+            "detail": f"Оновлено права для {user.full_name}",
+            "permission_ids": created
+        }, status=status.HTTP_200_OK)
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
@@ -573,4 +601,59 @@ class RegistrationView(generics.CreateAPIView):
             'password': final_password,
             'message': 'Користувача успішно створено.'
         }, status=status.HTTP_201_CREATED)
+
+
+
+@extend_schema_view(
+    list=extend_schema(summary="Список всіх permissions", tags=["Roles & Permissions"]),
+    retrieve=extend_schema(summary="Деталі permission", tags=["Roles & Permissions"]),
+)
+class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Permission.objects.all()
+    serializer_class = PermissionSerializer
+    # permission_classes = [IsAdminUser]
+    pagination_class = None
+
+
+@extend_schema_view(
+    list=extend_schema(summary="Список ролей з permissions", tags=["Roles & Permissions"]),
+    retrieve=extend_schema(summary="Деталі ролі", tags=["Roles & Permissions"]),
+    create=extend_schema(summary="Створити роль", tags=["Roles & Permissions"]),
+    update=extend_schema(summary="Оновити роль", tags=["Roles & Permissions"]),
+    partial_update=extend_schema(summary="Частково оновити роль", tags=["Roles & Permissions"]),
+    destroy=extend_schema(summary="Видалити роль", tags=["Roles & Permissions"]),
+)
+class RoleViewSet(viewsets.ModelViewSet):
+    queryset = Role.objects.all()
+    # permission_classes = [IsAdminUser]
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return RoleWithPermissionsSerializer
+        return RoleCreateUpdateSerializer
+
+    @extend_schema(
+        summary="Призначити permissions до ролі (bulk)",
+        description="Повністю замінює список permissions для ролі.",
+        request=RoleCreateUpdateSerializer,
+        tags=["Roles & Permissions"]
+    )
+    @action(detail=True, methods=['post'], url_path='set-permissions')
+    def set_permissions(self, request, pk=None):
+        role = self.get_object()
+        permission_ids = request.data.get('permission_ids', [])
+
+        RolePermission.objects.filter(role=role).delete()
+        created = []
+        for perm_id in permission_ids:
+            try:
+                rp = RolePermission.objects.create(role=role, permission_id=perm_id)
+                created.append(perm_id)
+            except Exception:
+                pass  # skip duplicates або невалідні id
+
+        return Response({
+            "detail": f"Роль '{role.name}' оновлено.",
+            "permission_ids": created
+        }, status=status.HTTP_200_OK)
 

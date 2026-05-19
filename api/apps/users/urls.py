@@ -2,16 +2,19 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenBlacklistView
 
-
 from .views import (
     ForgotPasswordView, RegistrationView, ResetPasswordView,
     CustomTokenObtainPairView, CustomTokenRefreshView,
-    UserViewSet, AdminToggleUserStatusView, EditorLanguagePairViewSet
+    UserViewSet, AdminToggleUserStatusView, EditorLanguagePairViewSet,
+    PermissionViewSet,
+    RoleViewSet,
 )
 
 router = DefaultRouter()
 router.register('users', UserViewSet, basename="users")
 router.register(r'editor-language-pairs', EditorLanguagePairViewSet, basename='editor-language-pairs')
+router.register(r'permissions', PermissionViewSet, basename='permissions')
+router.register(r'roles', RoleViewSet, basename='roles')
 
 urlpatterns = [
     path('auth/register/', RegistrationView.as_view(), name='user-register'),
@@ -23,6 +26,5 @@ urlpatterns = [
     path("auth/forgot-password/", ForgotPasswordView.as_view(), name="forgot-password"),
     path("auth/reset-password/", ResetPasswordView.as_view(), name="reset-password"),
 
-    path('', include(router.urls))
+    path('', include(router.urls)),
 ]
-

@@ -66,12 +66,12 @@ export const ordersApi = {
     } = { page: 1 }) => {
         const params = new URLSearchParams();
 
-        if (filters.page) params.append('page', String(filters.page));
-        if (filters.my_orders) params.append('my_orders', 'true');
-        if (filters.status) params.append('status', String(filters.status));
-        if (filters.manager) params.append('manager', String(filters.manager));
-        if (filters.date_from) params.append('date_from', filters.date_from);
-        if (filters.date_to) params.append('date_to', filters.date_to);
+        if (filters.page) {params.append('page', String(filters.page));}
+        if (filters.my_orders) {params.append('my_orders', 'true');}
+        if (filters.status) {params.append('status', String(filters.status));}
+        if (filters.manager) {params.append('manager', String(filters.manager));}
+        if (filters.date_from) {params.append('date_from', filters.date_from);}
+        if (filters.date_to) {params.append('date_to', filters.date_to);}
 
         const query = params.toString();
         return apiFetch<OrderListResponse>(`orders/?${query}`, {
@@ -195,7 +195,7 @@ export const ordersApi = {
     analyzeUploadedImages: (files: File[], sourceLanguageId?: number) => {
         const formData = new FormData()
         files.forEach((file) => formData.append("files", file))
-        if (sourceLanguageId) formData.append("source_language_id", String(sourceLanguageId))
+        if (sourceLanguageId) {formData.append("source_language_id", String(sourceLanguageId))}
 
         return apiFetch<AnalyzeUploadedImagesResponse>(
             "orders/analyze-uploaded-images/",
