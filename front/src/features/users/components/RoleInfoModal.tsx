@@ -8,7 +8,6 @@ import { cn } from "@/src/lib/utils"
 import type { Permission, Role } from "../types"
 
 // Спільний словник залишаємо тут, щоб не створювати зайвих файлів
-// Оновіть цей словник у файлах RoleInfoModal.tsx та RolesPage.tsx
 export const GROUP_LABELS: Record<string, string> = {
     user:       "👤 Користувачі",
     role:       "🔐 Ролі та Доступи",

@@ -67,3 +67,10 @@ export interface RoleFormData {
     slug: string
     permission_ids: number[]
 }
+
+export interface PaginatedResponse<T> {
+    results: T[]
+    count: number
+    next: string | null
+    previous: string | null
+}

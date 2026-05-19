@@ -95,9 +95,8 @@ export function useRoles() {
                 permissionsApi.list(),
             ])
 
-            // 👇 УНІВЕРСАЛЬНА ПЕРЕВІРКА: чи це масив, чи об'єкт з results
-            const rolesArray = Array.isArray(rolesRes) ? rolesRes : (rolesRes.results || [])
-            const permsArray = Array.isArray(permsRes) ? permsRes : (permsRes.results || [])
+            const rolesArray = Array.isArray(rolesRes) ? rolesRes : (rolesRes || [])
+            const permsArray = Array.isArray(permsRes) ? permsRes : (permsRes || [])
 
             setRoles(rolesArray)
             setPermissions(permsArray)

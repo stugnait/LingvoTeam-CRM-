@@ -55,7 +55,7 @@ export function useUsers() {
     const loadRoles = useCallback(async () => {
         try {
             const res = await rolesApi.list()
-            setRoles(res.results || [])
+            setRoles(res || [])
         } catch (error) {
             console.error("Failed to load roles", error)
         }
@@ -153,7 +153,7 @@ export function useUsers() {
     const validateStep1 = (): boolean => {
         const newErrors: Partial<Record<keyof UserFormData, string>> = {}
 
-        if (!form.full_name.trim()) newErrors.full_name = "Full name is required"
+        if (!form.full_name.trim()) {newErrors.full_name = "Full name is required"}
 
         if (!form.email.trim()) {
             newErrors.email = "Email is required"
@@ -161,7 +161,7 @@ export function useUsers() {
             newErrors.email = "Invalid email format"
         }
 
-        if (!form.phone.trim()) newErrors.phone = "Phone is required"
+        if (!form.phone.trim()) {newErrors.phone = "Phone is required"}
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors)
@@ -173,7 +173,7 @@ export function useUsers() {
     }
 
     const goToStep2 = () => {
-        if (validateStep1()) setWizardStep(2)
+        if (validateStep1()) {setWizardStep(2)}
     }
 
     const goToStep1 = () => {
@@ -223,7 +223,7 @@ export function useUsers() {
     // Confirm handlers
     // -------------------------
     const confirmDelete = async () => {
-        if (!selectedUser) return
+        if (!selectedUser) {return}
         try {
             await usersApi.remove(selectedUser.id)
             toast({ title: "User deleted", description: `${selectedUser.full_name} removed` })
@@ -235,7 +235,7 @@ export function useUsers() {
     }
 
     const confirmDeactivation = async () => {
-        if (!selectedUser) return
+        if (!selectedUser) {return}
         try {
             await usersApi.deactivate(selectedUser.id)
             toast({ title: "User deactivated", description: `${selectedUser.full_name} deactivated` })
@@ -247,9 +247,9 @@ export function useUsers() {
     }
 
     const handleConfirm = async () => {
-        if (!selectedUser || !confirmAction) return
-        if (confirmAction === "delete") await confirmDelete()
-        if (confirmAction === "deactivate") await confirmDeactivation()
+        if (!selectedUser || !confirmAction) {return}
+        if (confirmAction === "delete") {await confirmDelete()}
+        if (confirmAction === "deactivate") {await confirmDeactivation()}
     }
 
     // -------------------------
