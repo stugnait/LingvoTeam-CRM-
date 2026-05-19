@@ -68,10 +68,10 @@ export function UserWizardModal({
         return null
     }, [form.avatar])
 
-    // Знаходимо обʼєкт поточної ролі
-    const selectedRoleObj = roles.find(r => r.id === form.role) ?? null
+    const safeRoles = Array.isArray(roles) ? roles : []
 
-    // Locked таби для поточної ролі
+    const selectedRoleObj = safeRoles.find(r => r.id === form.role) ?? null
+
     const lockedTabs = selectedRoleObj
         ? (ROLE_LOCKED_TABS[selectedRoleObj.slug ?? ""] ?? [])
         : []
@@ -278,7 +278,7 @@ export function UserWizardModal({
                                     <SelectValue placeholder="Оберіть роль..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {roles.map(role => (
+                                    {safeRoles.map(role => (
                                         <SelectItem key={role.id} value={String(role.id)}>
                                             {role.name}
                                         </SelectItem>
