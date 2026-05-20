@@ -95,8 +95,13 @@ export function useRoles() {
                 permissionsApi.list(),
             ])
 
-            const rolesArray = Array.isArray(rolesRes) ? rolesRes : (rolesRes || [])
-            const permsArray = Array.isArray(permsRes) ? permsRes : (permsRes || [])
+            const rolesArray = Array.isArray(rolesRes)
+                ? rolesRes
+                : ((rolesRes as any)?.results || rolesRes || [])
+
+            const permsArray = Array.isArray(permsRes)
+                ? permsRes
+                : ((permsRes as any)?.results || permsRes || [])
 
             setRoles(rolesArray)
             setPermissions(permsArray)

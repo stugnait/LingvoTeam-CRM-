@@ -55,7 +55,8 @@ export function useUsers() {
     const loadRoles = useCallback(async () => {
         try {
             const res = await rolesApi.list()
-            setRoles(res || [])
+            const rolesArray = Array.isArray(res) ? res : ((res as any)?.results || [])
+            setRoles(rolesArray)
         } catch (error) {
             console.error("Failed to load roles", error)
         }
