@@ -443,16 +443,16 @@ const translatorTrafficOptions = useMemo(() => {
                             </div>
                         )}
 
-                        {filesConfirmed && !imagesAnalyzed && (
-                            <button
-                                type="button"
-                                onClick={handleAnalyzeImages}
-                                disabled={analysisLoading}
-                                className="px-4 py-2 bg-purple-600 text-white rounded-md disabled:opacity-50"
-                            >
-                                {analysisLoading ? "Analyzing images..." : "Analyze images (OCR)"}
-                            </button>
-                        )}
+                        {/*{filesConfirmed && !imagesAnalyzed && (*/}
+                        {/*    <button*/}
+                        {/*        type="button"*/}
+                        {/*        onClick={handleAnalyzeImages}*/}
+                        {/*        disabled={analysisLoading}*/}
+                        {/*        className="px-4 py-2 bg-purple-600 text-white rounded-md disabled:opacity-50"*/}
+                        {/*    >*/}
+                        {/*        {analysisLoading ? "Analyzing images..." : "Analyze images (OCR)"}*/}
+                        {/*    </button>*/}
+                        {/*)}*/}
 
                         {analysisResult && (
                             <div className="bg-purple-50 p-4 rounded-lg text-sm">
