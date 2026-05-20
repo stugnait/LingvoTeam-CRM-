@@ -258,7 +258,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return rep
 
     def update(self, instance, validated_data):
-        avatar_file = validated_data.pop('avatar_upload', None)
+        avatar_file = validated_data.pop('avatar', None)
         extra_permission_ids = validated_data.pop('extra_permission_ids', None)
         # 2. Оновлюємо всі інші текстові поля
         instance = super().update(instance, validated_data)
@@ -368,7 +368,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
 
-        # Завантаження аватарки
         if avatar:
             from ..dropbox_services.dropbox_utils import upload_user_avatar
             avatar_url = upload_user_avatar(user, avatar)
@@ -376,7 +375,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
                 user.avatar = avatar_url
                 user.save(update_fields=['avatar'])
 
-        # Збереження індивідуальних прав
         for perm_id in extra_permission_ids:
             try:
                 UserPermission.objects.create(user=user, permission_id=perm_id)
