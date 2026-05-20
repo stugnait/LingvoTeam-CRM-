@@ -41,7 +41,7 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
             'currency_name', 'currency_sign', 'category_name',
         ]
         extra_kwargs = {
-            'language_pair': {'read_only': True},
+            'language_pair': {'required': False}
         }
 
     def get_language_pair_name(self, obj):
@@ -59,12 +59,15 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
         return pair
 
     def create(self, validated_data):
-        if 'source_language' not in validated_data or 'target_language' not in validated_data:
-            raise serializers.ValidationError({
-                "source_language": "This field is required on create."
-            })
-        validated_data['language_pair'] = self._resolve_language_pair(validated_data)
-        return super().create(validated_data)
+        if 'language_pair' in validated_data:
+            return super().create(validated_data)
+
+        if 'source_language' in validated_data and 'target_language' in validated_data:
+            validated_data['language_pair'] = self._resolve_language_pair(validated_data)
+            return super().create(validated_data)
+
+        raise serializers.ValidationError(
+            {"language_pair": "Потрібен або language_pair_id або source/target language."})
 
     def update(self, instance, validated_data):
         if 'source_language' in validated_data or 'target_language' in validated_data:
