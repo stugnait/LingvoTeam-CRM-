@@ -55,8 +55,6 @@ export function TariffForm({
                             setForm(prev => ({
                                 ...prev,
                                 language_pair_id: Number(val),
-                                source_language_id: 0,  // більше не потрібні для відображення
-                                target_language_id: 0,
                             }))
                         }}
                     >

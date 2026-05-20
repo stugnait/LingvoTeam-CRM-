@@ -244,8 +244,7 @@ export function useTariffs() {
 
             const payload = {
                 name: data.name,
-                source_language: data.source_language,
-                target_language: data.target_language,
+                language_pair: data.language_pair_id,
                 currency_id: data.currency_id,
                 category: data.category,
                 price_per_page: Number(data.price_per_page),
