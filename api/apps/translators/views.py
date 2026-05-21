@@ -295,7 +295,7 @@ class ExternalOrderAccessView(APIView):
                 return response
 
             link_obj.attempts += 1
-            max_attempts = 5
+            max_attempts = 3
             ban_minutes = 15
 
             if link_obj.attempts >= max_attempts:

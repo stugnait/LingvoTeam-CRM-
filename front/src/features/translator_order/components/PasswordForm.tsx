@@ -20,18 +20,17 @@ export function PasswordForm({ onSubmit, error, attempts, bannedUntil, onBanExpi
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
-    // Підключаємо відлік часу
-    const countdown = useCountdown(bannedUntil || null)
+    const countdown = useCountdown(bannedUntil ?? null)
 
-    // Перевіряємо, чи користувач заблокований (час ще не вийшов)
-    const isBanned = !!bannedUntil && !countdown.expired
+    // Рахуємо isBanned синхронно — не через countdown.expired (він має race condition)
+    // а напряму по даті, щоб перший рендер після бану теж був правильним
+    const isBanned = !!bannedUntil && new Date(bannedUntil).getTime() > Date.now()
 
-    // Коли таймер доходить до нуля — викликаємо колбек, щоб очистити стейт і LocalStorage в хуку
     useEffect(() => {
-        if (bannedUntil && countdown.expired) {
+        if (bannedUntil && !isBanned) {
             onBanExpired?.()
         }
-    }, [bannedUntil, countdown.expired, onBanExpired])
+    }, [bannedUntil, isBanned, onBanExpired])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -98,7 +97,6 @@ export function PasswordForm({ onSubmit, error, attempts, bannedUntil, onBanExpi
                     <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                         <p className="text-sm text-destructive flex items-center gap-2">
                             {error}
-                            {/* Показуємо кількість спроб тільки якщо користувач НЕ в бані */}
                             {attempts !== null && attempts !== undefined && !isBanned && (
                                 <span className="ml-1 font-bold">
                                     (Залишилось спроб: {attempts})

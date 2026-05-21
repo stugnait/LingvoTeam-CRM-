@@ -4,8 +4,13 @@ import type { ExternalOrder } from "../types"
 
 type Step = "loading" | "password" | "order" | "expired" | "banned"
 
-// Ключ для збереження часу бану в браузері
 const BAN_STORAGE_KEY = "external_order_ban_until"
+
+function getFallbackBanDate(): string {
+    const t = new Date()
+    t.setMinutes(t.getMinutes() + 15)
+    return t.toISOString()
+}
 
 export function useExternalOrder(slug: string) {
     const [step, setStep] = useState<Step>("loading")
@@ -13,7 +18,6 @@ export function useExternalOrder(slug: string) {
     const [error, setError] = useState<string | null>(null)
     const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
 
-    // Ініціалізація стану: перевіряємо localStorage при першому рендері
     const [bannedUntil, setBannedUntil] = useState<string | null>(() => {
         if (typeof window !== "undefined") {
             return localStorage.getItem(BAN_STORAGE_KEY)
@@ -24,7 +28,6 @@ export function useExternalOrder(slug: string) {
     const [isUploading, setIsUploading] = useState(false)
     const [uploadProgress, setUploadProgress] = useState(0)
 
-    // Функція-хелпер для встановлення бану і в стейт, і в сховище
     const updateBanStatus = useCallback((date: string | null) => {
         setBannedUntil(date)
         if (date) {
@@ -32,18 +35,17 @@ export function useExternalOrder(slug: string) {
             setStep("banned")
         } else {
             localStorage.removeItem(BAN_STORAGE_KEY)
+            setStep("password")
         }
     }, [])
 
     const init = useCallback(async () => {
-        // 1. Перевіряємо локальний бан перед запитом
         if (bannedUntil) {
             const isExpired = new Date(bannedUntil).getTime() < Date.now()
             if (!isExpired) {
                 setStep("banned")
-                return // Виходимо, запит робити не потрібно
+                return
             } else {
-                // Якщо час вийшов, очищуємо локальний бан
                 updateBanStatus(null)
             }
         }
@@ -59,8 +61,9 @@ export function useExternalOrder(slug: string) {
                 setStep("password")
             }
         } catch (e: any) {
-            if (e?.status === "banned" || e?.banned_until || e?.banned_to) {
-                updateBanStatus(e.banned_until || e.banned_to)
+            if (e?.banned_to || e?.banned_until || e?.status === "banned") {
+                const banDate = e.banned_to || e.banned_until || getFallbackBanDate()
+                updateBanStatus(banDate)
             } else {
                 setStep("expired")
             }
@@ -81,7 +84,7 @@ export function useExternalOrder(slug: string) {
                 }
                 setError(null)
                 setRemainingAttempts(null)
-                updateBanStatus(null) // Очищуємо бан при успішному вході
+                updateBanStatus(null)
             }
         } catch (e: any) {
             const data = e
@@ -98,13 +101,18 @@ export function useExternalOrder(slug: string) {
                 setRemainingAttempts(data.remaining_attempts)
             }
 
-            if (data?.banned_until || data?.banned_to || data?.status === "banned") {
-                updateBanStatus(data.banned_until || data.banned_to)
-            }
-            else if (errorMessage.toLowerCase().includes("заблоковано") || errorMessage.toLowerCase().includes("blocked")) {
-                const banTime = new Date()
-                banTime.setMinutes(banTime.getMinutes() + 15)
-                updateBanStatus(banTime.toISOString())
+            // Перевіряємо бан: поле banned_to з бекенду, або текст повідомлення
+            const isBanResponse =
+                !!data?.banned_to ||
+                !!data?.banned_until ||
+                data?.status === "banned" ||
+                errorMessage.toLowerCase().includes("перевищено") ||
+                errorMessage.toLowerCase().includes("заблоковано") ||
+                errorMessage.toLowerCase().includes("blocked")
+
+            if (isBanResponse) {
+                const banDate = data?.banned_to || data?.banned_until || getFallbackBanDate()
+                updateBanStatus(banDate)
             }
         }
     }
@@ -171,7 +179,6 @@ export function useExternalOrder(slug: string) {
         completeOrder,
         remainingAttempts,
         bannedUntil,
-        // Додаємо колбек для скидання бану, щоб передати його в PasswordForm
         onBanExpired: () => updateBanStatus(null),
         clearBan: () => updateBanStatus(null)
     }
