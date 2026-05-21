@@ -27,7 +27,6 @@ def ensure_folder(path: str):
                 return
         except Exception:
             pass
-        
         print("Dropbox API error: ", e)
         raise
 
@@ -38,27 +37,26 @@ def create_order_folder(order):
     path = f"{ORDERS_ROOT}/order_{order.id}"
     ensure_folder(path)
 
-    # 1. БЕЗПЕЧНО ОТРИМУЄМО ВСІ EMAIL-И
+    # Явно створюємо підпапки одразу — щоб вони точно існували
+    ensure_folder(f"{path}/source")
+    ensure_folder(f"{path}/target")
+    ensure_folder(f"{path}/final")
+
+    # --- Збираємо email-и ---
     translator_email = order.translator_id.email if getattr(order, 'translator_id', None) else None
     editor_email = order.editor_id.email if getattr(order, 'editor_id', None) else None
     manager_accept_email = order.manager_accept_id.email if getattr(order, 'manager_accept_id', None) else None
     manager_delivery_email = order.manager_delivery_id.email if getattr(order, 'manager_delivery_id', None) else None
 
-    try:
-        dbx.files_create_folder_v2(path)
-    except dropbox.exceptions.ApiError as e:
-        print("Folder already exists.")
-
+    # --- Sharing (не блокує повернення path якщо впаде) ---
     try:
         launch = dbx.sharing_share_folder(path, force_async=False)
         shared_folder_id = launch.get_complete().shared_folder_id
 
-        # 2. ЗБИРАЄМО УНІКАЛЬНІ EMAIL-И ДЛЯ ДОСТУПУ В DROPBOX (через set, щоб уникнути дублів)
-        dropbox_emails = set()
-        if translator_email: dropbox_emails.add(translator_email)
-        if editor_email: dropbox_emails.add(editor_email)
-        if manager_accept_email: dropbox_emails.add(manager_accept_email)
-        if manager_delivery_email: dropbox_emails.add(manager_delivery_email)
+        dropbox_emails = set(filter(None, [
+            translator_email, editor_email,
+            manager_accept_email, manager_delivery_email,
+        ]))
 
         members_to_add = [
             AddMember(member=MemberSelector.email(email), access_level=AccessLevel.editor)
@@ -75,38 +73,32 @@ def create_order_folder(order):
         folder_link = None
         try:
             links = dbx.sharing_list_shared_links(path=path, direct_only=True).links
-            if links:
-                folder_link = links[0].url
-            else:
-                folder_link = dbx.sharing_create_shared_link_with_settings(path).url
+            folder_link = links[0].url if links else dbx.sharing_create_shared_link_with_settings(path).url
         except dropbox.exceptions.ApiError:
             pass
 
-        # 3. ЗБИРАЄМО УНІКАЛЬНІ EMAIL-И ДЛЯ ВІДПРАВКИ ЛИСТА (Без перекладача)
-        mail_emails = set()
-        if editor_email: mail_emails.add(editor_email)
-        if manager_accept_email: mail_emails.add(manager_accept_email)
-        if manager_delivery_email: mail_emails.add(manager_delivery_email)
+        mail_emails = list(filter(None, {editor_email, manager_accept_email, manager_delivery_email}))
 
-        recipient_list = list(mail_emails)
-
-        if recipient_list and folder_link:
-            subject = f"Доступ до папки замовлення №{order.id}"
-            message = (
-                f"Вітаємо!\n\n"
-                f"Вам надано доступ до папки Dropbox для замовлення №{order.id}.\n\n"
-                f"Посилання на папку: {folder_link}\n\n"
-                f"Якщо виникнуть запитання — звертайтеся до керівника.\n\n"
-                f"З повагою,\n"
-                f"команда LingvoTeam."
+        if mail_emails and folder_link:
+            send_mail(
+                subject=f"Доступ до папки замовлення №{order.id}",
+                message=(
+                    f"Вітаємо!\n\n"
+                    f"Вам надано доступ до папки Dropbox для замовлення №{order.id}.\n\n"
+                    f"Посилання на папку: {folder_link}\n\n"
+                    f"Якщо виникнуть запитання — звертайтеся до керівника.\n\n"
+                    f"З повагою,\nкоманда LingvoTeam."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=mail_emails,
+                fail_silently=False,
             )
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=False)
 
     except dropbox.exceptions.ApiError as e:
-        print(f"Dropbox Sharing Error: {e}")
+        # Sharing не критичний — папки вже створені, продовжуємо
+        print(f"Dropbox Sharing Error (non-critical): {e}")
 
     return path
-
 
 
 def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_only_dir=None):
@@ -114,10 +106,7 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_
 
     if create_only_dir:
         dir_path = f"{base_path}/{create_only_dir}".replace("//", "/")
-        try:
-            dbx.files_create_folder_v2(dir_path)
-        except dropbox.exceptions.ApiError as e:
-            print("Folder already exists.")
+        ensure_folder(dir_path)
         return dir_path
 
     language_pair_val = (
@@ -144,23 +133,13 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_
 
     source_slug = "src"
     if source_language_id:
-        lang_row = (
-            Language.objects
-            .filter(id=source_language_id)
-            .values("slug")
-            .first()
-        )
+        lang_row = Language.objects.filter(id=source_language_id).values("slug").first()
         if lang_row and lang_row.get("slug"):
             source_slug = lang_row["slug"]
 
     target_slug = "tgt"
     if target_language_id:
-        lang_row = (
-            Language.objects
-            .filter(id=target_language_id)
-            .values("slug")
-            .first()
-        )
+        lang_row = Language.objects.filter(id=target_language_id).values("slug").first()
         if lang_row and lang_row.get("slug"):
             target_slug = lang_row["slug"]
 
@@ -172,15 +151,13 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_
 
     elif subdir == "target":
         source_suffix = f"_{source_slug}"
-
         if name.endswith(source_suffix):
             new_name = name[: -len(source_suffix)]
             filename = f"{new_name}_{target_slug}{ext}"
         else:
             filename = f"{name}_{target_slug}{ext}"
-
         full_path = f"{base_path}/{subdir}/{filename}"
-    
+
     elif subdir == "final":
         source_suffix = f"_{source_slug}"
         target_suffix = f"_{target_slug}"
@@ -192,7 +169,6 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_
             filename = f"{new_name}_{target_slug}{ext}"
         else:
             filename = f"{name}_final{ext}"
-            
         full_path = f"{base_path}/{subdir}/{filename}"
 
     else:
@@ -216,8 +192,8 @@ def upload_file_to_order_folder(order, file, base_path, subdir="orders", create_
 
     return full_path
 
-def move_file_from_target_to_final(from_path):
 
+def move_file_from_target_to_final(from_path):
     if "/target/" not in from_path:
         raise ValueError("Path must contain '/target/'")
 
@@ -231,7 +207,6 @@ def move_file_from_target_to_final(from_path):
 
     name, ext = os.path.splitext(filename)
 
-    # прибираємо будь-який останній суфікс після "_"
     if "_" in name:
         base_name = name.rsplit("_", 1)[0]
     else:
@@ -261,23 +236,19 @@ def upload_user_avatar(user, file):
     file.seek(0)
     content = file.read()
 
-    # Завантажуємо файл (overwrite якщо вже є)
     dbx.files_upload(
         content,
         full_path,
         mode=dropbox.files.WriteMode.overwrite
     )
 
-    # Генеруємо публічне посилання
     try:
-        # Спочатку видаляємо старе посилання якщо є
         links = dbx.sharing_list_shared_links(path=full_path, direct_only=True).links
         if links:
             url = links[0].url
         else:
             url = dbx.sharing_create_shared_link_with_settings(full_path).url
 
-        # Конвертуємо в прямий CDN лінк
         url = url.replace("www.dropbox.com", "dl.dropboxusercontent.com")
         url = url.replace("?dl=0", "")
 

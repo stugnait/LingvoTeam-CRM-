@@ -1,11 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ShieldX, Home, ArrowLeft, Globe } from "lucide-react"
+import { Globe, LogIn } from "lucide-react"
 
 export default function Error401Page() {
-    const router = useRouter()
     return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
             <div className="flex items-center gap-2 mb-12">
@@ -17,33 +15,26 @@ export default function Error401Page() {
 
             <div className="text-center max-w-md">
                 <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <ShieldX className="w-10 h-10 text-primary" />
+                    <LogIn className="w-10 h-10 text-primary" />
                 </div>
 
                 <h1 className="text-7xl font-bold text-primary mb-4">401</h1>
 
                 <h2 className="text-2xl font-semibold text-foreground mb-3">
-                    Не авторизовано
+                    Сесія завершена
                 </h2>
 
                 <p className="text-muted-foreground mb-8">
-                    Для доступу до цієї сторінки необхідно увійти в систему. Будь ласка, авторизуйтесь для продовження.
+                    Ваша сесія закінчилася або у вас немає доступу. Будь ласка, авторизуйтесь ще раз для продовження роботи.
                 </p>
 
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button
-                        onClick={() => router.back()}
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-border rounded-lg text-foreground hover:bg-accent transition-colors cursor-pointer"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Назад
-                    </button>
+                <div className="flex justify-center">
                     <Link
-                        href="/dashboard"
-                        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        href="/"
+                        className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors w-full sm:w-auto"
                     >
-                        <Home className="w-4 h-4" />
-                        На головну
+                        <LogIn className="w-4 h-4" />
+                        Перейти до входу
                     </Link>
                 </div>
             </div>

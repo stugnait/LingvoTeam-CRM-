@@ -402,10 +402,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             base_path = create_order_folder(order)
             for f in files:
                 f.seek(0)
-                path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+                print(f"Uploading {f.name} to source, size: {len(f.read())}")  # ← додай
+                f.seek(0)
+                try:
+                    path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
+                    print(f"Uploaded to: {path}")  # ← додай
+                except Exception as e:
+                    print(f"UPLOAD ERROR: {e}")  # ← додай
                 _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target",
                                                 create_only_dir="target")
-                _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final", create_only_dir="final")
+                _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final",
+                                                create_only_dir="final")
                 uploaded_paths.append(path)
         except Exception as e:
             logger.error(f"Upload failed: {e}")
