@@ -11,7 +11,7 @@ export const translatorOrderApi = {
     // GET /api/translators/<slug>/
     check: (slug: string) =>
         apiFetch<CheckExternalOrderResponse>(
-            `translators/${slug}/`,
+            `translators/external/${slug}/`,
             {
                 method: "GET",
                 skipGlobalError: true,
@@ -21,7 +21,7 @@ export const translatorOrderApi = {
     // POST /api/translators/<slug>/
     login: (slug: string, payload: ExternalOrderLoginPayload) =>
         apiFetch<ExternalOrderLoginResponse>(
-            `translators/${slug}/`,
+            `translators/external/${slug}/`,
             {
                 method: "POST",
                 body: JSON.stringify(payload),

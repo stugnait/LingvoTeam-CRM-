@@ -13,7 +13,7 @@ router.register(r'', TranslatorViewSet, basename='translators')
 
 
 urlpatterns = [
-    path('<uuid:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
+    path('external/<uuid:slug>/', ExternalOrderAccessView.as_view(), name='external-order-access'),
     path("translator-upload/", TranslatorUploadView.as_view()),
 
     path(
