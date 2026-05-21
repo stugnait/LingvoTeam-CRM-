@@ -21,7 +21,8 @@ export default function ClientExternalOrderPage({ params }: { params: Promise<{ 
         files,
         filesLoading,
         downloadFiles,
-        downloadLoading
+        downloadLoading,
+        filesCount, refreshFiles, downloadSingleFile
     } = useClients(slug)
 
     useEffect(() => {
@@ -53,8 +54,11 @@ export default function ClientExternalOrderPage({ params }: { params: Promise<{ 
             <MainClient
                 order={order}
                 files={files}
+                filesCount={filesCount}
                 filesLoading={filesLoading}
                 onDownload={downloadFiles}
+                onRefreshFiles={() => refreshFiles(order.id)}
+                onDownloadFile={downloadSingleFile}
                 downloadLoading={downloadLoading}
             />
         )

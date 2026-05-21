@@ -100,7 +100,7 @@ export function useClients(slug: string) {
                 setStep("order")
                 setError(null)
                 setRemainingAttempts(null)
-                updateBanStatus(null)
+                // updateBanStatus(null)
                 void refreshFiles(res.order_data.id)
             }
         } catch (e: any) {
