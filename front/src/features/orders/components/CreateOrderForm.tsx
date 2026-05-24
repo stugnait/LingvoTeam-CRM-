@@ -877,24 +877,6 @@ const translatorTrafficOptions = useMemo(() => {
                         <Input
                             type="number"
                             min="0"
-                            placeholder="Work type"
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            onKeyDown={(e) => {
-                                if (["-", "e", "E", "+"].includes(e.key)) {
-                                    e.preventDefault();
-                                }
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            value={form.work_type === 0 ? "" : form.work_type}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
-                                setForm(prev => ({ ...prev, work_type: numericValue }))
-                            }}
-                        />
-                        <Input
-                            type="number"
-                            min="0"
                             placeholder="Currency ID"
                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             onKeyDown={(e) => {

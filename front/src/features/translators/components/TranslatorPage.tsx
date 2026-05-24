@@ -267,29 +267,6 @@ export default function TranslatorsPage() {
                         {errors?.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
                     </div>
 
-                    <div>
-                        <Input
-                            type="number"
-                            min="0"
-                            placeholder="Work type"
-                            className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.work_type ? "border-red-500" : ""}`}
-                            onKeyDown={(e) => {
-                                if (["-", "e", "E", "+"].includes(e.key)) {
-                                    e.preventDefault();
-                                }
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            value={form.work_type === 0 ? "" : form.work_type}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                setForm(prev => ({
-                                    ...prev,
-                                    work_type: val === "" ? 0 : Math.max(0, parseInt(val, 10)),
-                                }))
-                            }}
-                        />
-                        {errors?.work_type && <p className="text-xs text-red-500 mt-1">{errors.work_type}</p>}
-                    </div>
 
                     <div>
                         <Select

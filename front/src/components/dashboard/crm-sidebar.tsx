@@ -53,7 +53,6 @@ const navGroups: NavGroup[] = [
             { name: "Orders", href: "/dashboard/orders", icon: FileText, permissions: ["ui.tab.orders"] },
             { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, permissions: ["ui.tab.tasks"] },
             { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["ui.tab.clients"] },
-            { name: "Client-Categories", href: "/dashboard/client-categories", icon: CheckSquare, permissions: ["ui.tab.clients"] },
         ],
     },
     {

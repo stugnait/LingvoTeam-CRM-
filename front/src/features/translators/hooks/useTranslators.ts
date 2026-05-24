@@ -48,7 +48,6 @@ export function useTranslators() {
         full_name: "",
         email: "",
         phone: "",
-        work_type: 0,
         currency_id: 0,
     })
 
@@ -209,7 +208,6 @@ export function useTranslators() {
             full_name: "",
             email: "",
             phone: "",
-            work_type: 0,
             currency_id: 0,
         })
         setErrors({})
@@ -222,7 +220,6 @@ export function useTranslators() {
             full_name: translator.full_name,
             email: translator.email,
             phone: translator.phone,
-            work_type: Number(translator.work_type),
             currency_id: translator.currency_id,
         })
         setErrors({})
@@ -306,9 +303,6 @@ export function useTranslators() {
             }
             if (!data.phone.trim()) {
                 newErrors.phone = "Phone is required"
-            }
-            if (!data.work_type || Number(data.work_type) <= 0) {
-                newErrors.work_type = "Please select a work type"
             }
             if (!data.currency_id || Number(data.currency_id) <= 0) {
                 newErrors.currency_id = "Please select a currency"

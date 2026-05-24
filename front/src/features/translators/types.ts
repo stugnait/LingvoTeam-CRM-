@@ -31,7 +31,6 @@ export interface Translator {
     full_name: string
     email: string
     phone: string
-    work_type: string
 
     currency_id: number
     currency_name: string
@@ -50,7 +49,6 @@ export interface TranslatorPayload {
     full_name: string
     email: string
     phone: string
-    work_type: number
     currency_id?: number
 }
 
@@ -65,7 +63,6 @@ export interface TranslatorListResponse {
    ========================================================= */
 
 export interface TranslatorFilters {
-    work_type?: number
     source_language?: number | null
     target_language?: number | null
     language_pair_id?: number | null
