@@ -47,7 +47,7 @@ const COLUMN_ICONS = {
 };
 
 const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Не вказано';
+    if (!dateString) {return 'Не вказано';}
     try {
         const date = new Date(dateString);
         return new Intl.DateTimeFormat('uk-UA', {

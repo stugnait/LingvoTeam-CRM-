@@ -8,7 +8,6 @@ class Translator(models.Model):
     email = models.EmailField()
     phone = models.CharField(max_length=120)
     currency_id = models.ForeignKey('core.Currency', on_delete=models.CASCADE)
-    work_type = models.CharField(max_length=120)
     created_at = models.DateTimeField(auto_now_add=True)
     rating = models.FloatField(default=0.0, verbose_name="Рейтинг")
     is_active = models.BooleanField(default=False)

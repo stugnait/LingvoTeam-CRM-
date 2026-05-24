@@ -66,7 +66,7 @@ from ..dropbox_services.dropbox_utils import (
     create_order_folder, upload_file_to_order_folder, get_dbx, move_file_from_target_to_final
 )
 from ..translators.models import TranslatorTraffic
-from ..users.models import EditorLanguagePairs, User
+from ..users.models import EditorLanguagePairs, User, RolePermission
 from django_filters import rest_framework as filters
 
 logger = logging.getLogger(__name__)
@@ -1295,8 +1295,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 has_internal_access = True
             elif hasattr(request.user, 'role') and request.user.role:
                 # Доступ є, якщо користувач має хоча б одне з цих прав
-                has_internal_access = request.user.role.permissions.filter(
-                    slug__in=['order.update', 'order.change.status']
+                has_internal_access = RolePermission.objects.filter(
+                    role=request.user.role,
+                    permission__slug__in=['order.update', 'order.change.status']
                 ).exists()
 
         provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')

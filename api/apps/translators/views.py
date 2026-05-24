@@ -82,7 +82,7 @@ class TranslatorFilter(django_filters.FilterSet):
 
     class Meta:
         model = Translator
-        fields = ['work_type']
+        fields = []
 
     def filter_queryset(self, queryset):
         source = self.data.get('source_language')

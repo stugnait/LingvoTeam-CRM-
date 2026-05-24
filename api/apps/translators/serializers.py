@@ -78,7 +78,6 @@ class TranslatorSerializer(serializers.ModelSerializer):
             'full_name',
             'email',
             'phone',
-            'work_type',
             'rating',
 
             'currency_id',
