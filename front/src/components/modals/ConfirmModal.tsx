@@ -9,6 +9,7 @@ import {
     DialogFooter,
 } from "../ui/dialog"
 import { Button } from "../ui/button"
+import { cn } from "@/src/lib/utils"
 
 interface ConfirmModalProps {
     open: boolean
@@ -42,22 +43,23 @@ export function ConfirmModal({
                              }: ConfirmModalProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="w-[calc(100vw-32px)] sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
 
-                <DialogFooter className="gap-2 sm:gap-0">
+                <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         disabled={isLoading}
+                        className="w-full sm:w-auto"
                     >
                         {cancelLabel}
                     </Button>
                     <Button
-                        className={variantStyles[confirmVariant]}
+                        className={cn(variantStyles[confirmVariant], "w-full sm:w-auto")}
                         onClick={onConfirm}
                         disabled={isLoading}
                     >

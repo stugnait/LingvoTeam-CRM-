@@ -39,12 +39,12 @@ export function MainClient({
 }: Props) {
     const isEmpty = filesCount === 0
     return (
-        <div className="max-w-4xl mx-auto mt-8 p-6 animate-fade-in">
+        <div className="max-w-4xl mx-auto mt-4 sm:mt-8 p-4 sm:p-6 animate-fade-in">
             {/* Хедер */}
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
                 <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                             Замовлення #{order.id}
                         </h1>
                         <Badge variant="outline" className="text-sm border-blue-200 bg-blue-50 text-blue-700">
@@ -56,14 +56,14 @@ export function MainClient({
 
             {error && (
                 <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 flex items-center gap-2 text-red-800 animate-slide-down">
-                    <AlertCircle className="h-5 w-5" />
+                    <AlertCircle className="h-5 w-5 shrink-0" />
                     <span className="text-sm font-medium">{error}</span>
                 </div>
             )}
 
-            <div className="grid gap-6">
+            <div className="grid gap-4 sm:gap-6">
                 {/* Основна інформація */}
-                <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="rounded-xl border border-blue-100 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
                         <div className="p-2 rounded-lg bg-blue-50">
                             <FileText className="h-5 w-5 text-blue-600" />
@@ -71,7 +71,7 @@ export function MainClient({
                         <span>Основна інформація</span>
                     </h2>
 
-                    <div className="grid md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 text-sm text-blue-400">
                                 <Languages className="h-4 w-4" />
@@ -102,10 +102,10 @@ export function MainClient({
 
 
                 {/* Завантаження файлів */}
-                <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="rounded-xl border border-blue-100 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between gap-3 mb-4">
                         <h2 className="text-lg font-semibold flex items-center gap-2 text-blue-800">
-                            <div className="p-2 rounded-lg bg-blue-50">
+                            <div className="p-2 rounded-lg bg-blue-50 shrink-0">
                                 <Eye className="h-5 w-5 text-blue-600" />
                             </div>
                             <span>Файли (final)</span>
@@ -147,7 +147,7 @@ export function MainClient({
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                                        className="border-blue-200 text-blue-700 hover:bg-blue-50 shrink-0"
                                         onClick={() => onDownloadFile?.(f.id, f.name)}
                                         disabled={downloadLoading || !onDownloadFile}
                                     >
@@ -172,7 +172,7 @@ export function MainClient({
                 </div>
 
                 {/* Статус */}
-                <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-blue-100 bg-white p-4 sm:p-6 shadow-sm">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
                         <div className="p-2 rounded-lg bg-blue-50">
                             <div className="relative">
@@ -216,7 +216,7 @@ export function MainClient({
                 </div>
 
                 {/* Інструкція */}
-                <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm">
+                <div className="rounded-xl border border-blue-100 bg-white p-4 sm:p-6 shadow-sm">
                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-blue-800">
                         <div className="p-2 rounded-lg bg-blue-50">
                             <Eye className="h-5 w-5 text-blue-600" />
@@ -224,7 +224,7 @@ export function MainClient({
                         <span>Як отримати переклад</span>
                     </h2>
 
-                    <div className="grid sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                         {[
                             { step: 1, title: "Завантажте файли", description: "Натисніть кнопку для завантаження вихідних файлів" },
                             { step: 2, title: "Виконайте переклад", description: "Перекладіть файли згідно з вимогами" },

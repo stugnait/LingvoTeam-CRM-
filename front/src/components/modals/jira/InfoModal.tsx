@@ -85,7 +85,7 @@ export function TaskModal({
                               onDownloadTranslation,
                               intake_manager,
                               delivery_manager,
-    editor,
+                              editor,
                               orderId,
                               sourceFiles = [],
                               targetFiles = [],
@@ -108,9 +108,9 @@ export function TaskModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-6xl max-h-[95vh] p-0 gap-0 overflow-hidden">
+            <DialogContent className="w-[calc(100vw-16px)] sm:max-w-6xl max-h-[95svh] sm:max-h-[95vh] p-0 gap-0 overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-3 border-b bg-white sticky top-0 z-10">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 border-b bg-white sticky top-0 z-10">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500">✓</span>
@@ -138,9 +138,9 @@ export function TaskModal({
                     </div>
                 </div>
 
-                <div className="flex overflow-hidden h-[calc(95vh-57px)]">
+                <div className="flex flex-col sm:flex-row overflow-hidden h-[calc(95svh-49px)] sm:h-[calc(95vh-57px)]">
                     {/* Main Content */}
-                    <div className="flex-1 overflow-y-auto px-6 py-4">
+                    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4">
                         {/* Title */}
                         <h1 className="text-xl font-semibold text-gray-900 mb-6 pr-8">
                             {taskTitle}
@@ -282,7 +282,7 @@ export function TaskModal({
                     </div>
 
                     {/* Right Sidebar */}
-                    <div className="w-80 border-l bg-gray-50 overflow-y-auto p-4">
+                    <div className="w-full sm:w-80 border-t sm:border-t-0 sm:border-l bg-gray-50 overflow-y-auto p-3 sm:p-4">
                         {/* Status Dropdown */}
                         <div className="mb-6">
                             <Button
@@ -423,8 +423,8 @@ export function TaskModal({
                                     <span className="text-sm font-medium">{delivery_manager?.name || 'Не призначено'}</span>
                                 </div>
                             </div>
+                        </div>
                     </div>
-                </div>
                 </div>
             </DialogContent>
         </Dialog>

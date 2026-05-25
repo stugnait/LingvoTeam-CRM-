@@ -54,7 +54,7 @@ export function CategoriesCard() {
 
     return (
 
-        <div className="border rounded-lg bg-card p-4 space-y-4">
+        <div className="border rounded-lg bg-card p-3 sm:p-4 space-y-4">
 
             <div className="flex items-center justify-between">
 

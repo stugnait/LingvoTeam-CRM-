@@ -56,105 +56,107 @@ export function UserTable({
     return (
         <>
             <div className="border border-border rounded-lg bg-card">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead>Role</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Joined</TableHead>
-                            <TableHead className="w-[70px]" />
-                        </TableRow>
-                    </TableHeader>
-
-                    <TableBody>
-                        {users.map((user) => (
-                            <TableRow key={user.id}>
-                                <TableCell>
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold overflow-hidden border">
-                                            {user.avatar ? (
-                                                <img
-                                                    src={getImageUrl(user.avatar)}
-                                                    alt={user.full_name}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : (
-                                                <span>{user.full_name?.charAt(0).toUpperCase() || "?"}</span>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium">{user.full_name}</p>
-                                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                                            <p className="text-sm text-muted-foreground">{user.phone}</p>
-                                        </div>
-                                    </div>
-                                </TableCell>
-
-                                <TableCell>
-                                    <Badge variant={getRoleVariant(user.role?.slug || user.role?.name)}>
-                                        {user.role?.name}
-                                    </Badge>
-                                </TableCell>
-
-                                <TableCell>
-                                    <Badge variant={getStatusVariant(user.is_active)}>
-                                        {getStatusLabel(user.is_active)}
-                                    </Badge>
-                                </TableCell>
-
-                                <TableCell className="text-muted-foreground">
-                                    {user.date_joined ? new Date(user.date_joined).toLocaleDateString() : "—"}
-                                </TableCell>
-
-                                <TableCell>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="sm">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => setPermUser(user)}>
-                                                <ShieldCheck className="h-4 w-4 mr-2" />
-                                                View permissions
-                                            </DropdownMenuItem>
-
-                                            <DropdownMenuItem onClick={() => onResetPassword(user.id)}>
-                                                <KeyRound className="h-4 w-4 mr-2" />
-                                                Reset password
-                                            </DropdownMenuItem>
-
-                                            <DropdownMenuItem onClick={() => onEdit(user)}>
-                                                <Pencil className="h-4 w-4 mr-2" />
-                                                Edit
-                                            </DropdownMenuItem>
-
-                                            <DropdownMenuItem onClick={() => onDeactivate(user)}>
-                                                {user.is_active ? (
-                                                    <><UserX className="h-4 w-4 mr-2" />Deactivate</>
-                                                ) : (
-                                                    <><UserCheck className="h-4 w-4 mr-2" />Activate</>
-                                                )}
-                                            </DropdownMenuItem>
-
-                                            <DropdownMenuItem
-                                                onClick={() => onDelete(user.id)}
-                                                className="text-destructive"
-                                            >
-                                                <Trash2 className="h-4 w-4 mr-2" />
-                                                Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
+                <div className="overflow-x-auto">
+                    <Table className="min-w-[580px]">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Joined</TableHead>
+                                <TableHead className="w-[70px]" />
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
 
-                <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
+                        <TableBody>
+                            {users.map((user) => (
+                                <TableRow key={user.id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold overflow-hidden border">
+                                                {user.avatar ? (
+                                                    <img
+                                                        src={getImageUrl(user.avatar)}
+                                                        alt={user.full_name}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <span>{user.full_name?.charAt(0).toUpperCase() || "?"}</span>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium">{user.full_name}</p>
+                                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                                                <p className="text-sm text-muted-foreground">{user.phone}</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+
+                                    <TableCell>
+                                        <Badge variant={getRoleVariant(user.role?.slug || user.role?.name)}>
+                                            {user.role?.name}
+                                        </Badge>
+                                    </TableCell>
+
+                                    <TableCell>
+                                        <Badge variant={getStatusVariant(user.is_active)}>
+                                            {getStatusLabel(user.is_active)}
+                                        </Badge>
+                                    </TableCell>
+
+                                    <TableCell className="text-muted-foreground">
+                                        {user.date_joined ? new Date(user.date_joined).toLocaleDateString() : "—"}
+                                    </TableCell>
+
+                                    <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="sm">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => setPermUser(user)}>
+                                                    <ShieldCheck className="h-4 w-4 mr-2" />
+                                                    View permissions
+                                                </DropdownMenuItem>
+
+                                                <DropdownMenuItem onClick={() => onResetPassword(user.id)}>
+                                                    <KeyRound className="h-4 w-4 mr-2" />
+                                                    Reset password
+                                                </DropdownMenuItem>
+
+                                                <DropdownMenuItem onClick={() => onEdit(user)}>
+                                                    <Pencil className="h-4 w-4 mr-2" />
+                                                    Edit
+                                                </DropdownMenuItem>
+
+                                                <DropdownMenuItem onClick={() => onDeactivate(user)}>
+                                                    {user.is_active ? (
+                                                        <><UserX className="h-4 w-4 mr-2" />Deactivate</>
+                                                    ) : (
+                                                        <><UserCheck className="h-4 w-4 mr-2" />Activate</>
+                                                    )}
+                                                </DropdownMenuItem>
+
+                                                <DropdownMenuItem
+                                                    onClick={() => onDelete(user.id)}
+                                                    className="text-destructive"
+                                                >
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20 flex-wrap px-2">
                     <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)}>
                         Previous
                     </Button>

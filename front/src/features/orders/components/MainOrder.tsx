@@ -214,37 +214,37 @@ export default function OrdersPage() {
             <DashboardHeader />
 
             <div className="space-y-6 w-full min-w-0 overflow-hidden px-4 md:px-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-6">
                     <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                         <button
                             onClick={() => setViewMode("table")}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
                                 viewMode === "table"
                                     ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
                                     : "text-gray-500 hover:text-gray-700"
                             )}
                         >
                             <LayoutList className="w-4 h-4"/>
-                            Таблиця
+                            <span className="hidden xs:inline">Таблиця</span>
                         </button>
                         <button
                             onClick={() => setViewMode("kanban")}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
                                 viewMode === "kanban"
                                     ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
                                     : "text-gray-500 hover:text-gray-700"
                             )}
                         >
                             <KanbanSquare className="w-4 h-4"/>
-                            Канбан
+                            <span className="hidden xs:inline">Канбан</span>
                         </button>
                     </div>
 
                     <Button
                         onClick={handleCreateClick}
-                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center gap-2 px-6"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center gap-2 px-4 sm:px-6"
                     >
                         <Plus className="w-5 h-5" />
                         Створити замовлення

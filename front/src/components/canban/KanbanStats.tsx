@@ -25,17 +25,17 @@ const KanbanStats: React.FC<KanbanStatsProps> = ({
                                                      getTasksForColumn
                                                  }) => {
     return (
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2">
-            <div className="flex items-center gap-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-6 py-3 shadow-xl backdrop-blur-sm">
+        <div className="fixed bottom-4 sm:bottom-8 left-1/2 transform -translate-x-1/2 w-[calc(100vw-32px)] sm:w-auto max-w-full">
+            <div className="flex items-center gap-3 sm:gap-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-3 sm:px-6 py-2 sm:py-3 shadow-xl backdrop-blur-sm overflow-x-auto scrollbar-none">
                 {columns.map((column) => {
                     const tasks = getTasksForColumn(column);
                     return (
-                        <div key={column.id} className="flex items-center gap-2">
+                        <div key={column.id} className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                             <div
-                                className="w-3 h-3 rounded-full"
+                                className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
                                 style={{ backgroundColor: column.color }}
                             />
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                            <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
                                 {column.title}: {tasks.length}
                             </span>
                         </div>

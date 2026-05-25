@@ -170,15 +170,15 @@ export default function FinanceTablePage() {
     return (
         <>
             <DashboardHeader />
-            <div className="flex flex-col h-full min-h-screen bg-background p-6">
-                <div className="mb-6 mx-4 flex items-center justify-between">
+            <div className="flex flex-col h-full min-h-screen bg-background p-3 sm:p-6">
+                <div className="mb-4 sm:mb-6 mx-1 sm:mx-4 flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Фінансова відомість</h1>
                         <p className="text-muted-foreground text-sm">Управління нарахуваннями, ставками та бонусами</p>
                     </div>
                 </div>
 
-                <div className="border border-border rounded-lg bg-card mx-4 shadow-soft overflow-hidden">
+                <div className="border border-border rounded-lg bg-card mx-1 sm:mx-4 shadow-soft overflow-hidden">
                     {/* ─── ПАНЕЛЬ ФІЛЬТРІВ ────────────────────────────────────────── */}
                     <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-b border-border bg-muted/10 gap-4">
                         <div className="flex items-center gap-4 w-full sm:w-auto">

@@ -106,10 +106,10 @@ export function RatingModal({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[calc(100vw-32px)] sm:max-w-[560px] p-0 gap-0 overflow-hidden max-h-[92svh] sm:max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 sticky top-0 z-10">
-                    <h2 className="text-xl font-semibold text-gray-900">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 sticky top-0 z-10">
+                    <h2 className="text-base sm:text-xl font-semibold text-gray-900">
                         {title}
                     </h2>
                     <Button
@@ -124,15 +124,15 @@ export function RatingModal({
                 </div>
 
                 {/* Content */}
-                <div className="px-8 py-6">
+                <div className="px-4 sm:px-8 py-4 sm:py-6">
                     {/* Rating Section */}
-                    <div className="flex flex-col items-center mb-6">
-                        <p className="text-base text-gray-700 mb-5 text-center">
+                    <div className="flex flex-col items-center mb-4 sm:mb-6">
+                        <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 text-center">
                             Як би ви оцінили виконання цього замовлення?
                         </p>
 
                         {/* Stars */}
-                        <div className="flex gap-3 mb-4">
+                        <div className="flex gap-2 sm:gap-3 mb-3 sm:mb-4">
                             {[1, 2, 3, 4, 5].map((star) => (
                                 <button
                                     key={star}
@@ -143,7 +143,7 @@ export function RatingModal({
                                     className="transition-transform hover:scale-110 active:scale-95 disabled:opacity-50"
                                 >
                                     <Star
-                                        className={`h-12 w-12 transition-colors ${
+                                        className={`h-9 w-9 sm:h-12 sm:w-12 transition-colors ${
                                             star <= displayRating
                                                 ? "fill-yellow-400 text-yellow-400"
                                                 : "fill-none text-gray-300"
@@ -296,19 +296,19 @@ export function RatingModal({
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 justify-end">
+                    <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 justify-end">
                         <Button
                             variant="outline"
                             onClick={handleCancel}
                             disabled={isLoading}
-                            className="min-w-[100px] border-gray-300 hover:bg-gray-50"
+                            className="w-full sm:w-auto sm:min-w-[100px] border-gray-300 hover:bg-gray-50"
                         >
                             Скасувати
                         </Button>
                         <Button
                             onClick={handleSubmit}
                             disabled={isLoading || rating === 0}
-                            className="min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full sm:w-auto sm:min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading
                                 ? "Відправка..."

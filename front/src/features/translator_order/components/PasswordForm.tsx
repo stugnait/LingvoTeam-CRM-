@@ -45,7 +45,7 @@ export function PasswordForm({ onSubmit, error, attempts, bannedUntil, onBanExpi
     }
 
     return (
-        <div className="max-w-md mx-auto mt-24 p-8 rounded-xl border bg-card shadow-lg animate-slide-up">
+        <div className="max-w-md mx-auto mt-12 sm:mt-24 p-5 sm:p-8 rounded-xl border bg-card shadow-lg animate-slide-up">
             <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
                     <KeyRound className="h-8 w-8 text-primary" />
@@ -73,7 +73,7 @@ export function PasswordForm({ onSubmit, error, attempts, bannedUntil, onBanExpi
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading || isBanned}
-                            className="pl-10 pr-10 h-11"
+                            className="pl-9 pr-9 sm:pl-10 sm:pr-10 h-11"
                             autoComplete="current-password"
                         />
                         <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

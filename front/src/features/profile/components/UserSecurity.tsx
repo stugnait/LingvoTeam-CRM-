@@ -67,7 +67,7 @@ export function UserSecurity() {
                     </p>
                 )}
 
-                <Button onClick={changePassword}>Change password</Button>
+                <Button className="w-full sm:w-auto" onClick={changePassword}>Change password</Button>
             </CardContent>
         </Card>
     )

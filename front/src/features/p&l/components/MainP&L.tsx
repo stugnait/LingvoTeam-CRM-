@@ -107,28 +107,28 @@ export function MainPnL() {
 
             <DashboardHeader />
 
-            <main className="flex-1 overflow-y-auto p-6">
+            <main className="flex-1 overflow-y-auto p-3 sm:p-6">
 
-                <div className="mx-auto max-w-6xl space-y-6">
+                <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
 
 
                     {/* PAGE HEADER */}
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
                         <div>
 
-                            <h2 className="text-2xl font-bold tracking-tight">
+                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                                 Finance
                             </h2>
 
-                            <p className="text-muted-foreground">
+                            <p className="text-muted-foreground text-sm">
                                 Track income, expenses and profit
                             </p>
 
                         </div>
 
-                        <Button onClick={openAddTransaction}>
+                        <Button onClick={openAddTransaction} className="w-full sm:w-auto">
 
                             <Plus className="h-4 w-4 mr-2"/>
 
@@ -143,7 +143,7 @@ export function MainPnL() {
                     </div>
 
 
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 
                         <KpiCard
                             title="Revenue"
@@ -185,9 +185,9 @@ export function MainPnL() {
 
                     {/* TABLE + CATEGORIES */}
 
-                    <div className="grid grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
 
-                        <Card className="col-span-2">
+                        <Card className="col-span-1 lg:col-span-2">
 
                             <CardHeader>
 
@@ -363,7 +363,7 @@ function KpiCard({ title, value }: { title: string, value?: number }) {
 
             <CardHeader className="pb-2">
 
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                     {title}
                 </p>
 
@@ -371,7 +371,7 @@ function KpiCard({ title, value }: { title: string, value?: number }) {
 
             <CardContent>
 
-                <p className="text-3xl font-bold tracking-tight">
+                <p className="text-xl sm:text-3xl font-bold tracking-tight">
 
                     {value !== undefined
                         ? `$${value.toLocaleString()}`

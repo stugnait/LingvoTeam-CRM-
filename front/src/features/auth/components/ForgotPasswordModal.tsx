@@ -23,13 +23,14 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
     const { email, setEmail, submit, isLoading, isSuccess, resetForm } = useForgotPassword()
 
     const handleOpenChange = (value: boolean) => {
-        if (!value) {resetForm()}
+        if (!value) { resetForm() }
         onOpenChange(value)
     }
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            {/* w-[calc(100%-2rem)] — модалка з відступами на мобільному */}
+            <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md rounded-xl">
                 <DialogHeader>
                     <DialogTitle>Forgot password</DialogTitle>
                     <DialogDescription>
@@ -45,7 +46,7 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                         <p className="text-sm text-muted-foreground">
                             Check your inbox — we&#39;ve sent the reset instructions.
                         </p>
-                        <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                        <Button variant="outline" onClick={() => handleOpenChange(false)} className="w-full sm:w-auto">
                             Close
                         </Button>
                     </div>
@@ -61,22 +62,29 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     disabled={isLoading}
-                                    className="pl-10"
+                                    // h-11 + text-base — запобігає зуму на iOS
+                                    className="pl-10 h-11 text-base sm:text-sm"
                                     onKeyDown={(e) => e.key === "Enter" && submit()}
                                 />
-                                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                             </div>
                         </div>
 
-                        <div className="flex gap-2 justify-end">
+                        {/* На мобільному — кнопки стекуються, Cancel знизу (flex-col-reverse) */}
+                        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-1">
                             <Button
                                 variant="outline"
                                 onClick={() => handleOpenChange(false)}
                                 disabled={isLoading}
+                                className="w-full sm:w-auto"
                             >
                                 Cancel
                             </Button>
-                            <Button onClick={submit} disabled={isLoading}>
+                            <Button
+                                onClick={submit}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto"
+                            >
                                 {isLoading ? (
                                     <>
                                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
