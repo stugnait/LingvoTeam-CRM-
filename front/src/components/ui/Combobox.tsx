@@ -94,8 +94,8 @@ export function Combobox({
                     align="start"
                     sideOffset={8}
                     className={cn(
-                        "z-[1000] w-[var(--radix-popover-trigger-width)] min-w-[200px]",
-                        "rounded-2xl border bg-white shadow-2xl overflow-hidden",
+                        "z-[1000] w-[var(--radix-popover-trigger-width)] min-w-0",
+                        "rounded-2xl border bg-popover shadow-2xl overflow-hidden",
                         "data-[side=bottom]:animate-in data-[side=bottom]:fade-in-0 data-[side=bottom]:zoom-in-95",
                         "data-[side=top]:animate-in data-[side=top]:fade-in-0 data-[side=top]:zoom-in-95",
                         "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
@@ -105,7 +105,7 @@ export function Combobox({
                     )}
                 >
                     {searchable && (
-                        <div className="p-2 border-b bg-white">
+                        <div className="p-2 border-b bg-popover">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                                 <input

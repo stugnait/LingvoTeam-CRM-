@@ -342,32 +342,32 @@ export function ExternalOrderView({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 gap-2 sm:gap-4">
                     <div className="relative group">
-                        <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
-                            <div className="text-4xl font-bold text-blue-600 mb-1">{pad(countdown.days)}</div>
-                            <div className="text-sm text-blue-400 font-medium">Днів</div>
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
+                            <div className="text-2xl sm:text-4xl font-bold text-blue-600 mb-1">{pad(countdown.days)}</div>
+                            <div className="text-xs sm:text-sm text-blue-400 font-medium">Днів</div>
                         </div>
                     </div>
                     <div className="relative group">
-                        <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
-                            <div className="text-4xl font-bold text-blue-600 mb-1">{pad(countdown.hours)}</div>
-                            <div className="text-sm text-blue-400 font-medium">Годин</div>
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
+                            <div className="text-2xl sm:text-4xl font-bold text-blue-600 mb-1">{pad(countdown.hours)}</div>
+                            <div className="text-xs sm:text-sm text-blue-400 font-medium">Годин</div>
                         </div>
                     </div>
                     <div className="relative group">
-                        <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
-                            <div className="text-4xl font-bold text-blue-600 mb-1">{pad(countdown.minutes)}</div>
-                            <div className="text-sm text-blue-400 font-medium">Хвилин</div>
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
+                            <div className="text-2xl sm:text-4xl font-bold text-blue-600 mb-1">{pad(countdown.minutes)}</div>
+                            <div className="text-xs sm:text-sm text-blue-400 font-medium">Хвилин</div>
                         </div>
                     </div>
                     <div className="relative group">
-                        <div className="bg-white rounded-2xl p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
-                            <div className="text-4xl font-bold text-blue-600 mb-1 relative">
+                        <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center shadow-lg border border-blue-100 group-hover:border-blue-300 group-hover:shadow-xl transition-all duration-300">
+                            <div className="text-2xl sm:text-4xl font-bold text-blue-600 mb-1 relative">
                                 {pad(countdown.seconds)}
                                 <span className="absolute -top-1 -right-2 w-2 h-2 bg-blue-500 rounded-full animate-ping" />
                             </div>
-                            <div className="text-sm text-blue-400 font-medium">Секунд</div>
+                            <div className="text-xs sm:text-sm text-blue-400 font-medium">Секунд</div>
                         </div>
                     </div>
                 </div>
@@ -398,7 +398,7 @@ export function ExternalOrderView({
     // ЗВИЧАЙНИЙ РЕЖИМ (РОБОТА НАД ЗАМОВЛЕННЯМ)
     // ==========================================
     return (
-        <div className="max-w-4xl mx-auto mt-8 p-6 animate-fade-in pb-32">
+        <div className="max-w-4xl mx-auto mt-4 sm:mt-8 p-3 sm:p-6 animate-fade-in pb-32">
             <ConfirmModal
                 open={showConfirmModal}
                 onOpenChange={setShowConfirmModal}
@@ -413,7 +413,7 @@ export function ExternalOrderView({
 
             {/* Хедер */}
             <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center gap-3">
                         <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                             Замовлення #{order.id}
@@ -423,7 +423,7 @@ export function ExternalOrderView({
                         </Badge>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         {/* статус */}
                         <div className="flex items-center gap-2 mr-4">
                             <div className="relative">
@@ -472,7 +472,7 @@ export function ExternalOrderView({
                         <span>Основна інформація</span>
                     </h2>
 
-                    <div className="grid md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 text-sm text-blue-400">
                                 <Languages className="h-4 w-4" />
@@ -630,7 +630,7 @@ export function ExternalOrderView({
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3">
+                    <div className="mt-6 flex flex-col sm:flex-row sm:justify-end gap-3">
                         <Button
                             className="bg-blue-600 hover:bg-blue-700"
                             onClick={() => void handleDownloadAllSource()}

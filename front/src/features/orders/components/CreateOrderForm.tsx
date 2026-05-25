@@ -308,7 +308,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     }, [filesConfirmed, trafficId, selectedTranslatorId, translatorTrafficId])
 
 
-const translatorTrafficOptions = useMemo(() => {
+    const translatorTrafficOptions = useMemo(() => {
         const currentTranslator = translators.find(t => t.id === selectedTranslatorId);
         if (!currentTranslator?.traffic) return [];
 
@@ -386,7 +386,7 @@ const translatorTrafficOptions = useMemo(() => {
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Combobox
                                 value={sourceLanguage}
                                 onChange={setSourceLanguage}
@@ -533,7 +533,7 @@ const translatorTrafficOptions = useMemo(() => {
                 <WizardStep>
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                     <Users className="h-4 w-4 text-blue-600" />
                                     Translator
@@ -873,7 +873,7 @@ const translatorTrafficOptions = useMemo(() => {
                             }))
                         }}
                     />
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
                             type="number"
                             min="0"

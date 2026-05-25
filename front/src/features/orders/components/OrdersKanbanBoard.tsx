@@ -179,7 +179,7 @@ export default function OrdersKanbanBoard({ orders, updateOrder, onTaskOpen }: O
                 onDragEnd={onDragEnd}
                 measuring={{droppable: {strategy: MeasuringStrategy.Always}}}
             >
-                <div className="flex gap-6 overflow-x-auto p-6 min-h-[calc(100vh-250px)]">
+                <div className="flex gap-4 sm:gap-6 overflow-x-auto p-3 sm:p-6 min-h-[calc(100vh-250px)]">
                     {MANAGER_COLUMNS.map((column) => {
                         const columnTasks = getTasksForColumn(column)
 

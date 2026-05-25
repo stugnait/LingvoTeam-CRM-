@@ -94,7 +94,6 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // 🔥 ВИПРАВЛЕНО: Правильно дістаємо дані з хука useMe
     const { user, loading } = useMe();
     const role = user?.role;
     const permissions = user?.permissions || [];
@@ -117,7 +116,6 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Якщо завантажується або немає юзера/ролі
     if (loading || !role) {
         return null;
     }
@@ -144,7 +142,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                 variant="ghost"
                 size="icon"
                 className={`
-                    fixed top-4 z-50 transition-all duration-300 lg:hidden
+                    fixed top-4 z-[100] transition-all duration-300 lg:hidden
                     ${isMobileOpen ? "left-[13rem]" : "left-4"}
                 `}
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -154,8 +152,8 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
 
             <aside
                 className={`
-                    fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-background transition-all duration-300 ease-in-out
-                    ${isMobile ? (isMobileOpen ? "w-64 translate-x-0" : "w-64 -translate-x-full") : collapsed ? "w-20 translate-x-0" : "w-64 translate-x-0"}
+                    fixed inset-y-0 left-0 z-[100] flex flex-col border-r bg-background transition-all duration-300 ease-in-out
+                    ${isMobile ? (isMobileOpen ? "w-64 translate-x-0 shadow-2xl" : "w-64 -translate-x-full") : collapsed ? "w-20 translate-x-0" : "w-64 translate-x-0"}
                 `}
             >
                 {!isMobile && (
@@ -290,7 +288,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
 
             {isMobileOpen && isMobile && (
                 <div
-                    className="fixed inset-0 z-30 bg-black/50 duration-200 animate-in fade-in"
+                    className="fixed inset-0 z-[90] bg-black/50 duration-200 animate-in fade-in backdrop-blur-sm"
                     onClick={() => setIsMobileOpen(false)}
                 />
             )}

@@ -119,7 +119,7 @@ export function CountrySelect({
                     align="start"
                     sideOffset={4}
                     className={cn(
-                        "relative z-50 max-h-96 min-w-[16rem] overflow-hidden rounded-xl border border-border bg-popover shadow-lg",
+                        "relative z-50 max-h-96 w-full min-w-0 overflow-hidden rounded-xl border border-border bg-popover shadow-lg",
                         "data-[state=open]:animate-in data-[state=closed]:animate-out",
                         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
                         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"

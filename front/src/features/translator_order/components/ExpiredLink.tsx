@@ -11,7 +11,7 @@ export function ExpiredLink() {
     }
 
     return (
-        <div className="max-w-md mx-auto mt-24 p-8 rounded-xl border bg-card shadow-lg text-center animate-fade-in">
+        <div className="max-w-md mx-auto mt-12 sm:mt-24 p-5 sm:p-8 rounded-xl border bg-card shadow-lg text-center animate-fade-in">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-destructive/10 mb-6">
                 <AlertCircle className="h-10 w-10 text-destructive" />
             </div>

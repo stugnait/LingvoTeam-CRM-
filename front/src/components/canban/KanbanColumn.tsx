@@ -62,8 +62,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
     // } = useEditor()
 
     return (
-        <div className="flex flex-col h-full w-[280px] flex-shrink-0 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex flex-col h-full w-[calc(100vw-32px)] sm:w-[280px] flex-shrink-0 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center gap-3">
                     <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -84,7 +84,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 </div>
             </div>
 
-            <div className="flex-1 p-3 space-y-3 overflow-y-auto min-h-[200px] max-h-[calc(100vh-220px)]">
+            <div className="flex-1 p-2 sm:p-3 space-y-2 sm:space-y-3 overflow-y-auto min-h-[200px] max-h-[calc(100svh-280px)] sm:max-h-[calc(100vh-220px)]">
                 <SortableContext
                     items={taskIds}
                     strategy={verticalListSortingStrategy}

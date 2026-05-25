@@ -96,8 +96,8 @@ export function KanbanDeadlineFilter({ active, onChange, tasks = [] }: DeadlineF
     );
 
     return (
-        <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm overflow-x-auto scrollbar-none">
-            <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-1 whitespace-nowrap flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-6 py-2 sm:py-2.5 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm overflow-x-auto scrollbar-none">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-1 whitespace-nowrap flex-shrink-0">
                 Deadline
             </span>
 
@@ -110,7 +110,7 @@ export function KanbanDeadlineFilter({ active, onChange, tasks = [] }: DeadlineF
                         key={preset.id}
                         onClick={() => onChange(preset.id)}
                         className={cn(
-                            "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 whitespace-nowrap flex-shrink-0",
+                            "inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-medium border transition-all duration-150 whitespace-nowrap flex-shrink-0",
                             isActive
                                 ? preset.activeClass
                                 : cn(
@@ -123,10 +123,11 @@ export function KanbanDeadlineFilter({ active, onChange, tasks = [] }: DeadlineF
                         <span className={isActive ? '' : preset.color}>
                             {preset.icon}
                         </span>
-                        {preset.label}
+                        <span className="hidden xs:inline sm:inline">{preset.label}</span>
+                        <span className="xs:hidden sm:hidden">{preset.label.split(' ')[0]}</span>
                         {count > 0 && (
                             <span className={cn(
-                                "inline-flex items-center justify-center rounded-full text-[10px] font-bold min-w-[16px] h-4 px-1",
+                                "inline-flex items-center justify-center rounded-full text-[10px] font-bold min-w-[14px] sm:min-w-[16px] h-3.5 sm:h-4 px-1",
                                 isActive
                                     ? "bg-white/20 text-white"
                                     : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"

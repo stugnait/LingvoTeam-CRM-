@@ -100,7 +100,7 @@ export function DeadlineSelector({
 
     return (
         <div className={cn("space-y-3", className)}>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex-1">
                     <input
                         type="date"
@@ -110,7 +110,7 @@ export function DeadlineSelector({
                         className="w-full px-3 py-2 border rounded-md"
                     />
                 </div>
-                <div className="w-32">
+                <div className="w-full sm:w-32">
                     <input
                         type="time"
                         value={timeString}

@@ -59,13 +59,13 @@ export function ClientPage() {
         <>
             <DashboardHeader />
 
-            <main className="flex-1 overflow-y-auto p-6">
-                <div className="mx-auto max-w-6xl space-y-6">
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
 
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-2xl font-bold tracking-tight">
+                            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                                 {viewMode === "clients" ? "Clients" : "Client Categories"}
                             </h2>
                             <p className="text-muted-foreground">
@@ -74,13 +74,13 @@ export function ClientPage() {
                         </div>
 
                         {/* Перемикач та Кнопка додавання */}
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
                             {/* СВІТЧ */}
-                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex-1 sm:flex-none">
                                 <button
                                     onClick={() => setViewMode("clients")}
                                     className={cn(
-                                        "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                        "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none justify-center",
                                         viewMode === "clients"
                                             ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
                                             : "text-gray-500 hover:text-gray-700"
@@ -92,7 +92,7 @@ export function ClientPage() {
                                 <button
                                     onClick={() => setViewMode("categories")}
                                     className={cn(
-                                        "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                        "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 sm:flex-none justify-center",
                                         viewMode === "categories"
                                             ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
                                             : "text-gray-500 hover:text-gray-700"
@@ -104,9 +104,9 @@ export function ClientPage() {
                             </div>
 
                             {/* Динамічна кнопка */}
-                            <Button onClick={viewMode === "clients" ? openAddClient : openAddCategory}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add {viewMode === "clients" ? "Client" : "Category"}
+                            <Button onClick={viewMode === "clients" ? openAddClient : openAddCategory} className="shrink-0">
+                                <Plus className="h-4 w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Add {viewMode === "clients" ? "Client" : "Category"}</span>
                             </Button>
                         </div>
                     </div>

@@ -119,10 +119,10 @@ export function UserWizardModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="p-0 gap-0 max-w-lg overflow-hidden bg-background">
+            <DialogContent className="p-0 gap-0 max-w-lg w-[95vw] sm:w-full overflow-hidden bg-background">
 
                 {/* ── Прогрес-хедер ── */}
-                <div className="px-6 pt-5 pb-4 border-b shrink-0">
+                <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b shrink-0">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-base font-semibold">
                             {isEdit ? "Редагування користувача" : "Новий користувач"}
@@ -157,12 +157,12 @@ export function UserWizardModal({
                 </div>
 
                 {/* ── Sliding content ── */}
-                <div className="relative overflow-hidden" style={{ minHeight: 420 }}>
+                <div className="relative overflow-hidden" style={{ minHeight: 380 }}>
 
                     {/* КРОК 1 — особисті дані */}
                     <div
                         className={cn(
-                            "absolute inset-0 flex flex-col gap-5 p-6 transition-transform duration-300 ease-in-out",
+                            "absolute inset-0 flex flex-col gap-5 p-4 sm:p-6 transition-transform duration-300 ease-in-out",
                             step === 1 ? "translate-x-0" : "-translate-x-full"
                         )}
                     >
@@ -254,7 +254,7 @@ export function UserWizardModal({
                     {/* КРОК 2 — роль + доступи */}
                     <div
                         className={cn(
-                            "absolute inset-0 flex flex-col gap-4 p-6 transition-transform duration-300 ease-in-out overflow-y-auto",
+                            "absolute inset-0 flex flex-col gap-4 p-4 sm:p-6 transition-transform duration-300 ease-in-out overflow-y-auto",
                             step === 2 ? "translate-x-0" : "translate-x-full"
                         )}
                     >
@@ -371,7 +371,7 @@ export function UserWizardModal({
                 </div>
 
                 {/* ── Футер ── */}
-                <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between bg-background">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-t shrink-0 flex items-center justify-between bg-background">
                     {step === 1 ? (
                         <>
                             <Button variant="ghost" onClick={() => onOpenChange(false)}>

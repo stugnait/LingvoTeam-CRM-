@@ -20,7 +20,6 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
     const [password, setPassword] = useState("")
     const [confirm, setConfirm] = useState("")
     const [isSuccess, setIsSuccess] = useState(false)
-
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirm, setShowConfirm] = useState(false)
 
@@ -28,7 +27,6 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
 
     const onSubmit = async () => {
         if (password !== confirm || !password.trim()) return
-
         try {
             await submit(password, confirm)
             setIsSuccess(true)
@@ -37,20 +35,18 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
         }
     }
 
-    // Кастомний екран успіху в стилі PasswordForm
     if (isSuccess) {
         return (
-            <div className="max-w-md mx-auto mt-24 p-8 rounded-xl border bg-card shadow-lg animate-slide-up text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 mb-6">
-                    <CheckCircle2 className="h-8 w-8 text-green-500" />
+            // mt-24 -> mt-8 на мобільному, p-8 -> p-5 на мобільному
+            <div className="max-w-md mx-auto mt-8 sm:mt-16 md:mt-24 p-5 sm:p-8 rounded-xl border bg-card shadow-lg animate-slide-up text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-500/10 mb-4 sm:mb-6">
+                    <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-green-500" />
                 </div>
-
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                     Пароль оновлено
                 </h1>
-
                 <div className="space-y-4 mt-4">
-                    <p className="text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground">
                         Ваш пароль було успішно змінено. <br />
                         <span className="font-medium text-foreground">Ви можете закрити дану сторінку</span>
                     </p>
@@ -60,25 +56,22 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
     }
 
     return (
-        <div className="max-w-md mx-auto mt-24 p-8 rounded-xl border bg-card shadow-lg animate-slide-up">
-            <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                    <ShieldCheck className="h-8 w-8 text-primary" />
+        <div className="max-w-md mx-auto mt-8 sm:mt-16 md:mt-24 p-5 sm:p-8 rounded-xl border bg-card shadow-lg animate-slide-up">
+            <div className="text-center mb-6 sm:mb-8">
+                <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 mb-3 sm:mb-4">
+                    <ShieldCheck className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                     Новий пароль
                 </h1>
-                <p className="text-muted-foreground mt-2">
+                <p className="text-sm text-muted-foreground mt-2">
                     Встановіть новий надійний пароль для вашого акаунту
                 </p>
             </div>
 
             <form
-                onSubmit={(e) => {
-                    e.preventDefault()
-                    onSubmit()
-                }}
-                className="space-y-6"
+                onSubmit={(e) => { e.preventDefault(); onSubmit() }}
+                className="space-y-5 sm:space-y-6"
             >
                 {/* New Password */}
                 <div className="space-y-3">
@@ -95,13 +88,15 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={isLoading}
-                            className="pl-10 pr-10 h-11"
+                            // h-11 + text-base — запобігає зуму на iOS
+                            className="pl-10 pr-11 h-11 text-base sm:text-sm"
                         />
-                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={showPassword ? "Сховати пароль" : "Показати пароль"}
                         >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -123,13 +118,14 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                             onChange={(e) => setConfirm(e.target.value)}
                             required
                             disabled={isLoading}
-                            className="pl-10 pr-10 h-11"
+                            className="pl-10 pr-11 h-11 text-base sm:text-sm"
                         />
-                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                         <button
                             type="button"
                             onClick={() => setShowConfirm(!showConfirm)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={showConfirm ? "Сховати пароль" : "Показати пароль"}
                         >
                             {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -138,7 +134,7 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
 
                 <Button
                     type="submit"
-                    className="w-full h-11 text-base"
+                    className="w-full h-12 sm:h-11 text-base sm:text-sm"
                     disabled={isLoading || !password.trim() || password !== confirm}
                 >
                     {isLoading ? (

@@ -206,9 +206,10 @@ export function PrioritySelectorHorizontal({
                             type="button"
                             onClick={() => handleChange(option.value)}
                             className={cn(
-                                "flex items-center gap-2 px-4 py-2.5 rounded-xl",
+                                "flex items-center gap-2 px-3 py-2 rounded-xl",
                                 "border-2 transition-all duration-200",
                                 "focus:outline-none focus:ring-2 focus:ring-offset-2",
+                                "min-w-0 flex-shrink-0",
                                 isSelected
                                     ? [
                                         option.borderColor,

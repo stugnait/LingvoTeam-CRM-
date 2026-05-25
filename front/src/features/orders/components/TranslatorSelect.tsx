@@ -25,12 +25,12 @@ interface TranslatorSelectProps {
 }
 
 export function TranslatorSelect({
-    translators,
-    value,
-    onChange,
-    disabled,
-    orderTrafficId,
-}: TranslatorSelectProps) {
+                                     translators,
+                                     value,
+                                     onChange,
+                                     disabled,
+                                     orderTrafficId,
+                                 }: TranslatorSelectProps) {
     const [loading, setLoading] = React.useState(false)
 
     // translator_id -> "40.00"
