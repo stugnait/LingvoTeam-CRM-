@@ -101,10 +101,10 @@ export function StatsPage() {
         <>
             <DashboardHeader />
 
-            <main className="flex-1 overflow-y-auto p-6">
-                <div className="mx-auto max-w-7xl space-y-6">
+            <main className="flex-1 overflow-y-auto p-3 sm:p-6">
+                <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
 
-                    <div className="flex justify-between items-end">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
                         <div>
                             <h2 className="text-2xl font-bold">Statistics Dashboard</h2>
                             <p className="text-muted-foreground">
@@ -124,7 +124,7 @@ export function StatsPage() {
                     </Card>
 
                     {/* KPI CARDS */}
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                         <KpiCard title="Revenue" value={pnl?.summary.revenue} />
                         <KpiCard title="Profit" value={pnl?.summary.net_profit} />
                         <KpiCard title="Margin %" value={pnl?.summary.gross_margin_percent} />
@@ -132,7 +132,7 @@ export function StatsPage() {
                     </div>
 
                     <Tabs defaultValue="charts" className="space-y-6">
-                        <TabsList className="grid w-[400px] grid-cols-2">
+                        <TabsList className="grid w-full sm:w-[400px] grid-cols-2">
                             <TabsTrigger value="charts" className="flex items-center gap-2">
                                 <BarChart3 className="w-4 h-4" /> Charts
                             </TabsTrigger>
@@ -169,24 +169,24 @@ export function StatsPage() {
 
                         {/* --- Вкладка: ТАБЛИЦІ --- */}
                         <TabsContent value="tables" className="space-y-6">
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <OrdersMiniTable title="Unpaid" data={unpaidOrders} />
                                 <OrdersMiniTable title="Overdue" data={overduePayments} />
                                 <OrdersMiniTable title="High Risk" data={highRiskOrders} />
                             </div>
 
-                    {/* STATS TABLES */}
-                    <div className="grid grid-cols-3 gap-4">
-                        <StatsTable title="Managers" data={managersStats} />
-                        <StatsTable title="Clients" data={clientsStats} />
-                        <StatsTable title="Translators" data={translatorsStats} />
-                    </div>
+                            {/* STATS TABLES */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <StatsTable title="Managers" data={managersStats} />
+                                <StatsTable title="Clients" data={clientsStats} />
+                                <StatsTable title="Translators" data={translatorsStats} />
+                            </div>
 
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Conversion</CardTitle>
                                 </CardHeader>
-                                <CardContent className="flex gap-6">
+                                <CardContent className="flex flex-wrap gap-4 sm:gap-6">
                                     <div>Total: {conversion?.total_requests}</div>
                                     <div>Accepted: {conversion?.accepted_services}</div>
                                     <div>Rejected: {conversion?.refused_services}</div>

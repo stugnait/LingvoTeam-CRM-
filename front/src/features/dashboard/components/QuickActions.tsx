@@ -11,15 +11,15 @@ const actions = [
 
 export function QuickActions() {
     return (
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
             <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
                 {actions.map((action, index) => {
                     const Icon = action.icon
                     return (
-                        <Button key={index} variant={action.variant} className="h-auto py-4 flex-col gap-2">
+                        <Button key={index} variant={action.variant} className="h-auto py-3 sm:py-4 flex-col gap-2">
                             <Icon className="h-5 w-5" />
-                            <span className="text-sm">{action.label}</span>
+                            <span className="text-xs sm:text-sm">{action.label}</span>
                         </Button>
                     )
                 })}

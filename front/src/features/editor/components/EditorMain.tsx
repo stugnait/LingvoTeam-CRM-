@@ -166,7 +166,7 @@ export default function EditorMain() {
                 allTasks={allTasks}
             />
 
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
@@ -179,7 +179,7 @@ export default function EditorMain() {
                         onDragEnd={onDragEnd}
                         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
                     >
-                        <div className="flex gap-6 overflow-x-auto pb-6 -mx-6 px-6">
+                        <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-6 -mx-3 sm:-mx-6 px-3 sm:px-6">
                             {columnsWithIcons.map((column) => (
                                 <KanbanColumn
                                     key={column.id}

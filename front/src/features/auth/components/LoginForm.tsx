@@ -33,9 +33,10 @@ export function LoginForm() {
                             required
                             disabled={isLoading}
                             autoComplete="email"
-                            className="pl-10"
+                            // h-11 + text-base: запобігає авто-зуму на iOS (font-size < 16px)
+                            className="pl-10 h-11 text-base sm:text-sm"
                         />
-                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     </div>
                 </div>
 
@@ -49,7 +50,8 @@ export function LoginForm() {
                         <button
                             type="button"
                             onClick={() => setIsForgotPasswordOpen(true)}
-                            className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200"
+                            // py-1 px-1 — більша зона кліку на мобільному
+                            className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200 py-1 px-1 -mr-1"
                         >
                             Forgot password?
                         </button>
@@ -65,29 +67,26 @@ export function LoginForm() {
                             required
                             disabled={isLoading}
                             autoComplete="current-password"
-                            className="pl-10 pr-10"
+                            className="pl-10 pr-11 h-11 text-base sm:text-sm"
                         />
-                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        {/* Розширена зона кліку для eye-toggle */}
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={showPassword ? "Hide password" : "Show password"}
                         >
-                            {showPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                            ) : (
-                                <Eye className="h-4 w-4" />
-                            )}
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                     </div>
                 </div>
 
-                {/* Submit */}
+                {/* Submit — h-12 на мобільному для зручного дотику */}
                 <Button
                     type="submit"
-                    className="w-full mt-6"
+                    className="w-full mt-6 h-12 sm:h-10 text-base sm:text-sm"
                     disabled={isLoading}
-                    size="lg"
                 >
                     {isLoading ? (
                         <>

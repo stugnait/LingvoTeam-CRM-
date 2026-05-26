@@ -32,24 +32,25 @@ export function BaseFormModal({
                               }: BaseFormModalProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="w-[calc(100%-32px)] sm:w-full sm:max-w-lg max-h-[90svh] overflow-y-auto left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] rounded-lg">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="space-y-4 my-2">
                     {children}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-2 justify-end">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         disabled={isLoading}
+                        className="w-full sm:w-auto"
                     >
                         {cancelLabel}
                     </Button>
-                    <Button onClick={onSubmit} disabled={isLoading}>
+                    <Button onClick={onSubmit} disabled={isLoading} className="w-full sm:w-auto">
                         {submitLabel}
                     </Button>
                 </DialogFooter>

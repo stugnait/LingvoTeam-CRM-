@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/src/lib/utils"
-import { LayoutDashboard, Users, Languages, Settings, DollarSign } from "lucide-react"
+import { LayoutDashboard, Users, Languages, Settings, DollarSign, X } from "lucide-react"
 
 const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -13,12 +13,17 @@ const navigation = [
     { name: "Tariffs", href: "/dashboard/tariffs", icon: DollarSign },
 ]
 
-export function DashboardSidebar() {
+interface DashboardSidebarProps {
+    isOpen?: boolean
+    onClose?: () => void
+}
+
+export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
     const pathname = usePathname()
 
-    return (
-        <aside className="w-64 border-r border-border bg-card flex flex-col">
-            <div className="p-6 border-b border-border">
+    const sidebarContent = (
+        <>
+            <div className="p-6 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                         <svg className="h-5 w-5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,6 +37,14 @@ export function DashboardSidebar() {
                     </div>
                     <span className="text-lg font-semibold">Translation CRM</span>
                 </div>
+                {/* Close button — тільки на мобільному */}
+                <button
+                    onClick={onClose}
+                    className="lg:hidden p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    aria-label="Close menu"
+                >
+                    <X className="h-5 w-5" />
+                </button>
             </div>
 
             <nav className="flex-1 p-4 space-y-1">
@@ -42,6 +55,7 @@ export function DashboardSidebar() {
                         <Link
                             key={item.name}
                             href={item.href}
+                            onClick={onClose}
                             className={cn(
                                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                                 isActive
@@ -55,6 +69,31 @@ export function DashboardSidebar() {
                     )
                 })}
             </nav>
-        </aside>
+        </>
+    )
+
+    return (
+        <>
+            {/* Десктоп: статичний sidebar */}
+            <aside className="hidden lg:flex w-64 border-r border-border bg-card flex-col">
+                {sidebarContent}
+            </aside>
+
+            {/* Мобільний: overlay + drawer */}
+            {isOpen && (
+                <div className="lg:hidden fixed inset-0 z-50 flex">
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={onClose}
+                        aria-hidden="true"
+                    />
+                    {/* Drawer */}
+                    <aside className="relative z-10 w-72 max-w-[85vw] bg-card flex flex-col h-full shadow-xl animate-in slide-in-from-left duration-200">
+                        {sidebarContent}
+                    </aside>
+                </div>
+            )}
+        </>
     )
 }

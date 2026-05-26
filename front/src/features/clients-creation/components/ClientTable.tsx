@@ -47,87 +47,106 @@ export function ClientTable({
 
     return (
         <div className="border border-border rounded-lg bg-card">
-            <Table>
 
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead className="w-[70px]" />
-                    </TableRow>
-                </TableHeader>
-
-                <TableBody>
-
-                    {clients.map((client) => (
-                        <TableRow key={client.id}>
-
-                            <TableCell className="font-medium">
-                                {client.full_name}
-                            </TableCell>
-
-                            <TableCell>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant={client.category ? "secondary" : "outline"}>
-                                        {client.category ? client.category_name : "Без категорії"}
-                                    </Badge>
-                                    {client.category && client.discount_percent !== null && (
-                                        <Badge variant="outline" className="text-xs text-muted-foreground">
-                                            -{client.discount_percent}%
-                                        </Badge>
-                                    )}
-                                </div>
-                            </TableCell>
-
-                            <TableCell>
-                                {client.email || "—"}
-                            </TableCell>
-
-                            <TableCell>
-                                {client.phone_number || "—"}
-                            </TableCell>
-
-                            <TableCell>
-
-                                <DropdownMenu>
-
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm">
-                                            <MoreHorizontal className="h-4 w-4"/>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-
-                                    <DropdownMenuContent align="end">
-
-                                        <DropdownMenuItem
-                                            onClick={() => onEdit(client)}
-                                        >
-                                            <Pencil className="h-4 w-4 mr-2"/>
-                                            Edit
-                                        </DropdownMenuItem>
-
-                                        <DropdownMenuItem
-                                            onClick={() => onDelete(client)}
-                                            className="text-destructive"
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2"/>
-                                            Delete
-                                        </DropdownMenuItem>
-
-                                    </DropdownMenuContent>
-
-                                </DropdownMenu>
-
-                            </TableCell>
-
+            {/* Desktop таблиця */}
+            <div className="hidden sm:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead className="w-[70px]" />
                         </TableRow>
-                    ))}
+                    </TableHeader>
 
-                </TableBody>
-            </Table>
+                    <TableBody>
+                        {clients.map((client) => (
+                            <TableRow key={client.id}>
+                                <TableCell className="font-medium">
+                                    {client.full_name}
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant={client.category ? "secondary" : "outline"}>
+                                            {client.category ? client.category_name : "Без категорії"}
+                                        </Badge>
+                                        {client.category && client.discount_percent !== null && (
+                                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                                                -{client.discount_percent}%
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </TableCell>
+                                <TableCell>{client.email || "—"}</TableCell>
+                                <TableCell>{client.phone_number || "—"}</TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm">
+                                                <MoreHorizontal className="h-4 w-4"/>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => onEdit(client)}>
+                                                <Pencil className="h-4 w-4 mr-2"/>
+                                                Edit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => onDelete(client)} className="text-destructive">
+                                                <Trash2 className="h-4 w-4 mr-2"/>
+                                                Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
 
+            {/* Мобільні картки */}
+            <div className="sm:hidden divide-y divide-border">
+                {clients.map((client) => (
+                    <div key={client.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                        <div className="min-w-0 space-y-1">
+                            <p className="font-medium text-sm truncate">{client.full_name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{client.email || "—"}</p>
+                            <p className="text-xs text-muted-foreground">{client.phone_number || "—"}</p>
+                            <div className="flex items-center gap-1 flex-wrap">
+                                <Badge variant={client.category ? "secondary" : "outline"} className="text-xs">
+                                    {client.category ? client.category_name : "Без категорії"}
+                                </Badge>
+                                {client.category && client.discount_percent !== null && (
+                                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                                        -{client.discount_percent}%
+                                    </Badge>
+                                )}
+                            </div>
+                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="shrink-0">
+                                    <MoreHorizontal className="h-4 w-4"/>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => onEdit(client)}>
+                                    <Pencil className="h-4 w-4 mr-2"/>
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onDelete(client)} className="text-destructive">
+                                    <Trash2 className="h-4 w-4 mr-2"/>
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                ))}
+            </div>
+
+            {/* Пагінація — без змін */}
             <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
                 <Button
                     variant="outline"

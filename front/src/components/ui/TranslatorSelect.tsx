@@ -156,7 +156,7 @@ export function TranslatorSelect({
                     onClick={() => setIsOpen(!isOpen)}
                     className={cn(
                         "w-full px-3 py-2 bg-white dark:bg-gray-900 border rounded-lg",
-                        "flex items-center justify-between",
+                        "flex items-start justify-between",
                         "transition-all duration-200",
                         "text-sm",
                         isOpen
@@ -165,12 +165,14 @@ export function TranslatorSelect({
                     )}
                 >
                     {selectedTranslator ? (
-                        <div className="flex items-center gap-1.5 min-w-0 truncate text-gray-900 dark:text-gray-100">
-                            <span className="whitespace-nowrap">ID: {selectedTranslator.id}</span>
-                            <span className="truncate">{getDisplayName(selectedTranslator)}</span>
+                        <div className="flex flex-col min-w-0 flex-1 text-left">
+                            <div className="flex items-center gap-1.5 min-w-0 text-gray-900 dark:text-gray-100">
+                                <span className="text-xs text-gray-500 whitespace-nowrap">#{selectedTranslator.id}</span>
+                                <span className="truncate font-medium">{getDisplayName(selectedTranslator)}</span>
+                            </div>
                             {orderTrafficId && !loadingMargins && marginByTranslator[selectedTranslator.id] && (
-                                <span className="whitespace-nowrap">
-                                    • Margin: {Number(marginByTranslator[selectedTranslator.id].percent).toFixed(1)}%
+                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                    Margin: {Number(marginByTranslator[selectedTranslator.id].percent).toFixed(1)}%
                                 </span>
                             )}
                         </div>
@@ -232,34 +234,27 @@ export function TranslatorSelect({
                                                     value === translator.id && "bg-blue-50 dark:bg-blue-900/20"
                                                 )}
                                             >
-                                                <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate text-gray-900 dark:text-gray-100">
-                                                    <span className="whitespace-nowrap">ID: {translator.id}</span>
-                                                    <span className="truncate">{displayName}</span>
-
-                                                    {mi && (
-                                                        <span className="whitespace-nowrap">• {Number(mi.percent).toFixed(1)}%</span>
-                                                    )}
-
-                                                    {/* ФОЛБЕК ДЛЯ МОВНОЇ ПАРИ (працює і для Quick Create) */}
-                                                    {orderTrafficId && (
-                                                        <span className="whitespace-nowrap">
-                                                            | {match?.lp || "Нема мовної пари"} {match?.cat || "Нема категорії"}
-                                                        </span>
-                                                    )}
-
-                                                    {/* ВИПРАВЛЕНИЙ РЕЙТИНГ (відобразить 0, якщо значення немає або воно = 0) */}
-                                                    <span className="whitespace-nowrap">
-                                                        | ⭐ {translator.rating ?? 0}
-                                                    </span>
-
-                                                    {translator.specializations && translator.specializations.length > 0 && (
-                                                        <span className="truncate">| {translator.specializations.slice(0, 2).join(", ")}</span>
-                                                    )}
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <div className="flex items-center gap-1.5 min-w-0 text-gray-900 dark:text-gray-100">
+                                                        <span className="whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">#{translator.id}</span>
+                                                        <span className="truncate font-medium">{displayName}</span>
+                                                        {value === translator.id && (
+                                                            <CheckCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                                        {mi && (
+                                                            <span className="whitespace-nowrap">Margin: {Number(mi.percent).toFixed(1)}%</span>
+                                                        )}
+                                                        {orderTrafficId && (
+                                                            <span className="whitespace-nowrap">{match?.lp || "No lang pair"} {match?.cat || ""}</span>
+                                                        )}
+                                                        <span className="whitespace-nowrap">⭐ {translator.rating ?? 0}</span>
+                                                        {translator.specializations && translator.specializations.length > 0 && (
+                                                            <span className="truncate">{translator.specializations.slice(0, 2).join(", ")}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-
-                                                {value === translator.id && (
-                                                    <CheckCircle className="h-4 w-4 text-blue-600 flex-shrink-0 ml-2" />
-                                                )}
                                             </button>
                                         )
                                     })

@@ -827,12 +827,26 @@
 
 .auth-container {
     min-height: 100vh;
+    /* На мобільному — мінімальні відступи */
+    padding: 1rem;
     background: linear-gradient(
             135deg,
             var(--background) 0%,
             color-mix(in oklch, var(--background), white) 50%,
             color-mix(in oklch, var(--primary), transparent 95%) 100%
     );
+}
+
+@media (min-width: 640px) {
+    .auth-container {
+        padding: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .auth-container {
+        padding: 2rem;
+    }
 }
 
 .dark .auth-container {
@@ -849,7 +863,8 @@
     max-width: 28rem;
     margin-left: auto;
     margin-right: auto;
-    padding: 2.5rem;
+    /* Мобільний padding менший */
+    padding: 1.25rem;
     background-color: var(--card);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
@@ -857,17 +872,43 @@
     backdrop-filter: blur(8px);
 }
 
+@media (min-width: 480px) {
+    .auth-card {
+        padding: 1.75rem;
+    }
+}
+
+@media (min-width: 640px) {
+    .auth-card {
+        padding: 2.5rem;
+    }
+}
+
 .auth-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (min-width: 640px) {
+    .auth-header {
+        margin-bottom: 2rem;
+    }
 }
 
 .auth-title {
-    font-size: 1.875rem;
+    /* Менший розмір на мобільному */
+    font-size: 1.5rem;
     font-weight: 700;
-    line-height: 2.25rem;
+    line-height: 2rem;
     color: var(--foreground);
     margin-bottom: 0.5rem;
+}
+
+@media (min-width: 640px) {
+    .auth-title {
+        font-size: 1.875rem;
+        line-height: 2.25rem;
+    }
 }
 
 .auth-subtitle {
@@ -879,13 +920,51 @@
 .auth-form {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    /* Менший gap між полями на мобільному */
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .auth-form {
+        gap: 1.25rem;
+    }
+}
+
+.auth-form input {
+    min-height: 44px;
+    font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+    .auth-form input {
+        min-height: auto;
+        font-size: 0.875rem;
+    }
+}
+
+.auth-form button[type="submit"],
+.auth-form .btn {
+    min-height: 48px;
+}
+
+@media (min-width: 640px) {
+    .auth-form button[type="submit"],
+    .auth-form .btn {
+        min-height: 40px;
+    }
 }
 
 .auth-divider {
     position: relative;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
+    margin-top: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (min-width: 640px) {
+    .auth-divider {
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
 }
 
 .auth-divider::before {
@@ -914,7 +993,13 @@
     font-size: 0.875rem;
     line-height: 1.25rem;
     color: var(--muted-foreground);
-    margin-top: 1.5rem;
+    margin-top: 1rem;
+}
+
+@media (min-width: 640px) {
+    .auth-footer {
+        margin-top: 1.5rem;
+    }
 }
 
 .auth-link {
@@ -926,6 +1011,18 @@
 .auth-link:hover {
     color: var(--primary-dark);
     text-decoration: underline;
+}
+
+/* =========================
+   RESET PASSWORD — мобільна адаптація
+   ResetPasswordForm використовує mt-24 (96px) — на мобільному замалюємо через утиліту нижче
+========================= */
+
+@media (max-width: 639px) {
+    .reset-password-wrapper {
+        margin-top: 1.5rem !important;
+        padding: 1.25rem !important;
+    }
 }
 
 /* =========================

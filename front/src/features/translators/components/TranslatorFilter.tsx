@@ -67,7 +67,7 @@ export function TranslatorsFilters({
                     setOrdering(val === "default" ? null : (val as any))
                 }
             >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full lg:w-[200px]">
                     <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -89,7 +89,7 @@ export function TranslatorsFilters({
                     setSearch("")  // скидаємо пошук
                 }}
             >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full lg:w-[200px]">
                     <SelectValue placeholder="Source language" />
                 </SelectTrigger>
                 <SelectContent>
@@ -110,7 +110,7 @@ export function TranslatorsFilters({
                     setSearch("")
                 }}
             >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full lg:w-[200px]">
                     <SelectValue placeholder="Target language" />
                 </SelectTrigger>
                 <SelectContent>

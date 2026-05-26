@@ -41,7 +41,7 @@ export function UserBasicInfo() {
                     }
                 />
 
-                <Button onClick={saveProfile}>Save changes</Button>
+                <Button className="w-full sm:w-auto" onClick={saveProfile}>Save changes</Button>
             </CardContent>
         </Card>
     )

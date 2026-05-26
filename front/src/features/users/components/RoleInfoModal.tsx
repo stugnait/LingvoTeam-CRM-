@@ -49,7 +49,7 @@ export function RoleInfoModal({ open, onOpenChange, roleData }: RoleInfoModalPro
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="p-0 gap-0 max-w-2xl h-[500px] flex flex-col overflow-hidden">
+            <DialogContent className="p-0 gap-0 max-w-2xl w-[95vw] sm:w-full h-[90vh] sm:h-[500px] flex flex-col overflow-hidden">
                 <div className="px-6 pt-5 pb-4 border-b shrink-0">
                     <div className="flex items-center gap-2">
                         <Shield className="h-5 w-5 text-primary" />
@@ -63,7 +63,7 @@ export function RoleInfoModal({ open, onOpenChange, roleData }: RoleInfoModalPro
                 </div>
 
                 <div className="flex flex-1 overflow-hidden">
-                    <div className="w-48 shrink-0 border-r bg-muted/30 overflow-y-auto py-3">
+                    <div className="w-36 sm:w-48 shrink-0 border-r bg-muted/30 overflow-y-auto py-3">
                         <p className="px-4 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Категорії
                         </p>
@@ -75,7 +75,7 @@ export function RoleInfoModal({ open, onOpenChange, roleData }: RoleInfoModalPro
                                 key={group}
                                 onClick={() => setRoleInfoTab(group)}
                                 className={cn(
-                                    "w-full flex items-center justify-between px-4 py-2 text-sm transition-colors",
+                                    "w-full flex items-center justify-between px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors",
                                     roleInfoTab === group
                                         ? "bg-primary/10 text-primary font-medium"
                                         : "hover:bg-muted text-foreground"

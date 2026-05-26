@@ -15,7 +15,7 @@ interface Props {
 export function TranslatorTrafficTable({ traffic, onEdit, onDelete }: Props) {
     return (
         <div className="border border-border rounded-lg bg-card overflow-x-auto">
-            <Table>
+            <Table className="min-w-[640px]">
                 <TableHeader>
                     <TableRow>
                         <TableHead>Name</TableHead>

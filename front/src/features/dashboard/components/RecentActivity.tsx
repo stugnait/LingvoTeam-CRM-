@@ -9,18 +9,18 @@ const activities = [
 
 export function RecentActivity() {
     return (
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
             <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
             <div className="space-y-4">
                 {activities.map((activity, index) => (
                     <div key={index} className="flex items-start gap-3 pb-4 border-b border-border last:border-0 last:pb-0">
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-medium text-primary">
-                {activity.user
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-              </span>
+                            <span className="text-xs font-medium text-primary">
+                                {activity.user
+                                    .split(" ")
+                                    .map((n) => n[0])
+                                    .join("")}
+                            </span>
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm">

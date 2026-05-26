@@ -115,14 +115,14 @@ const SelectContent = React.forwardRef<
                 className={cn(
                     "z-[1000] min-w-[var(--radix-select-trigger-width)]",
                     "max-h-72 overflow-hidden",
-                    "rounded-2xl border bg-white shadow-2xl",
+                    "rounded-2xl border bg-popover shadow-2xl",
                     "data-[side=bottom]:animate-in data-[side=bottom]:fade-in-0 data-[side=bottom]:zoom-in-95",
                     "data-[side=top]:animate-in data-[side=top]:fade-in-0 data-[side=top]:zoom-in-95",
                     className
                 )}
                 {...props}
             >
-            {searchable && (
+                {searchable && (
                     <div className="p-2 border-b sticky top-0 bg-popover/95 backdrop-blur-xl z-10">
                         <input
                             value={search}

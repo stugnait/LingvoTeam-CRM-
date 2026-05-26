@@ -131,11 +131,11 @@ export function TariffForm({
                             </div>
                         </div>
 
-                        <div className="flex gap-2 justify-end pt-2">
+                        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-2">
                             <button
                                 type="button"
                                 onClick={() => setIsNewPairModalOpen(false)}
-                                className="px-4 py-2 rounded-xl border text-sm hover:bg-accent/10 transition-all"
+                                className="w-full sm:w-auto px-4 py-2 rounded-xl border text-sm hover:bg-accent/10 transition-all"
                             >
                                 Скасувати
                             </button>
@@ -143,7 +143,7 @@ export function TariffForm({
                                 type="button"
                                 onClick={createAndSelectPair}
                                 disabled={newPairLoading}
-                                className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm
+                                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm
                                            hover:bg-primary/90 disabled:opacity-50 transition-all"
                             >
                                 {newPairLoading ? "Створення..." : "Створити і вибрати"}

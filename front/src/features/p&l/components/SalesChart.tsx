@@ -58,11 +58,11 @@ export function SalesChart({ data, loading }: SalesChartProps) {
     }, [data])
 
     if (loading) {
-        return <div className="flex h-[350px] items-center justify-center text-muted-foreground">Завантаження графіка...</div>
+        return <div className="flex h-[220px] sm:h-[350px] items-center justify-center text-muted-foreground">Завантаження графіка...</div>
     }
 
     if (!data || data.length === 0) {
-        return <div className="flex h-[350px] items-center justify-center text-muted-foreground">Немає даних для відображення</div>
+        return <div className="flex h-[220px] sm:h-[350px] items-center justify-center text-muted-foreground">Немає даних для відображення</div>
     }
 
     const options: any = {
@@ -139,7 +139,7 @@ export function SalesChart({ data, loading }: SalesChartProps) {
     }]
 
     return (
-        <div className="w-full h-[350px]">
+        <div className="w-full h-[220px] sm:h-[350px]">
             <Chart options={options} series={series} type="area" height="100%" width="100%" />
         </div>
     )

@@ -52,22 +52,22 @@ export function RejectOrderModal({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[480px] p-0 gap-0 overflow-hidden">
+            <DialogContent className="w-[calc(100vw-32px)] sm:max-w-[480px] p-0 gap-0 overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                            <AlertCircle className="h-5 w-5 text-red-600" />
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b bg-white">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                         </div>
-                        <h2 className="text-lg font-semibold text-gray-900">
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-900">
                             Відхилення замовлення
                         </h2>
                     </div>
                 </div>
 
                 {/* Content */}
-                <div className="px-6 py-6">
-                    <p className="text-base text-gray-700 mb-6">
+                <div className="px-4 sm:px-6 py-4 sm:py-6">
+                    <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-6">
                         Чи дійсно ви хочете відхилити замовлення?
                     </p>
 
@@ -77,14 +77,14 @@ export function RejectOrderModal({
                                 variant="outline"
                                 onClick={handleNo}
                                 disabled={isLoading}
-                                className="min-w-[80px] border-gray-300 hover:bg-gray-50"
+                                className="flex-1 sm:flex-none min-w-[80px] border-gray-300 hover:bg-gray-50"
                             >
                                 Ні
                             </Button>
                             <Button
                                 onClick={handleYes}
                                 disabled={isLoading}
-                                className="min-w-[80px] bg-red-600 hover:bg-red-700 text-white"
+                                className="flex-1 sm:flex-none min-w-[80px] bg-red-600 hover:bg-red-700 text-white"
                             >
                                 Так
                             </Button>
@@ -104,19 +104,19 @@ export function RejectOrderModal({
                                 />
                             </div>
 
-                            <div className="flex gap-3 justify-end pt-2">
+                            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 justify-end pt-2">
                                 <Button
                                     variant="outline"
                                     onClick={handleNo}
                                     disabled={isLoading}
-                                    className="min-w-[100px] border-gray-300 hover:bg-gray-50"
+                                    className="w-full sm:w-auto sm:min-w-[100px] border-gray-300 hover:bg-gray-50"
                                 >
                                     Скасувати
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
                                     disabled={isLoading}
-                                    className="min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white"
+                                    className="w-full sm:w-auto sm:min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white"
                                 >
                                     {isLoading ? "Відправка..." : "Відправити звіт"}
                                 </Button>
