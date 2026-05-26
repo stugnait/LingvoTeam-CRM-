@@ -261,8 +261,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         generated_link_slug = str(uuid.uuid4())
         generated_password = secrets.token_urlsafe(8)
-        client_generated_link_slug = str(uuid.uuid4())
-        client_generated_password = secrets.token_urlsafe(8)
         expire_date = timezone.now() + timedelta(days=45)
 
         OrderLink.objects.create(
@@ -273,41 +271,21 @@ class OrderViewSet(viewsets.ModelViewSet):
             expire_at=expire_date
         )
 
-        OrderLink.objects.create(
-            order=order,
-            assignee=OrderLink.Assignee.CLIENT,
-            link=client_generated_link_slug,
-            password=client_generated_password,
-            expire_at=expire_date
-        )
-
         # 6. Обробка файлів та статистика
         uploaded_files = request.FILES.getlist('files')
         stats_data = self._analyze_and_upload_files(order, uploaded_files)
 
-        print("=== DEBUG СТАТИСТИКИ ФАЙЛІВ ===")
-        print(stats_data["total_stats"])
-
-        # Зберігаємо статистику файлів
-        order.symbols_count = stats_data["total_stats"]["chars_no_spaces"]
-        order.symbols_with_spaces_count = stats_data["total_stats"]["chars_with_spaces"]
-        order.page_count = stats_data["total_stats"]["physical_pages"]
-        order.images_count = stats_data["total_stats"]["images"]
-
-        # Логіка з повторним розрахунком суми тут ПОВНІСТЮ ВИДАЛЕНА
+        # ... (збереження статистики) ...
         order.save()
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         full_link = f"{base_url}/translator/{generated_link_slug}"
-        full_client_link = f"{base_url}/clients/{client_generated_link_slug}"
 
+        # Відправляємо запрошення ТІЛЬКИ перекладачу
         if order.translator_id and order.translator_id.email:
             self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
 
-        if order.client_id and order.client_id.email:
-            self._send_client_invite(order, full_client_link, client_generated_password, expire_date, order.client_id)
-
-        # 8. Відповідь
+        # 8. Відповідь (прибираємо client_link з респонсу)
         lp_response_data = None
         if language_pair_instance:
             lp_response_data = LanguagePairSelectSerializer(language_pair_instance).data
@@ -325,13 +303,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "slug": generated_link_slug,
                 "password": generated_password,
                 "expire_at": expire_date
-            },
-            "client_link": {
-                "slug": client_generated_link_slug,
-                "password": client_generated_password,
-                "expire_at": expire_date
             }
-
         }, status=status.HTTP_201_CREATED)
 
     # --- Actions ---
@@ -1261,6 +1233,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.status_id = done_status
             order.save(update_fields=["status_id"])
 
+        self._generate_client_link_and_notify(order)
+
         return Response(
             {
                 "order_id": order.id,
@@ -1426,6 +1400,32 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f"Email error: {e}")
+
+    def _generate_client_link_and_notify(self, order):
+        """Створює лінк для клієнта і відправляє лист, якщо це ще не було зроблено."""
+        # Перевіряємо, чи вже існує лінк для цього клієнта
+        if OrderLink.objects.filter(order=order, assignee=OrderLink.Assignee.CLIENT).exists():
+            return
+
+        if not (order.client_id and order.client_id.email):
+            return
+
+        client_generated_link_slug = str(uuid.uuid4())
+        client_generated_password = secrets.token_urlsafe(8)
+        expire_date = timezone.now() + timedelta(days=45)
+
+        OrderLink.objects.create(
+            order=order,
+            assignee=OrderLink.Assignee.CLIENT,
+            link=client_generated_link_slug,
+            password=client_generated_password,
+            expire_at=expire_date
+        )
+
+        base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        full_client_link = f"{base_url}/clients/{client_generated_link_slug}"
+
+        self._send_client_invite(order, full_client_link, client_generated_password, expire_date, order.client_id)
 
     @extend_schema(
         summary="Перемістити замовлення",

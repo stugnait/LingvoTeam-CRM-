@@ -77,23 +77,6 @@ def create_order_folder(order):
         except dropbox.exceptions.ApiError:
             pass
 
-        mail_emails = list(filter(None, {editor_email, manager_accept_email, manager_delivery_email}))
-
-        if mail_emails and folder_link:
-            send_mail(
-                subject=f"Доступ до папки замовлення №{order.id}",
-                message=(
-                    f"Вітаємо!\n\n"
-                    f"Вам надано доступ до папки Dropbox для замовлення №{order.id}.\n\n"
-                    f"Посилання на папку: {folder_link}\n\n"
-                    f"Якщо виникнуть запитання — звертайтеся до керівника.\n\n"
-                    f"З повагою,\nкоманда LingvoTeam."
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=mail_emails,
-                fail_silently=False,
-            )
-
     except dropbox.exceptions.ApiError as e:
         # Sharing не критичний — папки вже створені, продовжуємо
         print(f"Dropbox Sharing Error (non-critical): {e}")
