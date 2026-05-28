@@ -32,7 +32,7 @@ class CurrencyViewSet(viewsets.ModelViewSet):
     list=extend_schema(summary="Список мов", description="Отримати список всіх підтримуваних мов.")
 )
 class LanguageViewSet(viewsets.ModelViewSet):
-    queryset = Language.objects.all()
+    queryset = Language.objects.all().order_by('id')
     serializer_class = LanguageSerializer
     permission_classes = [HasPermission]
     required_permissions = ['language.manage']
