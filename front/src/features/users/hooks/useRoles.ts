@@ -28,7 +28,7 @@ export const TAB_PRESETS: Record<string, { label: string; icon: string; slugs: s
             // Допоміжні права (щоб не було 403 помилок при завантаженні дропдаунів)
             "client.view",         // Для /api/clients/
             "language.manage",     // Для /api/core/languages/
-            "currency.manage",       // Для /api/core/currencies/
+            "currency.manage",     // Для /api/core/currencies/
             "order.traffic.manage" // Для /api/orders/order-traffic/ (як вказано у твоєму бекенді)
         ],
     },
@@ -36,7 +36,7 @@ export const TAB_PRESETS: Record<string, { label: string; icon: string; slugs: s
         label: "Перевірка (Tasks)",
         icon: "✅",
         slugs: [
-            "ui.tab.tasks",        // Додано
+            "ui.tab.tasks",
             "order.view",
             "order.reject_translation",
             "order.approve_translation"
@@ -45,6 +45,10 @@ export const TAB_PRESETS: Record<string, { label: string; icon: string; slugs: s
     Clients: {
         label: "Clients", icon: "🤝",
         slugs: ["ui.tab.clients", "client.view", "client.create", "client.category.manage"]
+    },
+    Languages: { // <--- Додано нову вкладку Languages
+        label: "Languages", icon: "🌐",
+        slugs: ["ui.tab.languages", "language.manage"]
     },
     Tariffs: {
         label: "Tariffs", icon: "🏷️",
