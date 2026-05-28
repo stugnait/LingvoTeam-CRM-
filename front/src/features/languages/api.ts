@@ -3,10 +3,11 @@ import {apiFetch} from "@/src/shared/api/client";
 
 
 export const languagesApi = {
-    list: (page: number = 1) =>
-        apiFetch<LanguageListResponse>(`core/languages/?page=${page}`, {
-            method: "Get",
-        }),
+    list: (page: number = 1, search: string = "") =>
+        apiFetch<LanguageListResponse>(
+            `core/languages/?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ""}`,
+            { method: "GET" }
+        ),
 
 
     create: (data: { name: string; slug: string }) =>

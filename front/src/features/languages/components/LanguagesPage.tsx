@@ -15,7 +15,8 @@ import { useLanguages } from "../hooks/useLanguages"
 import type { Language } from "../types"
 
 export function LanguagesPage() {
-    const { languages, loading, addLanguage, removeLanguage, page, totalPages, onPageChange } = useLanguages()
+    const { languages, loading, addLanguage, removeLanguage, page, totalPages, onPageChange, search, setSearch } = useLanguages()
+
 
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -89,6 +90,19 @@ export function LanguagesPage() {
                             <span className="hidden sm:inline">Add Language</span>
                         </Button>
                     </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Search</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Input
+                                placeholder="Search by name or slug..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </CardContent>
+                    </Card>
 
                     {/* Картка з таблицею */}
                     <Card>
