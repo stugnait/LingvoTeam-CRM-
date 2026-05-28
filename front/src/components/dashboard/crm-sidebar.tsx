@@ -8,6 +8,7 @@ import { Button } from "../ui/button";
 import {
     LayoutDashboard,
     FileText,
+    Globe,
     Receipt,
     Wallet,
     Languages,
@@ -53,6 +54,7 @@ const navGroups: NavGroup[] = [
             { name: "Orders", href: "/dashboard/orders", icon: FileText, permissions: ["ui.tab.orders"] },
             { name: "Tasks", href: "/dashboard/editor", icon: CheckSquare, permissions: ["ui.tab.tasks"] },
             { name: "Clients", href: "/dashboard/clients", icon: Users, permissions: ["ui.tab.clients"] },
+            { name: "Languages", href: "/dashboard/languages", icon: Globe, permissions: ["ui.tab.languages"]},
         ],
     },
     {

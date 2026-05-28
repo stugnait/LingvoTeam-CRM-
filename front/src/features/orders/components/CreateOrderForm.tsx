@@ -225,14 +225,26 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     // ─── Validation ─────────────────────────────────────────────────────────
 
+    // ─── Validation ─────────────────────────────────────────────────────────
+
     const stepValidation = (step: number): boolean => {
         switch (step) {
-            case 0: return !!clientId && !!sourceLanguage && !!targetLanguage && files.length > 0 && filesConfirmed
-            case 1: return !!trafficId && !!currencyId
-            case 2: return !!selectedTranslatorId && !!editor && !!managerAccept && !!managerDelivery
-            case 3: return !!deadline && !!priority
-            case 4: return true
-            default: return true
+            case 0:
+                return !!clientId && !!sourceLanguage && !!targetLanguage && files.length > 0 && filesConfirmed
+            case 1:
+                return !!trafficId && !!currencyId
+            case 2:
+                // Якщо перекладач ВИБРАНИЙ, то обов'язково має бути вибраний і його тариф.
+                // Якщо перекладач НЕ вибраний (бо це optional), то тариф не вимагаємо.
+                const isTranslatorValid = selectedTranslatorId ? !!translatorTrafficId : true;
+                return isTranslatorValid && !!editor && !!managerAccept && !!managerDelivery
+            case 3:
+                // Додано перевірку наявності коментаря
+                return !!deadline && !!priority && !!comment.trim()
+            case 4:
+                return true
+            default:
+                return true
         }
     }
 
@@ -250,7 +262,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 if (!currencyId) return "Оберіть валюту"
                 return null
             case 2:
-                if (!selectedTranslatorId) return "Оберіть перекладача"
+                // Додано повідомлення про відсутність тарифу перекладача
+                if (selectedTranslatorId && !translatorTrafficId) return "Оберіть тариф для перекладача"
                 if (!editor) return "Оберіть редактора"
                 if (!managerAccept) return "Оберіть менеджера на прийом"
                 if (!managerDelivery) return "Оберіть менеджера на здачу"
@@ -258,9 +271,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             case 3:
                 if (!priority) return "Оберіть пріоритет"
                 if (!deadline) return "Вкажіть дедлайн"
+                // Додано повідомлення про відсутність коментаря
+                if (!comment.trim()) return "Будь ласка, додайте коментар"
                 return null
-            case 4: return null
-            default: return null
+            case 4:
+                return null
+            default:
+                return null
         }
     }
 
@@ -315,7 +332,11 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         return currentTranslator.traffic.map((t: any) => ({
             value: String(t.id),
             label: t.name || 'Особистий тариф',
-            description: `Ставка: ${t.rate_per_page || t.rate_per_action} ${t.currency_sign}`
+            meta: {
+                rate_per_page: t.rate_per_page,
+                rate_per_action: t.rate_per_action,
+                currency: t.currency_sign || ''
+            }
         }));
     }, [selectedTranslatorId, translators]);
     // ─── Render ─────────────────────────────────────────────────────────────
@@ -386,7 +407,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                             <Combobox
                                 value={sourceLanguage}
                                 onChange={setSourceLanguage}
@@ -499,12 +520,71 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 searchPlaceholder="Search tariff..."
                                 options={tariffs?.map((tariff) => ({
                                     value: String(tariff.id),
-                                    label: tariff.category_name,
-                                    description: `${tariff.price_per_word} USD/word`,
+                                    label: tariff.name,
+                                    meta: {
+                                        category: tariff.category_name,
+                                        price_per_page: tariff.price_per_page,
+                                        price_per_action: tariff.price_per_action
+                                    }
                                 }))}
+                                // Кастомізуємо вигляд кожної опції у випадаючому списку
                                 renderOption={(option) => (
-                                    <div className="flex items-center justify-between w-full">
-                                        <span>{option.label}</span>
+                                    <div className="flex flex-col w-full py-1 gap-1.5">
+                                        {/* Верхній рядок: Назва + Бейдж категорії */}
+                                        <div className="flex items-start justify-between w-full">
+                                            <span className="font-medium text-foreground">{option.label}</span>
+                                            {option.meta?.category && (
+                                                <span className="px-2 py-0.5 rounded-md bg-blue-100/80 text-blue-700 text-[10px] font-semibold tracking-wide uppercase shrink-0">
+                        {option.meta.category}
+                    </span>
+                                            )}
+                                        </div>
+
+                                        {/* Нижній рядок: Ціни */}
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                            {option.meta?.price_per_page !== undefined && option.meta?.price_per_page !== null && (
+                                                <span className="flex items-center gap-1">
+                        Сторінка: <span className="font-semibold text-gray-700">{option.meta.price_per_page}</span>
+                    </span>
+                                            )}
+
+                                            {/* Кругла крапка-розділювач, якщо є обидві ціни */}
+                                            {option.meta?.price_per_page !== null && option.meta?.price_per_action !== null && (
+                                                <span className="w-1 h-1 rounded-full bg-border"></span>
+                                            )}
+
+                                            {option.meta?.price_per_action !== undefined && option.meta?.price_per_action !== null && (
+                                                <span className="flex items-center gap-1">
+                        Дія: <span className="font-semibold text-gray-700">{option.meta.price_per_action}</span>
+                    </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                // Кастомізуємо вигляд обраного значення в інпуті
+                                renderSelected={(option) => (
+                                    <div className="flex w-full items-center justify-between pr-4 gap-2">
+                                        {/* Назва тарифу */}
+                                        <span className="truncate font-medium text-foreground">
+                {option.label}
+            </span>
+
+                                        {/* Компактний блок з інформацією */}
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {/* Категорія ховається на дуже вузьких екранах (sm), щоб не ламати верстку */}
+                                            {option.meta?.category && (
+                                                <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-muted-foreground">
+                        {option.meta.category}
+                    </span>
+                                            )}
+
+                                            {/* Виводимо головну ціну як акцентний зелений бейдж */}
+                                            {(option.meta?.price_per_page !== undefined || option.meta?.price_per_action !== undefined) && (
+                                                <span className="text-[11px] text-green-700 font-semibold bg-green-100/50 px-2 py-0.5 rounded-md border border-green-200/50">
+                        {option.meta?.price_per_page ?? 0} / стор.
+                    </span>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             />
@@ -533,7 +613,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 <WizardStep>
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center justify-between">
                                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                     <Users className="h-4 w-4 text-blue-600" />
                                     Translator
@@ -626,6 +706,53 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     onChange={setTranslatorTrafficId}
                                     placeholder="Select Traffic"
                                     options={translatorTrafficOptions}
+                                    // Кастомізуємо вигляд кожної опції у випадаючому списку
+                                    renderOption={(option) => (
+                                        <div className="flex flex-col w-full py-1 gap-1.5">
+                                            {/* Верхній рядок: Назва */}
+                                            <div className="flex items-start justify-between w-full">
+                                                <span className="font-medium text-foreground">{option.label}</span>
+                                            </div>
+
+                                            {/* Нижній рядок: Ставки перекладача */}
+                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                                {option.meta?.rate_per_page !== undefined && option.meta?.rate_per_page !== null && (
+                                                    <span className="flex items-center gap-1">
+                                                        Сторінка: <span className="font-semibold text-gray-700">{option.meta.rate_per_page} {option.meta.currency}</span>
+                                                    </span>
+                                                )}
+
+                                                {/* Кругла крапка-розділювач, якщо є обидві ціни */}
+                                                {option.meta?.rate_per_page !== null && option.meta?.rate_per_action !== null && (
+                                                    <span className="w-1 h-1 rounded-full bg-border"></span>
+                                                )}
+
+                                                {option.meta?.rate_per_action !== undefined && option.meta?.rate_per_action !== null && (
+                                                    <span className="flex items-center gap-1">
+                                                        Дія: <span className="font-semibold text-gray-700">{option.meta.rate_per_action} {option.meta.currency}</span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    // Кастомізуємо вигляд обраного значення в інпуті
+                                    renderSelected={(option) => (
+                                        <div className="flex w-full items-center justify-between pr-4 gap-2">
+                                            {/* Назва тарифу */}
+                                            <span className="truncate font-medium text-foreground">
+                                                {option.label}
+                                            </span>
+
+                                            {/* Компактний блок зі ставкою (Помаранчевий акцент) */}
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {(option.meta?.rate_per_page !== undefined || option.meta?.rate_per_action !== undefined) && (
+                                                    <span className="text-[11px] text-orange-700 font-semibold bg-orange-100/50 px-2 py-0.5 rounded-md border border-orange-200/50">
+                                                        {option.meta?.rate_per_page ?? option.meta?.rate_per_action ?? 0} {option.meta?.currency}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 />
 
                                 {translatorTrafficOptions.length === 0 && (
@@ -873,7 +1000,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             }))
                         }}
                     />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                         <Input
                             type="number"
                             min="0"
