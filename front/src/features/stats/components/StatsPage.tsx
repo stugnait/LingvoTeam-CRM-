@@ -102,7 +102,7 @@ export function StatsPage() {
             <DashboardHeader />
 
             <main className="flex-1 overflow-y-auto p-3 sm:p-6">
-                <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+                <div className="w-full min-w-0 space-y-4 sm:space-y-6">
 
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
                         <div>

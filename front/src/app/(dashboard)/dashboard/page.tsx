@@ -155,7 +155,7 @@ function DashboardPage() {
             <>
                 <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-6">
-                    <div className="mx-auto max-w-7xl space-y-6">
+                    <div className="w-full min-w-0 space-y-6">
                         <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
                             {/* avgSpeed — повна ширина на мобільному */}
                             <Card className="col-span-2 md:col-span-2">
@@ -230,7 +230,7 @@ function DashboardPage() {
             <>
                 <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-6">
-                    <div className="mx-auto max-w-7xl space-y-6">
+                    <div className="w-full min-w-0 space-y-6">
                         <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
                             {/* Total Revenue — повна ширина на мобільному та md */}
                             <Card className="col-span-2 lg:col-span-2">
@@ -397,7 +397,7 @@ function DashboardPage() {
             <>
                 <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-                    <div className="mx-auto max-w-7xl space-y-8 pb-10">
+                    <div className="w-full min-w-0 space-y-8 pb-10">
 
                         {/* ======== FINANCE TAB ======== */}
                         {currentTab === "finance" && (

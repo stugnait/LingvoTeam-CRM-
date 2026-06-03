@@ -9,7 +9,7 @@ export function UserProfilePage() {
         <>
             <DashboardHeader />
             <main className="flex-1 overflow-y-auto p-3 sm:p-6">
-                <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+                <div className="w-full min-w-0 space-y-4 sm:space-y-6">
                     <UserBasicInfo />
                     <UserSecurity />
                 </div>

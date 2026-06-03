@@ -62,7 +62,7 @@ export function TariffsPage() {
             <DashboardHeader />
 
             <main className="flex-1 overflow-y-auto p-3 sm:p-6">
-                <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
+                <div className="w-full min-w-0 space-y-4 sm:space-y-6">
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
