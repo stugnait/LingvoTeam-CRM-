@@ -92,6 +92,38 @@ export interface LanguagePairOption {
     name: string
 }
 
+export interface LanguageOption {
+    id: number
+    name: string
+}
+
+export type LanguagePairLanguageValue =
+    | number
+    | string
+    | {
+    id?: number
+    name?: string
+}
+    | null
+
+export interface LanguagePairApiItem {
+    id: number
+    name?: string
+    pair_name?: string
+    language_pair_name?: string
+    source_language?: LanguagePairLanguageValue
+    target_language?: LanguagePairLanguageValue
+}
+
+export interface LanguagePairCreateResponse {
+    id: number
+    source_language: number
+    target_language: number
+    name?: string
+    pair_name?: string
+    language_pair_name?: string
+}
+
 export interface CategoryOption {
     id: number
     name: string
