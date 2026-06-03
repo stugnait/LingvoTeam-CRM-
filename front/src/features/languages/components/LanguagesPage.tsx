@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
-import { Plus } from "lucide-react"
+import { Globe2, Plus } from "lucide-react"
 
 import { LanguageTable } from "./LanguageTable"
 import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
@@ -57,7 +57,9 @@ export function LanguagesPage() {
 
     // Обробка підтвердження видалення
     const confirmDelete = async () => {
-        if (!selectedLanguage) return
+        if (!selectedLanguage) {
+            return
+        }
 
         try {
             await removeLanguage(selectedLanguage.id)
@@ -132,28 +134,42 @@ export function LanguagesPage() {
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
                 title="Add Language"
+                description="Add a new language to your system."
+                icon={<Globe2 className="h-7 w-7" />}
                 submitLabel={isSubmitting ? "Saving..." : "Create"}
+                isLoading={isSubmitting}
                 onSubmit={submitLanguage}
+                variant="reference"
+                className="max-w-[512px] sm:max-w-[512px]"
+                headerClassName="px-6 pb-3 pt-6"
+                bodyClassName="px-6 pb-5"
+                footerClassName="px-6 py-4"
             >
-                <div className="space-y-4">
+                <div className="space-y-5">
                     <div>
-                        <label className="text-sm font-medium mb-1 block">Language Name</label>
+                        <label className="mb-2 block text-sm font-semibold text-slate-950">
+                            Language Name <span className="text-red-500">*</span>
+                        </label>
                         <Input
                             placeholder="Ex: English"
                             value={form.name}
                             onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                             autoFocus
+                            className="h-12 rounded-xl border-slate-200 bg-white px-4 text-sm text-slate-950 shadow-sm placeholder:text-slate-400 focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-100"
                         />
                     </div>
                     <div>
-                        <label className="text-sm font-medium mb-1 block">Slug (Code)</label>
+                        <label className="mb-2 block text-sm font-semibold text-slate-950">
+                            Slug (Code) <span className="text-red-500">*</span>
+                        </label>
                         <Input
                             placeholder="Ex: en"
                             value={form.slug}
                             onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
+                            className="h-12 rounded-xl border-slate-200 bg-white px-4 text-sm text-slate-950 shadow-sm placeholder:text-slate-400 focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-100"
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            A short identifier (e.g., "en", "uk").
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                            A short identifier (e.g., &quot;en&quot;, &quot;uk&quot;).
                         </p>
                     </div>
                 </div>
