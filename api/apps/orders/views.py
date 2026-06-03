@@ -16,6 +16,12 @@ from datetime import timedelta
 import easyocr
 import numpy as np
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
+from rest_framework import status
+from .utils import analyze_file_content
+
 # Third-party imports
 from PIL import Image
 import pytesseract
@@ -123,6 +129,34 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
     filterset_class = OrderTrafficFilter
     ordering = ['id']
 
+
+class AnalyzeFileUploadView(APIView):
+    # Дозволяє приймати formData з файлами
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, *args, **kwargs):
+        # Отримуємо файл із запиту (назва ключа має збігатися з фронтендом, наприклад 'file')
+        uploaded_file = request.FILES.get('file')
+
+        if not uploaded_file:
+            return Response(
+                {"detail": "Файл не завантажено або передано неправильний ключ."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Django-об'єкт файлу (InMemoryUploadedFile) має всі потрібні методи:
+            # .name, .seek(), .read(), тому функція відпрацює бездоганно.
+            file_stats = analyze_file_content(uploaded_file)
+
+            # Повертаємо пораховані дані фронтенду
+            return Response(file_stats, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"detail": f"Помилка під час аналізу файлу: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 @extend_schema_view(
     list=extend_schema(

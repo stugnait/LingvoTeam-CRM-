@@ -10,28 +10,24 @@ from io import BytesIO
 
 try:
     import openpyxl
-
     HAS_OPENPYXL = True
 except ImportError:
     HAS_OPENPYXL = False
 
 try:
     import xlrd
-
     HAS_XLRD = True
 except ImportError:
     HAS_XLRD = False
 
 try:
     from pptx import Presentation
-
     HAS_PPTX = True
 except ImportError:
     HAS_PPTX = False
 
 
 def _safe_decode(data: bytes) -> str:
-    """Автоматично розпізнає кодування (UTF-16 чи UTF-8) за допомогою BOM."""
     if data.startswith(b'\xff\xfe') or data.startswith(b'\xfe\xff'):
         return data.decode('utf-16', errors='replace')
     if data.startswith(b'\xef\xbb\xbf'):
@@ -40,7 +36,6 @@ def _safe_decode(data: bytes) -> str:
 
 
 def normalize_text(text: str, collapse_spaces: bool = True) -> str:
-    """Прибирає спецсимволи які Word/PDF додають але не рахують у статистиці."""
     text = text.replace('\x02', '')
     text = text.replace('\x07', '')
     text = text.replace('\x08', '')
@@ -51,7 +46,6 @@ def normalize_text(text: str, collapse_spaces: bool = True) -> str:
     text = text.replace('\x15', '')
     text = text.replace('\r', '')
     text = text.replace('\xad', '')
-
     text = text.replace('\ufeff', '')
     text = text.replace('\u200b', '')
     text = text.replace('\u200c', '')
@@ -76,7 +70,6 @@ def normalize_text(text: str, collapse_spaces: bool = True) -> str:
 
 
 def extract_text_from_shapes(doc) -> list[str]:
-    """Витягує текст із плаваючих блоків (Text Boxes) та колонтитулів."""
     extra_texts = []
     try:
         for txbx in doc.element.xpath('.//w:txbxContent'):
@@ -110,6 +103,23 @@ def extract_text_from_shapes(doc) -> list[str]:
         pass
 
     return extra_texts
+
+
+def _get_docx_pages_from_metadata(file) -> int:
+    """Читає точну кількість сторінок з docProps/app.xml."""
+    try:
+        file.seek(0)
+        if zipfile.is_zipfile(file):
+            file.seek(0)
+            with zipfile.ZipFile(file) as archive:
+                if 'docProps/app.xml' in archive.namelist():
+                    app_xml = archive.read('docProps/app.xml').decode('utf-8', errors='replace')
+                    match = re.search(r'<Pages>(\d+)</Pages>', app_xml)
+                    if match:
+                        return int(match.group(1))
+    except Exception:
+        pass
+    return 0
 
 
 def _antiword_extract(file) -> str:
@@ -254,7 +264,6 @@ def analyze_file_content(file):
         # WORD (.docx / .doc / .dotx / .dotm / .docm)
         # ------------------------------------------------------------------ #
         if file_name.endswith(('.docx', '.doc', '.dotx', '.dotm', '.docm')):
-            stats_from_metadata = False
             file.seek(0)
             try:
                 if zipfile.is_zipfile(file):
@@ -265,43 +274,53 @@ def analyze_file_content(file):
             except Exception:
                 pass
 
-            if not stats_from_metadata:
-                try:
-                    file.seek(0)
-                    doc = docx.Document(file)
+            # Читаємо точну кількість сторінок з метаданих (тільки для zip-форматів)
+            if file_name.endswith(('.docx', '.dotx', '.dotm', '.docm')):
+                pages_from_meta = _get_docx_pages_from_metadata(file)
+                if pages_from_meta > 0:
+                    stats["pages"] = pages_from_meta
 
-                    for p in doc.paragraphs:
-                        if p.text:
-                            # Оновлена логіка виявлення автоматичних списків
-                            is_list = False
-                            if p.style and p.style.name and 'List' in p.style.name:
-                                is_list = True
-                            elif p._element.xpath('.//w:numPr'):
-                                is_list = True
+            try:
+                file.seek(0)
+                doc = docx.Document(file)
 
-                            if is_list:
-                                text_parts.append("· " + p.text)
-                            else:
-                                text_parts.append(p.text)
+                for p in doc.paragraphs:
+                    if p.text:
+                        is_list = False
+                        if p.style and p.style.name and 'List' in p.style.name:
+                            is_list = True
+                        elif p._element.xpath('.//w:numPr'):
+                            is_list = True
 
-                    visited_cells = set()
-                    for table in doc.tables:
-                        for row in table.rows:
-                            for cell in row.cells:
-                                if cell not in visited_cells:
-                                    visited_cells.add(cell)
-                                    if cell.text:
-                                        text_parts.append(cell.text)
+                        if is_list:
+                            text_parts.append("· " + p.text)
+                        else:
+                            text_parts.append(p.text)
 
-                    text_parts.extend(extract_text_from_shapes(doc))
+                visited_cells = set()
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            if cell not in visited_cells:
+                                visited_cells.add(cell)
+                                if cell.text:
+                                    text_parts.append(cell.text)
 
-                except Exception:
-                    pass
+                text_parts.extend(extract_text_from_shapes(doc))
 
-                if not text_parts and file_name.endswith('.doc'):
-                    extracted = _antiword_extract(file)
-                    if extracted.strip():
-                        text_parts.append(extracted)
+            except Exception:
+                pass
+
+            if not text_parts and file_name.endswith('.doc'):
+                extracted = _antiword_extract(file)
+                if extracted.strip():
+                    text_parts.append(extracted)
+
+            # Fallback для .doc або якщо метадані не дали результату
+            if stats["pages"] == 0 and text_parts:
+                full_text_preview = normalize_text("\n".join(p for p in text_parts if p))
+                char_count = len(full_text_preview.replace('\n', '').replace(' ', ''))
+                stats["pages"] = max(1, round(char_count / 1800))
 
         # ------------------------------------------------------------------ #
         # PDF
@@ -332,7 +351,7 @@ def analyze_file_content(file):
                     text_parts.extend(parts)
                 if pages > 0:
                     stats["pages"] = max(stats.get("pages", 0), pages)
-            except Exception as e:
+            except Exception:
                 pass
 
         # ------------------------------------------------------------------ #
@@ -481,7 +500,7 @@ def analyze_file_content(file):
                 pass
 
         # ------------------------------------------------------------------ #
-        # РАХУЄМО СИМВОЛИ (якщо не взяли з метаданих docx)
+        # РАХУЄМО СИМВОЛИ
         # ------------------------------------------------------------------ #
         if not stats_from_metadata:
             full_text = "\n".join(p for p in text_parts if p)
