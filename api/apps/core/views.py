@@ -38,6 +38,7 @@ class LanguageViewSet(viewsets.ModelViewSet):
     required_permissions = ['language.manage']
     filter_backends = [filters.SearchFilter]
     search_fields = ['name', 'slug']
+    pagination_class = None
 
 @extend_schema_view(
     list=extend_schema(summary="Список мовних пар", description="Отримати всі комбінації мов (напр. En -> Ukr).")

@@ -89,6 +89,13 @@ class Order(models.Model):
         "Status", on_delete=models.CASCADE,
         related_name='general_status_orders', db_column='status_id'
     )
+
+    editor_status = models.ForeignKey(
+        "Status", on_delete=models.CASCADE,
+        related_name='editor_status_orders', db_column='editor_status',
+        null=True, blank=True
+    )
+
     accepted_at = models.DateTimeField(null=True)
     deadline = models.DateTimeField(null=True)
     flex_deadline = models.BooleanField(default=False)
