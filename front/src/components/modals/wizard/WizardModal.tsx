@@ -68,7 +68,7 @@ export function WizardModal({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="w-[calc(100vw-16px)] sm:w-auto sm:max-w-3xl max-h-[95svh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+            <DialogContent className="w-[calc(100vw-16px)] sm:w-auto sm:max-w-3xl max-h-[95svh] sm:max-h-[90vh] overflow-hidden flex flex-col p-0 sm:p-0 gap-0">
                 {/* Header with gradient background - compact version */}
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-3 sm:py-4">
                     <DialogHeader className="p-0">

@@ -407,9 +407,6 @@ function DashboardPage() {
                                         <h2 className="text-lg font-semibold">Фінансові показники (P&L)</h2>
                                         <p className="text-sm text-muted-foreground mt-1">Огляд ключових показників P&L.</p>
                                     </div>
-                                    <Link href="/dashboard/pnl" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-                                        Перейти до аналітики <ArrowRight className="w-4 h-4" />
-                                    </Link>
                                 </div>
 
                                 {/* 5 карток — на мобільному 2 колонки, перша картка займає обидві */}
@@ -494,9 +491,6 @@ function DashboardPage() {
                                         <h2 className="text-lg font-semibold">Ефективність команди</h2>
                                         <p className="text-sm text-muted-foreground mt-1">Показники менеджерів, перекладачів та редакторів.</p>
                                     </div>
-                                    <Link href="/dashboard/team" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-                                        Перейти до аналітики <ArrowRight className="w-4 h-4" />
-                                    </Link>
                                 </div>
 
                                 <div className="grid gap-6 lg:grid-cols-2">
@@ -615,9 +609,6 @@ function DashboardPage() {
                                         <h2 className="text-lg font-semibold">Аналітика клієнтів та мов</h2>
                                         <p className="text-sm text-muted-foreground mt-1">Популярні мовні пари та прибуток по них.</p>
                                     </div>
-                                    <Link href="/dashboard/clients-analytics" className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
-                                        Перейти до аналітики <ArrowRight className="w-4 h-4" />
-                                    </Link>
                                 </div>
 
                                 {/* Таблиця мовних пар */}

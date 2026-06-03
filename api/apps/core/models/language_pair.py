@@ -5,16 +5,14 @@ from apps import core
 
 class LanguagePair(models.Model):
     source_language = models.ForeignKey(
-        'core.Language',
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='source_for_pairs'
+        'Language',
+        on_delete=models.PROTECT,  # Або models.RESTRICT
+        related_name='source_pairs'
     )
     target_language = models.ForeignKey(
-        'core.Language',
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='target_for_pairs'
+        'Language',
+        on_delete=models.PROTECT,  # Або models.RESTRICT
+        related_name='target_pairs'
     )
 
     class Meta:

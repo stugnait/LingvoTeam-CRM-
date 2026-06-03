@@ -89,7 +89,7 @@ export function TariffForm({
 
             {/* Модал створення нової мовної пари */}
             {isNewPairModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/40 backdrop-blur-sm">
                     <div className="bg-background rounded-2xl border shadow-2xl p-6 w-full max-w-sm space-y-4">
                         <h3 className="text-lg font-semibold">Нова мовна пара</h3>
 
