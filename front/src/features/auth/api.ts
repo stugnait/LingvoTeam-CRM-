@@ -16,6 +16,7 @@ export const authApi = {
         apiFetch<LoginResponse>("users/auth/login/", {
             method: "POST",
             body: JSON.stringify(data),
+            skipGlobalError: true,
         }),
 
     register: (data: RegisterPayload) =>
