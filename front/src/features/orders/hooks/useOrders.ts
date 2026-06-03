@@ -449,10 +449,6 @@ export function useOrders() {
     }, [handleError])
 
 
-    /* ======================
-       INITIAL DATA
-    ====================== */
-
     const loadInitialData = useCallback(async () => {
         if (initialLoadedRef.current) {return}
         try {
@@ -475,19 +471,21 @@ export function useOrders() {
                 ordersApi.listTraffic()
             ])
 
-            setTranslators(translatorsRes.results)
+            const translatorsData = translatorsRes.results || translatorsRes
+            setTranslators(translatorsData as Translator[])
+
             const cache: Record<number, Translator> = {}
-            translatorsRes.results.forEach(t => {
+            ;(translatorsData as Translator[]).forEach(t => {
                 cache[t.id] = t
             })
             setTranslatorsCache(cache)
 
-            setClients(clientsRes.results)
-            setLanguages(languagesRes.results)
-            setEditors(editorsRes.results)
-            setManagers(managersRes.results)
-            setCurrencies(currenciesRes.results)
-            setTraffics(trafficRes.results)
+            setClients(clientsRes.results || clientsRes as any)
+            setLanguages(languagesRes.results || languagesRes as any)
+            setEditors(editorsRes.results || editorsRes as any)
+            setManagers(managersRes.results || managersRes as any)
+            setCurrencies(currenciesRes.results || currenciesRes as any)
+            setTraffics(trafficRes.results || trafficRes as any)
 
             initialLoadedRef.current = true
         } catch (e) {

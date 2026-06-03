@@ -28,6 +28,7 @@ import type { Priority } from "@/src/components/ui/PrioritySelector"
 import { PrioritySelector } from "@/src/components/ui/PrioritySelector"
 import { useOrderAnalysis } from "@/src/features/orders/hooks/useOrderAnalysis"
 import { ordersApi } from "@/src/features/orders/api"
+import localforage from "localforage"
 
 interface CreateOrderModalProps {
     open: boolean
@@ -122,6 +123,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         resetStats
     } = useOrderAnalysis()
 
+    const [currentStep, setCurrentStep] = useState(0) // 🔥 Стан для поточного кроку
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
@@ -129,6 +131,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [priceLoading, setPriceLoading] = useState(false)
     const [useManualPrice, setUseManualPrice] = useState(false)
     const [customDiscount, setCustomDiscount] = useState<string>("")
+    const [isRestored, setIsRestored] = useState(false)
 
     // --- Логіка підрахунку знижки ---
     const selectedClient = clients.find((c) => String(c.id) === clientId)
@@ -141,14 +144,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         ? (baseAutoPrice * (1 - activeDiscount / 100)).toFixed(2)
         : priceData?.total_client_price ?? ""
 
-    // 🔥 ДОДАНО: Автоматично записуємо пораховану суму в стейт, який полетить на бекенд
     useEffect(() => {
         if (!useManualPrice && discountedAutoPrice) {
             setTotalAmount(String(discountedAutoPrice))
         }
     }, [discountedAutoPrice, useManualPrice, setTotalAmount])
 
-    // Тепер effectivePrice завжди дорівнює totalAmount, бо стейт синхронізовано
     const effectivePrice = totalAmount || discountedAutoPrice || "-"
 
     // ─── Handlers ───────────────────────────────────────────────────────────
@@ -156,29 +157,112 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const handleQuickCreateTranslator = async () => {
         await submitTranslator(form)
 
-        // 2. Оновлюємо список і отримуємо його результат
         if (onRefreshTranslators) {
             const freshTranslators = await onRefreshTranslators()
-
-            // Перевіряємо, чи повернувся масив і чи він не порожній
             if (Array.isArray(freshTranslators) && freshTranslators.length > 0) {
-                // Шукаємо за email (найбільш унікальний параметр з форми)
                 const newTranslator = freshTranslators.find((t: any) => t.email === form.email);
-
                 if (newTranslator) {
-                    // Встановлюємо ID перекладача
                     setSelectedTranslatorId(newTranslator.id);
-
-                    // Якщо є тарифи — обираємо перший
                     if (newTranslator.traffic && newTranslator.traffic.length > 0) {
                         setTranslatorTrafficId(String(newTranslator.traffic[0].id));
                     }
                 }
             }
         }
-
         closeModals()
     }
+    const DRAFT_KEY = "create_order_draft"
+
+    // 1. ВІДНОВЛЕННЯ ЧЕРНЕТКИ
+    useEffect(() => {
+        if (!open) {
+            setIsRestored(false)
+            return
+        }
+
+        if (mode === "edit") {
+            setIsRestored(true)
+            return
+        }
+
+        const restoreDraft = async () => {
+            try {
+                const d = await localforage.getItem<any>(DRAFT_KEY)
+
+                if (d) {
+                    if (d.clientId) {setClientId(d.clientId)}
+                    if (d.sourceLanguage) {setSourceLanguage(d.sourceLanguage)}
+                    if (d.targetLanguage) {setTargetLanguage(d.targetLanguage)}
+                    if (d.trafficId) {setTrafficId(d.trafficId)}
+                    if (d.currencyId) {setCurrencyId(d.currencyId)}
+                    if (d.editor) {setEditor(d.editor)}
+                    if (d.managerAccept) {setManagerAccept(d.managerAccept)}
+                    if (d.managerDelivery) {setManagerDelivery(d.managerDelivery)}
+                    if (d.selectedTranslatorId) {setSelectedTranslatorId(d.selectedTranslatorId)}
+                    if (d.translatorTrafficId) {setTranslatorTrafficId(d.translatorTrafficId)}
+                    if (d.comment) {setComment(d.comment)}
+                    if (d.priority) {setPriority(d.priority)}
+                    if (d.deadline) {setDeadline(new Date(d.deadline))}
+                    if (d.customDiscount) {setCustomDiscount(d.customDiscount)}
+                    if (d.totalAmount) {setTotalAmount(d.totalAmount)}
+
+                    // 🔥 Відновлюємо крок
+                    if (d.currentStep !== undefined) {setCurrentStep(d.currentStep)}
+
+                    // ВІДНОВЛЮЄМО ФАЙЛИ
+                    if (d.files && Array.isArray(d.files)) {
+                        setFiles(d.files)
+
+                        // Якщо файли вже були підтверджені раніше, автоматично запускаємо прорахунок
+                        if (d.filesConfirmed) {
+                            calculateStats(d.files)
+                                .then(() => setFilesConfirmed(true))
+                                .catch(err => console.error("Помилка фонового підрахунку:", err))
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Помилка відновлення чернетки з localforage:", e)
+            } finally {
+                setIsRestored(true)
+            }
+        }
+
+        restoreDraft()
+    }, [open, mode])
+
+    // 2. ЗБЕРЕЖЕННЯ ЧЕРНЕТКИ
+    useEffect(() => {
+        if (!open || mode === "edit" || !isRestored) {return}
+
+        const saveDraft = async () => {
+            const draft = {
+                clientId, sourceLanguage, targetLanguage,
+                trafficId, currencyId, editor,
+                managerAccept, managerDelivery,
+                selectedTranslatorId, translatorTrafficId,
+                comment, priority,
+                deadline: deadline?.toISOString(),
+                customDiscount, totalAmount,
+                filesConfirmed,
+                files,
+                currentStep // 🔥 Зберігаємо поточний крок
+            }
+
+            try {
+                await localforage.setItem(DRAFT_KEY, draft)
+            } catch (e) {
+                console.error("Помилка збереження чернетки:", e)
+            }
+        }
+
+        saveDraft()
+    }, [
+        clientId, sourceLanguage, targetLanguage, trafficId, currencyId,
+        editor, managerAccept, managerDelivery, selectedTranslatorId,
+        translatorTrafficId, comment, priority, deadline,
+        customDiscount, totalAmount, files, filesConfirmed, currentStep, open, isRestored, mode
+    ])
 
     const handleModalClose = (open: boolean) => {
         if (!open) {
@@ -186,9 +270,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             setFilesConfirmed(false)
             setImagesAnalyzed(false)
             setPriceData(null)
-            setTotalAmount("")
             setUseManualPrice(false)
-            setCustomDiscount("")
+            setCurrentStep(0) // 🔥 Скидаємо крок на перший при закритті
         }
         onOpenChange(open)
     }
@@ -206,8 +289,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             const formData = new FormData()
             files.forEach(f => formData.append("files", f))
             formData.append("traffic_id", trafficId)
-            if (selectedTranslatorId) formData.append("translator_id", String(selectedTranslatorId))
-            if (translatorTrafficId) formData.append("translator_traffic_id", translatorTrafficId)
+            if (selectedTranslatorId) {formData.append("translator_id", String(selectedTranslatorId))}
+            if (translatorTrafficId) {formData.append("translator_traffic_id", translatorTrafficId)}
             const res = await ordersApi.previewPrice(formData)
             setPriceData(res)
         } catch (e) {
@@ -223,7 +306,17 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         setImagesAnalyzed(true)
     }
 
-    // ─── Validation ─────────────────────────────────────────────────────────
+    // 🔥 ДОДАНО: Функція для очищення чернетки при сабміті форми
+    const handleOrderSubmit = async () => {
+        try {
+            await localforage.removeItem(DRAFT_KEY);
+        } catch (error) {
+            console.error("Помилка видалення чернетки:", error);
+        }
+
+        // Викликаємо оригінальну функцію onSubmit, яку передано в пропси
+        onSubmit();
+    }
 
     // ─── Validation ─────────────────────────────────────────────────────────
 
@@ -234,12 +327,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             case 1:
                 return !!trafficId && !!currencyId
             case 2:
-                // Якщо перекладач ВИБРАНИЙ, то обов'язково має бути вибраний і його тариф.
-                // Якщо перекладач НЕ вибраний (бо це optional), то тариф не вимагаємо.
                 const isTranslatorValid = selectedTranslatorId ? !!translatorTrafficId : true;
                 return isTranslatorValid && !!editor && !!managerAccept && !!managerDelivery
             case 3:
-                // Додано перевірку наявності коментаря
                 return !!deadline && !!priority && !!comment.trim()
             case 4:
                 return true
@@ -251,28 +341,26 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const stepError = (step: number): string | null => {
         switch (step) {
             case 0:
-                if (!clientId) return "Оберіть клієнта"
-                if (!sourceLanguage) return "Оберіть мову оригіналу"
-                if (!targetLanguage) return "Оберіть мову перекладу"
-                if (!files.length) return "Завантажте хоча б один файл"
-                if (!filesConfirmed) return "Підтвердіть файли кнопкою «Confirm files»"
+                if (!clientId) {return "Оберіть клієнта"}
+                if (!sourceLanguage) {return "Оберіть мову оригіналу"}
+                if (!targetLanguage) {return "Оберіть мову перекладу"}
+                if (!files.length) {return "Завантажте хоча б один файл"}
+                if (!filesConfirmed) {return "Підтвердіть файли кнопкою «Confirm files»"}
                 return null
             case 1:
-                if (!trafficId) return "Оберіть тариф"
-                if (!currencyId) return "Оберіть валюту"
+                if (!trafficId) {return "Оберіть тариф"}
+                if (!currencyId) {return "Оберіть валюту"}
                 return null
             case 2:
-                // Додано повідомлення про відсутність тарифу перекладача
-                if (selectedTranslatorId && !translatorTrafficId) return "Оберіть тариф для перекладача"
-                if (!editor) return "Оберіть редактора"
-                if (!managerAccept) return "Оберіть менеджера на прийом"
-                if (!managerDelivery) return "Оберіть менеджера на здачу"
+                if (selectedTranslatorId && !translatorTrafficId) {return "Оберіть тариф для перекладача"}
+                if (!editor) {return "Оберіть редактора"}
+                if (!managerAccept) {return "Оберіть менеджера на прийом"}
+                if (!managerDelivery) {return "Оберіть менеджера на здачу"}
                 return null
             case 3:
-                if (!priority) return "Оберіть пріоритет"
-                if (!deadline) return "Вкажіть дедлайн"
-                // Додано повідомлення про відсутність коментаря
-                if (!comment.trim()) return "Будь ласка, додайте коментар"
+                if (!priority) {return "Оберіть пріоритет"}
+                if (!deadline) {return "Вкажіть дедлайн"}
+                if (!comment.trim()) {return "Будь ласка, додайте коментар"}
                 return null
             case 4:
                 return null
@@ -327,7 +415,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const translatorTrafficOptions = useMemo(() => {
         const currentTranslator = translators.find(t => t.id === selectedTranslatorId);
-        if (!currentTranslator?.traffic) return [];
+        if (!currentTranslator?.traffic) {return [];}
 
         return currentTranslator.traffic.map((t: any) => ({
             value: String(t.id),
@@ -339,7 +427,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             }
         }));
     }, [selectedTranslatorId, translators]);
+
     // ─── Render ─────────────────────────────────────────────────────────────
+
+    // Блокуємо рендер модалки, поки чернетка не відновиться
+    // Завдяки цьому WizardModal "народиться" вже зі правильним currentStep.
+    if (open && !isRestored && mode !== "edit") {
+        return null;
+    }
 
     return (
         <>
@@ -347,6 +442,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 open={open}
                 onOpenChange={onOpenChange}
                 title={mode === "edit" ? "Edit Order" : "Create New Order"}
+                step={currentStep} // Прокидаємо крок у Wizard
+                onStepChange={setCurrentStep} // Прокидаємо функцію оновлення
                 steps={[
                     { title: "Client & Files" },
                     { title: "Tariff" },
@@ -356,7 +453,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 ]}
                 isLoading={loading}
                 onClose={handleModalClose}
-                onSubmit={() => onSubmit()}
+                onSubmit={handleOrderSubmit} // 🔥 Підставили нашу функцію обгортку
                 stepValidation={stepValidation}
                 stepError={stepError}
             >
@@ -464,17 +561,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             </div>
                         )}
 
-                        {/*{filesConfirmed && !imagesAnalyzed && (*/}
-                        {/*    <button*/}
-                        {/*        type="button"*/}
-                        {/*        onClick={handleAnalyzeImages}*/}
-                        {/*        disabled={analysisLoading}*/}
-                        {/*        className="px-4 py-2 bg-purple-600 text-white rounded-md disabled:opacity-50"*/}
-                        {/*    >*/}
-                        {/*        {analysisLoading ? "Analyzing images..." : "Analyze images (OCR)"}*/}
-                        {/*    </button>*/}
-                        {/*)}*/}
-
                         {analysisResult && (
                             <div className="bg-purple-50 p-4 rounded-lg text-sm">
                                 <p className="text-purple-700 font-medium">OCR completed successfully</p>
@@ -527,62 +613,48 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                         price_per_action: tariff.price_per_action
                                     }
                                 }))}
-                                // Кастомізуємо вигляд кожної опції у випадаючому списку
                                 renderOption={(option) => (
                                     <div className="flex flex-col w-full py-1 gap-1.5">
-                                        {/* Верхній рядок: Назва + Бейдж категорії */}
                                         <div className="flex items-start justify-between w-full">
                                             <span className="font-medium text-foreground">{option.label}</span>
                                             {option.meta?.category && (
                                                 <span className="px-2 py-0.5 rounded-md bg-blue-100/80 text-blue-700 text-[10px] font-semibold tracking-wide uppercase shrink-0">
-                        {option.meta.category}
-                    </span>
+                                                    {option.meta.category}
+                                                </span>
                                             )}
                                         </div>
-
-                                        {/* Нижній рядок: Ціни */}
                                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                             {option.meta?.price_per_page !== undefined && option.meta?.price_per_page !== null && (
                                                 <span className="flex items-center gap-1">
-                        Сторінка: <span className="font-semibold text-gray-700">{option.meta.price_per_page}</span>
-                    </span>
+                                                    Сторінка: <span className="font-semibold text-gray-700">{option.meta.price_per_page}</span>
+                                                </span>
                                             )}
-
-                                            {/* Кругла крапка-розділювач, якщо є обидві ціни */}
                                             {option.meta?.price_per_page !== null && option.meta?.price_per_action !== null && (
                                                 <span className="w-1 h-1 rounded-full bg-border"></span>
                                             )}
-
                                             {option.meta?.price_per_action !== undefined && option.meta?.price_per_action !== null && (
                                                 <span className="flex items-center gap-1">
-                        Дія: <span className="font-semibold text-gray-700">{option.meta.price_per_action}</span>
-                    </span>
+                                                    Дія: <span className="font-semibold text-gray-700">{option.meta.price_per_action}</span>
+                                                </span>
                                             )}
                                         </div>
                                     </div>
                                 )}
-                                // Кастомізуємо вигляд обраного значення в інпуті
                                 renderSelected={(option) => (
                                     <div className="flex w-full items-center justify-between pr-4 gap-2">
-                                        {/* Назва тарифу */}
                                         <span className="truncate font-medium text-foreground">
-                {option.label}
-            </span>
-
-                                        {/* Компактний блок з інформацією */}
+                                            {option.label}
+                                        </span>
                                         <div className="flex items-center gap-2 shrink-0">
-                                            {/* Категорія ховається на дуже вузьких екранах (sm), щоб не ламати верстку */}
                                             {option.meta?.category && (
                                                 <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-muted-foreground">
-                        {option.meta.category}
-                    </span>
+                                                    {option.meta.category}
+                                                </span>
                                             )}
-
-                                            {/* Виводимо головну ціну як акцентний зелений бейдж */}
                                             {(option.meta?.price_per_page !== undefined || option.meta?.price_per_action !== undefined) && (
                                                 <span className="text-[11px] text-green-700 font-semibold bg-green-100/50 px-2 py-0.5 rounded-md border border-green-200/50">
-                        {option.meta?.price_per_page ?? 0} / стор.
-                    </span>
+                                                    {option.meta?.price_per_page ?? 0} / стор.
+                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -706,27 +778,20 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     onChange={setTranslatorTrafficId}
                                     placeholder="Select Traffic"
                                     options={translatorTrafficOptions}
-                                    // Кастомізуємо вигляд кожної опції у випадаючому списку
                                     renderOption={(option) => (
                                         <div className="flex flex-col w-full py-1 gap-1.5">
-                                            {/* Верхній рядок: Назва */}
                                             <div className="flex items-start justify-between w-full">
                                                 <span className="font-medium text-foreground">{option.label}</span>
                                             </div>
-
-                                            {/* Нижній рядок: Ставки перекладача */}
                                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                                 {option.meta?.rate_per_page !== undefined && option.meta?.rate_per_page !== null && (
                                                     <span className="flex items-center gap-1">
                                                         Сторінка: <span className="font-semibold text-gray-700">{option.meta.rate_per_page} {option.meta.currency}</span>
                                                     </span>
                                                 )}
-
-                                                {/* Кругла крапка-розділювач, якщо є обидві ціни */}
                                                 {option.meta?.rate_per_page !== null && option.meta?.rate_per_action !== null && (
                                                     <span className="w-1 h-1 rounded-full bg-border"></span>
                                                 )}
-
                                                 {option.meta?.rate_per_action !== undefined && option.meta?.rate_per_action !== null && (
                                                     <span className="flex items-center gap-1">
                                                         Дія: <span className="font-semibold text-gray-700">{option.meta.rate_per_action} {option.meta.currency}</span>
@@ -735,15 +800,11 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             </div>
                                         </div>
                                     )}
-                                    // Кастомізуємо вигляд обраного значення в інпуті
                                     renderSelected={(option) => (
                                         <div className="flex w-full items-center justify-between pr-4 gap-2">
-                                            {/* Назва тарифу */}
                                             <span className="truncate font-medium text-foreground">
                                                 {option.label}
                                             </span>
-
-                                            {/* Компактний блок зі ставкою (Помаранчевий акцент) */}
                                             <div className="flex items-center gap-2 shrink-0">
                                                 {(option.meta?.rate_per_page !== undefined || option.meta?.rate_per_action !== undefined) && (
                                                     <span className="text-[11px] text-orange-700 font-semibold bg-orange-100/50 px-2 py-0.5 rounded-md border border-orange-200/50">
@@ -865,12 +926,11 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                         <span className="text-xs text-gray-500">
-                                            Залишіть порожнім для стандартної знижки клієнта ({defaultDiscountPercent}%)
+                                            Залишіть порожнім для standard discount ({defaultDiscountPercent}%)
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Чекбокс ручної ціни */}
                                 <div className="rounded-xl border p-4 space-y-3">
                                     <label className="flex items-center gap-3 cursor-pointer select-none">
                                         <input
@@ -878,8 +938,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             checked={useManualPrice}
                                             onChange={(e) => {
                                                 setUseManualPrice(e.target.checked)
-                                                // Якщо вимкнули ручну ціну, одразу повертаємо авто-ціну
-                                                if (!e.target.checked) setTotalAmount(String(discountedAutoPrice))
+                                                if (!e.target.checked) {setTotalAmount(String(discountedAutoPrice))}
                                             }}
                                             className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
                                         />
@@ -924,7 +983,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             <span className="font-medium">{priceData.pages}</span>
                                         </div>
 
-                                        {/* 🔥 ОНОВЛЕНО: Відображення авто-ціни та АКТИВНОЇ знижки */}
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Базова авто-ціна:</span>
                                             <span className="font-medium">{priceData.total_client_price}</span>
