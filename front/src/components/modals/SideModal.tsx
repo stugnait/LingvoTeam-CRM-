@@ -34,19 +34,33 @@ export function SideModal({
     const [animationState, setAnimationState] = useState<'enter' | 'exit' | null>(null)
 
     useEffect(() => {
+        const timers: ReturnType<typeof setTimeout>[] = []
+
         if (open) {
-            setShouldRender(true)
-            setTimeout(() => setAnimationState('enter'), 10)
+            timers.push(setTimeout(() => {
+                setShouldRender(true)
+            }, 0))
+            timers.push(setTimeout(() => {
+                setAnimationState('enter')
+            }, 10))
         } else {
-            setAnimationState('exit')
-            setTimeout(() => {
+            timers.push(setTimeout(() => {
+                setAnimationState('exit')
+            }, 0))
+            timers.push(setTimeout(() => {
                 setShouldRender(false)
                 setAnimationState(null)
-            }, 300)
+            }, 300))
+        }
+
+        return () => {
+            timers.forEach(clearTimeout)
         }
     }, [open])
 
-    if (!shouldRender) return null
+    if (!shouldRender) {
+        return null
+    }
 
     const isOpen = animationState === 'enter'
 
@@ -55,7 +69,7 @@ export function SideModal({
             {/* Backdrop with blur */}
             <div
                 className={cn(
-                    "fixed inset-0 z-50 transition-all duration-300",
+                    "fixed inset-0 z-[200] transition-all duration-300",
                     isOpen
                         ? "opacity-100 backdrop-blur-sm bg-black/30"
                         : "opacity-0 backdrop-blur-0 bg-black/0"
@@ -65,7 +79,7 @@ export function SideModal({
 
             {/* Modal side panel with blue gradient */}
             <div className={cn(
-                "fixed right-0 top-0 bottom-0 z-50 w-full sm:max-w-2xl",
+                "fixed right-0 top-0 bottom-0 z-[210] w-full sm:max-w-2xl",
                 "transition-transform duration-300 ease-out",
                 isOpen ? "translate-x-0" : "translate-x-full"
             )}>
