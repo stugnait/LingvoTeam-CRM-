@@ -5,12 +5,13 @@ import { Button } from "@/src/components/ui/button"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
 import { useEffect, useState } from "react"
 import { OrdersTable } from "@/src/features/orders/components/OrdersBlock"
-import { Plus, LayoutList, KanbanSquare } from "lucide-react"
+import { Plus, LayoutList, KanbanSquare, Filter } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { CreateOrderModal } from "./CreateOrderForm"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import type { Priority } from "@/src/components/ui/PrioritySelector"
 import { cn } from "@/src/lib/utils"
+import { useProfile } from "@/src/features/profile/hooks/useProfile"
 
 import OrdersKanbanBoard from "./OrdersKanbanBoard"
 import { TaskModal } from "@/src/components/modals/jira/InfoModal"
@@ -61,12 +62,16 @@ export default function OrdersPage() {
         downloadSingleTargetFile,
     } = useOrders()
 
+    const { user } = useProfile()
+
     const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
+
+    // 👉 ЗАГАЛЬНИЙ СТАН ФІЛЬТРУ — синхронізується між таблицею і канбаном
+    const [isOnlyMine, setIsOnlyMine] = useState(false)
 
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingOrder, setEditingOrder] = useState<any | null>(null)
 
-    // Стан для перегляду ДЕТАЛЬНОЇ ІНФОРМАЦІЇ ордера (модалка для Kanban дошки)
     const [viewingOrder, setViewingOrder] = useState<any | null>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
@@ -95,33 +100,30 @@ export default function OrdersPage() {
     const [totalAmount, setTotalAmount] = useState("")
 
     useEffect(() => {
-        if (!highlightId) {return}
-
+        if (!highlightId) { return }
         setActiveHighlightId(highlightId)
-
         const timer = setTimeout(() => {
             setActiveHighlightId(null)
             router.replace("/dashboard/orders", { scroll: false })
         }, 5000)
-
         return () => clearTimeout(timer)
     }, [highlightId, router])
 
     const formatDate = (dateString?: string) => {
-        if (!dateString) {return 'Не вказано';}
+        if (!dateString) { return 'Не вказано' }
         try {
-            const date = new Date(dateString);
+            const date = new Date(dateString)
             return new Intl.DateTimeFormat('uk-UA', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
-            }).format(date);
+            }).format(date)
         } catch (e) {
-            return dateString;
+            return dateString
         }
-    };
+    }
 
     const resetForm = () => {
         setClientId("")
@@ -184,8 +186,6 @@ export default function OrdersPage() {
             client_comment: comment,
             manager_accept_id: managerAccept ? Number(managerAccept) : undefined,
             manager_delivery_id: managerDelivery ? Number(managerDelivery) : undefined,
-
-            // 👇 ДОДАЙ ЦЕЙ РЯДОК (якщо пуста строка, передаємо undefined, щоб бек сам порахував)
             total_amount: totalAmount ? totalAmount : undefined,
         }
 
@@ -199,7 +199,12 @@ export default function OrdersPage() {
         setIsModalOpen(false)
     }
 
-    // 👉 ФУНКЦІЯ ДЛЯ ДОШКИ: Відкриває модальне вікно картки
+    // 👉 ЗАГАЛЬНИЙ ХЕНДЛЕР ФІЛЬТРУ — працює для обох вʼюх
+    const handleFilterChangeSync = (onlyMine: boolean) => {
+        setIsOnlyMine(onlyMine)
+        handleFilterChange(onlyMine) // синхронізує таблицю (робить запит на бек)
+    }
+
     const handleViewDetailsBoard = (id: number) => {
         const order = orders.find(o => o.id === id)
         if (order) {
@@ -215,31 +220,70 @@ export default function OrdersPage() {
 
             <div className="space-y-6 w-full min-w-0 overflow-hidden px-4 md:px-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-6">
-                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                        <button
-                            onClick={() => setViewMode("table")}
-                            className={cn(
-                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
-                                viewMode === "table"
-                                    ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
-                                    : "text-gray-500 hover:text-gray-700"
-                            )}
-                        >
-                            <LayoutList className="w-4 h-4"/>
-                            <span className="hidden xs:inline">Таблиця</span>
-                        </button>
-                        <button
-                            onClick={() => setViewMode("kanban")}
-                            className={cn(
-                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
-                                viewMode === "kanban"
-                                    ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
-                                    : "text-gray-500 hover:text-gray-700"
-                            )}
-                        >
-                            <KanbanSquare className="w-4 h-4"/>
-                            <span className="hidden xs:inline">Канбан</span>
-                        </button>
+
+                    {/* ПАНЕЛЬ ІНСТРУМЕНТІВ */}
+                    <div className="flex flex-col gap-4 pt-6">
+
+                        {/* Верхній рядок: Перемикач вигляду та Кнопка створення */}
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full">
+                            {/* TOGGLE ВИГЛЯДУ */}
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-full sm:w-auto">
+                                <button
+                                    onClick={() => setViewMode("table")}
+                                    className={cn(
+                                        "flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                        viewMode === "table"
+                                            ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
+                                            : "text-gray-500 hover:text-gray-700"
+                                    )}
+                                >
+                                    <LayoutList className="w-4 h-4" />
+                                    <span>Таблиця</span>
+                                </button>
+                                <button
+                                    onClick={() => setViewMode("kanban")}
+                                    className={cn(
+                                        "flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                        viewMode === "kanban"
+                                            ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
+                                            : "text-gray-500 hover:text-gray-700"
+                                    )}
+                                >
+                                    <KanbanSquare className="w-4 h-4" />
+                                    <span>Канбан</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Нижній рядок: ПЛАШКА З ФІЛЬТРАЦІЄЮ (перенесено сюди) */}
+                        <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100 dark:border-gray-800 self-start">
+                            <Filter className="w-4 h-4 text-muted-foreground shrink-0 ml-1" />
+                            <div className="flex bg-muted/50 p-1 rounded-lg">
+                                <button
+                                    onClick={() => handleFilterChangeSync(false)}
+                                    className={cn(
+                                        "px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
+                                        !isOnlyMine
+                                            ? "bg-background shadow-sm text-foreground"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    All Orders
+                                </button>
+                                <button
+                                    onClick={() => handleFilterChangeSync(true)}
+                                    className={cn(
+                                        "px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
+                                        isOnlyMine
+                                            ? "bg-background shadow-sm text-foreground"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    My Orders
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
 
                     <Button
@@ -259,9 +303,8 @@ export default function OrdersPage() {
                             totalPages={totalPages}
                             onPageChange={onPageChange}
 
-                            // 👉 ПЕРЕДАЄМО ФІЛЬТРИ В ТАБЛИЦЮ:
-                            isOnlyMineFilter={isOnlyMineFilter}
-                            onFilterChange={handleFilterChange}
+                            isOnlyMineFilter={isOnlyMine}
+                            onFilterChange={handleFilterChangeSync}
                             statusFilter={statusFilter}
                             onStatusChange={handleStatusChange}
                             managerFilter={managerFilter}
@@ -271,7 +314,6 @@ export default function OrdersPage() {
                             dateToFilter={dateToFilter}
                             onDateToChange={handleDateToChange}
 
-                            // ТУТ ЗМІНА: передаємо managers замість editors
                             managers={managers || []}
 
                             onOpen={loadOrderDetails}
@@ -284,14 +326,15 @@ export default function OrdersPage() {
                             downloadOrderTargetFiles={downloadOrderTargetFiles}
                             onEdit={handleEdit}
                             onDelete={(id) => deleteOrder(id)}
+                            updateOrder={updateOrder}
                         />
                     ) : (
                         <OrdersKanbanBoard
                             orders={orders}
                             updateOrder={updateOrder}
-
-                            // 👉 ДЛЯ ДОШКИ: передаємо handleViewDetailsBoard, щоб відкрити модалку!
                             onTaskOpen={handleViewDetailsBoard}
+                            currentUserId={user?.id ? Number(user.id) : 0}
+                            isOnlyMine={isOnlyMine}
                         />
                     )}
                 </div>

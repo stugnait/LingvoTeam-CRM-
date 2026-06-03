@@ -23,8 +23,8 @@ import {
     Pencil,
     Trash2,
     ChevronDown,
-    Filter,
-    CalendarIcon
+    CalendarIcon,
+    Loader2
 } from "lucide-react"
 
 import {
@@ -86,6 +86,10 @@ interface OrdersTableProps {
 
     onEdit?: (order: OrderListItem) => void
     onDelete: (orderId: number) => void
+
+    // 👉 Додаємо нові пропси з хука
+    updateOrder: (orderId: number, data: any) => Promise<void>
+    updateLoading?: number | null
 }
 
 export function OrdersTable({
@@ -93,8 +97,6 @@ export function OrdersTable({
                                 page,
                                 totalPages,
                                 onPageChange,
-                                isOnlyMineFilter,
-                                onFilterChange,
                                 statusFilter,
                                 onStatusChange,
                                 managerFilter,
@@ -113,7 +115,10 @@ export function OrdersTable({
                                 downloadOrderSourceFiles,
                                 downloadOrderTargetFiles,
                                 onEdit,
-                                onDelete
+                                onDelete,
+                                // 👉 Деструктуризуємо їх тут
+                                updateOrder,
+                                updateLoading
                             }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<Details | null>(null)
@@ -152,8 +157,6 @@ export function OrdersTable({
 
     const isOverdue = (deadline: string) => new Date(deadline).getTime() < Date.now()
 
-    const getStatusVariant = (status: string) => status === "completed" ? "default" : "warning"
-
     const getTranslatorName = (translatorId: number | null) => {
         if (!translatorId) { return "—" }
         const translator = translatorsCache[translatorId]
@@ -164,40 +167,16 @@ export function OrdersTable({
         return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0]
     }
 
+    // 👉 Хендлер для inline-зміни статусу замовлення
+    const handleInlineStatusChange = async (orderId: number, statusId: string) => {
+        await updateOrder(orderId, { status_id: Number(statusId) })
+    }
+
     return (
         <div className="border border-border rounded-lg bg-card mx-2 sm:mx-4 my-6 shadow-soft relative z-10">
 
             {/* ПАНЕЛЬ ФІЛЬТРІВ */}
             <div className="flex flex-col xl:flex-row items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/10 gap-3 sm:gap-4">
-
-                <div className="flex items-center gap-2 w-full xl:w-auto">
-                    <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium text-foreground">Filter:</span>
-                    <div className="flex bg-muted/50 p-1 rounded-lg ml-2">
-                        <button
-                            onClick={() => onFilterChange(false)}
-                            className={cn(
-                                "px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
-                                !isOnlyMineFilter
-                                    ? "bg-background shadow-sm text-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            All Orders
-                        </button>
-                        <button
-                            onClick={() => onFilterChange(true)}
-                            className={cn(
-                                "px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
-                                isOnlyMineFilter
-                                    ? "bg-background shadow-sm text-foreground"
-                                    : "text-muted-foreground hover:text-foreground"
-                            )}
-                        >
-                            My Orders
-                        </button>
-                    </div>
-                </div>
 
                 <div className="flex flex-col items-center lg:flex-row gap-3 sm:gap-4 w-full xl:w-auto">
                     {/* Статус */}
@@ -213,6 +192,10 @@ export function OrdersTable({
                             <SelectItem value="5">Planned</SelectItem>
                             <SelectItem value="6">To Do</SelectItem>
                             <SelectItem value="7">In Progress</SelectItem>
+                            <SelectItem value="8">In Checking</SelectItem>
+                            <SelectItem value="9">Checked</SelectItem>
+                            <SelectItem value="10">Translated</SelectItem>
+                            <SelectItem value="11">Revision</SelectItem>
                             <SelectItem value="3">Reject</SelectItem>
                             <SelectItem value="4">Pause</SelectItem>
                             <SelectItem value="2">Done</SelectItem>
@@ -359,7 +342,6 @@ export function OrdersTable({
                                     {/* КРАСИВИЙ БЛОК МЕНЕДЖЕРІВ */}
                                     <TableCell className="align-middle py-3">
                                         <div className="flex flex-col gap-2.5">
-
                                             {/* Accept Manager */}
                                             <div className="flex items-center gap-3">
                                                 <div className="w-7 h-7 shrink-0 rounded-full bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-600 border border-blue-500/20">
@@ -389,7 +371,6 @@ export function OrdersTable({
                                                     </p>
                                                 </div>
                                             </div>
-
                                         </div>
                                     </TableCell>
 
@@ -405,10 +386,35 @@ export function OrdersTable({
                                         </div>
                                     </TableCell>
 
+                                    {/* 👉 ІНТЕРАКТИВНИЙ СТАТУС ДЛЯ ДЕСКТОПУ */}
                                     <TableCell className="align-middle py-3">
-                                        <Badge variant={getStatusVariant("some")} className="transition-smooth hover-lift">
-                                            {order.status_name}
-                                        </Badge>
+                                        {updateLoading === order.id ? (
+                                            <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                                <span>Saving...</span>
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={String(order.status_id)}
+                                                onValueChange={(val) => handleInlineStatusChange(order.id, val)}
+                                            >
+                                                <SelectTrigger className="h-8 w-[140px] text-xs font-semibold bg-background shadow-sm border-border">
+                                                    <SelectValue placeholder={order.status_name} />
+                                                </SelectTrigger>
+                                                <SelectContent className="z-[102]">
+                                                    <SelectItem value="2">Done</SelectItem>
+                                                    <SelectItem value="3">Rejected</SelectItem>
+                                                    <SelectItem value="4">Paused</SelectItem>
+                                                    <SelectItem value="5">Planned</SelectItem>
+                                                    <SelectItem value="6">To do</SelectItem>
+                                                    <SelectItem value="7">In progress</SelectItem>
+                                                    <SelectItem value="8">In checking</SelectItem>
+                                                    <SelectItem value="9">Checked</SelectItem>
+                                                    <SelectItem value="10">Translated</SelectItem>
+                                                    <SelectItem value="11">Revision</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
                                     </TableCell>
 
                                     <TableCell className="align-middle py-3">
@@ -516,7 +522,6 @@ export function OrdersTable({
                                                         </div>
                                                     ) : details && (
                                                         <div className="space-y-6 w-full">
-
                                                             {/* Client + Translator */}
                                                             <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
                                                                 {(() => {
@@ -581,7 +586,6 @@ export function OrdersTable({
                                                                     <span className="text-xl font-bold text-foreground">{details.symbols_count}</span>
                                                                 </div>
                                                             </div>
-
                                                         </div>
                                                     )}
                                                 </div>
@@ -610,11 +614,36 @@ export function OrdersTable({
                         )}>
                             {/* Header row: ID + status + actions */}
                             <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                     <span className="font-bold text-foreground">#{order.id}</span>
-                                    <Badge variant={getStatusVariant("some")} className="text-xs shrink-0">
-                                        {order.status_name}
-                                    </Badge>
+
+                                    {/* 👉 ІНТЕРАКТИВНИЙ СТАТУС ДЛЯ МОБІЛКИ */}
+                                    {updateLoading === order.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                    ) : (
+                                        <Select
+                                            value={String(order.status_id)}
+                                            onValueChange={(val) => handleInlineStatusChange(order.id, val)}
+                                        >
+                                            <SelectTrigger className="h-7 w-[120px] text-[11px] font-semibold bg-background border-border py-0 px-2">
+                                                <SelectValue placeholder={order.status_name} />
+                                            </SelectTrigger>
+                                            <SelectContent className="z-[102]">
+                                                <SelectItem value="1">In Translation</SelectItem>
+                                                <SelectItem value="2">Done</SelectItem>
+                                                <SelectItem value="3">Rejected</SelectItem>
+                                                <SelectItem value="4">Paused</SelectItem>
+                                                <SelectItem value="5">Planned</SelectItem>
+                                                <SelectItem value="6">To do</SelectItem>
+                                                <SelectItem value="7">In progress</SelectItem>
+                                                <SelectItem value="8">In checking</SelectItem>
+                                                <SelectItem value="9">Checked</SelectItem>
+                                                <SelectItem value="10">Translated</SelectItem>
+                                                <SelectItem value="11">Revision</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+
                                     <Badge variant="outline" className="text-xs shrink-0">{order.priority}</Badge>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
