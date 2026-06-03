@@ -6,6 +6,10 @@ import { useToast } from "@/src/hooks/use-toast"
 import { authApi } from "../api"
 import type { LoginPayload, ValidationErrorResponse } from "../types"
 
+type LoginErrorResponse = ValidationErrorResponse & {
+    status?: number
+}
+
 export function useLogin() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -32,9 +36,15 @@ export function useLogin() {
             router.replace("/dashboard/")
 
         } catch (err) {
-            const errors = err as ValidationErrorResponse
+            const errors = err as LoginErrorResponse
 
-            if (errors?.email) {
+            if (errors?.status === 401) {
+                toast({
+                    title: "Login failed",
+                    description: "Incorrect password or email",
+                    variant: "error",
+                })
+            } else if (errors?.email) {
                 toast({
                     title: "Login failed",
                     description: errors.email[0],

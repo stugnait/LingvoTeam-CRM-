@@ -2,6 +2,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 type ResponseType = 'json' | 'blob'
 
+type FetchOptionsWithGlobalError = RequestInit & {
+    skipGlobalError?: boolean
+}
+
 export interface ApiFetchOptions extends RequestInit {
     responseType?: ResponseType
     skipGlobalError?: boolean // 👈 Додали наш прапорець
@@ -30,7 +34,7 @@ export async function apiFetch<T>(
 
     const isFormData = fetchOptions.body instanceof FormData
 
-    const res = await fetch(`${API_URL}${url}`, {
+    const fetchOptionsWithGlobalError: FetchOptionsWithGlobalError = {
         credentials: 'include',
         ...fetchOptions,
         headers,
@@ -43,15 +47,23 @@ export async function apiFetch<T>(
 
         // 👈 Передаємо прапорець у fetch, щоб його побачив Interceptor
         skipGlobalError: skipGlobalError
-    } as any) // Додаємо as any, щоб TypeScript не сварився на нестандартне поле
+    }
+
+    const res = await fetch(`${API_URL}${url}`, fetchOptionsWithGlobalError)
 
     if (!res.ok) {
         // ⚠️ error може бути НЕ json (наприклад 403 з text)
-        const error = await res.json().catch(() => ({
+        const error = await res.json().catch(() => null)
+        const apiError =
+            error && typeof error === 'object' && !Array.isArray(error)
+                ? error
+                : { detail: error }
+
+        throw {
+            ...apiError,
             status: res.status,
             statusText: res.statusText,
-        }))
-        throw error
+        }
     }
 
     if (res.status === 204) {
