@@ -37,12 +37,11 @@ interface OrdersKanbanBoardProps {
     orders: any[]
     currentUserId: number
     isOnlyMine: boolean
-    onFilterChange: (onlyMine: boolean) => void
     updateOrder: (id: number, payload: any) => Promise<void>
     onTaskOpen: (id: number) => void
 }
 
-export default function OrdersKanbanBoard({ orders, currentUserId, isOnlyMine, onFilterChange, updateOrder, onTaskOpen }: OrdersKanbanBoardProps) {
+export default function OrdersKanbanBoard({ orders, currentUserId, isOnlyMine, updateOrder, onTaskOpen }: OrdersKanbanBoardProps) {
     const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
     const [localOrders, setLocalOrders] = useState(orders)
 
