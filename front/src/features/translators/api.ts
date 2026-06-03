@@ -4,7 +4,11 @@ import type {
     TranslatorPayload,
     TranslatorListResponse,
     TranslatorTraffic,
-    TranslatorTrafficPayload
+    TranslatorTrafficPayload,
+    LanguageOption,
+    LanguagePairApiItem,
+    LanguagePairCreateResponse,
+    CategoryOption
 } from "./types"
 import type {CurrencyListResponse} from "@/src/features/orders/types";
 
@@ -103,19 +107,28 @@ export const translatorsApi = {
 
     // Отримуємо список всіх мов (щоб перекласти ID в назви)
     listLanguages: () =>
-        apiFetch<{ results: any[] }>("core/languages/", {
+        apiFetch<{ results: LanguageOption[] }>("core/languages/", {
             method: "GET"
         }),
 
     // Отримуємо мовні пари
     listLanguagePairs: () =>
-        apiFetch<{ results: any[] }>("core/pairs/", {
+        apiFetch<{ results: LanguagePairApiItem[] }>("core/pairs/", {
             method: "GET"
+        }),
+
+    createLanguagePair: (sourceLanguage: number, targetLanguage: number) =>
+        apiFetch<LanguagePairCreateResponse>("core/pairs/", {
+            method: "POST",
+            body: JSON.stringify({
+                source_language: sourceLanguage,
+                target_language: targetLanguage,
+            }),
         }),
 
     // Отримуємо категорії
     listCategories: () =>
-        apiFetch<{ results: any[] }>("core/order-categories/", {
+        apiFetch<{ results: CategoryOption[] }>("core/order-categories/", {
             method: "GET"
         }),
 }

@@ -9,9 +9,11 @@ import type {
     TranslatorTraffic,
     TranslatorTrafficPayload,
     LanguagePairOption,
-    CategoryOption
+    CategoryOption,
+    LanguageOption,
+    LanguagePairApiItem
 } from "../types"
-import {Currency} from "@/src/features/orders/types";
+import type {Currency} from "@/src/features/orders/types";
 import {ordersApi} from "@/src/features/orders/api";
 
 export function useTranslators() {
@@ -38,6 +40,7 @@ export function useTranslators() {
 
     // Select options
     const [currencies, setCurrencies] = useState<Currency[]>([])
+    const [languages, setLanguages] = useState<LanguageOption[]>([])
     const [languagePairs, setLanguagePairs] = useState<LanguagePairOption[]>([])
     const [categories, setCategories] = useState<CategoryOption[]>([])
 
@@ -72,6 +75,12 @@ export function useTranslators() {
         rate_per_action: 0,
     })
     const [trafficErrors, setTrafficErrors] = useState<Partial<Record<keyof TranslatorTrafficPayload, string>>>({})
+    const [isNewPairModalOpen, setIsNewPairModalOpen] = useState(false)
+    const [newPairForm, setNewPairForm] = useState({
+        source_language: 0,
+        target_language: 0,
+    })
+    const [newPairLoading, setNewPairLoading] = useState(false)
 
     // -------------------------
     // Debounce search
@@ -100,32 +109,44 @@ export function useTranslators() {
 
             // 2. Мови (для мапінгу пар)
             const langs = langRes.results || [];
+            setLanguages(langs.map((lang) => ({
+                id: lang.id,
+                name: lang.name || `Language #${lang.id}`,
+            })));
 
             // Функція-помічник для пошуку назви мови по ID
-            const getLangName = (val: any) => {
-                if (!val) return "Unknown";
-                if (typeof val === 'string') return val;
-                if (val.name) return val.name; // Якщо це об'єкт { id: 1, name: 'English' }
+            const getLangName = (val: LanguagePairApiItem["source_language"]) => {
+                if (!val) {
+                    return "Unknown";
+                }
+                if (typeof val === 'string') {
+                    return val;
+                }
+                if (typeof val !== 'number') {
+                    return val.name || "Unknown";
+                }
                 if (typeof val === 'number') {
-                    const found = langs.find((l: any) => l.id === val);
+                    const found = langs.find((language) => language.id === val);
                     return found ? found.name : `ID:${val}`;
                 }
-                return val;
+                return "Unknown";
             };
 
             // 3. Мовні пари
-            const pairs = (pairRes.results || []).map((p: any) => {
+            const pairs = (pairRes.results || []).map((p) => {
                 let pairName = `Pair #${p.id}`;
 
                 // Перевіряємо всі можливі варіанти відповіді бекенду
                 if (p.name && typeof p.name === 'string') {
                     pairName = p.name;
+                } else if (p.pair_name) {
+                    pairName = p.pair_name;
                 } else if (p.language_pair_name) {
                     pairName = p.language_pair_name;
                 } else if (p.source_language || p.target_language) {
                     const src = getLangName(p.source_language);
                     const tgt = getLangName(p.target_language);
-                    pairName = `${src} → ${tgt}`;
+                    pairName = `${src} -> ${tgt}`;
                 }
 
                 return {
@@ -136,7 +157,7 @@ export function useTranslators() {
             setLanguagePairs(pairs);
 
             // 4. Категорії (Order Traffic)
-            const cats = (catRes.results || []).map((c: any) => ({
+            const cats = (catRes.results || []).map((c) => ({
                 id: c.id,
                 name: c.name || `Category #${c.id}`
             }));
@@ -279,11 +300,75 @@ export function useTranslators() {
         setIsFormOpen(false)
         setIsTrafficFormOpen(false)
         setIsConfirmOpen(false)
+        setIsNewPairModalOpen(false)
         setSelectedTranslator(null)
         setSelectedTraffic(null)
         setConfirmAction(null)
         setErrors({})
         setTrafficErrors({})
+        setNewPairForm({ source_language: 0, target_language: 0 })
+    }
+
+    const createAndSelectLanguagePair = async () => {
+        if (!newPairForm.source_language || !newPairForm.target_language) {
+            toast({ title: "Validation error", description: "Select both languages", variant: "error" })
+            return
+        }
+
+        if (newPairForm.source_language === newPairForm.target_language) {
+            toast({ title: "Validation error", description: "Languages must be different", variant: "error" })
+            return
+        }
+
+        setNewPairLoading(true)
+
+        try {
+            const created = await translatorsApi.createLanguagePair(
+                newPairForm.source_language,
+                newPairForm.target_language
+            )
+
+            const sourceName = languages.find((language) => language.id === newPairForm.source_language)?.name
+                ?? `Language #${newPairForm.source_language}`
+            const targetName = languages.find((language) => language.id === newPairForm.target_language)?.name
+                ?? `Language #${newPairForm.target_language}`
+            const pairName = created.pair_name
+                || created.language_pair_name
+                || created.name
+                || `${sourceName} -> ${targetName}`
+
+            setLanguagePairs(prev => {
+                if (prev.some((pair) => pair.id === created.id)) {
+                    return prev.map((pair) => pair.id === created.id ? { id: created.id, name: pairName } : pair)
+                }
+
+                return [...prev, { id: created.id, name: pairName }]
+            })
+
+            setTrafficForm(prev => ({
+                ...prev,
+                language_pair: created.id,
+            }))
+
+            setIsNewPairModalOpen(false)
+            setNewPairForm({ source_language: 0, target_language: 0 })
+            toast({ title: "Language pair created", description: pairName })
+        } catch (err) {
+            const errorData = err as { detail?: unknown; non_field_errors?: unknown }
+            const nonFieldError = Array.isArray(errorData.non_field_errors)
+                && typeof errorData.non_field_errors[0] === "string"
+                ? errorData.non_field_errors[0]
+                : undefined
+            const detail = typeof errorData.detail === "string" ? errorData.detail : undefined
+
+            toast({
+                title: "Error",
+                description: nonFieldError || detail || "Failed to create language pair",
+                variant: "error",
+            })
+        } finally {
+            setNewPairLoading(false)
+        }
     }
 
     // -------------------------
@@ -340,10 +425,18 @@ export function useTranslators() {
         try {
             const newErrors: Partial<Record<keyof TranslatorTrafficPayload, string>> = {}
 
-            if (!trafficForm.translator) newErrors.translator = "Required"
-            if (!trafficForm.name) newErrors.name = "Required"
-            if (!trafficForm.currency_id) newErrors.currency_id = "Required"
-            if (!trafficForm.language_pair) newErrors.language_pair = "Required"
+            if (!trafficForm.translator) {
+                newErrors.translator = "Required"
+            }
+            if (!trafficForm.name) {
+                newErrors.name = "Required"
+            }
+            if (!trafficForm.currency_id) {
+                newErrors.currency_id = "Required"
+            }
+            if (!trafficForm.language_pair) {
+                newErrors.language_pair = "Required"
+            }
 
             if (Object.keys(newErrors).length > 0) {
                 setTrafficErrors(newErrors)
@@ -425,8 +518,15 @@ export function useTranslators() {
         trafficErrors,
         selectedTraffic,
         currencies,
+        languages,
         languagePairs,
         categories,
+        isNewPairModalOpen,
+        setIsNewPairModalOpen,
+        newPairForm,
+        setNewPairForm,
+        newPairLoading,
+        createAndSelectLanguagePair,
 
         openAddTraffic,
         openEditTraffic,
