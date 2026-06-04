@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { KanbanTask, KanbanColumn, statusIdToTaskStatus, taskStatusToStatusId, OrderListItem } from '../types';
+import { KanbanTask, KanbanColumn, statusIdToTaskStatus, OrderListItem } from '../types';
 import { fetchOrders, updateOrderStatus, fetchOrderById } from '../services/orders';
 import type {ProfileUser} from "@/src/features/profile/types";
 import {ordersApi} from "@/src/features/editor/api";

@@ -1,5 +1,5 @@
 // /types/kanban.ts
-export type TaskStatus = 'planned' | 'todo' | 'in_progress' | 'reject' | 'pause' | 'done';
+export type TaskStatus = 'planned' | 'todo' | 'in_progress' | 'reject' | 'pause' | 'done' | 'in_translation' | 'in_checking' | 'revision';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 
 // API Order type from your backend
@@ -38,7 +38,8 @@ export interface OrderListResponse {
 // Our Kanban Task now extends OrderListItem
 export interface KanbanTask extends Omit<OrderListItem, 'id'> {
     id: string;
-    status: TaskStatus;
+    editor_status_id?: number;
+    editor_status?: number;
     client_name: string;
     title: string;
     description?: string;
@@ -77,17 +78,17 @@ export const statusIdToTaskStatus = (status_id: string): TaskStatus => {
 };
 
 // Helper to map TaskStatus to status_id
-export const taskStatusToStatusId = (status: TaskStatus): string => {
-    const mapping: Record<TaskStatus, string> = {
-        'planned': '1',
-        'todo': '2',
-        'in_progress': '3',
-        'reject': '4',
-        'pause': '5',
-        'done': '6',
-    };
-    return mapping[status];
-};
+// export const taskStatusToStatusId = (status: TaskStatus): string => {
+//     const mapping: Record<TaskStatus, string> = {
+//         'planned': '1',
+//         'todo': '2',
+//         'in_progress': '3',
+//         'reject': '4',
+//         'pause': '5',
+//         'done': '6',
+//     };
+//     return mapping[status];
+// };
 
 export const formatPriority = (priorityValue: string | number): TaskPriority => {
     const stringValue = String(priorityValue);

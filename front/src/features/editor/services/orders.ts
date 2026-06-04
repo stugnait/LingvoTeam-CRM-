@@ -6,7 +6,6 @@ import {
     KanbanTask,
     TaskPriority,
     TaskStatus,
-    taskStatusToStatusId,
     statusIdToTaskStatus
 } from '../types';
 

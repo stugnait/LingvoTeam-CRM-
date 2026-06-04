@@ -173,7 +173,7 @@ export default function EditorMain() {
                                 <KanbanColumn
                                     key={column.id}
                                     column={column as any}
-                                    tasks={getFormattedTasksForColumn(column)}
+                                    tasks={getFormattedTasksForColumn(column) as any}
                                     onTaskOpen={openOrderById}
                                 />
                             ))}
@@ -262,7 +262,7 @@ export default function EditorMain() {
             </div>
 
             <KanbanStats
-                columns={columnsWithIcons}
+                columns={columnsWithIcons as any}
                 getTasksForColumn={getFormattedTasksForColumn}
             />
         </div>
