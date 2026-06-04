@@ -78,7 +78,7 @@ export function useTariffs() {
     const loadLanguages = useCallback(async () => {
         try {
             const response = await ordersApi.listLanguages()
-            setLanguages(response.results)
+            setLanguages(response.results || response)
         } catch {
             toast({ title: "Error", description: "Failed to load languages", variant: "error" })
         }
