@@ -93,7 +93,6 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserUpdateSerializer
 
-    # 👇 Додаємо парсери для підтримки завантаження файлів (avatar)
     parser_classes = [MultiPartParser, FormParser]
 
     # permission_classes = (IsAdminUser,)
@@ -119,7 +118,6 @@ class AdminToggleUserStatusView(APIView):
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
 
-        # 👇 Інвертуємо статус (було True стане False, було False стане True)
         user.is_active = not user.is_active
         user.save()
 
@@ -149,7 +147,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
-    # 👇 Додаємо парсери сюди також
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     search_fields = ['first_name', 'last_name', 'full_name']
@@ -207,18 +204,12 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return UserListSerializer
-
-        # 👇 ДОДАЄМО ОБРОБКУ ДЛЯ UPDATE
         elif self.action in ['update', 'partial_update']:
             return UserUpdateSerializer
-
         elif self.action == 'update_user':
             return UserSelfUpdateSerializer
-
         elif self.action == 'me':
             return UserSerializer
-
-        # Для action 'create' повернеться RegistrationSerializer
         return RegistrationSerializer
 
     @extend_schema(
@@ -239,7 +230,7 @@ class UserViewSet(viewsets.ModelViewSet):
         password_list = [
             secrets.choice(lowercase),
             secrets.choice(uppercase),
-            secrets.choice(digits)  # Додав цифру для надійності
+            secrets.choice(digits)
         ]
 
         password_list += [secrets.choice(all_characters) for _ in range(9)]
@@ -301,10 +292,13 @@ class UserViewSet(viewsets.ModelViewSet):
     def update_user(self, request):
         user = request.user
 
-        # request.data тепер міститиме і текст, і файли завдяки MultiPartParser
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if data.get('email') and isinstance(data.get('email'), str):
+            data['email'] = data.get('email').lower()
+
         serializer = self.get_serializer(
             user,
-            data=request.data,
+            data=data,
             partial=True
         )
         serializer.is_valid(raise_exception=True)
@@ -361,7 +355,7 @@ class UserViewSet(viewsets.ModelViewSet):
             try:
                 RefreshToken(refresh_token).blacklist()
             except Exception:
-                pass # поки просто ігнор
+                pass
 
         resp = Response(
             {"message": "Пароль успішно змінено. Зайдіть знову в акаунт.", "logout": True},
@@ -382,7 +376,11 @@ class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = ForgotPasswordSerializer(data=request.data)
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if data.get('email') and isinstance(data.get('email'), str):
+            data['email'] = data.get('email').lower()
+
+        serializer = ForgotPasswordSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
         user = User.objects.get(email=serializer.validated_data["email"])
@@ -450,7 +448,6 @@ class LogoutView(APIView):
         response.delete_cookie('access-token')
         response.delete_cookie('refresh-token')
 
-
         return response
 
 @extend_schema(
@@ -462,13 +459,16 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if data.get('email') and isinstance(data.get('email'), str):
+            data['email'] = data.get('email').lower()
+
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
 
         user = serializer.user
         tokens = serializer.validated_data
 
-        # ✅ Правильні ключі
         access = tokens.get('access')
         refresh = tokens.get('refresh')
 
@@ -503,7 +503,6 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
         response = super().post(request, *args, **kwargs)
 
         if response.status_code == status.HTTP_200_OK:
-            # ✅ Правильний ключ
             access_token = response.data.get('access')
 
             if access_token:
@@ -516,7 +515,6 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
                     samesite='Lax'
                 )
 
-            # Очищуємо тіло відповіді
             response.data.pop('access', None)
             response.data.pop('refresh', None)
 
@@ -525,23 +523,18 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
 
 @extend_schema(tags=['Authentication'])
 class RegistrationView(generics.CreateAPIView):
-    # 1. Виправлено queryset (був EditorLanguagePairs)
     queryset = User.objects.all()
-
-    # Твій серіалізатор, у який ми раніше додали поле 'avatar'
     serializer_class = RegistrationSerializer
-
-    # 2. Додано парсери для того, щоб Django міг читати файли (multipart/form-data)
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def create(self, request, *args, **kwargs):
-        # request.data при FormData — це об'єкт QueryDict, який не можна змінювати.
-        # Тому copy() тут є абсолютно обов'язковим.
         data = request.data.copy()
+
+        if data.get('email') and isinstance(data.get('email'), str):
+            data['email'] = data.get('email').lower()
 
         input_password = data.get('password')
 
-        # Логіка генерації пароля, якщо юзер його не ввів
         if not input_password or input_password.strip() == "":
             lowercase = string.ascii_lowercase
             uppercase = string.ascii_uppercase
@@ -561,12 +554,10 @@ class RegistrationView(generics.CreateAPIView):
         else:
             final_password = input_password
 
-        # Передаємо дані у серіалізатор. Він сам дістане текстові поля і файл аватарки.
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Відправка листа з доступами
         email_subject = 'Реєстрація успішна'
         email_message = f"""
         Вітаємо, {user.full_name}!
@@ -591,7 +582,6 @@ class RegistrationView(generics.CreateAPIView):
         except Exception as e:
             print(f"Помилка відправки пошти: {e}")
 
-        # Формуємо відповідь (використовуємо full_name замість first/last name)
         return Response({
             'user_id': user.id,
             'email': user.email,
@@ -611,7 +601,6 @@ class RegistrationView(generics.CreateAPIView):
 class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Permission.objects.all()
     serializer_class = PermissionSerializer
-    # permission_classes = [IsAdminUser]
     pagination_class = None
 
 
@@ -625,7 +614,6 @@ class PermissionViewSet(viewsets.ReadOnlyModelViewSet):
 )
 class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
-    # permission_classes = [IsAdminUser]
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
@@ -647,13 +635,12 @@ class RoleViewSet(viewsets.ModelViewSet):
         created = []
         for perm_id in permission_ids:
             try:
-                rp = RolePermission.objects.create(role=role, permission_id=perm_id)
+                RolePermission.objects.create(role=role, permission_id=perm_id)
                 created.append(perm_id)
             except Exception:
-                pass  # skip duplicates або невалідні id
+                pass
 
         return Response({
             "detail": f"Роль '{role.name}' оновлено.",
             "permission_ids": created
         }, status=status.HTTP_200_OK)
-

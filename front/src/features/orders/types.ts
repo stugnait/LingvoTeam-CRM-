@@ -421,15 +421,15 @@ export const statusIdToTaskStatus = (status_id: number): TaskStatus => {
     return mapping[status_id] || "todo"
 }
 
-export const taskStatusToStatusId = (status: TaskStatus): number => {
-    const mapping: Record<TaskStatus, number> = {
-        planned: 1,
-        todo: 2,
-        in_progress: 3,
-        reject: 4,
-        pause: 5,
-        done: 6,
-    }
-
-    return mapping[status]
-}
+// export const taskStatusToStatusId = (status: TaskStatus): number => {
+//     const mapping: Record<TaskStatus, number> = {
+//         planned: 1,
+//         todo: 2,
+//         in_progress: 3,
+//         reject: 4,
+//         pause: 5,
+//         done: 6,
+//     }
+//
+//     return mapping[status]
+// }

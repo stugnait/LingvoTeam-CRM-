@@ -20,7 +20,11 @@ interface StepConfig {
 interface WizardModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
+
+    step: number
+    onStepChange: (step: number) => void
     title: string
+
     steps: StepConfig[]
     onSubmit: () => void
     children: React.ReactNode
@@ -34,6 +38,8 @@ export function WizardModal({
                                 open,
                                 onOpenChange,
                                 title,
+                                step,
+                                onStepChange,
                                 steps,
                                 onSubmit,
                                 children,
@@ -43,7 +49,10 @@ export function WizardModal({
                                 stepError
                             }: WizardModalProps) {
 
-    const [currentStep, setCurrentStep] = React.useState(0)
+    // Ми більше не тримаємо внутрішній стейт currentStep,
+    // а використовуємо пропси `step` та `onStepChange`, які приходять зверху (контрольований компонент).
+    const currentStep = step;
+    const setCurrentStep = onStepChange;
 
     const stepArray = React.Children.toArray(children)
 
@@ -53,11 +62,11 @@ export function WizardModal({
     const isStepValid = stepValidation ? stepValidation(currentStep) : true
 
     const next = () => {
-        if (!isLast && isStepValid) {setCurrentStep(prev => prev + 1)}
+        if (!isLast && isStepValid) {setCurrentStep(currentStep + 1)}
     }
 
     const back = () => {
-        if (!isFirst) {setCurrentStep(prev => prev - 1)}
+        if (!isFirst) {setCurrentStep(currentStep - 1)}
     }
 
     const handleClose = () => {
@@ -79,7 +88,7 @@ export function WizardModal({
 
                     {/* Step Indicator - Compact horizontal steps, scrollable on mobile */}
                     <div className="mt-2 sm:mt-3 flex items-center overflow-x-auto scrollbar-none gap-0">
-                        {steps.map((step, index) => (
+                        {steps.map((stepConfig, index) => (
                             <React.Fragment key={index}>
                                 <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
                                     <div
@@ -103,7 +112,7 @@ export function WizardModal({
                                         "text-[11px] sm:text-xs font-medium whitespace-nowrap",
                                         index <= currentStep ? "text-white" : "text-blue-200"
                                     )}>
-                                        {step.title}
+                                        {stepConfig.title}
                                     </span>
                                 </div>
 

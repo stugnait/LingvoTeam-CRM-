@@ -168,6 +168,8 @@ class OrderListSerializer(serializers.ModelSerializer):
     language_pair_name = serializers.SerializerMethodField()
     manager_avatar = serializers.ImageField(source='manager_id.avatar', read_only=True)
 
+    # editor_status = serializers.CharField(source='editor_status', read_only=True)
+
     class Meta:
         model = Order
         fields = [
@@ -189,6 +191,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'created_at',
             'client_comment', 'translator_comment',
             'manager_avatar',
+            "editor_status"
         ]
 
     def get_language_pair_name(self, order):

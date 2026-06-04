@@ -46,7 +46,7 @@ export const ordersApi = {
     //         method: "POST",
     //     }),
 
-    updateStatus: (orderId: number, data: { status_id: string }) =>
+    updateStatus: (orderId: number, data: { editor_status: number }) =>
         apiFetch(`orders/${orderId}/`, {
             method: "PATCH",
             body: JSON.stringify(data),

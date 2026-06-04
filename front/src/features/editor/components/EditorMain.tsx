@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
     DndContext,
     DragEndEvent,
@@ -13,51 +13,48 @@ import {
     MeasuringStrategy,
 } from '@dnd-kit/core';
 
-// Components
 import KanbanHeader from '@/src/components/canban/KanbanHeader';
 import KanbanColumn from '@/src/components/canban/KanbanColumn';
 import KanbanStats from '@/src/components/canban/KanbanStats';
 import { TaskModal } from "@/src/components/modals/jira/InfoModal";
 import { filterTasksByDeadline, type DeadlineFilter } from '@/src/components/canban/KanbanDeadlineFilter';
 
-// Hooks and types
 import { useEditor } from '../hooks/useEditor';
 import { KanbanTask, formatPriority } from '../types';
 import { cn } from '@/src/lib/utils';
 
-// Icons for columns
 import {
     Target,
     Clock,
-    Eye,
-    XCircle,
-    PauseCircle,
-    CheckSquare
+    Languages,
+    Search,
+    RotateCcw,
+    CheckSquare,
 } from 'lucide-react';
 import { RejectOrderModal } from "@/src/components/modals/jira/RejectOrderModal";
 import { RatingModal } from "@/src/components/modals/jira/RatingModal";
 
-const COLUMN_ICONS = {
-    planned: <Target className="w-4 h-4" />,
-    todo: <Clock className="w-4 h-4" />,
-    in_progress: <Eye className="w-4 h-4" />,
-    reject: <XCircle className="w-4 h-4" />,
-    pause: <PauseCircle className="w-4 h-4" />,
-    done: <CheckSquare className="w-4 h-4" />,
+// Іконки відповідають новим статусам editor канбана
+const COLUMN_ICONS: Record<string, React.ReactNode> = {
+    planned:        <Target className="w-4 h-4" />,
+    todo:           <Clock className="w-4 h-4" />,
+    in_translation: <Languages className="w-4 h-4" />,
+    in_checking:    <Search className="w-4 h-4" />,
+    revision:       <RotateCcw className="w-4 h-4" />,
+    done:           <CheckSquare className="w-4 h-4" />,
 };
 
 const formatDate = (dateString?: string) => {
-    if (!dateString) {return 'Не вказано';}
+    if (!dateString) { return 'Не вказано'; }
     try {
-        const date = new Date(dateString);
         return new Intl.DateTimeFormat('uk-UA', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-        }).format(date);
-    } catch (e) {
+        }).format(new Date(dateString));
+    } catch {
         return dateString;
     }
 };
@@ -104,35 +101,27 @@ export default function EditorMain() {
         })
     );
 
-    // Форматування тасок — оголошуємо ПЕРШИМ
     const formattedTasks = useMemo(() => {
         return tasks.map(task => ({
             ...task,
             id: task.id.toString(),
-            title: task.language_pair_name || `Order #${task.id}`,
+            title: (task as any).language_pair_name || `Order #${task.id}`,
             priority: (task.priority?.toLowerCase() || 'medium') as any,
-            intake_manager: task.manager_accept_name && task.manager_accept_name !== '-'
-                ? {
-                    name: task.manager_accept_name,
-                    avatar: (task as any).manager_accept_avatar || undefined
-                }
+            intake_manager: (task as any).manager_accept_name && (task as any).manager_accept_name !== '-'
+                ? { name: (task as any).manager_accept_name, avatar: (task as any).manager_accept_avatar || undefined }
                 : null,
-            delivery_manager: task.manager_delivery_name && task.manager_delivery_name !== '-'
-                ? {
-                    name: task.manager_delivery_name,
-                    avatar: (task as any).manager_delivery_avatar || undefined
-                }
+            delivery_manager: (task as any).manager_delivery_name && (task as any).manager_delivery_name !== '-'
+                ? { name: (task as any).manager_delivery_name, avatar: (task as any).manager_delivery_avatar || undefined }
                 : null,
         }));
     }, [tasks]);
 
-    // allTasks для фільтр-бару — всі таски без фільтрації по дедлайну
     const allTasks = useMemo(() => formattedTasks, [formattedTasks]);
 
-    // Таски для колонки — з урахуванням deadlineFilter
+    // ✅ Фільтруємо по taskIds з хука — там вже правильний розподіл по editor_status_id
     const getFormattedTasksForColumn = useCallback((column: any) => {
         const columnTasks = formattedTasks.filter(
-            t => t.status === column.status
+            t => column.taskIds.includes(t.id.toString())
         ) as KanbanTask[];
         return filterTasksByDeadline(columnTasks, deadlineFilter);
     }, [formattedTasks, deadlineFilter]);
@@ -140,7 +129,7 @@ export default function EditorMain() {
     const columnsWithIcons = useMemo(() =>
             columns.map(col => ({
                 ...col,
-                icon: COLUMN_ICONS[col.status as keyof typeof COLUMN_ICONS]
+                icon: COLUMN_ICONS[col.status] ?? null
             })),
         [columns]
     );
@@ -184,7 +173,7 @@ export default function EditorMain() {
                                 <KanbanColumn
                                     key={column.id}
                                     column={column as any}
-                                    tasks={getFormattedTasksForColumn(column)}
+                                    tasks={getFormattedTasksForColumn(column) as any}
                                     onTaskOpen={openOrderById}
                                 />
                             ))}
@@ -211,30 +200,31 @@ export default function EditorMain() {
                     </DndContext>
                 )}
 
+                {/* InfoModal — для всіх статусів де просто дивимось інфо */}
                 {selectedTask && (
                     <TaskModal
                         open={isModalOpen}
                         onOpenChange={closeModal}
                         taskId={selectedTask.id.toString()}
-                        taskTitle={selectedTask.language_pair_name || `Order #${selectedTask.id}`}
-                        taskDescription={selectedTask.client_comment || 'Немає коментаря'}
-                        status={selectedTask.status_name}
-                        priority={formatPriority(selectedTask.priority)}
-                        translator={selectedTask.translator_name || 'Не призначено'}
-                        intake_manager={selectedTask.manager_accept_name
-                            ? { id: 0, name: selectedTask.manager_accept_name, avatar: undefined }
+                        taskTitle={(selectedTask as any).language_pair_name || `Order #${selectedTask.id}`}
+                        taskDescription={(selectedTask as any).client_comment || 'Немає коментаря'}
+                        status={(selectedTask as any).status_name}
+                        priority={formatPriority((selectedTask as any).priority)}
+                        translator={(selectedTask as any).translator_name || 'Не призначено'}
+                        intake_manager={(selectedTask as any).manager_accept_name
+                            ? { id: 0, name: (selectedTask as any).manager_accept_name, avatar: undefined }
                             : null}
-                        delivery_manager={selectedTask.manager_delivery_name && selectedTask.manager_delivery_name !== '-'
-                            ? { id: 0, name: selectedTask.manager_delivery_name, avatar: undefined }
+                        delivery_manager={(selectedTask as any).manager_delivery_name && (selectedTask as any).manager_delivery_name !== '-'
+                            ? { id: 0, name: (selectedTask as any).manager_delivery_name, avatar: undefined }
                             : null}
-                        clientName={selectedTask.client_name}
-                        languagePair={selectedTask.language_pair_name}
-                        dueDate={formatDate(selectedTask.deadline)}
+                        clientName={(selectedTask as any).client_name}
+                        languagePair={(selectedTask as any).language_pair_name}
+                        dueDate={formatDate((selectedTask as any).deadline)}
                         onDownloadOriginal={() => downloadOrderSourceFiles(selectedTask.id)}
                         onDownloadTranslation={() => downloadOrderTargetFiles(selectedTask.id)}
                         onCancel={closeModal}
                         onSave={closeModal}
-                        editor={selectedTask.editor_name || 'Не призначено'}
+                        editor={(selectedTask as any).editor_name || 'Не призначено'}
                         orderId={selectedTask.id}
                         sourceFiles={sourceFiles}
                         targetFiles={targetFiles}
@@ -246,7 +236,8 @@ export default function EditorMain() {
                     />
                 )}
 
-                {selectedTask && String(selectedTask.status_id) === '4' && (
+                {/* RejectModal — відкриття контролює useEditor по editor_status_id === '11' */}
+                {selectedTask && (
                     <RejectOrderModal
                         open={isRejectModalOpen}
                         onOpenChange={setIsRejectModalOpen}
@@ -256,7 +247,8 @@ export default function EditorMain() {
                     />
                 )}
 
-                {selectedTask && String(selectedTask.status_id) === '6' && (
+                {/* RatingModal — відкриття контролює useEditor по editor_status_id === '8' */}
+                {selectedTask && (
                     <RatingModal
                         open={isApproveModalOpen}
                         onOpenChange={setIsApproveModalOpen}
@@ -270,7 +262,7 @@ export default function EditorMain() {
             </div>
 
             <KanbanStats
-                columns={columnsWithIcons}
+                columns={columnsWithIcons as any}
                 getTasksForColumn={getFormattedTasksForColumn}
             />
         </div>

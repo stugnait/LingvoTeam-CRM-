@@ -50,6 +50,21 @@ import type {
 } from "@/src/features/orders/types"
 import { cn } from "@/src/lib/utils"
 
+// 👉 Масив статусів з відповідними кольорами (Tailwind classes)
+const STATUS_OPTIONS = [
+    { value: "5", label: "Planned", color: "bg-purple-500" },
+    { value: "6", label: "To Do", color: "bg-blue-500" },
+    { value: "1", label: "In Translation", color: "bg-amber-500" },
+    { value: "7", label: "In Progress", color: "bg-yellow-500" },
+    { value: "10", label: "Translated", color: "bg-cyan-500" },
+    { value: "8", label: "In Checking", color: "bg-indigo-500" },
+    { value: "11", label: "Revision", color: "bg-rose-500" },
+    { value: "3", label: "Rejected", color: "bg-red-500" },
+    { value: "9", label: "Checked", color: "bg-teal-500" },
+    { value: "4", label: "Paused", color: "bg-slate-500" },
+    { value: "2", label: "Done", color: "bg-emerald-500" },
+];
+
 interface OrdersTableProps {
     orders: OrderListItem[]
     page: number
@@ -87,7 +102,6 @@ interface OrdersTableProps {
     onEdit?: (order: OrderListItem) => void
     onDelete: (orderId: number) => void
 
-    // 👉 Додаємо нові пропси з хука
     updateOrder: (orderId: number, data: any) => Promise<void>
     updateLoading?: number | null
 }
@@ -116,7 +130,6 @@ export function OrdersTable({
                                 downloadOrderTargetFiles,
                                 onEdit,
                                 onDelete,
-                                // 👉 Деструктуризуємо їх тут
                                 updateOrder,
                                 updateLoading
                             }: OrdersTableProps) {
@@ -167,7 +180,6 @@ export function OrdersTable({
         return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0]
     }
 
-    // 👉 Хендлер для inline-зміни статусу замовлення
     const handleInlineStatusChange = async (orderId: number, statusId: string) => {
         await updateOrder(orderId, { status_id: Number(statusId) })
     }
@@ -179,26 +191,29 @@ export function OrdersTable({
             <div className="flex flex-col xl:flex-row items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/10 gap-3 sm:gap-4">
 
                 <div className="flex flex-col items-center lg:flex-row gap-3 sm:gap-4 w-full xl:w-auto">
-                    {/* Статус */}
+                    {/* Статус Фільтр */}
                     <Select
                         value={String(statusFilter || "all")}
                         onValueChange={(val) => onStatusChange && onStatusChange(val === "all" ? "" : val)}
                     >
-                        <SelectTrigger className="w-full lg:w-[160px] bg-background">
+                        <SelectTrigger className="w-full lg:w-[170px] bg-background">
                             <SelectValue placeholder="All Statuses" />
                         </SelectTrigger>
                         <SelectContent className="z-[101]">
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="5">Planned</SelectItem>
-                            <SelectItem value="6">To Do</SelectItem>
-                            <SelectItem value="7">In Progress</SelectItem>
-                            <SelectItem value="8">In Checking</SelectItem>
-                            <SelectItem value="9">Checked</SelectItem>
-                            <SelectItem value="10">Translated</SelectItem>
-                            <SelectItem value="11">Revision</SelectItem>
-                            <SelectItem value="3">Reject</SelectItem>
-                            <SelectItem value="4">Pause</SelectItem>
-                            <SelectItem value="2">Done</SelectItem>
+                            <SelectItem value="all">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-border" />
+                                    <span>All Statuses</span>
+                                </div>
+                            </SelectItem>
+                            {STATUS_OPTIONS.map((status) => (
+                                <SelectItem key={status.value} value={status.value}>
+                                    <div className="flex items-center gap-2">
+                                        <div className={cn("w-2 h-2 rounded-full", status.color)} />
+                                        <span>{status.label}</span>
+                                    </div>
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
 
@@ -339,10 +354,8 @@ export function OrdersTable({
                                         <div className="font-medium text-foreground">#{order.id}</div>
                                     </TableCell>
 
-                                    {/* КРАСИВИЙ БЛОК МЕНЕДЖЕРІВ */}
                                     <TableCell className="align-middle py-3">
                                         <div className="flex flex-col gap-2.5">
-                                            {/* Accept Manager */}
                                             <div className="flex items-center gap-3">
                                                 <div className="w-7 h-7 shrink-0 rounded-full bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-600 border border-blue-500/20">
                                                     {order.manager_accept_name?.[0]?.toUpperCase() || "?"}
@@ -357,7 +370,6 @@ export function OrdersTable({
                                                 </div>
                                             </div>
 
-                                            {/* Delivery Manager */}
                                             <div className="flex items-center gap-3">
                                                 <div className="w-7 h-7 shrink-0 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-600 border border-emerald-500/20">
                                                     {order.manager_delivery_name?.[0]?.toUpperCase() || "?"}
@@ -398,20 +410,18 @@ export function OrdersTable({
                                                 value={String(order.status_id)}
                                                 onValueChange={(val) => handleInlineStatusChange(order.id, val)}
                                             >
-                                                <SelectTrigger className="h-8 w-[140px] text-xs font-semibold bg-background shadow-sm border-border">
+                                                <SelectTrigger className="h-8 w-[150px] text-xs font-semibold bg-background shadow-sm border-border">
                                                     <SelectValue placeholder={order.status_name} />
                                                 </SelectTrigger>
                                                 <SelectContent className="z-[102]">
-                                                    <SelectItem value="2">Done</SelectItem>
-                                                    <SelectItem value="3">Rejected</SelectItem>
-                                                    <SelectItem value="4">Paused</SelectItem>
-                                                    <SelectItem value="5">Planned</SelectItem>
-                                                    <SelectItem value="6">To do</SelectItem>
-                                                    <SelectItem value="7">In progress</SelectItem>
-                                                    <SelectItem value="8">In checking</SelectItem>
-                                                    <SelectItem value="9">Checked</SelectItem>
-                                                    <SelectItem value="10">Translated</SelectItem>
-                                                    <SelectItem value="11">Revision</SelectItem>
+                                                    {STATUS_OPTIONS.map((status) => (
+                                                        <SelectItem key={status.value} value={status.value}>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={cn("w-2 h-2 rounded-full", status.color)} />
+                                                                <span>{status.label}</span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
                                                 </SelectContent>
                                             </Select>
                                         )}
@@ -522,7 +532,6 @@ export function OrdersTable({
                                                         </div>
                                                     ) : details && (
                                                         <div className="space-y-6 w-full">
-                                                            {/* Client + Translator */}
                                                             <div className="grid grid-cols-2 gap-4 w-full animate-stagger">
                                                                 {(() => {
                                                                     const clientId = details.client?.id || order.client_id
@@ -565,7 +574,6 @@ export function OrdersTable({
                                                                 })()}
                                                             </div>
 
-                                                            {/* Stats */}
                                                             <div className="grid grid-cols-4 gap-4 w-full animate-stagger">
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
@@ -612,7 +620,6 @@ export function OrdersTable({
                             order.id === highlightId && "bg-primary/10",
                             isOverdue(order.deadline) && "bg-red-500/10"
                         )}>
-                            {/* Header row: ID + status + actions */}
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                     <span className="font-bold text-foreground">#{order.id}</span>
@@ -625,21 +632,18 @@ export function OrdersTable({
                                             value={String(order.status_id)}
                                             onValueChange={(val) => handleInlineStatusChange(order.id, val)}
                                         >
-                                            <SelectTrigger className="h-7 w-[120px] text-[11px] font-semibold bg-background border-border py-0 px-2">
+                                            <SelectTrigger className="h-7 w-[140px] text-[11px] font-semibold bg-background border-border py-0 px-2">
                                                 <SelectValue placeholder={order.status_name} />
                                             </SelectTrigger>
                                             <SelectContent className="z-[102]">
-                                                <SelectItem value="1">In Translation</SelectItem>
-                                                <SelectItem value="2">Done</SelectItem>
-                                                <SelectItem value="3">Rejected</SelectItem>
-                                                <SelectItem value="4">Paused</SelectItem>
-                                                <SelectItem value="5">Planned</SelectItem>
-                                                <SelectItem value="6">To do</SelectItem>
-                                                <SelectItem value="7">In progress</SelectItem>
-                                                <SelectItem value="8">In checking</SelectItem>
-                                                <SelectItem value="9">Checked</SelectItem>
-                                                <SelectItem value="10">Translated</SelectItem>
-                                                <SelectItem value="11">Revision</SelectItem>
+                                                {STATUS_OPTIONS.map((status) => (
+                                                    <SelectItem key={status.value} value={status.value}>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className={cn("w-1.5 h-1.5 rounded-full", status.color)} />
+                                                            <span>{status.label}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     )}
@@ -675,7 +679,6 @@ export function OrdersTable({
                                 </div>
                             </div>
 
-                            {/* Languages */}
                             <div className="flex items-center gap-2">
                                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
                                     {order.source_language}
@@ -686,7 +689,6 @@ export function OrdersTable({
                                 </span>
                             </div>
 
-                            {/* Managers + Deadline row */}
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-1.5 min-w-0">
                                     <div className="flex items-center gap-2">
@@ -718,7 +720,6 @@ export function OrdersTable({
                                 </div>
                             </div>
 
-                            {/* status_id === 9 buttons */}
                             {order.status_id === 9 && (
                                 <div className="flex gap-2 pt-1">
                                     <Button size="sm" variant="outline" className="h-8 flex-1 text-xs"
@@ -736,7 +737,6 @@ export function OrdersTable({
                                 </div>
                             )}
 
-                            {/* Expanded details */}
                             {expandedId === order.id && (
                                 <div className="animate-in fade-in slide-in-from-top-2 duration-300 pt-2 space-y-3">
                                     {loadingId === order.id ? (
@@ -746,7 +746,6 @@ export function OrdersTable({
                                         </div>
                                     ) : details && (
                                         <>
-                                            {/* Client + Translator stacked */}
                                             <div className="grid grid-cols-1 gap-3">
                                                 {(() => {
                                                     const clientId = details.client?.id || order.client_id
@@ -773,7 +772,6 @@ export function OrdersTable({
                                                     )
                                                 })()}
                                             </div>
-                                            {/* Stats 2x2 grid */}
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-background border border-border shadow-sm">
                                                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
