@@ -131,11 +131,9 @@ class OrderTrafficViewSet(viewsets.ModelViewSet):
 
 
 class AnalyzeFileUploadView(APIView):
-    # Дозволяє приймати formData з файлами
     parser_classes = [MultiPartParser]
 
     def post(self, request, *args, **kwargs):
-        # Отримуємо файл із запиту (назва ключа має збігатися з фронтендом, наприклад 'file')
         uploaded_file = request.FILES.get('file')
 
         if not uploaded_file:
@@ -145,18 +143,14 @@ class AnalyzeFileUploadView(APIView):
             )
 
         try:
-            # Django-об'єкт файлу (InMemoryUploadedFile) має всі потрібні методи:
-            # .name, .seek(), .read(), тому функція відпрацює бездоганно.
             file_stats = analyze_file_content(uploaded_file)
-
-            # Повертаємо пораховані дані фронтенду
             return Response(file_stats, status=status.HTTP_200_OK)
-
         except Exception as e:
             return Response(
                 {"detail": f"Помилка під час аналізу файлу: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 @extend_schema_view(
     list=extend_schema(
@@ -199,7 +193,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         }
 
         if self.action in ['update', 'partial_update']:
-            status_fields = {'status_id', 'status', 'client_status', 'translator_status'}
+            status_fields = {'status_id', 'editor_status', 'client_status', 'translator_status'}
 
             data_keys = set(request.data.keys())
             if data_keys.intersection(status_fields):
@@ -215,20 +209,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Order.objects.none()
 
-        # Базовий запит залежно від ролі
         if user.role.slug in ['admin', 'owner']:
             queryset = Order.objects.all()
         elif user.role.slug == 'editor':
-            # Редактори завжди бачать лише свої (там де вони призначені)
             queryset = Order.objects.filter(editor_id=user)
         else:
-            # Менеджери за замовчуванням бачать всі замовлення
             queryset = Order.objects.all()
 
-        # Перевірка параметра ?my_orders=true
         my_orders_only = self.request.query_params.get('my_orders')
         if my_orders_only and my_orders_only.lower() == 'true':
-            # Відфільтровуємо лише ті замовлення, де manager_accept_id або manager_delivery_id — це поточний юзер
             queryset = queryset.filter(Q(manager_accept_id=user) | Q(manager_delivery_id=user))
 
         return queryset
@@ -251,7 +240,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         source_id = serializer.validated_data.pop('source_language')
         target_id = serializer.validated_data.pop('target_language')
-
         serializer.validated_data.pop('files', None)
 
         try:
@@ -262,7 +250,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"detail": f"Помилка з мовною парою: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔥 Спрощена обробка суми — просто беремо те, що прислав фронтенд
         raw_amount = data.get('total_amount')
         final_total_amount = Decimal('0.00')
 
@@ -274,19 +261,22 @@ class OrderViewSet(viewsets.ModelViewSet):
                 except InvalidOperation:
                     pass
 
-        status_in_progress = get_object_or_404(Status, slug="in_translation")
+        # Отримуємо статуси по точних slug'ах
+        status_planned = Status.objects.filter(slug__iexact="planned").first()
+        status_to_do = Status.objects.filter(slug__iexact="to do").first() or status_planned
 
         order = serializer.save(
             manager_accept_id_id=request.data.get('manager_accept_id'),
             manager_delivery_id_id=data.get('manager_delivery_id'),
             language_pair_id=language_pair_instance,
 
-            status_id=status_in_progress,
-            client_status=status_in_progress,
-            translator_status=status_in_progress,
+            # РОЗПОДІЛ СТАТУСІВ ПРИ СТВОРЕННІ
+            status_id=status_planned,           # Менеджер: Planned
+            editor_status=status_planned,       # Редактор: Planned
+            translator_status=status_to_do,     # Перекладач: To Do
+            client_status=status_planned,       # Клієнт: Planned
 
-            total_amount=final_total_amount,  # <--- Одразу зберігаємо готову суму з фронту
-
+            total_amount=final_total_amount,
             editor_id_id=data.get('editor_id'),
             traffic_id_id=data.get('traffic_id'),
             translator_id_id=data.get('translator_id'),
@@ -305,21 +295,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             expire_at=expire_date
         )
 
-        # 6. Обробка файлів та статистика
         uploaded_files = request.FILES.getlist('files')
         stats_data = self._analyze_and_upload_files(order, uploaded_files)
 
-        # ... (збереження статистики) ...
         order.save()
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         full_link = f"{base_url}/translator/{generated_link_slug}"
 
-        # Відправляємо запрошення ТІЛЬКИ перекладачу
         if order.translator_id and order.translator_id.email:
             self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
 
-        # 8. Відповідь (прибираємо client_link з респонсу)
         lp_response_data = None
         if language_pair_instance:
             lp_response_data = LanguagePairSelectSerializer(language_pair_instance).data
@@ -340,7 +326,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
 
-    # --- Actions ---
     @extend_schema(
         summary="Попередній розрахунок статистики файлів",
         description="Приймає файли, повертає кількість сторінок та символів. Не створює замовлення.",
@@ -408,13 +393,10 @@ class OrderViewSet(viewsets.ModelViewSet):
             base_path = create_order_folder(order)
             for f in files:
                 f.seek(0)
-                print(f"Uploading {f.name} to source, size: {len(f.read())}")  # ← додай
-                f.seek(0)
                 try:
                     path = upload_file_to_order_folder(order, f, base_path=base_path, subdir="source")
-                    print(f"Uploaded to: {path}")  # ← додай
                 except Exception as e:
-                    print(f"UPLOAD ERROR: {e}")  # ← додай
+                    logger.error(f"UPLOAD ERROR: {e}")
                 _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="target",
                                                 create_only_dir="target")
                 _ = upload_file_to_order_folder(order, f, base_path=base_path, subdir="final",
@@ -440,7 +422,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 file_type=ext,
                 dropbox_url=dropbox_url,
                 detected_pages=stats["pages"],
-                detected_symbols=stats["chars_no_spaces"],  # Зберігаємо звичайні символи
+                detected_symbols=stats["chars_no_spaces"],
             )
 
         return {"total_stats": total_stats}
@@ -454,7 +436,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not files or not traffic_id:
             return Response({"detail": "files and traffic_id required"}, status=400)
 
-        # 1. Аналіз файлів
         total_pages = 0
 
         for f in files:
@@ -462,12 +443,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             stats = analyze_file_content(f)
             total_pages += stats["pages"]
 
-        # 2. Отримуємо тариф компанії
         traffic = get_object_or_404(OrderTraffic, id=traffic_id)
-
         client_price = Decimal(total_pages) * Decimal(traffic.price_per_page)
 
-        # 3. Отримуємо тариф перекладача
         translator_rate = None
         margin = None
 
@@ -497,7 +475,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         comment = serializer.validated_data['review_comment']
-        rejected_status = Status.objects.filter(id=6).first()
+
+        # Якщо відхиляємо - падає на Revision перекладачу та редактору, а менеджеру в Rejected
+        status_revision = Status.objects.filter(slug__iexact="revision").first()
+        status_rejected = Status.objects.filter(slug__iexact="rejected").first()
 
         OrderEditorReview.objects.create(
             order=order,
@@ -506,16 +487,15 @@ class OrderViewSet(viewsets.ModelViewSet):
             review_status='rejected'
         )
 
-        if rejected_status:
-            order.status_id = rejected_status
-            order.save()
+        if status_revision and status_rejected:
+            order.status_id = status_rejected
+            order.editor_status = status_revision
+            order.translator_status = status_revision
+            order.save(update_fields=['status_id', 'editor_status', 'translator_status'])
 
-        # --- Нотифікація менеджеру ---
         current_user = request.user
         manager_accept = order.manager_accept_id
         manager_delivery = order.manager_delivery_id
-
-        # msg_text = f"Замовлення #{order.id} відхилено редактором. Коментар: {comment}"
 
         recipients = set()
         if manager_accept and manager_accept != current_user:
@@ -550,7 +530,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 )
             except Exception as e:
                 logger.error(f"Failed to send rejection email: {e}")
-        # --- кінець нотифікації ---
 
         return Response({"message": "Переклад відхилено, менеджер повідомлений."}, status=status.HTTP_200_OK)
 
@@ -564,7 +543,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             if request.user.is_staff:
                 is_editor = True
             elif hasattr(request.user, 'role') and request.user.role:
-                # Шукаємо пермішин у ролі юзера
                 is_editor = request.user.role.permissions.filter(slug='order.approve_translation').exists()
 
         provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
@@ -586,10 +564,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         score = serializer.validated_data['score']
         comment = serializer.validated_data.get('comment', '')
 
-        # Якщо є файли — замінюємо target
         uploaded_files = request.FILES.getlist('files')
         if uploaded_files:
-            # 1. Видаляємо старі файли з target у Dropbox і БД
             old_target_files = File.objects.filter(
                 order=order,
                 dropbox_url__contains='/target/'
@@ -606,7 +582,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 logger.error(f"Failed to clean target files: {e}")
 
-            # 2. Завантажуємо нові файли в target
             try:
                 base_path = f"/orders/order_{order.id}"
                 for f in uploaded_files:
@@ -650,17 +625,21 @@ class OrderViewSet(viewsets.ModelViewSet):
             review_status='approved'
         )
 
-        order.status_id_id = 9
-        order.completed_at = timezone.now()
-        order.save(update_fields=['status_id'])
+        # Оскільки ми використовуємо High-level підхід (5 колонок), все відправляємо в Done
+        status_done = Status.objects.filter(slug__iexact="done").first()
+
+        if status_done:
+            order.status_id = status_done
+            order.editor_status = status_done
+            order.translator_status = status_done
+            order.completed_at = timezone.now()
+            order.save(update_fields=['status_id', 'editor_status', 'translator_status', 'completed_at'])
 
         if order.translator_id:
             self.update_translator_rating(order.translator_id)
 
-        # визначаємо current_user ДО recipients
         current_user = request.user if request.user.is_authenticated else None
-        checked_status = Status.objects.filter(id=9).first()
-        status_name = checked_status.name if checked_status else 'Checked'
+        status_name = status_done.name if status_done else 'Done'
         msg_text = f"Замовлення #{order.id} перейшло в статус «{status_name}»"
 
         manager_accept = order.manager_accept_id
@@ -677,16 +656,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 Notification.objects.create(
                     recipient=manager_obj,
                     order=order,
-                    title="Замовлення перевірено",
+                    title="Замовлення перевірено та виконано",
                     message=comment,
-                    status = "rejected"
+                    status="rejected"
                 )
             except Exception as e:
                 logger.error(f"Failed to create notification: {e}")
 
             try:
                 send_mail(
-                    subject=f"Замовлення #{order.id}: Перевірено — LingvoTeam",
+                    subject=f"Замовлення #{order.id}: Виконано — LingvoTeam",
                     message=(
                         f"Вітаємо, {manager_obj.full_name}!\n\n"
                         f"{msg_text}.\n\n"
@@ -706,7 +685,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_200_OK)
 
     def update_translator_rating(self, translator):
-        # 🔥 Тепер можемо рахувати середню оцінку безпосередньо по полю user
         average_data = TranslationQuality.objects.filter(
             user=translator
         ).aggregate(avg_score=Avg('score'))
@@ -714,17 +692,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         new_rating = average_data['avg_score'] or 0.0
 
         translator.rating = round(new_rating, 2)
-        translator.save(update_fields=['rating'])  # Оптимізація: зберігаємо тільки рейтинг
+        translator.save(update_fields=['rating'])
 
         return translator.rating
-
-    import mimetypes
 
     @extend_schema(
         summary="Завантажити файли (ZIP, список або окремий файл)",
         tags=["Order Files"]
     )
-    # Змінено url_path, щоб приймати опціональний file_id
     @action(detail=True, methods=['get'],
             url_path=r'download-files(?:/(?P<folder>source|target|final)(?:/(?P<file_id>\d+))?)?')
     def download_files(self, request, pk=None, folder=None, file_id=None):
@@ -751,14 +726,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not files_qs.exists():
             return Response({"detail": "Файли відсутні."}, status=status.HTTP_404_NOT_FOUND)
 
-        # 1. Якщо фронтенд просить просто список файлів (?list=1)
         if request.query_params.get("list") == "1":
             items = [{"id": f.id, "name": os.path.basename(f.dropbox_url or f"file_{f.id}")} for f in
                      files_qs.order_by("id")]
             return Response({"order_id": order.id, "folder": folder_param, "count": len(items), "files": items},
                             status=status.HTTP_200_OK)
 
-        # 2. Якщо фронтенд просить один конкретний файл (/source/15/)
         if file_id is not None:
             file_obj = get_object_or_404(files_qs, id=file_id)
             if not file_obj.dropbox_url:
@@ -781,7 +754,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 return Response({"detail": f"Помилка завантаження файлу: {str(e)}"},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 3. Якщо немає параметрів вище — віддаємо ZIP-архів (Ваша класична логіка)
         try:
             dbx = get_dbx()
             tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
@@ -807,6 +779,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             return Response({"detail": f"Error generating zip: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @extend_schema(
         summary="Аналіз зображень",
         tags=["Order Files"]
@@ -1202,38 +1175,6 @@ class OrderViewSet(viewsets.ModelViewSet):
     )
     @action(detail=True, methods=["get"], url_path="confirm-order")
     def confirm_order(self, request, pk=None):
-        # order = self.get_object()
-        # order.status_id_id = 2
-
-        # print("meow")
-
-        # generated_link_slug = str(uuid.uuid4())
-        # generated_password = secrets.token_urlsafe(8)
-        # expire_date = timezone.now() + timedelta(days=45)
-
-        # print("meow, meow")
-        # OrderLink.objects.create(
-        #     order=order,
-        #     assignee=OrderLink.Assignee.CLIENT,
-        #     link=generated_link_slug,
-        #     password=generated_password,
-        #     expire_at=expire_date
-        # )
-
-        # uploaded_files = request.FILES.getlist('files')
-        # stats_data = self._analyze_and_upload_files(order, uploaded_files)
-
-        # order.symbols_count = stats_data["total_stats"]["chars_with_spaces"]
-        # order.page_count = stats_data["total_stats"]["physical_pages"]
-        # order.save()
-
-        # base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-        # full_link = f"{base_url}/clients/{generated_link_slug}"
-
-        # self._send_translator_invite(order, full_link, generated_password, expire_date, order.client_id)
-
-        # order.save()
-        # return Response({"message": "Статус змінено на Виконано", "slug": generated_link_slug}, status=status.HTTP_200_OK)
         order = self.get_object()
 
         qs = (
@@ -1253,19 +1194,18 @@ class OrderViewSet(viewsets.ModelViewSet):
 
             try:
                 new_path = move_file_from_target_to_final(from_path)
-
                 f.dropbox_url = new_path
                 f.save(update_fields=["dropbox_url"])
-
                 moved.append({"file_id": f.id, "from": from_path, "to": new_path})
             except Exception as e:
                 errors.append({"file_id": f.id, "from": from_path, "error": str(e)})
 
-        done_status = Status.objects.get(slug="done")
+        done_status = Status.objects.filter(slug__iexact="done").first()
 
-        if order.status_id != done_status:
+        if done_status and order.status_id != done_status:
             order.status_id = done_status
-            order.save(update_fields=["status_id"])
+            order.client_status = done_status
+            order.save(update_fields=["status_id", "client_status"])
 
         self._generate_client_link_and_notify(order)
 
@@ -1296,13 +1236,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = serializer.instance
         request = self.request
 
-        # Перевіряємо, чи є користувач адміном, менеджером (1) або редактором (2)
         has_internal_access = False
         if request.user.is_authenticated:
             if request.user.is_staff:
                 has_internal_access = True
             elif hasattr(request.user, 'role') and request.user.role:
-                # Доступ є, якщо користувач має хоча б одне з цих прав
                 has_internal_access = RolePermission.objects.filter(
                     role=request.user.role,
                     permission__slug__in=['order.update', 'order.change.status']
@@ -1318,81 +1256,84 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not (has_internal_access or is_password_valid):
             raise PermissionDenied("У вас немає доступу (потрібна роль Менеджера/Редактора або вірний пароль).")
 
-        instance = serializer.instance
-
-        old_status_int = instance.status_id_id
-        old_translator_status_int = instance.translator_status_id
+        old_states = {
+            'manager': order.status_id_id if order.status_id else None,
+            'editor': order.editor_status_id if order.editor_status else None,
+            'client': order.client_status_id if order.client_status else None,
+            'translator': order.translator_status_id if order.translator_status else None,
+        }
 
         updated_instance = serializer.save()
 
-        new_status = updated_instance.status_id
-        new_translator_status = updated_instance.translator_status
-
-        new_status_int = updated_instance.status_id_id
-        new_trans_int = updated_instance.translator_status_id
-
-        NOTIFY_SLUGS = {
+        NOTIFY_TRIGGERS = {
             'done': ("Замовлення виконано", "перейшло в статус «Виконано»"),
             'checked': ("Замовлення перевірено", "перейшло в статус «Перевірено»"),
-            'rejected': ("Замовлення відхилено", "відхилено редактором"),
+            'rejected': ("Замовлення відхилено", "відхилено"),
+            'translated': ("Замовлення перекладено", "перекладено"),
+            'in_checking': ("Замовлення на перевірці", "передано на перевірку"),
+            'in progress': ("Замовлення в роботі", "взято в роботу"),
+            'in_progress': ("Замовлення в роботі", "взято в роботу"),
         }
 
-        main_slug = new_status.slug if new_status else ""
-        trans_slug = new_translator_status.slug if new_translator_status else ""
-
-        main_became_notify = (old_status_int != new_status_int) and (main_slug in NOTIFY_SLUGS)
-        trans_became_notify = (old_translator_status_int != new_trans_int) and (trans_slug in NOTIFY_SLUGS)
-
-        manager_obj = updated_instance.manager_accept_id
         current_user = self.request.user
+        manager_obj = updated_instance.manager_accept_id
 
-        if main_became_notify or trans_became_notify:
-            if manager_obj and current_user != manager_obj:
+        changed_slug = None
+        changed_status_obj = None
 
-                if trans_became_notify:
-                    active_slug = trans_slug
-                    active_status = new_translator_status
-                else:
-                    active_slug = main_slug
-                    active_status = new_status
+        new_m_slug = updated_instance.status_id.slug if updated_instance.status_id else ""
+        new_e_slug = updated_instance.editor_status.slug if updated_instance.editor_status else ""
+        new_c_slug = updated_instance.client_status.slug if updated_instance.client_status else ""
+        new_t_slug = updated_instance.translator_status.slug if updated_instance.translator_status else ""
 
-                notif_title, notif_verb = NOTIFY_SLUGS[active_slug]
-                status_name = active_status.name if active_status else active_slug
+        if old_states['manager'] != (updated_instance.status_id.id if updated_instance.status_id else None):
+            changed_slug = new_m_slug
+            changed_status_obj = updated_instance.status_id
+        elif old_states['editor'] != (updated_instance.editor_status.id if updated_instance.editor_status else None):
+            changed_slug = new_e_slug
+            changed_status_obj = updated_instance.editor_status
+        elif old_states['client'] != (updated_instance.client_status.id if updated_instance.client_status else None):
+            changed_slug = new_c_slug
+            changed_status_obj = updated_instance.client_status
+        elif old_states['translator'] != (
+        updated_instance.translator_status.id if updated_instance.translator_status else None):
+            changed_slug = new_t_slug
+            changed_status_obj = updated_instance.translator_status
 
-                msg_text = f"Замовлення #{updated_instance.id} {notif_verb}"
+        if changed_slug in NOTIFY_TRIGGERS and manager_obj and current_user != manager_obj:
+            notif_title, notif_verb = NOTIFY_TRIGGERS[changed_slug]
+            status_name = changed_status_obj.name if changed_status_obj else changed_slug
 
-                try:
-                    Notification.objects.create(
-                        recipient=manager_obj,
-                        order=updated_instance,
-                        title=notif_title,
-                        message=msg_text
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to create notification: {e}")
+            msg_text = f"Замовлення #{updated_instance.id} {notif_verb}"
 
-                try:
-                    subject = f"Замовлення #{updated_instance.id}: {notif_title} — LingvoTeam"
-                    message = (
-                        f"Вітаємо, {manager_obj.full_name}!\n\n"
-                        f"Користувач {current_user.full_name} {notif_verb} (#{updated_instance.id}).\n"
-                        f"Статус: {status_name}\n\n"
-                        f"З повагою, команда LingvoTeam."
-                    )
-                    send_mail(
-                        subject=subject,
-                        message=message,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[manager_obj.email],
-                        fail_silently=True
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send email to manager: {e}")
+            try:
+                Notification.objects.create(
+                    recipient=manager_obj,
+                    order=updated_instance,
+                    title=notif_title,
+                    message=msg_text
+                )
+            except Exception as e:
+                logger.error(f"Failed to create notification: {e}")
 
-            else:
-                logger.debug("Notification SKIPPED (No manager or Self-update)")
+            try:
+                subject = f"Замовлення #{updated_instance.id}: {notif_title} — LingvoTeam"
+                message = (
+                    f"Вітаємо, {manager_obj.full_name}!\n\n"
+                    f"Користувач {current_user.full_name} змінив статус (#{updated_instance.id}).\n"
+                    f"Новий статус: {status_name}\n\n"
+                    f"З повагою, команда LingvoTeam."
+                )
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[manager_obj.email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                logger.error(f"Failed to send email to manager: {e}")
 
-    # TODO full_link to change order.translator_id
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
         try:
             subject = f"Нове замовлення - LingvoTeam"
@@ -1436,8 +1377,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             logger.error(f"Email error: {e}")
 
     def _generate_client_link_and_notify(self, order):
-        """Створює лінк для клієнта і відправляє лист, якщо це ще не було зроблено."""
-        # Перевіряємо, чи вже існує лінк для цього клієнта
         if OrderLink.objects.filter(order=order, assignee=OrderLink.Assignee.CLIENT).exists():
             return
 
@@ -1471,6 +1410,16 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='move')
     @transaction.atomic
     def move_order(self, request, pk=None):
+        source_column = request.data.get('source_column')
+        board_type = request.data.get('board')
+
+        if source_column in ['all_orders', 'All Orders'] or board_type in ['all_orders', 'All Orders']:
+            return Response(
+                {
+                    "detail": "Переміщення завдань у колонці 'Всі замовлення' суворо заборонено. Вона лише для відображення."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         order = self.get_object()
 
         prev_id = request.data.get('prev_id')

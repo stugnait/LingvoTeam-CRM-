@@ -25,6 +25,7 @@ const MANAGER_COLUMNS = [
     { id: 'done',       title: 'Done',        status: 'done',        color: '#22c55e', icon: <CheckSquare className="w-4 h-4" /> },
 ]
 
+// 👉 Мапінг для збереження в БД (коли менеджер кидає картку в колонку)
 const STATUS_DB_MAP: Record<string, number> = {
     'planned':     5,
     'in_progress': 7,
@@ -65,13 +66,16 @@ export default function OrdersKanbanBoard({ orders, currentUserId, isOnlyMine, u
         const tasks: any[] = []
 
         filteredOrders.forEach(order => {
+            // 👉 Додаємо order.status_name в tags, щоб менеджер бачив мікро-статус на картці
+            const displayTags = order.status_name ? [order.status_name] : [];
+
             const baseTask = {
                 title: order.language_pair_name || `Order #${order.id}`,
                 priority: (order.priority?.toLowerCase() || 'medium') as 'low' | 'medium' | 'high' | 'critical',
                 description: order.client_comment || '',
                 client_name: order.client_name || 'none',
                 language_pair_id: order.language_pair_id || 'N/A',
-                tags: [],
+                tags: displayTags,
                 deadline: order.deadline,
                 intake_manager: order.manager_accept_name
                     ? { name: order.manager_accept_name, avatar: order.manager_accept_avatar ?? undefined }
@@ -82,12 +86,19 @@ export default function OrdersKanbanBoard({ orders, currentUserId, isOnlyMine, u
             }
 
             let frontendStatus = ''
-            if (order.status_id === 6)      { frontendStatus = 'planned' }  // to_do → показуємо в planned
-            else if (order.status_id === 5) { frontendStatus = 'planned' }
-            else if (order.status_id === 7) { frontendStatus = 'in_progress' }
-            else if (order.status_id === 4) { frontendStatus = 'pause' }
-            else if (order.status_id === 3) { frontendStatus = 'rejected' }
-            else if (order.status_id === 2) { frontendStatus = 'done' }
+
+            // 👉 Групуємо ВСІ 11 статусів з БД у наші 5 колонок, щоб картки не зникали
+            if ([5, 6].includes(order.status_id)) {
+                frontendStatus = 'planned'      // 5: Planned, 6: To do
+            } else if ([1, 7, 8, 9, 10, 11].includes(order.status_id)) {
+                frontendStatus = 'in_progress'  // 1: In Translation, 7: In progress, 8: In checking, 9: Checked, 10: Translated, 11: Revision
+            } else if (order.status_id === 4) {
+                frontendStatus = 'pause'        // 4: Paused
+            } else if (order.status_id === 3) {
+                frontendStatus = 'rejected'     // 3: Rejected
+            } else if (order.status_id === 2) {
+                frontendStatus = 'done'         // 2: Done
+            }
 
             if (frontendStatus) {
                 tasks.push({ ...baseTask, id: order.id, status: frontendStatus })
