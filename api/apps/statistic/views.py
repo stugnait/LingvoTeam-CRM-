@@ -2,7 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Q, Count, Sum, Value, F, ExpressionWrapper, DecimalField, IntegerField, FloatField
-from django.db.models.functions import Coalesce, Concat, TruncDay, Cast
+from django.db.models.functions import Coalesce, Concat, TruncDate, Cast
 from django.utils import timezone
 
 from django.db.models import Case, When
@@ -347,6 +347,79 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
             })
 
         return Response(result)
+
+    @extend_schema(
+        summary="Детальна статистика клієнта",
+        description=(
+                "Повертає інформацію про клієнта, динаміку замовлень по днях, "
+                "динаміку доходу по днях та розбивку по мовних парах."
+        ),
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+        ],
+        tags=["Owner Dashboard"]
+    )
+    @action(detail=False, methods=['get'], url_path='clients-stats/(?P<client_id>[0-9]+)/details')
+    def client_detail(self, request, client_id=None):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        # ── Клієнт ────────────────────────────
+        try:
+            client = Client.objects.get(pk=client_id)
+        except Client.DoesNotExist:
+            return Response({"detail": "Клієнта не знайдено."}, status=404)
+
+        # ── Базовий фільтр замовлень ──────────
+        qs = Order.objects.filter(client_id=client_id)
+        if start_date and end_date:
+            qs = qs.filter(created_at__date__range=[start_date, end_date])
+
+        # ── Динаміка замовлень по днях ─────────
+        # ВИПРАВЛЕНО: Використовуємо TruncDate, щоб жорстко групувати по даті без годин
+        orders_chart = (
+            qs.annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(count=Count('id'))
+            .order_by('date')
+        )
+
+        # ── Динаміка доходу по днях ───────────
+        # ВИПРАВЛЕНО: Аналогічно для доходу
+        revenue_chart = (
+            qs.filter(status_id__in=SUCCESS_STATUSES)
+            .annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(amount=Coalesce(Sum('total_amount'), Decimal('0.00')))
+            .order_by('date')
+        )
+
+        # ── Мовні пари ────────────────────────
+        language_pairs = (
+            qs.filter(status_id__in=SUCCESS_STATUSES)
+            .annotate(
+                pair_name=Concat(
+                    F('language_pair_id__source_language__name'),
+                    Value(' → '),
+                    F('language_pair_id__target_language__name'),
+                )
+            )
+            .values('pair_name')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+
+        return Response({
+            "client_info": {
+                "id": client.id,
+                "full_name": client.full_name,
+                "email": client.email,
+            },
+            "orders_chart": list(orders_chart),
+            "revenue_chart": list(revenue_chart),
+            "language_pairs": list(language_pairs),
+        })
 
     # ── Статистика перекладачів ────────────────
     @extend_schema(
