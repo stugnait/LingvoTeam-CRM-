@@ -295,12 +295,14 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
 
         return Response(result)
 
+
     # ── Статистика клієнтів ────────────────────
     @extend_schema(
         summary="Статистика по клієнтах",
         parameters=[
             OpenApiParameter("start_date", OpenApiTypes.DATE),
             OpenApiParameter("end_date", OpenApiTypes.DATE),
+            OpenApiParameter("search", OpenApiTypes.STR, description="Пошук по імені клієнта"),
         ],
         responses={200: StatsSerializer(many=True)},
         tags=["Owner Dashboard"]
@@ -309,12 +311,18 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     def client_stats(self, request):
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
+        search_query = request.query_params.get('search')
 
         order_filters = Q()
         if start_date and end_date:
             order_filters &= Q(order__created_at__date__range=[start_date, end_date])
 
-        stats = Client.objects.annotate(
+        clients_qs = Client.objects.all()
+
+        if search_query:
+            clients_qs = clients_qs.filter(full_name__icontains=search_query)
+
+        stats = clients_qs.annotate(
             total_orders=Count('order', filter=order_filters),
             total_revenue=Coalesce(
                 Sum('order__total_amount', filter=order_filters),
@@ -365,19 +373,27 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
 
-        # ── Клієнт ────────────────────────────
         try:
             client = Client.objects.get(pk=client_id)
         except Client.DoesNotExist:
             return Response({"detail": "Клієнта не знайдено."}, status=404)
 
-        # ── Базовий фільтр замовлень ──────────
         qs = Order.objects.filter(client_id=client_id)
         if start_date and end_date:
             qs = qs.filter(created_at__date__range=[start_date, end_date])
 
-        # ── Динаміка замовлень по днях ─────────
-        # ВИПРАВЛЕНО: Використовуємо TruncDate, щоб жорстко групувати по даті без годин
+        # ── ЗАГАЛЬНА СТАТИСТИКА (Точно як у таблиці) ──────────
+        summary_stats = qs.aggregate(
+            total_orders=Count('id'),
+            total_revenue=Coalesce(Sum('total_amount'), Decimal('0.00')),
+            unpaid_count=Count('id', filter=~Q(client_status=PAID_STATUS_ID))
+        )
+
+        total_orders_val = summary_stats['total_orders'] or 0
+        total_revenue_val = summary_stats['total_revenue'] or Decimal('0.00')
+        avg_check_val = (total_revenue_val / total_orders_val) if total_orders_val > 0 else Decimal('0.00')
+
+        # ── Графіки ─────────
         orders_chart = (
             qs.annotate(date=TruncDate('created_at'))
             .values('date')
@@ -385,8 +401,6 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
             .order_by('date')
         )
 
-        # ── Динаміка доходу по днях ───────────
-        # ВИПРАВЛЕНО: Аналогічно для доходу
         revenue_chart = (
             qs.filter(status_id__in=SUCCESS_STATUSES)
             .annotate(date=TruncDate('created_at'))
@@ -395,7 +409,6 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
             .order_by('date')
         )
 
-        # ── Мовні пари ────────────────────────
         language_pairs = (
             qs.filter(status_id__in=SUCCESS_STATUSES)
             .annotate(
@@ -415,6 +428,13 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
                 "id": client.id,
                 "full_name": client.full_name,
                 "email": client.email,
+            },
+            # Додали ось цей блок:
+            "summary": {
+                "total_orders": total_orders_val,
+                "total_revenue": total_revenue_val,
+                "avg_order_value": round(avg_check_val, 2),
+                "unpaid_orders_count": summary_stats['unpaid_count'] or 0
             },
             "orders_chart": list(orders_chart),
             "revenue_chart": list(revenue_chart),

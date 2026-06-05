@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { cn } from "@/src/lib/utils"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { Button } from "@/src/components/ui/button"
 import { Calendar } from "@/src/components/ui/calendar"
+import { Input } from "@/src/components/ui/input"
 import {
     Popover,
     PopoverContent,
@@ -18,7 +19,8 @@ import {
     ShoppingBag,
     TrendingUp,
     Wallet,
-    AlertCircle
+    AlertCircle,
+    Search // <-- Додав іконку пошуку
 } from "lucide-react"
 import type { DateRange } from "react-day-picker"
 
@@ -48,19 +50,48 @@ function formatCurrency(val: number | string) {
 export function ClientStatsPage() {
     const [range, setRange] = useState<DateRange | undefined>(undefined)
     const [open, setOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("") // Стан для тексту пошуку
+
+    // Реф для debounce-таймера
+    const typingTimer = useRef<NodeJS.Timeout | null>(null)
 
     const { data, loading, fetchStats } = useClientStats()
 
-    useEffect(() => {
-        if (range?.from && range?.to) {
-            fetchStats({
-                start_date: formatYMD(range.from),
-                end_date: formatYMD(range.to),
-            })
-        } else if (!range) {
-            fetchStats()
+    // Функція, яка збирає параметри і викликає API
+    const loadData = (currentRange: DateRange | undefined, currentSearch: string) => {
+        const params: any = {};
+
+        if (currentRange?.from && currentRange?.to) {
+            params.start_date = formatYMD(currentRange.from);
+            params.end_date = formatYMD(currentRange.to);
         }
+
+        if (currentSearch.trim().length > 0) {
+            params.search = currentSearch.trim();
+        }
+
+        fetchStats(params);
+    }
+
+    // Effect: реагує на зміну дати
+    useEffect(() => {
+        // Коли змінюється дата, одразу вантажимо нові дані (враховуючи поточний пошук)
+        loadData(range, searchQuery);
     }, [range, fetchStats])
+
+    // Обробник введення тексту (з Debounce)
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setSearchQuery(val);
+
+        // Очищаємо попередній таймер, якщо юзер продовжує друкувати
+        if (typingTimer.current) clearTimeout(typingTimer.current);
+
+        // Заводимо новий таймер на 500мс
+        typingTimer.current = setTimeout(() => {
+            loadData(range, val);
+        }, 500);
+    }
 
     const handleClearRange = () => setRange(undefined)
 
@@ -83,22 +114,89 @@ export function ClientStatsPage() {
             <DashboardHeader />
             <div className="flex flex-col h-full min-h-screen bg-[#F8FAFC] p-4 sm:p-8">
 
-                {/* ─── Заголовок і Фільтри ─────────────────────────────────────────── */}
-                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Статистика клієнтів</h1>
-                        <p className="text-slate-500 text-sm mt-1">
-                            Замовлення, виручка та середній чек по кожному клієнту
-                        </p>
+                {/* ─── Заголовок ─────────────────────────────────────────── */}
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Статистика клієнтів</h1>
+                    <p className="text-slate-500 text-sm mt-1">
+                        Замовлення, виручка та середній чек по кожному клієнту
+                    </p>
+                </div>
+
+                {/* ─── 5 Карток KPI ──────────────────────────────────────────────── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                    {/* ... (Усі 5 карток залишаються такими ж, як були) ... */}
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700">Клієнтів</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">{totalClients}</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+                                <ShoppingBag className="w-5 h-5" />
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700">Замовлень</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">{totalOrders}</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-500">
+                                <TrendingUp className="w-5 h-5" />
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700">Загальна сума</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalRevenue)}</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500">
+                                <Wallet className="w-5 h-5" />
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700">Середній чек</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(avgCheck)}</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
+                                <AlertCircle className="w-5 h-5" />
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700">Неоплачені</span>
+                        </div>
+                        <p className="text-2xl font-bold text-slate-900">{totalUnpaid}</p>
+                    </div>
+                </div>
+
+                {/* ─── Панель фільтрів (Календар + ПОШУК) ────────────────────── */}
+                <div className="bg-white p-4 rounded-t-2xl border border-slate-100 border-b-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+                    {/* Пошук */}
+                    <div className="relative w-full sm:w-[320px]">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                            placeholder="Пошук клієнта за іменем..."
+                            className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-indigo-500"
+                            value={searchQuery}
+                            onChange={handleSearchChange}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                         <Popover open={open} onOpenChange={setOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
                                     className={cn(
-                                        "w-[260px] justify-start gap-2 bg-white font-normal border-slate-200 shadow-sm",
+                                        "w-full sm:w-[260px] justify-start gap-2 bg-white font-normal border-slate-200 shadow-sm",
                                         !range && "text-slate-500"
                                     )}
                                 >
@@ -121,7 +219,7 @@ export function ClientStatsPage() {
                                     selected={range}
                                     onSelect={(val) => {
                                         setRange(val)
-                                        if (val?.from && val?.to) {setOpen(false)}
+                                        if (val?.from && val?.to) setOpen(false)
                                     }}
                                     numberOfMonths={2}
                                     disabled={{ after: new Date() }}
@@ -129,82 +227,15 @@ export function ClientStatsPage() {
                             </PopoverContent>
                         </Popover>
 
-                        <Button variant="outline" className="bg-white border-slate-200 shadow-sm gap-2">
+                        <Button variant="outline" className="bg-white border-slate-200 shadow-sm gap-2 shrink-0">
                             <ListFilter className="w-4 h-4 text-slate-500" />
                             Фільтри
                         </Button>
                     </div>
                 </div>
 
-                {/* ─── 5 Карток KPI ──────────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                    {/* 1. Клієнтів */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                                <Users className="w-5 h-5" />
-                            </div>
-                            <span className="text-sm font-semibold text-slate-700">Клієнтів</span>
-                        </div>
-                        <p className="text-2xl font-bold text-slate-900">{totalClients}</p>
-                        <p className="text-xs text-slate-400 mt-1">Усього клієнтів</p>
-                    </div>
-
-                    {/* 2. Замовлень */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
-                                <ShoppingBag className="w-5 h-5" />
-                            </div>
-                            <span className="text-sm font-semibold text-slate-700">Замовлень</span>
-                        </div>
-                        <p className="text-2xl font-bold text-slate-900">{totalOrders}</p>
-                        <p className="text-xs text-slate-400 mt-1">Усього замовлень</p>
-                    </div>
-
-                    {/* 3. Загальна сума */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-500">
-                                <TrendingUp className="w-5 h-5" />
-                            </div>
-                            <span className="text-sm font-semibold text-slate-700">Загальна сума</span>
-                        </div>
-                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(totalRevenue)}</p>
-                        <p className="text-xs text-green-500 mt-1 font-medium">+12% <span className="text-slate-400 font-normal">до попер. періоду</span></p>
-                    </div>
-
-                    {/* 4. Середній чек */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500">
-                                <Wallet className="w-5 h-5" />
-                            </div>
-                            <span className="text-sm font-semibold text-slate-700">Середній чек</span>
-                        </div>
-                        <p className="text-2xl font-bold text-slate-900">{formatCurrency(avgCheck)}</p>
-                        <p className="text-xs text-green-500 mt-1 font-medium">+15% <span className="text-slate-400 font-normal">до попер. періоду</span></p>
-                    </div>
-
-                    {/* 5. Неоплачені */}
-                    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
-                                <AlertCircle className="w-5 h-5" />
-                            </div>
-                            <span className="text-sm font-semibold text-slate-700">Неоплачені</span>
-                        </div>
-                        <p className="text-2xl font-bold text-slate-900">{totalUnpaid}</p>
-                        {totalUnpaid > 0 ? (
-                            <p className="text-xs text-red-500 mt-1 font-medium">Є борги клієнтів</p>
-                        ) : (
-                            <p className="text-xs text-slate-400 mt-1">Усі рахунки оплачено</p>
-                        )}
-                    </div>
-                </div>
-
                 {/* ─── Таблиця ───────────────────────────────────────── */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex-1">
+                <div className="bg-white rounded-b-2xl border border-slate-100 shadow-sm overflow-hidden flex-1">
                     <ClientStatsTable data={data} loading={loading} />
                 </div>
             </div>

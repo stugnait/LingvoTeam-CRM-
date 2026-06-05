@@ -23,7 +23,9 @@ import {
     ChevronDown,
     User,
     Wallet,
-    Languages
+    Languages,
+    TrendingUp,
+    AlertCircle
 } from "lucide-react"
 
 import { useClientDetail } from "../hooks/useClientStat"
@@ -91,6 +93,7 @@ export default function ClientDetailPage() {
     const totalRevenue = data?.revenue_chart?.reduce((acc, curr) => acc + Number(curr.amount || 0), 0) || 0;
     const avgCheck = totalOrders > 0 ? totalRevenue / totalOrders : 0;
     const totalPairs = data?.language_pairs?.length || 0;
+    const unpaidOrders = client?.unpaid_orders_count || 0; // Заглушка, поки бекенд не віддасть це поле
 
     // ── 1. Pie chart (Мовні пари) ─────────────────────────────────────────────
     const pairLabels = data?.language_pairs?.map((p) => p.pair_name) ?? []
@@ -164,7 +167,6 @@ export default function ClientDetailPage() {
                 toolbar: { show: false },
                 zoom: { enabled: false },
             },
-
             colors: [color],
 
             dataLabels: {
@@ -185,14 +187,12 @@ export default function ClientDetailPage() {
                     stops: [0, 90, 100],
                 },
             },
-
             markers: {
                 size: isSinglePoint ? 6 : 4,
                 colors: ["#fff"],
                 strokeColors: color,
                 strokeWidth: 2,
             },
-
             grid: {
                 borderColor: "#f1f5f9",
                 xaxis: {
@@ -226,7 +226,6 @@ export default function ClientDetailPage() {
                             : String(Math.round(Number(val || 0))),
                 },
             },
-
             tooltip: {
                 theme: "light",
                 y: {
@@ -249,20 +248,14 @@ export default function ClientDetailPage() {
             fontFamily: "ui-sans-serif, system-ui, sans-serif",
             toolbar: { show: false },
         },
-
         colors: [color],
-
         plotOptions: {
             bar: {
                 columnWidth: "40%",
                 borderRadius: 4,
             },
         },
-
-        dataLabels: {
-            enabled: false,
-        },
-
+        dataLabels: { enabled: false },
         fill: {
             type: "gradient",
             gradient: {
@@ -272,37 +265,28 @@ export default function ClientDetailPage() {
                 stops: [0, 100],
             },
         },
-
-        grid: {
-            borderColor: "#f1f5f9",
-        },
-
+        grid: { borderColor: "#f1f5f9", xaxis: { lines: { show: false } }, yaxis: { lines: { show: true } } },
         xaxis: {
+            type: "category",
             categories,
+            labels: { style: { colors: "#94a3b8", fontSize: "11px", fontWeight: 500 } },
+            axisBorder: { show: false },
+            axisTicks: { show: false },
         },
-
         yaxis: {
             tickAmount: 4,
             labels: {
-                formatter: (val) =>
-                    yFormatter
-                        ? yFormatter(Number(val))
-                        : String(Math.round(Number(val || 0))),
+                style: { colors: "#94a3b8", fontSize: "11px", fontWeight: 500 },
+                formatter: yFormatter ?? ((val) => val != null ? String(Math.round(val)) : "0"),
             },
         },
-
         tooltip: {
             theme: "light",
-            y: {
-                formatter: (val) =>
-                    yFormatter
-                        ? yFormatter(Number(val))
-                        : String(Math.round(Number(val || 0))),
-            },
+            y: yFormatter ? { formatter: yFormatter } : undefined,
         },
     })
 
-    // Formatting data for charts (Повернули твої реальні дані)
+    // Formatting data for charts
     const ordersCategories  = data?.orders_chart?.map((p) => p.date ? new Date(p.date).toLocaleString('uk-UA', { day: 'numeric', month: 'short' }) : "") ?? []
     const ordersSeries  = [{ name: "Замовлення", data: data?.orders_chart?.map((p) => p.count || 0) ?? [] }]
 
@@ -331,21 +315,26 @@ export default function ClientDetailPage() {
                     </Button>
                 </div>
 
-                {/* ─── Картка Клієнта (Верхній блок) ─────────────────────────── */}
-                <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm mb-6">
-                    <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 rounded-full bg-[#8b5cf6] flex items-center justify-center text-2xl font-bold text-white shrink-0 shadow-sm">
-                            {client?.full_name?.[0]?.toUpperCase() ?? "C"}
-                        </div>
-                        <div className="flex-1 mt-1">
-                            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                                {client?.full_name ?? `Клієнт #${clientId}`}
-                            </h1>
-                            <p className="text-slate-500 mt-0.5 mb-5 text-sm">
-                                {client?.email ?? "Email відсутній"}
-                            </p>
+                {/* ─── Картка Клієнта (Верхній блок з Summary) ───────────────── */}
+                <div className="bg-white border border-slate-100 rounded-2xl shadow-sm mb-6 overflow-hidden">
 
-                            {/* Date picker */}
+                    {/* Верхня частина: Дані клієнта + Фільтр */}
+                    <div className="p-6 flex flex-col md:flex-row md:items-start justify-between gap-6">
+                        <div className="flex items-start gap-4">
+                            <div className="w-16 h-16 rounded-full bg-[#8b5cf6] flex items-center justify-center text-2xl font-bold text-white shrink-0 shadow-sm">
+                                {client?.full_name?.[0]?.toUpperCase() ?? "C"}
+                            </div>
+                            <div className="flex-1 mt-1">
+                                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                                    {client?.full_name ?? `Клієнт #${clientId}`}
+                                </h1>
+                                <p className="text-slate-500 mt-0.5 text-sm">
+                                    {client?.email ?? "Email відсутній"}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
                             <Popover open={open} onOpenChange={setOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -360,7 +349,7 @@ export default function ClientDetailPage() {
                                         <ChevronDown className="w-4 h-4 ml-auto text-slate-400" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
+                                <PopoverContent className="w-auto p-0" align="end">
                                     <Calendar
                                         mode="range"
                                         selected={range}
@@ -374,18 +363,69 @@ export default function ClientDetailPage() {
                                 </PopoverContent>
                             </Popover>
 
-                            {/* Clear filter button */}
                             {range && (
                                 <Button
                                     variant="ghost"
                                     onClick={() => setRange(undefined)}
-                                    className="ml-2 text-slate-500 hover:text-slate-900 px-3 text-sm"
+                                    className="text-slate-500 hover:text-slate-900 px-3 text-sm"
                                 >
                                     Очистити
                                 </Button>
                             )}
                         </div>
                     </div>
+
+                    {/* Нижня частина: Рядок статистики (аналог Table Row) */}
+                    <div className="bg-slate-50/50 border-t border-slate-100 p-6 flex flex-wrap items-center gap-8 md:gap-20">
+                        {/* 1. Замовлення */}
+                        <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                                Замовлення
+                            </p>
+                            <p className="text-xl font-bold text-slate-900">
+                                {totalOrders}
+                            </p>
+                        </div>
+
+                        {/* 2. Загальна сума */}
+                        <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                                Загальна сума
+                            </p>
+                            <div className="flex items-center gap-2">
+                                {totalRevenue > 0 && <TrendingUp className="h-4 w-4 text-emerald-500" />}
+                                <p className="text-xl font-bold text-slate-900">
+                                    {formatCurrency(totalRevenue)}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 3. Середній чек */}
+                        <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                                Середній чек
+                            </p>
+                            <p className="text-xl font-bold text-slate-900">
+                                {formatCurrency(avgCheck)}
+                            </p>
+                        </div>
+
+                        {/* 4. Неоплачені */}
+                        <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                                Неоплачені
+                            </p>
+                            {unpaidOrders > 0 ? (
+                                <div className="inline-flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-100 rounded-full px-3 py-1 text-xs font-bold">
+                                    <AlertCircle className="w-3.5 h-3.5" />
+                                    {unpaidOrders}
+                                </div>
+                            ) : (
+                                <span className="text-slate-400 font-medium text-base pl-1">0</span>
+                            )}
+                        </div>
+                    </div>
+
                 </div>
 
                 {/* ─── 4 Графіки (Grid 2x2) ──────────────────────────────────── */}
@@ -430,7 +470,6 @@ export default function ClientDetailPage() {
                                 <div className="flex items-baseline gap-3">
                                     <span className="text-2xl font-bold text-slate-900">{totalOrders}</span>
                                 </div>
-                                {/* Тренди поки захардкоджені візуально, потім зможеш підставити дані з бекенду */}
                                 <p className="text-[11px] font-medium text-emerald-500 mt-1">
                                     ↑ 33% <span className="text-slate-400 font-normal">порівняно з попереднім періодом</span>
                                 </p>
@@ -475,7 +514,6 @@ export default function ClientDetailPage() {
                         <div className="flex-1 mt-2 -mx-2">
                             {loading ? <ChartSkeleton height={130} /> : <ReactApexChart options={revenueOptions} series={revenueSeries} type="bar" height={130} />}
                         </div>
-                        {/* Нижні чіпи */}
                         <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-50">
                             <div className="flex items-center gap-2 bg-slate-50 text-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium">
                                 <User className="w-3.5 h-3.5 text-[#8b5cf6]" />
@@ -512,7 +550,6 @@ export default function ClientDetailPage() {
                             </div>
                         </div>
                         <div className="flex-1 mt-2 -mx-2">
-                            {/* Використовуємо дані замовлень як заглушку */}
                             {loading ? <ChartSkeleton height={160} /> : <ReactApexChart options={lessonOptions} series={ordersSeries} type="area" height={160} />}
                         </div>
                     </div>

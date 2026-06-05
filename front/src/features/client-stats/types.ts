@@ -13,6 +13,7 @@ export interface ClientStatItem {
 export interface ClientStatsParams {
     start_date?: string   // YYYY-MM-DD
     end_date?: string
+    search?: string;
 }
 
 // ─────────────────────────────────────────────
