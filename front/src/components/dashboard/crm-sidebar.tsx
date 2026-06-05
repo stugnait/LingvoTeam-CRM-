@@ -23,12 +23,21 @@ import {
     BarChart2
 } from "lucide-react";
 
+// 1. Оновили інтерфейс для дітей, додавши href
+interface NavChild {
+    name: string;
+    roleId?: number;
+    tabId?: string;
+    permissions?: string[];
+    href?: string;
+}
+
 interface NavItem {
     name: string;
     href: string;
     icon: ElementType;
     permissions?: string[];
-    children?: { name: string; roleId?: number; tabId?: string; permissions?: string[] }[];
+    children?: NavChild[];
 }
 
 interface NavGroup {
@@ -61,7 +70,19 @@ const navGroups: NavGroup[] = [
         name: "Фінанси",
         items: [
             { name: "Tariffs", href: "/dashboard/tariffs", icon: Receipt, permissions: ["ui.tab.tariffs"] },
-            { name: "Stats", href: "/dashboard/stats", icon: BarChart2, permissions: ["ui.tab.stats"] },
+            {
+                name: "Stats",
+                href: "/dashboard/stats",
+                icon: BarChart2,
+                permissions: ["ui.tab.stats"],
+                children: [
+                    { name: "Clients", href: "/dashboard/client-stats", permissions: [] },
+                    { name: "Editors", href: "/dashboard/editor-stats", permissions: [] },
+                    { name: "Managers", href: "/dashboard/manager-stats", permissions: [] },
+                    { name: "Orders", href: "/dashboard/orders-stats", permissions: [] },
+                    { name: "Translators", href: "/dashboard/translators-stats", permissions: [] },
+                ]
+            },
             { name: "P&L", href: "/dashboard/p&l", icon: CheckSquare, permissions: ["ui.tab.pnl"] },
             {
                 name: "Salary",
@@ -104,9 +125,13 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
+        // 3. Зробили так, щоб папка Stats залишалась відкритою, коли ми на її дочірніх роутах
+        const isStatsRoute = pathname.includes("-stats") || pathname.startsWith("/dashboard/stats");
+
         setOpenMenus({
             "/dashboard": pathname === "/dashboard",
             "/dashboard/salary": pathname.startsWith("/dashboard/salary"),
+            "/dashboard/stats": isStatsRoute,
         });
     }, [pathname]);
 
@@ -193,7 +218,12 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                             <div className="space-y-1">
                                 {group.items.map((item) => {
                                     const Icon = item.icon;
-                                    const isActive = pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard");
+
+                                    // 4. Логіка підсвічування батьківського пункту (включаючи Stats)
+                                    let isActive = pathname.startsWith(item.href) && (item.href !== "/dashboard" || pathname === "/dashboard");
+                                    if (item.href === "/dashboard/stats" && pathname.includes("-stats")) {
+                                        isActive = true;
+                                    }
 
                                     const visibleChildren = item.children?.filter(hasAccess);
                                     const hasChildren = visibleChildren && visibleChildren.length > 0;
@@ -225,16 +255,21 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                                                 {isOpen && (!collapsed || isMobile) && (
                                                     <div className="ml-9 mt-1 space-y-1 animate-in slide-in-from-top-1 duration-200">
                                                         {visibleChildren.map((child, idx) => {
-                                                            const query = child.tabId ? { tab: child.tabId } : { role: child.roleId?.toString() };
+                                                            // 5. Визначаємо активність для дітей з href та без нього
+                                                            const isChildActive = child.href
+                                                                ? pathname.startsWith(child.href)
+                                                                : child.tabId
+                                                                    ? (searchParams.get("tab") === child.tabId || (!searchParams.get("tab") && child.tabId === "finance" && pathname === item.href))
+                                                                    : searchParams.get("role") === String(child.roleId);
 
-                                                            const isChildActive = child.tabId
-                                                                ? (searchParams.get("tab") === child.tabId || (!searchParams.get("tab") && child.tabId === "finance" && pathname === item.href))
-                                                                : searchParams.get("role") === String(child.roleId);
+                                                            // Формуємо кінцеве посилання
+                                                            const query = child.tabId ? { tab: child.tabId } : child.roleId ? { role: child.roleId?.toString() } : undefined;
+                                                            const targetHref = child.href ? child.href : { pathname: item.href, query };
 
                                                             return (
                                                                 <Link
                                                                     key={idx}
-                                                                    href={{ pathname: item.href, query }}
+                                                                    href={targetHref}
                                                                     onClick={() => isMobile && setIsMobileOpen(false)}
                                                                     className={`
                                                                         flex items-center rounded-md px-3 py-2 text-sm transition-colors whitespace-nowrap
