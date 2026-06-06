@@ -485,10 +485,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 class CustomTokenRefreshView(OriginalTokenRefreshView):
 
-    @extend_schema(
-        summary="Оновити токен (Refresh)",
-        tags=["Authentication"]
-    )
+    @extend_schema(summary="Оновити токен (Refresh)", tags=["Authentication"])
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get('refresh-token')
 
@@ -499,17 +496,28 @@ class CustomTokenRefreshView(OriginalTokenRefreshView):
             )
 
         request.data['refresh'] = refresh_token
-
         response = super().post(request, *args, **kwargs)
 
         if response.status_code == status.HTTP_200_OK:
-            access_token = response.data.get('access')
+            access_token  = response.data.get('access')
+            new_refresh   = response.data.get('refresh')  # ← ROTATE дає новий
 
             if access_token:
                 response.set_cookie(
                     key='access-token',
                     value=access_token,
                     max_age=int(access_lifetime.total_seconds()),
+                    httponly=True,
+                    secure=not settings.DEBUG,
+                    samesite='Lax'
+                )
+
+            # ← ДОДАЙ: зберігай новий refresh в cookie
+            if new_refresh:
+                response.set_cookie(
+                    key='refresh-token',
+                    value=new_refresh,
+                    max_age=int(refresh_lifetime.total_seconds()),
                     httponly=True,
                     secure=not settings.DEBUG,
                     samesite='Lax'
