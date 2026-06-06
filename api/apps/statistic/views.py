@@ -43,6 +43,7 @@ class OwnerDetailFilter(FilterSet):
     client = NumberFilter(field_name='client_id')
     translator = NumberFilter(field_name='translator_id')
     status = NumberFilter(field_name='status_id')
+    editor = NumberFilter(field_name='editor_id')
 
 
 
@@ -643,7 +644,7 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     # ── Статистика редакторів ──────────────────
     @extend_schema(
         summary="Статистика по редакторах",
-        description="Кількість перевірених замовлень по кожному редактору за період.",
+        description="Кількість замовлень, виручка, маржа, сторінки та символи по кожному редактору (без обмеження по статусах).",
         parameters=[
             OpenApiParameter("start_date", OpenApiTypes.DATE),
             OpenApiParameter("end_date", OpenApiTypes.DATE),
@@ -653,31 +654,182 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='editors-stats')
     def editor_stats(self, request):
         start_date = request.query_params.get('start_date')
-        end_date   = request.query_params.get('end_date')
+        end_date = request.query_params.get('end_date')
 
-        # Редактори — це юзери з роллю 'editor' (slug)
-        # Замовлення прив'язані через editor_id FK на User
+        # Фільтр виключно за датою (без статусів, як у менеджерів)
         order_filters = Q()
         if start_date and end_date:
             order_filters &= Q(edited_orders__created_at__date__range=[start_date, end_date])
 
-        # "Перевірені" — замовлення зі статусом "In checking" (id=8) або "Checked" (id=9)
-        CHECKED_STATUSES = [8, 9]
-        checked_filter = order_filters & Q(edited_orders__status_id__in=CHECKED_STATUSES)
-
         stats = User.objects.filter(role__slug='editor').annotate(
-            total_checked=Count('edited_orders', filter=checked_filter, distinct=True),
-        ).order_by('-total_checked')
+            # 1. Загальна кількість замовлень
+            total_orders=Count('edited_orders', filter=order_filters, distinct=True),
+
+            # 2. Загальна виручка
+            total_revenue=Coalesce(
+                Sum(
+                    Cast('edited_orders__total_amount', DecimalField(max_digits=12, decimal_places=2)),
+                    filter=order_filters
+                ),
+                Decimal('0.00'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            ),
+
+            # 3. Витрати (на перекладачів) для підрахунку маржі
+            total_cogs=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        Cast('edited_orders__page_count', DecimalField(max_digits=12, decimal_places=2)) *
+                        Cast('edited_orders__translator_traffic_id__rate_per_page',
+                             DecimalField(max_digits=12, decimal_places=2)),
+                        output_field=DecimalField(max_digits=12, decimal_places=2)
+                    ),
+                    filter=order_filters
+                ),
+                Decimal('0.00'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            ),
+
+            # 4. Загальна кількість сторінок
+            total_pages=Coalesce(
+                Sum(
+                    Cast('edited_orders__page_count', DecimalField(max_digits=12, decimal_places=2)),
+                    filter=order_filters
+                ),
+                Decimal('0.00'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            ),
+
+            # 5. Символи (якщо додасте в модель, розкоментуйте ці рядки)
+            # total_chars_with=Coalesce(Sum('edited_orders__chars_with_spaces', filter=order_filters), 0, output_field=IntegerField()),
+            # total_chars_without=Coalesce(Sum('edited_orders__chars_without_spaces', filter=order_filters), 0, output_field=IntegerField()),
+
+        ).annotate(
+            # Розрахунок маржі у грошах
+            gross_profit=ExpressionWrapper(
+                F('total_revenue') - F('total_cogs'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        ).annotate(
+            # Відсоток маржі
+            avg_margin_percent=Case(
+                When(total_revenue=0, then=Value(Decimal('0.00'))),
+                default=ExpressionWrapper(
+                    (F('gross_profit') / F('total_revenue')) * Value(Decimal('100.0')),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=5, decimal_places=2)
+            )
+        ).order_by('-total_orders')
 
         result = []
         for editor in stats:
             result.append({
-                'id':            editor.id,
-                'full_name':     editor.full_name,
-                'total_checked': editor.total_checked,
+                'id': editor.id,
+                'full_name': editor.full_name,
+                'total_orders': editor.total_orders,
+                'total_revenue': editor.total_revenue,
+                'gross_profit': editor.gross_profit,
+                'avg_margin_percent': round(editor.avg_margin_percent, 2),
+                'total_pages': editor.total_pages,
+
+                # 'total_chars_with':    editor.total_chars_with,
+                # 'total_chars_without': editor.total_chars_without,
             })
 
         return Response(result)
+
+    @extend_schema(
+        summary="Детальна статистика редактора",
+        description="Повертає інформацію про редактора, динаміку замовлень по днях та час на сторінку.",
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+        ],
+        tags=["Owner Dashboard"]
+    )
+    @action(detail=False, methods=['get'], url_path='editors-stats/(?P<editor_id>[0-9]+)/details')
+    def editor_detail(self, request, editor_id=None):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        try:
+            editor = User.objects.get(pk=editor_id, role__slug='editor')
+        except User.DoesNotExist:
+            return Response({"detail": "Редактора не знайдено."}, status=404)
+
+        # Отримуємо всі замовлення цього редактора
+        # (переконайтесь, що поле в Order називається editor_id.
+        # Якщо інакше - змініть editor_id= на правильну назву)
+        qs = Order.objects.filter(editor_id=editor_id)
+
+        if start_date and end_date:
+            qs = qs.filter(created_at__date__range=[start_date, end_date])
+
+        # ── ЗАГАЛЬНА СТАТИСТИКА ──────────
+        summary_stats = qs.aggregate(
+            total_orders=Count('id', distinct=True),
+            total_pages=Coalesce(Sum(Cast('page_count', DecimalField(max_digits=12, decimal_places=2))),
+                                 Decimal('0.00')),
+            total_revenue=Coalesce(Sum(Cast('total_amount', DecimalField(max_digits=12, decimal_places=2))),
+                                   Decimal('0.00')),
+            total_cogs=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        Cast('page_count', DecimalField(max_digits=12, decimal_places=2)) *
+                        Cast('translator_traffic_id__rate_per_page', DecimalField(max_digits=12, decimal_places=2)),
+                        output_field=DecimalField(max_digits=12, decimal_places=2)
+                    )
+                ),
+                Decimal('0.00')
+            )
+        )
+
+        total_orders_val = summary_stats['total_orders'] or 0
+        total_pages_val = summary_stats['total_pages'] or Decimal('0.00')
+        total_revenue_val = summary_stats['total_revenue'] or Decimal('0.00')
+        total_cogs_val = summary_stats['total_cogs'] or Decimal('0.00')
+
+        gross_profit = total_revenue_val - total_cogs_val
+        avg_margin_val = (gross_profit / total_revenue_val * 100) if total_revenue_val > 0 else Decimal('0.00')
+
+        # 🕒 РОЗРАХУНОК ЧАСУ НА СТОРІНКУ
+        # УВАГА: Тут вам треба підставити реальні години.
+        # Якщо у вас є поле work_hours в Order, то розрахунок буде такий:
+        # total_hours = qs.aggregate(sum=Sum('work_hours'))['sum'] or 0
+        # avg_time_per_page = float(total_hours) / float(total_pages_val) if total_pages_val > 0 else 0.0
+
+        avg_time_per_page = 0.0  # ТИМЧАСОВА ЗАГЛУШКА (змініть на реальний розрахунок)
+
+        # ── Графіки ─────────
+        orders_chart = (
+            qs.annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(count=Count('id', distinct=True))
+            .order_by('date')
+        )
+
+        # Графік часу на сторінку по днях (теж потребує реального поля годин)
+        # Наразі віддаємо порожній список, щоб фронтенд не падав,
+        # поки ви не додасте обчислення годин у вашій базі.
+        time_chart = []
+
+        return Response({
+            "editor_info": {
+                "id": editor.id,
+                "full_name": editor.full_name,
+                "email": editor.email,
+            },
+            "summary": {
+                "total_orders": total_orders_val,
+                "total_pages": float(total_pages_val),
+                "total_revenue": total_revenue_val,
+                "avg_margin_percent": round(avg_margin_val, 2),
+                "avg_time_per_page": round(avg_time_per_page, 2)
+            },
+            "orders_chart": list(orders_chart),
+            "time_chart": list(time_chart),
+        })
 
     # ── Топ мовних пар ─────────────────────────
     @extend_schema(
