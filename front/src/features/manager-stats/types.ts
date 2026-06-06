@@ -41,24 +41,24 @@ export interface ManagerDetailData {
     revenue_chart: { date: string; amount: string | number }[]
 }
 
-// ── Параметри для списку замовлень менеджера ──────────────────────────────────
+// ── Замовлення менеджера ──────────────────────────────────────────────────────
 export interface ManagerOrdersParams {
     manager?:    string
     start_date?: string
     end_date?:   string
     ordering?:   string
+    search?:     string
 }
 
-// ── Одне замовлення (з OwnerOrderDetailsViewSet) ──────────────────────────────
 export interface ManagerOrder {
-    id:             number
-    title:          string
-    created_at:     string
-    deadline:       string
-    total_amount:   string
-    status?:        { id: number; name: string }
-    client?:        { id: number; full_name: string }
-    translator?:    { id: number; full_name: string } | null
-    page_count:     number
+    id:              number
+    title:           string
+    created_at:      string
+    deadline:        string
+    total_amount:    string
+    page_count:      number
     client_comment?: string
+    status?:         { id: number; name: string }
+    client?:         { id: number; full_name: string }
+    translator?:     { id: number; full_name: string } | null
 }

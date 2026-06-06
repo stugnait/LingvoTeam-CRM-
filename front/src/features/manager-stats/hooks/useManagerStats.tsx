@@ -53,7 +53,7 @@ export function useManagerDetail(managerId: number) {
     return { data, loading, error, fetchDetail }
 }
 
-// ── Замовлення менеджера (для таблиці на сторінці деталей) ────────────────────
+// ── Замовлення менеджера ──────────────────────────────────────────────────────
 export function useManagerOrders(managerId: number) {
     const [data, setData]       = useState<ManagerOrder[]>([])
     const [loading, setLoading] = useState(false)

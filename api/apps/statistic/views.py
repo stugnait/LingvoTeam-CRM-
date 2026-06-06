@@ -44,6 +44,8 @@ class OwnerDetailFilter(FilterSet):
     translator = NumberFilter(field_name='translator_id')
     status = NumberFilter(field_name='status_id')
 
+
+
     class Meta:
         model = Order
         fields = ['client', 'translator', 'status']
@@ -76,7 +78,9 @@ class OwnerOrderDetailsViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = OwnerDetailFilter
 
-    search_fields = ['title', 'client_comment']
+    pagination_class = None
+
+    search_fields = ['client_comment', "id"]
     ordering_fields = ['deadline', 'created_at', 'page_count']
 
     def get_required_permissions(self, request):

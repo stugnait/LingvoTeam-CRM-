@@ -19,6 +19,14 @@ function buildQS(params?: Record<string, string | undefined>) {
     return qs ? `?${qs}` : ""
 }
 
+// DRF може повертати або масив або пагінований об'єкт
+type MaybePagedResponse<T> = T[] | { count: number; next: string | null; previous: string | null; results: T[] }
+
+function unwrap<T>(res: MaybePagedResponse<T>): T[] {
+    if (Array.isArray(res)) return res
+    return res.results ?? []
+}
+
 export const managerStatsApi = {
     // GET /api/stats/dashboard/managers-stats/
     getStats: (params?: ManagerStatsParams) =>
@@ -34,10 +42,12 @@ export const managerStatsApi = {
             { method: "GET" }
         ),
 
-    // GET /api/stats/orders/?manager={id}&...
-    getOrders: (params?: ManagerOrdersParams) =>
-        apiFetch<ManagerOrder[]>(
-            `stats/orders/${buildQS(params as Record<string, string | undefined>)}`,
+    // GET /api/stats/details/?manager={id}&...
+    getOrders: async (params?: ManagerOrdersParams): Promise<ManagerOrder[]> => {
+        const res = await apiFetch<MaybePagedResponse<ManagerOrder>>(
+            `stats/details/${buildQS(params as Record<string, string | undefined>)}`,
             { method: "GET" }
-        ),
+        )
+        return unwrap(res)
+    },
 }
