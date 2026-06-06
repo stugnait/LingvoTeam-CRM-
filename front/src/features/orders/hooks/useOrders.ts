@@ -36,6 +36,7 @@ export function useOrders() {
     const [targetFiles, setTargetFiles] = useState<{ id: number; name: string }[]>([])
     const [filesLoading, setFilesLoading] = useState(false)
     const [downloadLoading, setDownloadLoading] = useState(false)
+    const [searchFilter, setSearchFilter] = useState<string>("")
 
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
@@ -231,7 +232,8 @@ export function useOrders() {
         status: string | number = statusFilter,
         manager: string | number = managerFilter,
         dateFrom: string = dateFromFilter,
-        dateTo: string = dateToFilter
+        dateTo: string = dateToFilter,
+        search: string = searchFilter // 👈 ДОДАНО
     ) => {
         try {
             setLoading(true)
@@ -242,7 +244,8 @@ export function useOrders() {
                 status: status || undefined,
                 manager: manager || undefined,
                 date_from: dateFrom || undefined,
-                date_to: dateTo || undefined
+                date_to: dateTo || undefined,
+                search: search || undefined // 👈 ДОДАНО
             })
 
             const sortedResults = [...res.results].sort((a, b) => b.id - a.id)
@@ -256,6 +259,7 @@ export function useOrders() {
             setManagerFilter(manager)
             setDateFromFilter(dateFrom)
             setDateToFilter(dateTo)
+            setSearchFilter(search) // 👈 ДОДАНО
 
             const pairIds = [...new Set(res.results.map(o => o.language_pair_id))]
             const missing = pairIds.filter(id => !languagePairs[id])
@@ -277,33 +281,43 @@ export function useOrders() {
         } finally {
             setLoading(false)
         }
-    }, [handleError, languagePairs, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter])
+    }, [handleError, languagePairs, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, searchFilter])
 
 
 
     const handleStatusChange = (val: string | number) => {
         setStatusFilter(val)
-        loadOrders(1, isOnlyMineFilter, val, managerFilter, dateFromFilter, dateToFilter)
+        loadOrders(1, isOnlyMineFilter, val, managerFilter, dateFromFilter, dateToFilter, searchFilter)
     }
 
     const handleManagerChange = (val: string | number) => {
         setManagerFilter(val)
-        loadOrders(1, isOnlyMineFilter, statusFilter, val, dateFromFilter, dateToFilter)
+        loadOrders(1, isOnlyMineFilter, statusFilter, val, dateFromFilter, dateToFilter, searchFilter)
     }
 
     const handleFilterChange = (onlyMine: boolean) => {
         setIsOnlyMineFilter(onlyMine)
-        loadOrders(1, onlyMine, statusFilter, managerFilter, dateFromFilter, dateToFilter)
+        loadOrders(1, onlyMine, statusFilter, managerFilter, dateFromFilter, dateToFilter, searchFilter)
     }
 
     const handleDateFromChange = (val: string) => {
         setDateFromFilter(val)
-        loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, val, dateToFilter)
+        loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, val, dateToFilter, searchFilter)
     }
 
     const handleDateToChange = (val: string) => {
         setDateToFilter(val)
-        loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, val)
+        loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, val, searchFilter)
+    }
+
+    // 👉 ДОДАЄМО НОВИЙ ОБРОБНИК ДЛЯ ПОШУКУ
+    const handleSearchChange = (val: string) => {
+        setSearchFilter(val)
+        loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, val)
+    }
+
+    const onPageChange = (newPage: number) => {
+        loadOrders(newPage, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, searchFilter)
     }
 
     const refreshTranslators = useCallback(async () => {
@@ -505,10 +519,6 @@ export function useOrders() {
         loadOrders(1, false, "", "", "", "")
     }, [])
 
-    const onPageChange = (newPage: number) => {
-        loadOrders(newPage, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
-    }
-
     const getTranslatorById = useCallback((id: number | null) => {
         if (!id) {return null}
         return translatorsCache[id] || null
@@ -587,5 +597,7 @@ export function useOrders() {
         loadOrderFiles,
         downloadSingleSourceFile,
         downloadSingleTargetFile,
+        searchFilter,
+        handleSearchChange
     }
 }

@@ -176,6 +176,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     ordering_fields = ['position', 'created_at']
     ordering = ['position']
 
+    search_fields = ['id']
+
     def get_required_permissions(self, request):
         mapping = {
             'create': ['order.create'],

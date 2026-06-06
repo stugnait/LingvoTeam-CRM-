@@ -63,6 +63,7 @@ export const ordersApi = {
         manager?: number | string;
         date_from?: string;
         date_to?: string;
+        search?: string; // 👈 ДОДАНО
     } = { page: 1 }) => {
         const params = new URLSearchParams();
 
@@ -72,6 +73,7 @@ export const ordersApi = {
         if (filters.manager) {params.append('manager', String(filters.manager));}
         if (filters.date_from) {params.append('date_from', filters.date_from);}
         if (filters.date_to) {params.append('date_to', filters.date_to);}
+        if (filters.search) {params.append('search', filters.search);} // 👈 ДОДАНО
 
         const query = params.toString();
         return apiFetch<OrderListResponse>(`orders/?${query}`, {

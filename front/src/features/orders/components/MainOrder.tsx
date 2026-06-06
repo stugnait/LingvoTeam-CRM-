@@ -60,6 +60,8 @@ export default function OrdersPage() {
         loadOrderFiles,
         downloadSingleSourceFile,
         downloadSingleTargetFile,
+        searchFilter,
+        handleSearchChange
     } = useOrders()
 
     const { user } = useProfile()
@@ -327,6 +329,8 @@ export default function OrdersPage() {
                             onEdit={handleEdit}
                             onDelete={(id) => deleteOrder(id)}
                             updateOrder={updateOrder}
+                            searchFilter={searchFilter}
+                            onSearchChange={handleSearchChange}
                         />
                     ) : (
                         <OrdersKanbanBoard

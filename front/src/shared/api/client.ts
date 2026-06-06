@@ -1,14 +1,10 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-type ResponseType = 'json' | 'blob'
-
-type FetchOptionsWithGlobalError = RequestInit & {
-    skipGlobalError?: boolean
-}
+type ResponseType = "json" | "blob"
 
 export interface ApiFetchOptions extends RequestInit {
     responseType?: ResponseType
-    skipGlobalError?: boolean // 👈 Додали наш прапорець
+    skipGlobalError?: boolean
 }
 
 export async function apiFetch<T>(
@@ -16,26 +12,24 @@ export async function apiFetch<T>(
     options: ApiFetchOptions = {}
 ): Promise<T> {
     const {
-        responseType = 'json',
-        skipGlobalError, // 👈 Дістаємо з options
+        responseType = "json",
         headers: customHeaders,
         ...fetchOptions
     } = options
 
     const headers = new Headers(customHeaders)
 
-    // Content-Type тільки якщо НЕ blob і НЕ FormData
     if (
-        responseType === 'json' &&
+        responseType === "json" &&
         !(fetchOptions.body instanceof FormData)
     ) {
-        headers.set('Content-Type', 'application/json')
+        headers.set("Content-Type", "application/json")
     }
 
     const isFormData = fetchOptions.body instanceof FormData
 
-    const fetchOptionsWithGlobalError: FetchOptionsWithGlobalError = {
-        credentials: 'include',
+    const requestConfig: RequestInit = {
+        credentials: "include",
         ...fetchOptions,
         headers,
         body:
@@ -44,23 +38,38 @@ export async function apiFetch<T>(
             typeof fetchOptions.body !== "string"
                 ? JSON.stringify(fetchOptions.body)
                 : fetchOptions.body,
-
-        // 👈 Передаємо прапорець у fetch, щоб його побачив Interceptor
-        skipGlobalError: skipGlobalError
     }
 
-    const res = await fetch(`${API_URL}${url}`, fetchOptionsWithGlobalError)
+    const makeRequest = () =>
+        fetch(`${API_URL}${url}`, requestConfig)
+
+    let res = await makeRequest()
+
+    // Access token протух
+    if (res.status === 401 && url !== "users/auth/refresh/") {
+        const refreshRes = await fetch(`${API_URL}users/auth/refresh/`, {
+            method: "POST",
+            credentials: "include",
+        })
+
+        if (!refreshRes.ok) {
+            if (typeof window !== "undefined") {
+                window.location.href = "/login"
+            }
+            throw new Error("Session expired")
+        }
+
+        // невелика пауза щоб браузер встиг записати cookie
+        await new Promise(resolve => setTimeout(resolve, 50))
+
+        res = await makeRequest()
+    }
 
     if (!res.ok) {
-        // ⚠️ error може бути НЕ json (наприклад 403 з text)
         const error = await res.json().catch(() => null)
-        const apiError =
-            error && typeof error === 'object' && !Array.isArray(error)
-                ? error
-                : { detail: error }
 
         throw {
-            ...apiError,
+            ...(error || {}),
             status: res.status,
             statusText: res.statusText,
         }
@@ -70,8 +79,7 @@ export async function apiFetch<T>(
         return undefined as T
     }
 
-    // 🔑 ГОЛОВНЕ
-    if (responseType === 'blob') {
+    if (responseType === "blob") {
         return (await res.blob()) as T
     }
 
