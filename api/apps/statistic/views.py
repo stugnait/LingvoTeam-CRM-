@@ -47,6 +47,7 @@ class OwnerDetailFilter(FilterSet):
 
 
 
+
     class Meta:
         model = Order
         fields = ['client', 'translator', 'status']
@@ -640,6 +641,78 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
             })
 
         return Response(result)
+
+    @action(detail=False, methods=['get'], url_path='translators-stats/(?P<translator_id>[0-9]+)/details')
+    def translator_detail(self, request, translator_id=None):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        try:
+            translator = Translator.objects.get(pk=translator_id)
+        except Translator.DoesNotExist:
+            return Response({"detail": "Перекладача не знайдено."}, status=404)
+
+        qs = Order.objects.filter(translator_id=translator_id)
+        if start_date and end_date:
+            qs = qs.filter(created_at__date__range=[start_date, end_date])
+
+        now = timezone.now()
+
+        summary_stats = qs.aggregate(
+            total_orders=Count('id', distinct=True),
+            total_revenue=Coalesce(Sum('total_amount'), Decimal('0.00')),
+            total_cogs=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        Cast('page_count', DecimalField(max_digits=12, decimal_places=2)) *
+                        Cast('translator_traffic_id__rate_per_page', DecimalField(max_digits=12, decimal_places=2)),
+                        output_field=DecimalField(max_digits=12, decimal_places=2)
+                    )
+                ),
+                Decimal('0.00')
+            ),
+            revision_count=Count('id', filter=Q(status_id=REVISION_STATUS_ID), distinct=True),
+        )
+
+        total_orders_val = summary_stats['total_orders'] or 0
+        total_revenue_val = summary_stats['total_revenue'] or Decimal('0.00')
+        total_cogs_val = summary_stats['total_cogs'] or Decimal('0.00')
+        gross_profit = total_revenue_val - total_cogs_val
+        avg_margin_val = (gross_profit / total_revenue_val * 100) if total_revenue_val > 0 else Decimal('0.00')
+        avg_check_val = (total_revenue_val / total_orders_val) if total_orders_val > 0 else Decimal('0.00')
+
+        orders_chart = (
+            qs.annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(count=Count('id', distinct=True))
+            .order_by('date')
+        )
+
+        revenue_chart = (
+            qs.filter(status_id__in=SUCCESS_STATUSES)
+            .annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(amount=Coalesce(Sum('total_amount'), Decimal('0.00')))
+            .order_by('date')
+        )
+
+        return Response({
+            "translator_info": {
+                "id": translator.id,
+                "full_name": translator.full_name,
+                "email": translator.email,
+                "rating": translator.rating,
+            },
+            "summary": {
+                "total_orders": total_orders_val,
+                "total_revenue": total_revenue_val,
+                "avg_order_value": round(avg_check_val, 2),
+                "avg_margin_percent": round(avg_margin_val, 2),
+                "revision_count": summary_stats['revision_count'] or 0,
+            },
+            "orders_chart": list(orders_chart),
+            "revenue_chart": list(revenue_chart),
+        })
 
     # ── Статистика редакторів ──────────────────
     @extend_schema(

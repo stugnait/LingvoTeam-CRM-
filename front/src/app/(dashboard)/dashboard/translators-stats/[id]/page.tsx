@@ -1,0 +1,1 @@
+export { default } from "@/src/features/translators-stats/components/TranslatorDetailPage"
