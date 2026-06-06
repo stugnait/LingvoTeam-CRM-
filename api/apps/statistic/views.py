@@ -221,10 +221,11 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     # ── Статистика менеджерів ──────────────────
     @extend_schema(
         summary="Статистика по менеджерах",
-        description="Дохід, кількість замовлень, середній чек та протерміновані замовлення по кожному менеджеру.",
+        description="Дохід, маржа, кількість унікальних клієнтів, замовлень та протермінованих задач по кожному менеджеру.",
         parameters=[
             OpenApiParameter("start_date", OpenApiTypes.DATE),
             OpenApiParameter("end_date", OpenApiTypes.DATE),
+            OpenApiParameter("search", OpenApiTypes.STR, description="Пошук по імені менеджера"),
         ],
         responses={200: StatsSerializer(many=True)},
         tags=["Owner Dashboard"]
@@ -232,7 +233,8 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='managers-stats')
     def manager_stats(self, request):
         start_date = request.query_params.get('start_date')
-        end_date   = request.query_params.get('end_date')
+        end_date = request.query_params.get('end_date')
+        search_query = request.query_params.get('search')
 
         date_acc = Q()
         date_del = Q()
@@ -244,19 +246,53 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
         overdue_acc = date_acc & Q(accepted_orders__deadline__lt=now) & ~Q(accepted_orders__status_id=DONE_STATUS_ID)
         overdue_del = date_del & Q(delivered_orders__deadline__lt=now) & ~Q(delivered_orders__status_id=DONE_STATUS_ID)
 
-        # Уникаємо подвійного підрахунку коли менеджер прийняв і здав сам
         not_same_manager = ~Q(delivered_orders__manager_accept_id=F('id'))
-        date_del    &= not_same_manager
+        date_del &= not_same_manager
         overdue_del &= not_same_manager
 
-        stats = User.objects.filter(role__slug='manager').annotate(
+        # Базовий фільтр користувачів з роллю менеджера
+        managers_qs = User.objects.filter(role__slug='manager')
+        if search_query:
+            managers_qs = managers_qs.filter(full_name__icontains=search_query)
+
+        stats = managers_qs.annotate(
             acc_orders=Count('accepted_orders', filter=date_acc, distinct=True),
             acc_rev=Coalesce(Sum('accepted_orders__total_amount', filter=date_acc), Decimal('0.00')),
             acc_overdue=Count('accepted_orders', filter=overdue_acc, distinct=True),
+            # Рахуємо витрати на перекладачів для замовлень, які прийняв менеджер
+            acc_cogs=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        Cast('accepted_orders__page_count', DecimalField(max_digits=12, decimal_places=2)) *
+                        Cast('accepted_orders__translator_traffic_id__rate_per_page',
+                             DecimalField(max_digits=12, decimal_places=2)),
+                        output_field=DecimalField(max_digits=12, decimal_places=2)
+                    ),
+                    filter=date_acc
+                ),
+                Decimal('0.00')
+            ),
+            # Рахуємо унікальних клієнтів для прийнятих замовлень
+            acc_unique_clients=Count('accepted_orders__client_id', filter=date_acc, distinct=True),
 
             del_orders=Count('delivered_orders', filter=date_del, distinct=True),
             del_rev=Coalesce(Sum('delivered_orders__total_amount', filter=date_del), Decimal('0.00')),
             del_overdue=Count('delivered_orders', filter=overdue_del, distinct=True),
+            # Рахуємо витрати на перекладачів для замовлень, які здав менеджер
+            del_cogs=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        Cast('delivered_orders__page_count', DecimalField(max_digits=12, decimal_places=2)) *
+                        Cast('delivered_orders__translator_traffic_id__rate_per_page',
+                             DecimalField(max_digits=12, decimal_places=2)),
+                        output_field=DecimalField(max_digits=12, decimal_places=2)
+                    ),
+                    filter=date_del
+                ),
+                Decimal('0.00')
+            ),
+            # Рахуємо унікальних клієнтів для зданих замовлень
+            del_unique_clients=Count('delivered_orders__client_id', filter=date_del, distinct=True),
         ).annotate(
             total_orders=ExpressionWrapper(
                 F('acc_orders') + F('del_orders'),
@@ -266,34 +302,143 @@ class OwnerDashboardViewSet(viewsets.GenericViewSet):
                 F('acc_rev') + F('del_rev'),
                 output_field=DecimalField(max_digits=12, decimal_places=2)
             ),
+            total_cogs=ExpressionWrapper(
+                F('acc_cogs') + F('del_cogs'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            ),
             overdue_orders_count=ExpressionWrapper(
                 F('acc_overdue') + F('del_overdue'),
                 output_field=IntegerField()
             ),
+            total_clients=ExpressionWrapper(
+                F('acc_unique_clients') + F('del_unique_clients'),
+                output_field=IntegerField()
+            ),
         ).annotate(
-    avg_order_value=Case(
-        When(total_orders=0, then=Value(Decimal('0.00'))),
-        default=ExpressionWrapper(
-            F('total_revenue') / F('total_orders'),
-            output_field=DecimalField(max_digits=12, decimal_places=2)
-        ),
-        output_field=DecimalField(max_digits=12, decimal_places=2)
-    )
-)
+            avg_order_value=Case(
+                When(total_orders=0, then=Value(Decimal('0.00'))),
+                default=ExpressionWrapper(
+                    F('total_revenue') / F('total_orders'),
+                    output_field=DecimalField(max_digits=12, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            ),
+            gross_profit=ExpressionWrapper(
+                F('total_revenue') - F('total_cogs'),
+                output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        ).annotate(
+            avg_margin_percent=Case(
+                When(total_revenue=0, then=Value(Decimal('0.00'))),
+                default=ExpressionWrapper(
+                    (F('gross_profit') / F('total_revenue')) * Value(Decimal('100.0')),
+                    output_field=DecimalField(max_digits=5, decimal_places=2)
+                ),
+                output_field=DecimalField(max_digits=5, decimal_places=2)
+            )
+        ).order_by('-total_revenue')
 
-        # avg_order_value може бути None якщо total_orders = 0 — фіксуємо на Python
         result = []
         for user in stats:
             result.append({
-                'id':                  user.id,
-                'full_name':           user.full_name,
-                'total_orders':        user.total_orders,
-                'total_revenue':       user.total_revenue,
-                'avg_order_value':     user.avg_order_value if user.total_orders > 0 else Decimal('0.00'),
+                'id': user.id,
+                'full_name': user.full_name,
+                'total_orders': user.total_orders,
+                'total_clients': user.total_clients,
+                'total_revenue': user.total_revenue,
+                'avg_order_value': user.avg_order_value,
+                'avg_margin_percent': round(user.avg_margin_percent, 2),
                 'overdue_orders_count': user.overdue_orders_count,
             })
 
         return Response(result)
+
+    @extend_schema(
+        summary="Детальна статистика менеджера",
+        description="Повертає інформацію про менеджера, динаміку замовлень по днях та динаміку доходу.",
+        parameters=[
+            OpenApiParameter("start_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+            OpenApiParameter("end_date", OpenApiTypes.DATE, description="YYYY-MM-DD"),
+        ],
+        tags=["Owner Dashboard"]
+    )
+    @action(detail=False, methods=['get'], url_path='managers-stats/(?P<manager_id>[0-9]+)/details')
+    def manager_detail(self, request, manager_id=None):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        try:
+            manager = User.objects.get(pk=manager_id, role__slug='manager')
+        except User.DoesNotExist:
+            return Response({"detail": "Менеджера не знайдено."}, status=404)
+
+        # Шукаємо замовлення, де менеджер приймав АБО здавав проект
+        qs = Order.objects.filter(Q(manager_accept_id=manager_id) | Q(manager_delivery_id=manager_id))
+
+        if start_date and end_date:
+            qs = qs.filter(created_at__date__range=[start_date, end_date])
+
+        now = timezone.now()
+
+        # ── ЗАГАЛЬНА СТАТИСТИКА ──────────
+        summary_stats = qs.aggregate(
+            total_orders=Count('id', distinct=True),
+            total_clients=Count('client_id', distinct=True),  # <-- ВИПРАВЛЕНО ТУТ
+            total_revenue=Coalesce(Sum('total_amount'), Decimal('0.00')),
+            total_cogs=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        Cast('page_count', DecimalField(max_digits=12, decimal_places=2)) *
+                        Cast('translator_traffic_id__rate_per_page', DecimalField(max_digits=12, decimal_places=2)),
+                        output_field=DecimalField(max_digits=12, decimal_places=2)
+                    )
+                ),
+                Decimal('0.00')
+            ),
+            overdue_count=Count('id', filter=Q(deadline__lt=now) & ~Q(status_id=DONE_STATUS_ID), distinct=True)
+        )
+
+        total_orders_val = summary_stats['total_orders'] or 0
+        total_revenue_val = summary_stats['total_revenue'] or Decimal('0.00')
+        total_cogs_val = summary_stats['total_cogs'] or Decimal('0.00')
+
+        gross_profit = total_revenue_val - total_cogs_val
+        avg_margin_val = (gross_profit / total_revenue_val * 100) if total_revenue_val > 0 else Decimal('0.00')
+        avg_check_val = (total_revenue_val / total_orders_val) if total_orders_val > 0 else Decimal('0.00')
+
+        # ── Графіки (TruncDate для правильного відображення по днях) ─────────
+        orders_chart = (
+            qs.annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(count=Count('id', distinct=True))
+            .order_by('date')
+        )
+
+        revenue_chart = (
+            qs.filter(status_id__in=SUCCESS_STATUSES)
+            .annotate(date=TruncDate('created_at'))
+            .values('date')
+            .annotate(amount=Coalesce(Sum('total_amount'), Decimal('0.00')))
+            .order_by('date')
+        )
+
+        return Response({
+            "manager_info": {
+                "id": manager.id,
+                "full_name": manager.full_name,
+                "email": manager.email,
+            },
+            "summary": {
+                "total_orders": total_orders_val,
+                "total_clients": summary_stats['total_clients'] or 0,
+                "total_revenue": total_revenue_val,
+                "avg_order_value": round(avg_check_val, 2),
+                "avg_margin_percent": round(avg_margin_val, 2),
+                "overdue_orders_count": summary_stats['overdue_count'] or 0
+            },
+            "orders_chart": list(orders_chart),
+            "revenue_chart": list(revenue_chart),
+        })
 
 
     # ── Статистика клієнтів ────────────────────
