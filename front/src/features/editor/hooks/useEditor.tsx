@@ -2,28 +2,29 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { KanbanTask, KanbanColumn, statusIdToTaskStatus, OrderListItem } from '../types';
+import type { KanbanTask, KanbanColumn, OrderListItem } from '../types';
+import { statusIdToTaskStatus } from '../types';
 import { fetchOrders, updateOrderStatus, fetchOrderById } from '../services/orders';
 import type {ProfileUser} from "@/src/features/profile/types";
 import {ordersApi} from "@/src/features/editor/api";
 
 const initialColumns: KanbanColumn[] = [
-    { id: 'planned',        title: 'Planned',        status: 'planned',        status_id: '5',  taskIds: [], color: '#8b5cf6', icon: null },
-    { id: 'todo',           title: 'To Do',           status: 'todo',           status_id: '6',  taskIds: [], color: '#6366f1', icon: null },
-    { id: 'in_translation', title: 'In Translation',  status: 'in_translation', status_id: '1',  taskIds: [], color: '#f59e0b', icon: null },
-    { id: 'in_checking',    title: 'In Checking',     status: 'in_checking',    status_id: '8',  taskIds: [], color: '#3b82f6', icon: null },
-    { id: 'revision',       title: 'Revision',        status: 'revision',       status_id: '11', taskIds: [], color: '#ef4444', icon: null },
-    { id: 'done',           title: 'Done',            status: 'done',           status_id: '2',  taskIds: [], color: '#10b981', icon: null },
+    { id: 'planned',        title: 'Planned',        status: 'planned',        editor_status: '5',  taskIds: [], color: '#8b5cf6', icon: null },
+    { id: 'todo',           title: 'To Do',           status: 'todo',           editor_status: '6',  taskIds: [], color: '#6366f1', icon: null },
+    { id: 'in_translation', title: 'In Translation',  status: 'in_translation', editor_status: '1',  taskIds: [], color: '#f59e0b', icon: null },
+    { id: 'in_checking',    title: 'In Checking',     status: 'in_checking',    editor_status: '8',  taskIds: [], color: '#3b82f6', icon: null },
+    { id: 'revision',       title: 'Revision',        status: 'revision',       editor_status: '11', taskIds: [], color: '#ef4444', icon: null },
+    { id: 'done',           title: 'Done',            status: 'done',           editor_status: '2',  taskIds: [], color: '#10b981', icon: null },
 ];
 
 // Хелпер — витягує editor_status як рядок незалежно від формату API
 // API може повернути: editor_status: 5 (число), або editor_status: {id:5} (об'єкт)
 const getEditorStatusId = (obj: any): string => {
     const raw = obj?.editor_status_id ?? obj?.editor_status?.id ?? obj?.editor_status;
-    if (raw === null || raw === undefined) return '';
-    if (typeof raw === 'object') return String(raw?.id ?? '');
+    if (raw === null || raw === undefined || raw === '') {return '';}
+    if (typeof raw === 'object') {return String(raw?.id ?? '');}
     return String(raw);
-};
+}
 
 export const useEditor = () => {
     const [tasks, setTasks] = useState<KanbanTask[]>([]);
@@ -53,11 +54,11 @@ export const useEditor = () => {
 
                 const newColumns = initialColumns.map(column => {
                     const matchingTasks = fetchedTasks.filter(task => {
-                        const taskEditorStatus = getEditorStatusId(task);
-                        return taskEditorStatus === column.status_id;
-                    });
-                    return { ...column, taskIds: matchingTasks.map(task => task.id.toString()) };
-                });
+                        const taskEditorStatus = getEditorStatusId(task)
+                        return taskEditorStatus === column.editor_status
+                    })
+                    return { ...column, taskIds: matchingTasks.map(task => task.id.toString()) }
+                })
 
                 setColumns(newColumns);
             } catch (err) {
@@ -213,7 +214,7 @@ export const useEditor = () => {
             const targetColumn = columns.find(col => col.id === targetColumnId);
             if (!targetColumn || sourceColumn.id === targetColumn.id) { return; }
 
-            const newEditorStatusId = targetColumn.status_id;
+            const newEditorStatusId = targetColumn.editor_status;
 
             setTasks(prev => prev.map(task =>
                 task.id.toString() === activeId
@@ -222,8 +223,8 @@ export const useEditor = () => {
             ));
 
             setColumns(prev => prev.map(col => {
-                if (col.id === sourceColumn.id) return { ...col, taskIds: col.taskIds.filter(id => id !== activeId) };
-                if (col.id === targetColumn.id) return { ...col, taskIds: [...col.taskIds, activeId] };
+                if (col.id === sourceColumn.id) {return { ...col, taskIds: col.taskIds.filter(id => id !== activeId) };}
+                if (col.id === targetColumn.id) {return { ...col, taskIds: [...col.taskIds, activeId] };}
                 return col;
             }));
 
@@ -249,7 +250,7 @@ export const useEditor = () => {
                 ));
             }
         } else {
-            const newEditorStatusId = targetColumn.status_id;
+            const newEditorStatusId = targetColumn.editor_status;
 
             setTasks(prev => prev.map(task =>
                 task.id.toString() === activeId
@@ -258,7 +259,7 @@ export const useEditor = () => {
             ));
 
             setColumns(prev => prev.map(col => {
-                if (col.id === sourceColumn.id) return { ...col, taskIds: col.taskIds.filter(id => id !== activeId) };
+                if (col.id === sourceColumn.id) {return { ...col, taskIds: col.taskIds.filter(id => id !== activeId) };}
                 if (col.id === targetColumn.id) {
                     const overIndex = targetColumn.taskIds.indexOf(overId);
                     const newTaskIds = [...targetColumn.taskIds];
@@ -294,7 +295,7 @@ export const useEditor = () => {
         setIsModalLoading(true);
         try {
             const order = await fetchOrderById(orderId);
-            if (!order) throw new Error('Order not found');
+            if (!order) {throw new Error('Order not found');}
 
             setSelectedTask(order);
             await loadOrderFiles(orderId);
@@ -367,7 +368,7 @@ export const useEditor = () => {
             const newColumns = initialColumns.map(column => ({
                 ...column,
                 taskIds: fetchedTasks
-                    .filter(task => getEditorStatusId(task) === column.status_id)
+                    .filter(task => getEditorStatusId(task) === column.editor_status)
                     .map(task => task.id.toString())
             }));
 

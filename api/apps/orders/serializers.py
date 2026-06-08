@@ -111,6 +111,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'translator_traffic_id',
             'editor_id',
             'client_comment',
+            'editor_status',
             'translator_comment',
             'status_id',
             'client_status',
@@ -120,6 +121,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'language_pair_id': {'read_only': True},
             'translator_status': {'required': False},
+            'editor_status': {'required': False},
             'client_status': {'required': False},
             'status_id': {'required': False},
         }
