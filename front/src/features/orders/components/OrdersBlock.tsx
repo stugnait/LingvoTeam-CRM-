@@ -65,6 +65,9 @@ const STATUS_OPTIONS = [
     { value: "9", label: "Checked", color: "bg-teal-500" },
     { value: "4", label: "Paused", color: "bg-slate-500" },
     { value: "2", label: "Done", color: "bg-emerald-500" },
+    { value: "12", label: "Payed", color: "bg-emerald-500" },
+    { value: "13", label: "Deposit", color: "bg-emerald-500" },
+    { value: "14", label: "Finished", color: "bg-emerald-500" },
 ];
 
 interface OrdersTableProps {
@@ -510,6 +513,58 @@ export function OrdersTable({
                                                     >
                                                         Send
                                                     </Button>
+                                                </>
+                                            )}
+
+                                            {/* ── Блок статусу оплати та кнопок ── */}
+                                            {order.status_id === 2 && (
+                                                <>
+                                                    {/* Відображення поточного статусу оплати */}
+                                                    {order.status_id && [12, 13, 14].includes(order.status_id) && (
+                                                        <span className={cn(
+                                                            "px-2 py-1 text-[11px] font-semibold rounded-md border",
+                                                            order.status_id === 12 ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
+                                                                order.status_id === 13 ? "bg-amber-50 text-amber-600 border-amber-200" :
+                                                                    "bg-blue-50 text-blue-600 border-blue-200"
+                                                        )}>
+                {order.status_id === 12 ? "Оплачено" :
+                    order.status_id === 13 ? "Завдаток" : "Завершено"}
+            </span>
+                                                    )}
+
+                                                    {/* Кнопки з'являються тільки якщо замовлення ще не повністю оплачене/завершене */}
+                                                    {![12, 14].includes(order.status_id) && (
+                                                        <>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="default"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    // Якщо вже був завдаток, переводимо у 14 (Finished), інакше 12 (Paid)
+                                                                    const nextStatus = order.status_id === 13 ? 14 : 12
+                                                                    updateOrder(order.id, { status_id: nextStatus })
+                                                                }}
+                                                                className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                                                            >
+                                                                ✓ {order.status_id === 13 ? "Доплачено" : "Оплачено"}
+                                                            </Button>
+
+                                                            {/* Кнопку "Завдаток" ховаємо, якщо завдаток вже внесено */}
+                                                            {order.status_id !== 13 && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        updateOrder(order.id, { status_id: 13 })
+                                                                    }}
+                                                                    className="h-8 border-amber-400 text-amber-600 hover:bg-amber-50 gap-1.5"
+                                                                >
+                                                                    ◑ Завдаток
+                                                                </Button>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </>
                                             )}
 
