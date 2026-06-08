@@ -114,9 +114,17 @@ export default function ClientDetailPage() {
             markers: { size: 6, strokeWidth: 0 },
             itemMargin: { vertical: 4 },
             formatter: function (seriesName, opts) {
-                const val = opts.w.globals.seriesTotals[opts.seriesIndex]
-                const total = opts.w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0)
+                if (!opts || !opts.w || !opts.w.globals) {
+                    return `<div class="flex justify-between w-full min-w-[120px]">
+                                <span class="text-slate-600">${seriesName}</span>
+                            </div>`
+                }
+
+                const val = opts.w.globals.seriesTotals[opts.seriesIndex] ?? 0
+                const totalsArr = opts.w.globals.seriesTotals ?? []
+                const total = totalsArr.reduce((a: number, b: number) => a + b, 0)
                 const percent = total > 0 ? Math.round((val / total) * 100) : 0
+
                 return `<div class="flex justify-between w-full min-w-[120px]">
                             <span class="text-slate-600">${seriesName}</span>
                             <span class="font-medium ml-4 text-slate-900">${val} (${percent}%)</span>

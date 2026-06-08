@@ -50,7 +50,7 @@ export interface OrderItem {
 }
 
 // ── Параметри фільтрації ──────────────────────────────────────────────────────
-export interface OrdersParams {
+export type OrdersParams = {
     search?:       string   // пошук по ID або client_comment
     client?:       string   // client id
     manager?:      string   // manager id (accept OR delivery)

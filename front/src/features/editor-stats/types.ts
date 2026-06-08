@@ -1,5 +1,5 @@
 // ── Параметри запиту (список редакторів) ─────────────────────────────────────
-export interface EditorStatsParams {
+export type EditorStatsParams = {
     start_date?: string
     end_date?: string
     search?: string
@@ -19,7 +19,7 @@ export interface EditorStatItem {
 }
 
 // ── Деталі одного редактора ───────────────────────────────────────────────────
-export interface EditorDetailParams {
+export type EditorDetailParams = {
     start_date?: string
     end_date?:   string
 }
@@ -43,7 +43,7 @@ export interface EditorDetailData {
 }
 
 // ── Замовлення редактора ──────────────────────────────────────────────────────
-export interface EditorOrdersParams {
+export type EditorOrdersParams = {
     editor?:     string // <-- Фільтр по редактору
     start_date?: string
     end_date?:   string

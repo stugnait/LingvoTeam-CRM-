@@ -1,5 +1,5 @@
 // ── Параметри запиту (список перекладачів) ────────────────────────────────────
-export interface TranslatorStatsParams {
+export type TranslatorStatsParams = {
     start_date?: string
     end_date?:   string
     search?:     string
@@ -20,7 +20,7 @@ export interface TranslatorStatItem {
 }
 
 // ── Деталі перекладача ────────────────────────────────────────────────────────
-export interface TranslatorDetailParams {
+export type TranslatorDetailParams = {
     start_date?: string
     end_date?:   string
 }
@@ -44,7 +44,7 @@ export interface TranslatorDetailData {
 }
 
 // ── Параметри для списку замовлень ────────────────────────────────────────────
-export interface TranslatorOrdersParams {
+export type TranslatorOrdersParams = {
     translator?: string
     start_date?: string
     end_date?:   string

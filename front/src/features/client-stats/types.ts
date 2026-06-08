@@ -10,7 +10,7 @@ export interface ClientStatItem {
     unpaid_orders_count: number
 }
 
-export interface ClientStatsParams {
+export type ClientStatsParams = {
     start_date?: string   // YYYY-MM-DD
     end_date?: string
     search?: string;
@@ -20,9 +20,12 @@ export interface ClientStatsParams {
 // Детальна сторінка клієнта
 // ─────────────────────────────────────────────
 export interface ClientInfo {
-    id: number
-    full_name: string
-    email: string
+    id:           number
+    full_name:    string
+    email?:       string
+    phone_number?: string
+    category?:    string
+    unpaid_orders_count?: number // <-- Додаємо це поле для заглушки
 }
 
 export interface OrdersChartPoint {
@@ -47,7 +50,7 @@ export interface ClientDetailData {
     language_pairs: LanguagePairPoint[]
 }
 
-export interface ClientDetailParams {
+export type ClientDetailParams = {
     start_date?: string
     end_date?: string
 }

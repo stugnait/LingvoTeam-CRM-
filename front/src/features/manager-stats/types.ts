@@ -1,5 +1,5 @@
 // ── Параметри запиту (список менеджерів) ─────────────────────────────────────
-export interface ManagerStatsParams {
+export type ManagerStatsParams = {
     start_date?: string
     end_date?:   string
     search?:     string
@@ -18,7 +18,7 @@ export interface ManagerStatItem {
 }
 
 // ── Деталі менеджера ──────────────────────────────────────────────────────────
-export interface ManagerDetailParams {
+export type ManagerDetailParams = {
     start_date?: string
     end_date?:   string
 }
@@ -42,7 +42,7 @@ export interface ManagerDetailData {
 }
 
 // ── Замовлення менеджера ──────────────────────────────────────────────────────
-export interface ManagerOrdersParams {
+export type ManagerOrdersParams = {
     manager?:    string
     start_date?: string
     end_date?:   string

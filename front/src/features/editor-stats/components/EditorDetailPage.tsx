@@ -67,7 +67,6 @@ const STATUS_NAMES: Record<number, string> = {
     1: "New", 2: "Done", 3: "Rejected", 4: "In Progress", 5: "Paid", 7: "In Review", 8: "In Checking", 9: "Checked", 11: "Revision",
 }
 
-// ─── Таблиця замовлень ────────────────────────────────────────────────────────
 function OrdersTable({ data, loading }: { data: EditorOrder[]; loading: boolean }) {
     return (
         <div className="overflow-auto">
@@ -88,8 +87,15 @@ function OrdersTable({ data, loading }: { data: EditorOrder[]; loading: boolean 
                         <TableRow><TableCell colSpan={5} className="h-32 text-center text-slate-400">Замовлення відсутні за вибраними параметрами</TableCell></TableRow>
                     ) : (
                         data.map((order) => {
-                            const overdue = isOverdue(order.deadline, order.status_id)
-                            const statusName = STATUS_NAMES[order.status_id] ?? `#${order.status_id}`
+                            // Безпечно витягуємо ID статусу
+                            const statusId = order.status?.id
+
+                            // Перевіряємо, чи прострочено
+                            const overdue = isOverdue(order.deadline, statusId)
+
+                            // Беремо назву з об'єкта status, або зі словника, або ставимо заглушку
+                            const statusName = order.status?.name || (statusId ? STATUS_NAMES[statusId] : "Без статусу")
+
                             return (
                                 <TableRow key={order.id} className="transition-colors hover:bg-slate-50 border-b border-slate-50 last:border-0">
                                     <TableCell className="py-4 pl-6">
@@ -107,7 +113,9 @@ function OrdersTable({ data, loading }: { data: EditorOrder[]; loading: boolean 
                                         {order.client_comment ? <span className="text-sm text-slate-600 truncate block">{order.client_comment}</span> : <span className="text-slate-400 text-sm italic">—</span>}
                                     </TableCell>
                                     <TableCell className="py-4 text-center">
-                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusStyle(order.status_id)}`}>{statusName}</span>
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusStyle(statusId)}`}>
+                                            {statusName}
+                                        </span>
                                     </TableCell>
                                 </TableRow>
                             )

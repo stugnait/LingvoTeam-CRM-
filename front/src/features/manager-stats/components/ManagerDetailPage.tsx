@@ -96,6 +96,8 @@ const STATUS_NAMES: Record<number, string> = {
 
 // ─── Таблиця замовлень ────────────────────────────────────────────────────────
 
+// ─── Таблиця замовлень ────────────────────────────────────────────────────────
+
 function OrdersTable({ data, loading }: { data: ManagerOrder[]; loading: boolean }) {
     return (
         <div className="overflow-auto">
@@ -126,8 +128,15 @@ function OrdersTable({ data, loading }: { data: ManagerOrder[]; loading: boolean
                         </TableRow>
                     ) : (
                         data.map((order) => {
-                            const overdue = isOverdue(order.deadline, order.status_id)
-                            const statusName = STATUS_NAMES[order.status_id] ?? `#${order.status_id}`
+                            // Безпечно витягуємо ID статусу
+                            const statusId = order.status?.id
+
+                            // Перевіряємо, чи прострочено
+                            const overdue = isOverdue(order.deadline, statusId)
+
+                            // Беремо назву з об'єкта status, або зі словника
+                            const statusName = order.status?.name || (statusId ? STATUS_NAMES[statusId] : "Без статусу")
+
                             return (
                                 <TableRow
                                     key={order.id}
@@ -178,7 +187,7 @@ function OrdersTable({ data, loading }: { data: ManagerOrder[]; loading: boolean
 
                                     {/* 5. Статус */}
                                     <TableCell className="py-4 text-center">
-                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusStyle(order.status_id)}`}>
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusStyle(statusId)}`}>
                                             {statusName}
                                         </span>
                                     </TableCell>
