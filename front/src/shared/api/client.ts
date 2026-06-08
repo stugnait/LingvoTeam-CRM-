@@ -1,14 +1,32 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
-type ResponseType = 'json' | 'blob'
-
-type FetchOptionsWithGlobalError = RequestInit & {
-    skipGlobalError?: boolean
-}
+type ResponseType = "json" | "blob"
 
 export interface ApiFetchOptions extends RequestInit {
     responseType?: ResponseType
-    skipGlobalError?: boolean // 👈 Додали наш прапорець
+    skipGlobalError?: boolean
+}
+
+// Глобальний стан рефрешу — щоб не робити кілька паралельних рефрешів
+let refreshPromise: Promise<boolean> | null = null
+
+async function tryRefreshToken(): Promise<boolean> {
+    // Якщо вже є активний refresh — чекаємо його результат
+    if (refreshPromise) {
+        return refreshPromise
+    }
+
+    refreshPromise = fetch(`${API_URL}users/auth/refresh/`, {
+        method: "POST",
+        credentials: "include",
+    })
+        .then(res => res.ok)
+        .catch(() => false)
+        .finally(() => {
+            refreshPromise = null
+        })
+
+    return refreshPromise
 }
 
 export async function apiFetch<T>(
@@ -16,51 +34,57 @@ export async function apiFetch<T>(
     options: ApiFetchOptions = {}
 ): Promise<T> {
     const {
-        responseType = 'json',
-        skipGlobalError, // 👈 Дістаємо з options
+        responseType = "json",
         headers: customHeaders,
         ...fetchOptions
     } = options
 
-    const headers = new Headers(customHeaders)
-
-    // Content-Type тільки якщо НЕ blob і НЕ FormData
-    if (
-        responseType === 'json' &&
-        !(fetchOptions.body instanceof FormData)
-    ) {
-        headers.set('Content-Type', 'application/json')
+    const buildHeaders = () => {
+        const headers = new Headers(customHeaders)
+        if (
+            responseType === "json" &&
+            !(fetchOptions.body instanceof FormData)
+        ) {
+            headers.set("Content-Type", "application/json")
+        }
+        return headers
     }
 
     const isFormData = fetchOptions.body instanceof FormData
 
-    const fetchOptionsWithGlobalError: FetchOptionsWithGlobalError = {
-        credentials: 'include',
-        ...fetchOptions,
-        headers,
-        body:
-            fetchOptions.body &&
-            !isFormData &&
-            typeof fetchOptions.body !== "string"
-                ? JSON.stringify(fetchOptions.body)
-                : fetchOptions.body,
+    const makeRequest = () =>
+        fetch(`${API_URL}${url}`, {
+            credentials: "include",
+            ...fetchOptions,
+            headers: buildHeaders(), // свіжі headers кожен раз
+            body:
+                fetchOptions.body &&
+                !isFormData &&
+                typeof fetchOptions.body !== "string"
+                    ? JSON.stringify(fetchOptions.body)
+                    : fetchOptions.body,
+        })
 
-        // 👈 Передаємо прапорець у fetch, щоб його побачив Interceptor
-        skipGlobalError: skipGlobalError
+    let res = await makeRequest()
+
+    if (res.status === 401 && url !== "users/auth/refresh/") {
+        const refreshed = await tryRefreshToken()
+
+        if (!refreshed) {
+            if (typeof window !== "undefined") {
+                window.location.href = "/login"
+            }
+            throw new Error("Session expired")
+        }
+
+        // Повторюємо оригінальний запит — cookie вже оновлений сервером
+        res = await makeRequest()
     }
 
-    const res = await fetch(`${API_URL}${url}`, fetchOptionsWithGlobalError)
-
     if (!res.ok) {
-        // ⚠️ error може бути НЕ json (наприклад 403 з text)
         const error = await res.json().catch(() => null)
-        const apiError =
-            error && typeof error === 'object' && !Array.isArray(error)
-                ? error
-                : { detail: error }
-
         throw {
-            ...apiError,
+            ...(error || {}),
             status: res.status,
             statusText: res.statusText,
         }
@@ -70,8 +94,7 @@ export async function apiFetch<T>(
         return undefined as T
     }
 
-    // 🔑 ГОЛОВНЕ
-    if (responseType === 'blob') {
+    if (responseType === "blob") {
         return (await res.blob()) as T
     }
 

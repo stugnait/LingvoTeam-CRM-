@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useEffect, useState, useRef } from "react"
 import {
     Table,
     TableBody,
@@ -11,6 +11,7 @@ import {
 } from "@/src/components/ui/table"
 import { Badge } from "@/src/components/ui/badge"
 import { Button } from "@/src/components/ui/button"
+import { Input } from "@/src/components/ui/input"
 import {
     Select,
     SelectContent,
@@ -24,7 +25,8 @@ import {
     Trash2,
     ChevronDown,
     CalendarIcon,
-    Loader2
+    Loader2,
+    Search
 } from "lucide-react"
 
 import {
@@ -86,6 +88,9 @@ interface OrdersTableProps {
     dateToFilter?: string
     onDateToChange?: (val: string) => void
 
+    searchFilter?: string
+    onSearchChange?: (val: string) => void
+
     managers?: any[]
 
     onOpen: (orderId: number) => Promise<Details>
@@ -119,6 +124,8 @@ export function OrdersTable({
                                 onDateFromChange,
                                 dateToFilter,
                                 onDateToChange,
+                                searchFilter,
+                                onSearchChange,
                                 managers = [],
                                 onOpen,
                                 languagePairs,
@@ -140,6 +147,9 @@ export function OrdersTable({
 
     const [isFromCalendarOpen, setIsFromCalendarOpen] = useState(false)
     const [isToCalendarOpen, setIsToCalendarOpen] = useState(false)
+
+    const [localSearch, setLocalSearch] = useState(searchFilter || "")
+    const typingTimer = useRef<NodeJS.Timeout | null>(null)
 
     const handleToggle = async (orderId: number) => {
         if (expandedId === orderId) {
@@ -168,6 +178,16 @@ export function OrdersTable({
         setDetails(null)
     }, [page])
 
+    const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value
+        setLocalSearch(val)
+
+        if (typingTimer.current) clearTimeout(typingTimer.current)
+        typingTimer.current = setTimeout(() => {
+            if (onSearchChange) onSearchChange(val)
+        }, 500)
+    }
+
     const isOverdue = (deadline: string) => new Date(deadline).getTime() < Date.now()
 
     const getTranslatorName = (translatorId: number | null) => {
@@ -190,13 +210,25 @@ export function OrdersTable({
             {/* ПАНЕЛЬ ФІЛЬТРІВ */}
             <div className="flex flex-col xl:flex-row items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/10 gap-3 sm:gap-4">
 
-                <div className="flex flex-col items-center lg:flex-row gap-3 sm:gap-4 w-full xl:w-auto">
+                <div className="flex flex-col items-center lg:flex-row gap-3 sm:gap-4 w-full xl:w-auto flex-wrap">
+
+                    {/* Поле Пошуку */}
+                    <div className="relative w-full lg:w-[250px] group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Пошук (ID, Коментар)..."
+                            className="pl-9 bg-background focus-visible:ring-primary h-10 w-full"
+                            value={localSearch}
+                            onChange={handleSearchInput}
+                        />
+                    </div>
+
                     {/* Статус Фільтр */}
                     <Select
                         value={String(statusFilter || "all")}
                         onValueChange={(val) => onStatusChange && onStatusChange(val === "all" ? "" : val)}
                     >
-                        <SelectTrigger className="w-full lg:w-[170px] bg-background">
+                        <SelectTrigger className="w-full lg:w-[170px] bg-background h-10">
                             <SelectValue placeholder="All Statuses" />
                         </SelectTrigger>
                         <SelectContent className="z-[101]">
@@ -222,7 +254,7 @@ export function OrdersTable({
                         value={String(managerFilter || "all")}
                         onValueChange={(val) => onManagerChange && onManagerChange(val === "all" ? "" : val)}
                     >
-                        <SelectTrigger className="w-full lg:w-[180px] bg-background">
+                        <SelectTrigger className="w-full lg:w-[180px] bg-background h-10">
                             <SelectValue placeholder="All Managers" />
                         </SelectTrigger>
                         <SelectContent className="z-[101]">
@@ -346,7 +378,7 @@ export function OrdersTable({
                                 <TableRow
                                     className={cn(
                                         "transition-colors hover:bg-muted/30",
-                                        order.id === highlightId && "bg-primary/10 ring-2 ring-primary",
+                                        order.id === activeHighlightId && "bg-primary/10 ring-2 ring-primary",
                                         isOverdue(order.deadline) && "bg-red-500/10 hover:bg-red-500/15"
                                     )}
                                 >
@@ -388,17 +420,16 @@ export function OrdersTable({
 
                                     <TableCell className="align-middle py-3">
                                         <div className="flex items-center gap-2">
-                                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
-                                            {order.source_language}
-                                        </span>
+                                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border">
+                                                {order.source_language}
+                                            </span>
                                             <span className="text-muted-foreground text-sm font-medium">→</span>
                                             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                                            {order.target_language}
-                                        </span>
+                                                {order.target_language}
+                                            </span>
                                         </div>
                                     </TableCell>
 
-                                    {/* 👉 ІНТЕРАКТИВНИЙ СТАТУС ДЛЯ ДЕСКТОПУ */}
                                     <TableCell className="align-middle py-3">
                                         {updateLoading === order.id ? (
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
@@ -429,12 +460,12 @@ export function OrdersTable({
 
                                     <TableCell className="align-middle py-3">
                                         <div className="flex flex-col">
-                                        <span className={cn("text-sm font-medium", isOverdue(order.deadline) ? "text-red-600" : "text-foreground")}>
-                                            {new Date(order.deadline).toLocaleDateString()}
-                                        </span>
+                                            <span className={cn("text-sm font-medium", isOverdue(order.deadline) ? "text-red-600" : "text-foreground")}>
+                                                {new Date(order.deadline).toLocaleDateString()}
+                                            </span>
                                             <span className={cn("text-xs", isOverdue(order.deadline) ? "text-red-500" : "text-muted-foreground")}>
-                                            {new Date(order.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                        </span>
+                                                {new Date(order.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                            </span>
                                         </div>
                                     </TableCell>
 
@@ -541,8 +572,8 @@ export function OrdersTable({
                                                                         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
                                                                             <span className="text-lg font-bold text-foreground">
-                                                                            {client ? client.full_name : `Client #${clientId}`}
-                                                                        </span>
+                                                                                {client ? client.full_name : `Client #${clientId}`}
+                                                                            </span>
                                                                             {client?.email && (
                                                                                 <span className="text-sm text-muted-foreground">{client.email}</span>
                                                                             )}
@@ -561,8 +592,8 @@ export function OrdersTable({
                                                                         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Translator Information</span>
                                                                             <span className="text-lg font-bold text-foreground">
-                                                                            {translator ? translator.full_name : getTranslatorName(translatorId)}
-                                                                        </span>
+                                                                                {translator ? translator.full_name : getTranslatorName(translatorId)}
+                                                                            </span>
                                                                             {translator?.email && (
                                                                                 <span className="text-sm text-muted-foreground">{translator.email}</span>
                                                                             )}
@@ -582,8 +613,8 @@ export function OrdersTable({
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Images</span>
                                                                     <span className="text-xl font-bold text-foreground">
-                                                                    {details.images_count}
-                                                                </span>
+                                                                        {details.images_count}
+                                                                    </span>
                                                                 </div>
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
@@ -617,14 +648,13 @@ export function OrdersTable({
                     <Fragment key={order.id}>
                         <div className={cn(
                             "p-4 space-y-3",
-                            order.id === highlightId && "bg-primary/10",
+                            order.id === activeHighlightId && "bg-primary/10",
                             isOverdue(order.deadline) && "bg-red-500/10"
                         )}>
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                     <span className="font-bold text-foreground">#{order.id}</span>
 
-                                    {/* 👉 ІНТЕРАКТИВНИЙ СТАТУС ДЛЯ МОБІЛКИ */}
                                     {updateLoading === order.id ? (
                                         <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                                     ) : (

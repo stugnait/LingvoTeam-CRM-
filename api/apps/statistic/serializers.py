@@ -20,7 +20,7 @@ class ClientInfoSerializer(serializers.ModelSerializer):
 class TranslatorInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Translator
-        fields = ['id', 'full_name', 'email', 'phone', 'work_type', 'currency_id']
+        fields = ['id', 'full_name', 'email', 'phone', 'currency_id']
 
 
 class StatsSerializer(serializers.Serializer):
@@ -53,8 +53,22 @@ class StatsSerializer(serializers.Serializer):
 class OwnerOrderListSerializer(serializers.ModelSerializer):
     manager_accept   = ManagerInfoSerializer(source='manager_accept_id',   read_only=True)
     manager_delivery = ManagerInfoSerializer(source='manager_delivery_id',  read_only=True)
-    client           = ClientInfoSerializer(read_only=True)
-    translator       = TranslatorInfoSerializer(read_only=True)
+    client           = ClientInfoSerializer(source='client_id',             read_only=True)
+    translator       = TranslatorInfoSerializer(source='translator_id',     read_only=True)
+    editor           = ManagerInfoSerializer(source='editor_id',            read_only=True)
+    language_pair    = serializers.SerializerMethodField()
+    tariff_name      = serializers.CharField(source='traffic_id.name',      read_only=True)
+
+    def get_language_pair(self, obj):
+        lp = obj.language_pair_id
+        if not lp:
+            return None
+        src = getattr(lp, 'source_language', None)
+        tgt = getattr(lp, 'target_language', None)
+        return {
+            "id": lp.id,
+            "name": f"{src.name if src else '?'} → {tgt.name if tgt else '?'}"
+        }
 
     class Meta:
         model = Order
@@ -63,11 +77,17 @@ class OwnerOrderListSerializer(serializers.ModelSerializer):
             'created_at',
             'deadline',
             'page_count',
+            'symbols_with_spaces_count',
+            'symbols_count',
+            'total_amount',
             'client_status',
             'status_id',
             'client_comment',
+            'language_pair',
+            'tariff_name',
             'manager_accept',
             'manager_delivery',
+            'editor',
             'client',
             'translator',
         ]
