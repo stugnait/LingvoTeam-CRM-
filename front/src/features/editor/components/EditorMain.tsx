@@ -20,7 +20,8 @@ import { TaskModal } from "@/src/components/modals/jira/InfoModal";
 import { filterTasksByDeadline, type DeadlineFilter } from '@/src/components/canban/KanbanDeadlineFilter';
 
 import { useEditor } from '../hooks/useEditor';
-import { KanbanTask, formatPriority } from '../types';
+import type { KanbanTask} from '../types';
+import { formatPriority } from '../types';
 import { cn } from '@/src/lib/utils';
 
 import {

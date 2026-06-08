@@ -57,7 +57,7 @@ export interface KanbanTask extends Omit<OrderListItem, 'id'> {
 export interface KanbanColumn {
     id: string;
     title: string;
-    status: TaskStatus;
+    editor_status: TaskStatus;
     status_id: string; // '1', '2', '3', '4', '5', '6'
     taskIds: string[];
     color: string;
