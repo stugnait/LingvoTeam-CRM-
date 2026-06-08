@@ -7,6 +7,28 @@ export interface ApiFetchOptions extends RequestInit {
     skipGlobalError?: boolean
 }
 
+// Глобальний стан рефрешу — щоб не робити кілька паралельних рефрешів
+let refreshPromise: Promise<boolean> | null = null
+
+async function tryRefreshToken(): Promise<boolean> {
+    // Якщо вже є активний refresh — чекаємо його результат
+    if (refreshPromise) {
+        return refreshPromise
+    }
+
+    refreshPromise = fetch(`${API_URL}users/auth/refresh/`, {
+        method: "POST",
+        credentials: "include",
+    })
+        .then(res => res.ok)
+        .catch(() => false)
+        .finally(() => {
+            refreshPromise = null
+        })
+
+    return refreshPromise
+}
+
 export async function apiFetch<T>(
     url: string,
     options: ApiFetchOptions = {}
@@ -17,57 +39,50 @@ export async function apiFetch<T>(
         ...fetchOptions
     } = options
 
-    const headers = new Headers(customHeaders)
-
-    if (
-        responseType === "json" &&
-        !(fetchOptions.body instanceof FormData)
-    ) {
-        headers.set("Content-Type", "application/json")
+    const buildHeaders = () => {
+        const headers = new Headers(customHeaders)
+        if (
+            responseType === "json" &&
+            !(fetchOptions.body instanceof FormData)
+        ) {
+            headers.set("Content-Type", "application/json")
+        }
+        return headers
     }
 
     const isFormData = fetchOptions.body instanceof FormData
 
-    const requestConfig: RequestInit = {
-        credentials: "include",
-        ...fetchOptions,
-        headers,
-        body:
-            fetchOptions.body &&
-            !isFormData &&
-            typeof fetchOptions.body !== "string"
-                ? JSON.stringify(fetchOptions.body)
-                : fetchOptions.body,
-    }
-
     const makeRequest = () =>
-        fetch(`${API_URL}${url}`, requestConfig)
+        fetch(`${API_URL}${url}`, {
+            credentials: "include",
+            ...fetchOptions,
+            headers: buildHeaders(), // свіжі headers кожен раз
+            body:
+                fetchOptions.body &&
+                !isFormData &&
+                typeof fetchOptions.body !== "string"
+                    ? JSON.stringify(fetchOptions.body)
+                    : fetchOptions.body,
+        })
 
     let res = await makeRequest()
 
-    // Access token протух
     if (res.status === 401 && url !== "users/auth/refresh/") {
-        const refreshRes = await fetch(`${API_URL}users/auth/refresh/`, {
-            method: "POST",
-            credentials: "include",
-        })
+        const refreshed = await tryRefreshToken()
 
-        if (!refreshRes.ok) {
+        if (!refreshed) {
             if (typeof window !== "undefined") {
                 window.location.href = "/login"
             }
             throw new Error("Session expired")
         }
 
-        // невелика пауза щоб браузер встиг записати cookie
-        await new Promise(resolve => setTimeout(resolve, 50))
-
+        // Повторюємо оригінальний запит — cookie вже оновлений сервером
         res = await makeRequest()
     }
 
     if (!res.ok) {
         const error = await res.json().catch(() => null)
-
         throw {
             ...(error || {}),
             status: res.status,
