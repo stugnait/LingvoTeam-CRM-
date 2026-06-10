@@ -267,6 +267,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         status_planned = Status.objects.filter(slug__iexact="planned").first()
         status_to_do = Status.objects.filter(slug__iexact="to do").first() or status_planned
 
+        client_unpaid = Status.objects.filter(slug__iexact="unpaid").first()
+
         order = serializer.save(
             manager_accept_id_id=request.data.get('manager_accept_id'),
             manager_delivery_id_id=data.get('manager_delivery_id'),
@@ -276,7 +278,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             status_id=status_planned,           # Менеджер: Planned
             editor_status=status_planned,       # Редактор: Planned
             translator_status=status_to_do,     # Перекладач: To Do
-            client_status=status_planned,       # Клієнт: Planned
+            client_status=client_unpaid,       # Клієнт: Planned
 
             total_amount=final_total_amount,
             editor_id_id=data.get('editor_id'),
@@ -428,6 +430,72 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
         return {"total_stats": total_stats}
+
+    @action(detail=True, methods=['post'], url_path=r'analyze-folder/(?P<folder>source|target)')
+    def analyze_folder_files(self, request, pk=None, folder=None):
+        order = self.get_object()
+        folder_param = (folder or "").strip().lower()
+
+        # 1. Шукаємо файли цього замовлення в базі, які належать обраній папці
+        files_qs = File.objects.filter(order=order)
+        base_folder_path = f"/orders/order_{order.id}/{folder_param}"
+        folder_files = files_qs.filter(dropbox_url__startswith=base_folder_path)
+
+        if not folder_files.exists():
+            return Response(
+                {"detail": f"Файли у папці {folder_param} відсутні або ще не завантажені."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        total_stats = {
+            "chars_with_spaces": 0,
+            "chars_no_spaces": 0,
+            "images": 0,
+            "physical_pages": 0
+        }
+        file_results = []
+
+        try:
+            dbx = get_dbx()
+            for f_obj in folder_files:
+                if not f_obj.dropbox_url or f_obj.dropbox_url == "None":
+                    continue
+
+                # 2. Скачуємо файл з Dropbox в пам'ять
+                metadata, resp = dbx.files_download(f_obj.dropbox_url)
+                file_bytes = resp.content
+                filename = os.path.basename(f_obj.dropbox_url)
+
+                # 3. Імітуємо об'єкт файлу (на кшталт InMemoryUploadedFile), який очікує analyze_file_content
+                file_mock = BytesIO(file_bytes)
+                file_mock.name = filename
+                file_mock.seek(0)
+
+                # 4. Проганяємо через твою утиліту аналізу вмісту
+                stats = analyze_file_content(file_mock)
+
+                total_stats["chars_with_spaces"] += stats.get("chars_with_spaces", 0)
+                total_stats["chars_no_spaces"] += stats.get("chars_no_spaces", 0)
+                total_stats["images"] += stats.get("images", 0)
+                total_stats["physical_pages"] += stats.get("pages", 0)
+
+                file_results.append({
+                    "filename": filename,
+                    "stats": stats
+                })
+
+            return Response({
+                "folder": folder_param,
+                "total_stats": total_stats,
+                "files": file_results
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Помилка аналізу папки {folder_param} для замовлення {order.id}: {str(e)}")
+            return Response(
+                {"detail": f"Помилка під час аналізу файлів з сховища: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=False, methods=['post'], url_path='calculate-full', parser_classes=[MultiPartParser])
     def calculate_full(self, request):
@@ -1267,6 +1335,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         updated_instance = serializer.save()
 
+        # ЗАБРАНО: 'payed' та 'deposit'
         NOTIFY_TRIGGERS = {
             'done': ("Замовлення виконано", "перейшло в статус «Виконано»"),
             'checked': ("Замовлення перевірено", "перейшло в статус «Перевірено»"),
@@ -1275,8 +1344,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             'in_checking': ("Замовлення на перевірці", "передано на перевірку"),
             'in progress': ("Замовлення в роботі", "взято в роботу"),
             'in_progress': ("Замовлення в роботі", "взято в роботу"),
-            'payed': ("Замовлення оплачено", "оплачено повністю"),
-            'deposit': ("Отримано завдаток", "оплачено частково (завдаток)"),
         }
 
         current_user = self.request.user
@@ -1299,8 +1366,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         elif old_states['client'] != (updated_instance.client_status.id if updated_instance.client_status else None):
             changed_slug = new_c_slug
             changed_status_obj = updated_instance.client_status
-        elif old_states['translator'] != (
-        updated_instance.translator_status.id if updated_instance.translator_status else None):
+        elif old_states['translator'] != (updated_instance.translator_status.id if updated_instance.translator_status else None):
             changed_slug = new_t_slug
             changed_status_obj = updated_instance.translator_status
 
@@ -1337,6 +1403,88 @@ class OrderViewSet(viewsets.ModelViewSet):
                 )
             except Exception as e:
                 logger.error(f"Failed to send email to manager: {e}")
+
+    @extend_schema(
+        summary="Оновити статус клієнта (оплата)",
+        description="Змінює поле client_status для фіксації оплат (payed, deposit) без зміни загального статусу замовлення.",
+        tags=["Order Workflow"]
+    )
+    @action(detail=True, methods=['post', 'patch'], url_path='update-client-status')
+    def update_client_status(self, request, pk=None):
+        order = self.get_object()
+
+        # Отримуємо ID нового статусу з тіла запиту
+        new_status_id = request.data.get('client_status_id')
+        if not new_status_id:
+            return Response(
+                {"detail": "Необхідно передати client_status_id."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_status = get_object_or_404(Status, id=new_status_id)
+
+        if order.client_status_id == new_status.id:
+            return Response(
+                {"detail": "Цей статус клієнта вже встановлено."},
+                status=status.HTTP_200_OK
+            )
+
+        # Оновлюємо виключно статус клієнта
+        order.client_status = new_status
+        order.save(update_fields=['client_status'])
+
+        # Логіка сповіщень виключно для клієнтських/фінансових статусів
+        CLIENT_NOTIFY_TRIGGERS = {
+            'payed': ("Замовлення оплачено", "оплачено повністю"),
+            'deposit': ("Отримано завдаток", "оплачено частково (завдаток)"),
+        }
+
+        slug = new_status.slug.lower() if new_status.slug else ""
+        current_user = request.user
+        manager_obj = order.manager_accept_id
+
+        if slug in CLIENT_NOTIFY_TRIGGERS and manager_obj and current_user != manager_obj:
+            notif_title, notif_verb = CLIENT_NOTIFY_TRIGGERS[slug]
+            msg_text = f"Клієнтський статус замовлення #{order.id} змінено: {notif_verb}"
+
+            # 1. Створення сповіщення в БД
+            try:
+                Notification.objects.create(
+                    recipient=manager_obj,
+                    order=order,
+                    title=notif_title,
+                    message=msg_text
+                )
+            except Exception as e:
+                logger.error(f"Failed to create client status notification: {e}")
+
+            # 2. Відправка Email
+            try:
+                subject = f"Замовлення #{order.id}: {notif_title} — LingvoTeam"
+                message = (
+                    f"Вітаємо, {manager_obj.full_name}!\n\n"
+                    f"Оновлено фінансовий статус замовлення #{order.id}.\n"
+                    f"Новий статус: {new_status.name}\n\n"
+                    f"З повагою, команда LingvoTeam."
+                )
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[manager_obj.email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                logger.error(f"Failed to send email regarding client status: {e}")
+
+        return Response({
+            "message": "Статус клієнта успішно оновлено.",
+            "client_status": {
+                "id": new_status.id,
+                "name": new_status.name,
+                "slug": new_status.slug
+            }
+        }, status=status.HTTP_200_OK)
 
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
         try:

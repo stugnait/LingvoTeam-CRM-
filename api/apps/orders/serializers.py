@@ -193,7 +193,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'created_at',
             'client_comment', 'translator_comment',
             'manager_avatar',
-            "editor_status"
+            "editor_status",
+            "client_status"
         ]
 
     def get_language_pair_name(self, order):
