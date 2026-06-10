@@ -101,6 +101,19 @@ export default function OrdersPage() {
 
     const [totalAmount, setTotalAmount] = useState("")
 
+    const handleUpdateClientStatus = async (orderId: number, statusId: number) => {
+        try {
+            // Якщо бекенд приймає оновлення статусу оплати через основну функцію updateOrder:
+            await updateOrder(orderId, { client_status: statusId })
+
+            // Якщо в тебе є окрема функція в useOrders для цього,
+            // розкоментуй її виклик нижче та додай в деструктуризацію useOrders():
+            // await updateClientStatus(orderId, statusId)
+        } catch (error) {
+            console.error("Помилка при оновленні статусу оплати:", error)
+        }
+    }
+
     useEffect(() => {
         if (!highlightId) { return }
         setActiveHighlightId(highlightId)
@@ -331,6 +344,10 @@ export default function OrdersPage() {
                             updateOrder={updateOrder}
                             searchFilter={searchFilter}
                             onSearchChange={handleSearchChange}
+
+                            // 👉 ДОДАНО ОСЬ ЦІ ДВА РЯДКИ
+                            updateClientStatus={handleUpdateClientStatus}
+                            updateClientStatusLoading={loading} // або окремий стейт з useOrders, якщо він там є
                         />
                     ) : (
                         <OrdersKanbanBoard

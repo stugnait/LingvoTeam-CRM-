@@ -52,7 +52,7 @@ import type {
 } from "@/src/features/orders/types"
 import { cn } from "@/src/lib/utils"
 
-// 👉 Масив статусів з відповідними кольорами (Tailwind classes)
+// 👉 ЗАБРАНО 12, 13, 14 із загального масиву статусів
 const STATUS_OPTIONS = [
     { value: "5", label: "Planned", color: "bg-purple-500" },
     { value: "6", label: "To Do", color: "bg-blue-500" },
@@ -65,13 +65,17 @@ const STATUS_OPTIONS = [
     { value: "9", label: "Checked", color: "bg-teal-500" },
     { value: "4", label: "Paused", color: "bg-slate-500" },
     { value: "2", label: "Done", color: "bg-emerald-500" },
-    { value: "12", label: "Payed", color: "bg-emerald-500" },
-    { value: "13", label: "Deposit", color: "bg-emerald-500" },
-    { value: "14", label: "Finished", color: "bg-emerald-500" },
+];
+
+// 👉 ДОДАНО опції виключно для фінансової колонки (client_status)
+const PAYMENT_STATUS_OPTIONS = [
+    { value: "14", label: "Unpaid", color: "bg-slate-400" },
+    { value: "13", label: "Deposit", color: "bg-amber-500" },
+    { value: "12", label: "Paid", color: "bg-emerald-500" }
 ];
 
 interface OrdersTableProps {
-    orders: OrderListItem[]
+    orders: any[]
     page: number
     totalPages: number
     onPageChange: (page: number) => void
@@ -112,6 +116,10 @@ interface OrdersTableProps {
 
     updateOrder: (orderId: number, data: any) => Promise<void>
     updateLoading?: number | null
+
+    // 👉 ДОДАНО: функції для колонки Payment
+    updateClientStatus: (orderId: number, statusId: number) => Promise<void>
+    updateClientStatusLoading?: number | null
 }
 
 export function OrdersTable({
@@ -141,7 +149,9 @@ export function OrdersTable({
                                 onEdit,
                                 onDelete,
                                 updateOrder,
-                                updateLoading
+                                updateLoading,
+                                updateClientStatus,
+                                updateClientStatusLoading
                             }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<Details | null>(null)
@@ -207,12 +217,15 @@ export function OrdersTable({
         await updateOrder(orderId, { status_id: Number(statusId) })
     }
 
+    const handleInlinePaymentChange = async (orderId: number, paymentStatusId: string) => {
+        await updateClientStatus(orderId, Number(paymentStatusId))
+    }
+
     return (
         <div className="border border-border rounded-lg bg-card mx-2 sm:mx-4 my-6 shadow-soft relative z-10">
 
             {/* ПАНЕЛЬ ФІЛЬТРІВ */}
             <div className="flex flex-col xl:flex-row items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/10 gap-3 sm:gap-4">
-
                 <div className="flex flex-col items-center lg:flex-row gap-3 sm:gap-4 w-full xl:w-auto flex-wrap">
 
                     {/* Поле Пошуку */}
@@ -363,6 +376,7 @@ export function OrdersTable({
                             <TableHead className="font-semibold text-foreground h-14">Managers</TableHead>
                             <TableHead className="font-semibold text-foreground h-14">Languages</TableHead>
                             <TableHead className="font-semibold text-foreground h-14">Status</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14">Payment</TableHead>
                             <TableHead className="font-semibold text-foreground h-14">Deadline</TableHead>
                             <TableHead className="font-semibold text-foreground h-14">Priority</TableHead>
                             <TableHead className="font-semibold text-foreground h-14 pr-6 text-right">Actions</TableHead>
@@ -372,7 +386,7 @@ export function OrdersTable({
                     <TableBody>
                         {orders.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                                     No orders found.
                                 </TableCell>
                             </TableRow>
@@ -444,11 +458,39 @@ export function OrdersTable({
                                                 value={String(order.status_id)}
                                                 onValueChange={(val) => handleInlineStatusChange(order.id, val)}
                                             >
-                                                <SelectTrigger className="h-8 w-[150px] text-xs font-semibold bg-background shadow-sm border-border">
+                                                <SelectTrigger className="h-8 w-[140px] text-xs font-semibold bg-background shadow-sm border-border">
                                                     <SelectValue placeholder={order.status_name} />
                                                 </SelectTrigger>
                                                 <SelectContent className="z-[102]">
                                                     {STATUS_OPTIONS.map((status) => (
+                                                        <SelectItem key={status.value} value={status.value}>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={cn("w-2 h-2 rounded-full", status.color)} />
+                                                                <span>{status.label}</span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </TableCell>
+
+                                    <TableCell className="align-middle py-3">
+                                        {updateClientStatusLoading === order.id ? (
+                                            <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                                <span>Saving...</span>
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={String(order.client_status || order.client_status_id || "5")} // Якщо немає, ставимо Unpaid(5)
+                                                onValueChange={(val) => handleInlinePaymentChange(order.id, val)}
+                                            >
+                                                <SelectTrigger className="h-8 w-[110px] text-xs font-semibold bg-background shadow-sm border-border">
+                                                    <SelectValue placeholder="Payment" />
+                                                </SelectTrigger>
+                                                <SelectContent className="z-[102]">
+                                                    {PAYMENT_STATUS_OPTIONS.map((status) => (
                                                         <SelectItem key={status.value} value={status.value}>
                                                             <div className="flex items-center gap-2">
                                                                 <div className={cn("w-2 h-2 rounded-full", status.color)} />
@@ -480,93 +522,13 @@ export function OrdersTable({
                                         <div className="flex items-center justify-end gap-2">
                                             {order.status_id === 9 && (
                                                 <>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            downloadOrderSourceFiles(order.id);
-                                                        }}
-                                                        className="h-8"
-                                                    >
-                                                        Original
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            downloadOrderTargetFiles(order.id);
-                                                        }}
-                                                        className="h-8"
-                                                    >
-                                                        Translation
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="default"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            confirmOrder(order.id);
-                                                        }}
-                                                        className="h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
-                                                    >
-                                                        Send
-                                                    </Button>
+                                                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); downloadOrderSourceFiles(order.id); }} className="h-8">Original</Button>
+                                                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); downloadOrderTargetFiles(order.id); }} className="h-8">Translation</Button>
+                                                    <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); confirmOrder(order.id); }} className="h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary">Send</Button>
                                                 </>
                                             )}
 
-                                            {/* ── Блок статусу оплати та кнопок ── */}
-                                            {order.status_id === 2 && (
-                                                <>
-                                                    {/* Відображення поточного статусу оплати */}
-                                                    {order.status_id && [12, 13, 14].includes(order.status_id) && (
-                                                        <span className={cn(
-                                                            "px-2 py-1 text-[11px] font-semibold rounded-md border",
-                                                            order.status_id === 12 ? "bg-emerald-50 text-emerald-600 border-emerald-200" :
-                                                                order.status_id === 13 ? "bg-amber-50 text-amber-600 border-amber-200" :
-                                                                    "bg-blue-50 text-blue-600 border-blue-200"
-                                                        )}>
-                {order.status_id === 12 ? "Оплачено" :
-                    order.status_id === 13 ? "Завдаток" : "Завершено"}
-            </span>
-                                                    )}
-
-                                                    {/* Кнопки з'являються тільки якщо замовлення ще не повністю оплачене/завершене */}
-                                                    {![12, 14].includes(order.status_id) && (
-                                                        <>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="default"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    // Якщо вже був завдаток, переводимо у 14 (Finished), інакше 12 (Paid)
-                                                                    const nextStatus = order.status_id === 13 ? 14 : 12
-                                                                    updateOrder(order.id, { status_id: nextStatus })
-                                                                }}
-                                                                className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                                                            >
-                                                                ✓ {order.status_id === 13 ? "Доплачено" : "Оплачено"}
-                                                            </Button>
-
-                                                            {/* Кнопку "Завдаток" ховаємо, якщо завдаток вже внесено */}
-                                                            {order.status_id !== 13 && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="outline"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation()
-                                                                        updateOrder(order.id, { status_id: 13 })
-                                                                    }}
-                                                                    className="h-8 border-amber-400 text-amber-600 hover:bg-amber-50 gap-1.5"
-                                                                >
-                                                                    ◑ Завдаток
-                                                                </Button>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </>
-                                            )}
+                                            {/* 👉 ЗАБРАНО блок з кнопками оплати, який був тут */}
 
                                             {onEdit && (
                                                 <DropdownMenu>
@@ -607,7 +569,7 @@ export function OrdersTable({
                                 {/* EXPANDED ROW */}
                                 {expandedId === order.id && (
                                     <TableRow className="bg-muted/10 border-b-0">
-                                        <TableCell colSpan={7} className="p-0 border-b-0 relative">
+                                        <TableCell colSpan={8} className="p-0 border-b-0 relative">
                                             <div className="animate-in fade-in slide-in-from-top-2 duration-300 ease-out w-full">
                                                 <div className="px-6 py-6 w-full">
 
@@ -710,6 +672,7 @@ export function OrdersTable({
                                 <div className="flex items-center gap-2 min-w-0 flex-wrap">
                                     <span className="font-bold text-foreground">#{order.id}</span>
 
+                                    {/* 👉 Загальний Статус (Мобілка) */}
                                     {updateLoading === order.id ? (
                                         <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                                     ) : (
@@ -717,11 +680,35 @@ export function OrdersTable({
                                             value={String(order.status_id)}
                                             onValueChange={(val) => handleInlineStatusChange(order.id, val)}
                                         >
-                                            <SelectTrigger className="h-7 w-[140px] text-[11px] font-semibold bg-background border-border py-0 px-2">
+                                            <SelectTrigger className="h-7 w-[120px] text-[11px] font-semibold bg-background border-border py-0 px-2">
                                                 <SelectValue placeholder={order.status_name} />
                                             </SelectTrigger>
                                             <SelectContent className="z-[102]">
                                                 {STATUS_OPTIONS.map((status) => (
+                                                    <SelectItem key={status.value} value={status.value}>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className={cn("w-1.5 h-1.5 rounded-full", status.color)} />
+                                                            <span>{status.label}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+
+                                    {/* 👉 ДОДАНО: Статус Оплати (Мобілка) */}
+                                    {updateClientStatusLoading === order.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                    ) : (
+                                        <Select
+                                            value={String(order.client_status || order.client_status_id || "5")}
+                                            onValueChange={(val) => handleInlinePaymentChange(order.id, val)}
+                                        >
+                                            <SelectTrigger className="h-7 w-[100px] text-[11px] font-semibold bg-background border-border py-0 px-2">
+                                                <SelectValue placeholder="Payment" />
+                                            </SelectTrigger>
+                                            <SelectContent className="z-[102]">
+                                                {PAYMENT_STATUS_OPTIONS.map((status) => (
                                                     <SelectItem key={status.value} value={status.value}>
                                                         <div className="flex items-center gap-1.5">
                                                             <div className={cn("w-1.5 h-1.5 rounded-full", status.color)} />

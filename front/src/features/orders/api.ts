@@ -103,6 +103,15 @@ export const ordersApi = {
             body
         }),
 
+    updateClientStatus: (id: number, clientStatusId: number) =>
+        apiFetch<{ message: string; client_status: any }>(`orders/${id}/update-client-status/`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ client_status_id: clientStatusId }),
+        }),
+
     // GET /translators/:id/
     getById: (id: number) =>
         apiFetch<Details>(`orders/${id}/`, {
