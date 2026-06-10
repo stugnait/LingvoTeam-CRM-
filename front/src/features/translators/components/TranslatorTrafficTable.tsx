@@ -19,7 +19,6 @@ export function TranslatorTrafficTable({ traffic, onEdit, onDelete }: Props) {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Name</TableHead>
-                        <TableHead>Translator</TableHead>
                         <TableHead>Language Pair</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Rate (Page / Action)</TableHead>
@@ -37,11 +36,9 @@ export function TranslatorTrafficTable({ traffic, onEdit, onDelete }: Props) {
                         traffic.map((item) => (
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">{item.name || "—"}</TableCell>
-                                <TableCell>{item.translator_name || "—"}</TableCell>
                                 <TableCell>{item.source_language} - {item.target_language}</TableCell>
                                 <TableCell>{item.category_name || "—"}</TableCell>
                                 <TableCell>
-                                    {/* @ts-ignore */}
                                     {item.rate_per_page} / {item.rate_per_action} {item.currency_sign}
                                 </TableCell>
                                 <TableCell>

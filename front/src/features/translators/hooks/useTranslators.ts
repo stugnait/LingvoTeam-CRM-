@@ -52,6 +52,8 @@ export function useTranslators() {
         email: "",
         phone: "",
         currency_id: 0,
+
+        tariff_ids: [],
     })
 
     const [errors, setErrors] = useState<Partial<Record<keyof TranslatorPayload, string>>>({})
@@ -61,13 +63,25 @@ export function useTranslators() {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
     const [selectedTranslator, setSelectedTranslator] = useState<Translator | null>(null)
 
+
+    const [isInlineTrafficOpen, setIsInlineTrafficOpen] = useState(false)
+    const [inlineTrafficForm, setInlineTrafficForm] = useState<TranslatorTrafficPayload>({
+        name: "",
+        currency_id: 0,
+        language_pair: null,
+        category: null,
+        rate_per_page: 0,
+        rate_per_action: 0,
+    })
+    const [inlineTrafficLoading, setInlineTrafficLoading] = useState(false)
+
+
     // TRAFFIC STATES
     const [traffic, setTraffic] = useState<TranslatorTraffic[]>([])
     const [isTrafficFormOpen, setIsTrafficFormOpen] = useState(false)
     const [selectedTraffic, setSelectedTraffic] = useState<TranslatorTraffic | null>(null)
     const [trafficForm, setTrafficForm] = useState<TranslatorTrafficPayload>({
         name: "",
-        translator: 0,
         currency_id: 0,
         language_pair: null,
         category: null,
@@ -92,6 +106,36 @@ export function useTranslators() {
 
         return () => clearTimeout(timer)
     }, [search])
+
+
+    const createAndSelectTraffic = async () => {
+        if (!inlineTrafficForm.name || !inlineTrafficForm.language_pair) {
+            toast({ title: "Validation error", description: "Name and language pair are required", variant: "error" })
+            return
+        }
+
+        setInlineTrafficLoading(true)
+        try {
+            const created = await translatorsApi.createTranslatorTraffic(inlineTrafficForm)
+
+            // Додаємо новий тариф в загальний список
+            setTraffic(prev => [...prev, created])
+
+            // Автоматично чекаємо його для поточного перекладача
+            setForm(prev => ({
+                ...prev,
+                tariff_ids: [...prev.tariff_ids, created.id]
+            }))
+
+            setIsInlineTrafficOpen(false)
+            setInlineTrafficForm({ name: "", currency_id: 0, language_pair: null, category: null, rate_per_page: 0, rate_per_action: 0 })
+            toast({ title: "Tariff created", description: created.name })
+        } catch (e) {
+            toast({ title: "Error", description: "Failed to create tariff", variant: "error" })
+        } finally {
+            setInlineTrafficLoading(false)
+        }
+    }
 
     // -------------------------
     // Load Helpers (INDEPENDENTLY)
@@ -225,24 +269,33 @@ export function useTranslators() {
     // -------------------------
     const openAddTranslator = () => {
         setSelectedTranslator(null)
+
         setForm({
             full_name: "",
             email: "",
             phone: "",
             currency_id: 0,
+
+            tariff_ids: [],
         })
+
         setErrors({})
         setIsFormOpen(true)
     }
 
     const openEditTranslator = (translator: Translator) => {
         setSelectedTranslator(translator)
+
         setForm({
             full_name: translator.full_name,
             email: translator.email,
             phone: translator.phone,
             currency_id: translator.currency_id,
+
+            tariff_ids:
+                translator.traffic?.map(t => t.id) || [],
         })
+
         setErrors({})
         setIsFormOpen(true)
     }
@@ -264,8 +317,7 @@ export function useTranslators() {
         setSelectedTraffic(null)
         setTrafficForm({
             name: "",
-            translator: translator?.id || 0,
-            currency_id: translator?.currency_id || 0,
+            currency_id: 0,
             language_pair: null,
             category: null,
             rate_per_page: 0,
@@ -279,7 +331,6 @@ export function useTranslators() {
         setSelectedTraffic(trafficItem)
         setTrafficForm({
             name: trafficItem.name || "",
-            translator: trafficItem.translator,
             currency_id: trafficItem.currency_id,
             language_pair: trafficItem.language_pair,
             category: trafficItem.category,
@@ -301,6 +352,7 @@ export function useTranslators() {
         setIsTrafficFormOpen(false)
         setIsConfirmOpen(false)
         setIsNewPairModalOpen(false)
+        setIsInlineTrafficOpen(false)
         setSelectedTranslator(null)
         setSelectedTraffic(null)
         setConfirmAction(null)
@@ -425,9 +477,6 @@ export function useTranslators() {
         try {
             const newErrors: Partial<Record<keyof TranslatorTrafficPayload, string>> = {}
 
-            if (!trafficForm.translator) {
-                newErrors.translator = "Required"
-            }
             if (!trafficForm.name) {
                 newErrors.name = "Required"
             }
@@ -544,5 +593,12 @@ export function useTranslators() {
         page,
         totalPages,
         onPageChange,
+
+        isInlineTrafficOpen,
+        setIsInlineTrafficOpen,
+        inlineTrafficForm,
+        setInlineTrafficForm,
+        inlineTrafficLoading,
+        createAndSelectTraffic,
     }
 }

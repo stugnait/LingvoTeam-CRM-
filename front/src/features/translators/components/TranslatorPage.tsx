@@ -114,11 +114,16 @@ export default function TranslatorsPage() {
         openEditTraffic,
         openDeleteTraffic,
         submitTraffic,
+
+        isInlineTrafficOpen,
+        setIsInlineTrafficOpen,
+        inlineTrafficForm,
+        setInlineTrafficForm,
+        inlineTrafficLoading,
+        createAndSelectTraffic,
     } = useTranslators()
 
-    const {
-        languages: orderLanguages
-    } = useOrders()
+    const { languages: orderLanguages } = useOrders()
 
     return (
         <>
@@ -126,7 +131,6 @@ export default function TranslatorsPage() {
 
             <main className="flex-1 overflow-y-auto p-3 sm:p-6">
                 <div className="w-full min-w-0 space-y-4 sm:space-y-6">
-
                     <Tabs
                         defaultValue="translators"
                         className="space-y-4 sm:space-y-6"
@@ -139,16 +143,11 @@ export default function TranslatorsPage() {
                             }
                         }}
                     >
-
                         {/* Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
-                                <h2 className="text-2xl font-bold tracking-tight">
-                                    Translators
-                                </h2>
-                                <p className="text-muted-foreground">
-                                    Manage translators, contacts, and rates
-                                </p>
+                                <h2 className="text-2xl font-bold tracking-tight">Translators</h2>
+                                <p className="text-muted-foreground">Manage translators, contacts, and rates</p>
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
@@ -178,9 +177,7 @@ export default function TranslatorsPage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Filters</CardTitle>
-                                    <CardDescription>
-                                        Search translators by name or email
-                                    </CardDescription>
+                                    <CardDescription>Search translators by name or email</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <TranslatorsFilters
@@ -200,9 +197,7 @@ export default function TranslatorsPage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Translators List</CardTitle>
-                                    <CardDescription>
-                                        All translators registered in the system
-                                    </CardDescription>
+                                    <CardDescription>All translators registered in the system</CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <TranslatorsTable
@@ -222,9 +217,7 @@ export default function TranslatorsPage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Translator Tariff List</CardTitle>
-                                    <CardDescription>
-                                        Translator rates by language pair and category
-                                    </CardDescription>
+                                    <CardDescription>Translator rates by language pair and category</CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <TranslatorTrafficTable
@@ -235,20 +228,15 @@ export default function TranslatorsPage() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-
                     </Tabs>
                 </div>
             </main>
 
-            {/* FORM MODAL - ПЕРЕКЛАДАЧ */}
+            {/* ─── MODAL: ПЕРЕКЛАДАЧ ─── */}
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={
-                    selectedTranslator
-                        ? "Edit Translator"
-                        : "Create Translator"
-                }
+                title={selectedTranslator ? "Edit Translator" : "Create Translator"}
                 description={selectedTranslator ? "Update translator details." : "Add a new translator to your team."}
                 icon={<UserPlus className="h-8 w-8" />}
                 variant="reference"
@@ -262,12 +250,7 @@ export default function TranslatorsPage() {
                             value={form.full_name}
                             autoFocus
                             className={`${modalInputClassName} ${errors?.full_name ? "border-red-500" : ""}`}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    full_name: e.target.value,
-                                    }))
-                            }
+                            onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
                         />
                     </ModalField>
 
@@ -276,13 +259,50 @@ export default function TranslatorsPage() {
                             placeholder="Enter email address"
                             value={form.email}
                             className={`${modalInputClassName} ${errors?.email ? "border-red-500" : ""}`}
-                            onChange={(e) =>
-                                setForm(prev => ({
-                                    ...prev,
-                                    email: e.target.value,
-                                    }))
-                            }
+                            onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                         />
+                    </ModalField>
+
+                    <ModalField label="Tariffs">
+                        <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 p-3 space-y-2">
+                            {traffic.length === 0 ? (
+                                <p className="text-sm text-slate-500">No tariffs available</p>
+                            ) : (
+                                traffic.map((tariff) => (
+                                    <label
+                                        key={tariff.id}
+                                        className="flex items-center gap-3 rounded-lg p-2 hover:bg-slate-50 cursor-pointer"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={form.tariff_ids.includes(tariff.id)}
+                                            onChange={(e) => {
+                                                setForm(prev => ({
+                                                    ...prev,
+                                                    tariff_ids: e.target.checked
+                                                        ? [...prev.tariff_ids, tariff.id]
+                                                        : prev.tariff_ids.filter(id => id !== tariff.id),
+                                                }))
+                                            }}
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">{tariff.name}</span>
+                                            <span className="text-xs text-slate-500">{tariff.language_pair_name}</span>
+                                        </div>
+                                    </label>
+                                ))
+                            )}
+                        </div>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsInlineTrafficOpen(true)}
+                            className="mt-2 w-full rounded-xl border-blue-200 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Новий тариф
+                        </Button>
                     </ModalField>
 
                     <ModalField label="Phone" required error={errors?.phone}>
@@ -295,15 +315,9 @@ export default function TranslatorsPage() {
                             type="tel"
                             placeholder="+38 (___) ___-__-__"
                             className={`${modalInputClassName} ${errors?.phone ? "border-red-500" : ""}`}
-                            onValueChange={(values) => {
-                                setForm(prev => ({
-                                    ...prev,
-                                    phone: values.formattedValue,
-                                    }))
-                            }}
+                            onValueChange={(values) => setForm(prev => ({ ...prev, phone: values.formattedValue }))}
                         />
                     </ModalField>
-
 
                     <ModalField label="Currency" required error={errors?.currency_id}>
                         <Select
@@ -325,7 +339,7 @@ export default function TranslatorsPage() {
                 </div>
             </BaseFormModal>
 
-            {/* FORM MODAL - ТАРИФ (TRAFFIC) */}
+            {/* ─── MODAL: ТАРИФ (з вкладки Tariffs) ─── */}
             <BaseFormModal
                 open={isTrafficFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
@@ -337,7 +351,6 @@ export default function TranslatorsPage() {
                 onSubmit={submitTraffic}
             >
                 <div className="space-y-4">
-
                     <ModalField label="Tariff name" required error={trafficErrors?.name}>
                         <Input
                             placeholder="Enter tariff name"
@@ -345,24 +358,6 @@ export default function TranslatorsPage() {
                             onChange={(e) => setTrafficForm(prev => ({ ...prev, name: e.target.value }))}
                             className={`${modalInputClassName} ${trafficErrors?.name ? "border-red-500" : ""}`}
                         />
-                    </ModalField>
-
-                    <ModalField label="Translator" required error={trafficErrors?.translator}>
-                        <Select
-                            value={trafficForm.translator === 0 ? "" : String(trafficForm.translator)}
-                            onValueChange={(val) => setTrafficForm(prev => ({ ...prev, translator: Number(val) }))}
-                        >
-                            <SelectTrigger className={`${modalSelectClassName} ${trafficErrors?.translator ? "border-red-500" : ""}`}>
-                                <SelectValue placeholder="Select translator" />
-                            </SelectTrigger>
-                            <SelectContent searchable searchPlaceholder="Search translator...">
-                                {translators.map((t) => (
-                                    <SelectItem key={t.id} value={String(t.id)}>
-                                        {t.full_name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
                     </ModalField>
 
                     <ModalField label="Language pair" required error={trafficErrors?.language_pair}>
@@ -376,13 +371,10 @@ export default function TranslatorsPage() {
                                 </SelectTrigger>
                                 <SelectContent searchable searchPlaceholder="Search language pair...">
                                     {languagePairs.map((pair) => (
-                                        <SelectItem key={pair.id} value={String(pair.id)}>
-                                            {pair.name}
-                                        </SelectItem>
+                                        <SelectItem key={pair.id} value={String(pair.id)}>{pair.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-
                             <Button
                                 type="button"
                                 variant="outline"
@@ -405,9 +397,7 @@ export default function TranslatorsPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 {currencies.map((currency) => (
-                                    <SelectItem key={currency.id} value={String(currency.id)}>
-                                        {currency.name}
-                                    </SelectItem>
+                                    <SelectItem key={currency.id} value={String(currency.id)}>{currency.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -423,9 +413,7 @@ export default function TranslatorsPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 {categories.map((cat) => (
-                                    <SelectItem key={cat.id} value={String(cat.id)}>
-                                        {cat.name}
-                                    </SelectItem>
+                                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -452,17 +440,125 @@ export default function TranslatorsPage() {
                             className={modalInputClassName}
                         />
                     </ModalField>
-
                 </div>
             </BaseFormModal>
 
+            {/* ─── MODAL: INLINE НОВИЙ ТАРИФ (з модалки перекладача) ─── */}
+            <BaseFormModal
+                open={isInlineTrafficOpen}
+                onOpenChange={(open) => {
+                    setIsInlineTrafficOpen(open)
+                    if (!open) {
+                        setInlineTrafficForm({ name: "", currency_id: 0, language_pair: null, category: null, rate_per_page: 0, rate_per_action: 0 })
+                    }
+                }}
+                title="Новий тариф"
+                description="Створіть новий тариф — він одразу буде призначений перекладачу."
+                icon={<Tag className="h-8 w-8" />}
+                variant="reference"
+                submitLabel={inlineTrafficLoading ? "Creating..." : "Create"}
+                isLoading={inlineTrafficLoading}
+                onSubmit={createAndSelectTraffic}
+            >
+                <div className="space-y-4">
+                    <ModalField label="Tariff name" required>
+                        <Input
+                            placeholder="Enter tariff name"
+                            value={inlineTrafficForm.name || ""}
+                            onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, name: e.target.value }))}
+                            className={modalInputClassName}
+                        />
+                    </ModalField>
+
+                    <ModalField label="Language pair" required>
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
+                            <Select
+                                value={inlineTrafficForm.language_pair === null ? "" : String(inlineTrafficForm.language_pair)}
+                                onValueChange={(val) => setInlineTrafficForm(prev => ({ ...prev, language_pair: Number(val) }))}
+                            >
+                                <SelectTrigger className={modalSelectClassName}>
+                                    <SelectValue placeholder="Choose language pair" />
+                                </SelectTrigger>
+                                <SelectContent searchable searchPlaceholder="Search language pair...">
+                                    {languagePairs.map((pair) => (
+                                        <SelectItem key={pair.id} value={String(pair.id)}>{pair.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsNewPairModalOpen(true)}
+                                className="h-11 w-full rounded-xl border-blue-200 px-4 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 sm:h-12 sm:w-auto"
+                            >
+                                <Plus className="mr-2 h-5 w-5" />
+                                Нова пара
+                            </Button>
+                        </div>
+                    </ModalField>
+
+                    <ModalField label="Currency">
+                        <Select
+                            value={inlineTrafficForm.currency_id === 0 ? "" : String(inlineTrafficForm.currency_id)}
+                            onValueChange={(val) => setInlineTrafficForm(prev => ({ ...prev, currency_id: Number(val) }))}
+                        >
+                            <SelectTrigger className={modalSelectClassName}>
+                                <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {currencies.map((currency) => (
+                                    <SelectItem key={currency.id} value={String(currency.id)}>{currency.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </ModalField>
+
+                    <ModalField label="Select category">
+                        <Select
+                            value={inlineTrafficForm.category === null ? "" : String(inlineTrafficForm.category)}
+                            onValueChange={(val) => setInlineTrafficForm(prev => ({ ...prev, category: Number(val) }))}
+                        >
+                            <SelectTrigger className={modalSelectClassName}>
+                                <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories.map((cat) => (
+                                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </ModalField>
+
+                    <ModalField label="Price per page">
+                        <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Enter price per page"
+                            value={inlineTrafficForm.rate_per_page === 0 ? "" : inlineTrafficForm.rate_per_page}
+                            onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
+                            className={modalInputClassName}
+                        />
+                    </ModalField>
+
+                    <ModalField label="Price per action">
+                        <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="Enter price per action"
+                            value={inlineTrafficForm.rate_per_action === 0 ? "" : inlineTrafficForm.rate_per_action}
+                            onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
+                            className={modalInputClassName}
+                        />
+                    </ModalField>
+                </div>
+            </BaseFormModal>
+
+            {/* ─── MODAL: НОВА МОВНА ПАРА ─── */}
             <BaseFormModal
                 open={isNewPairModalOpen}
                 onOpenChange={(open) => {
                     setIsNewPairModalOpen(open)
-                    if (!open) {
-                        setNewPairForm({ source_language: 0, target_language: 0 })
-                    }
+                    if (!open) setNewPairForm({ source_language: 0, target_language: 0 })
                 }}
                 title="Нова мовна пара"
                 submitLabel={newPairLoading ? "Creating..." : "Create"}
@@ -473,18 +569,14 @@ export default function TranslatorsPage() {
                     <ModalField label="Мова джерела" required>
                         <Select
                             value={newPairForm.source_language ? String(newPairForm.source_language) : ""}
-                            onValueChange={(val) =>
-                                setNewPairForm(prev => ({ ...prev, source_language: Number(val) }))
-                            }
+                            onValueChange={(val) => setNewPairForm(prev => ({ ...prev, source_language: Number(val) }))}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Оберіть мову" />
                             </SelectTrigger>
                             <SelectContent searchable searchPlaceholder="Search language...">
                                 {translatorLanguages.map((language) => (
-                                    <SelectItem key={language.id} value={String(language.id)}>
-                                        {language.name}
-                                    </SelectItem>
+                                    <SelectItem key={language.id} value={String(language.id)}>{language.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -493,9 +585,7 @@ export default function TranslatorsPage() {
                     <ModalField label="Мова перекладу" required>
                         <Select
                             value={newPairForm.target_language ? String(newPairForm.target_language) : ""}
-                            onValueChange={(val) =>
-                                setNewPairForm(prev => ({ ...prev, target_language: Number(val) }))
-                            }
+                            onValueChange={(val) => setNewPairForm(prev => ({ ...prev, target_language: Number(val) }))}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Оберіть мову" />
@@ -504,9 +594,7 @@ export default function TranslatorsPage() {
                                 {translatorLanguages
                                     .filter((language) => language.id !== newPairForm.source_language)
                                     .map((language) => (
-                                        <SelectItem key={language.id} value={String(language.id)}>
-                                            {language.name}
-                                        </SelectItem>
+                                        <SelectItem key={language.id} value={String(language.id)}>{language.name}</SelectItem>
                                     ))}
                             </SelectContent>
                         </Select>
@@ -514,7 +602,7 @@ export default function TranslatorsPage() {
                 </div>
             </BaseFormModal>
 
-            {/* DELETE CONFIRM */}
+            {/* ─── MODAL: DELETE CONFIRM ─── */}
             <ConfirmModal
                 open={isConfirmOpen}
                 onOpenChange={(open) => !open && closeModals()}
