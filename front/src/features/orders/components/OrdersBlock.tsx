@@ -120,6 +120,8 @@ interface OrdersTableProps {
     // 👉 ДОДАНО: функції для колонки Payment
     updateClientStatus: (orderId: number, statusId: number) => Promise<void>
     updateClientStatusLoading?: number | null
+
+    onTaskOpen?: (id: number) => void
 }
 
 export function OrdersTable({
@@ -151,7 +153,8 @@ export function OrdersTable({
                                 updateOrder,
                                 updateLoading,
                                 updateClientStatus,
-                                updateClientStatusLoading
+                                updateClientStatusLoading,
+                                onTaskOpen,
                             }: OrdersTableProps) {
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<Details | null>(null)
@@ -394,10 +397,11 @@ export function OrdersTable({
                             <Fragment key={order.id}>
                                 <TableRow
                                     className={cn(
-                                        "transition-colors hover:bg-muted/30",
+                                        "transition-colors hover:bg-muted/30 cursor-pointer",
                                         order.id === activeHighlightId && "bg-primary/10 ring-2 ring-primary",
                                         isOverdue(order.deadline) && "bg-red-500/10 hover:bg-red-500/15"
                                     )}
+                                    onClick={() => onTaskOpen && onTaskOpen(order.id)}
                                 >
                                     <TableCell className="align-middle py-3 pl-6">
                                         <div className="font-medium text-foreground">#{order.id}</div>
@@ -447,7 +451,7 @@ export function OrdersTable({
                                         </div>
                                     </TableCell>
 
-                                    <TableCell className="align-middle py-3">
+                                    <TableCell className="align-middle py-3" onClick={e => e.stopPropagation()}>
                                         {updateLoading === order.id ? (
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -475,7 +479,7 @@ export function OrdersTable({
                                         )}
                                     </TableCell>
 
-                                    <TableCell className="align-middle py-3">
+                                    <TableCell className="align-middle py-3" onClick={e => e.stopPropagation()}>
                                         {updateClientStatusLoading === order.id ? (
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -551,7 +555,7 @@ export function OrdersTable({
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
-                                                onClick={() => handleToggle(order.id)}
+                                                onClick={(e) => { e.stopPropagation(); handleToggle(order.id); }}
                                                 className={cn(
                                                     "rounded-full w-8 h-8 p-0 transition-transform duration-300",
                                                     expandedId === order.id && "bg-muted"
@@ -568,11 +572,10 @@ export function OrdersTable({
 
                                 {/* EXPANDED ROW */}
                                 {expandedId === order.id && (
-                                    <TableRow className="bg-muted/10 border-b-0">
+                                    <TableRow className="bg-muted/10 border-b-0" onClick={e => e.stopPropagation()}>
                                         <TableCell colSpan={8} className="p-0 border-b-0 relative">
                                             <div className="animate-in fade-in slide-in-from-top-2 duration-300 ease-out w-full">
                                                 <div className="px-6 py-6 w-full">
-
                                                     {loadingId === order.id ? (
                                                         <div className="flex items-center justify-center gap-3 py-8 animate-in fade-in">
                                                             <div className="loading-spinner" />
@@ -584,13 +587,12 @@ export function OrdersTable({
                                                                 {(() => {
                                                                     const clientId = details.client?.id || order.client_id
                                                                     const client = details.client || clients?.find(c => c.id === clientId)
-
                                                                     return (
                                                                         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
                                                                             <span className="text-lg font-bold text-foreground">
-                                                                                {client ? client.full_name : `Client #${clientId}`}
-                                                                            </span>
+                                                {client ? client.full_name : `Client #${clientId}`}
+                                            </span>
                                                                             {client?.email && (
                                                                                 <span className="text-sm text-muted-foreground">{client.email}</span>
                                                                             )}
@@ -600,17 +602,15 @@ export function OrdersTable({
                                                                         </div>
                                                                     )
                                                                 })()}
-
                                                                 {(() => {
                                                                     const translatorId = details.translator?.id || order.translator_id
                                                                     const translator = details.translator || translatorsCache[translatorId]
-
                                                                     return (
                                                                         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Translator Information</span>
                                                                             <span className="text-lg font-bold text-foreground">
-                                                                                {translator ? translator.full_name : getTranslatorName(translatorId)}
-                                                                            </span>
+                                                {translator ? translator.full_name : getTranslatorName(translatorId)}
+                                            </span>
                                                                             {translator?.email && (
                                                                                 <span className="text-sm text-muted-foreground">{translator.email}</span>
                                                                             )}
@@ -621,7 +621,6 @@ export function OrdersTable({
                                                                     )
                                                                 })()}
                                                             </div>
-
                                                             <div className="grid grid-cols-4 gap-4 w-full animate-stagger">
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
@@ -629,9 +628,7 @@ export function OrdersTable({
                                                                 </div>
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Images</span>
-                                                                    <span className="text-xl font-bold text-foreground">
-                                                                        {details.images_count}
-                                                                    </span>
+                                                                    <span className="text-xl font-bold text-foreground">{details.images_count}</span>
                                                                 </div>
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
                                                                     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
@@ -743,10 +740,16 @@ export function OrdersTable({
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        onClick={() => handleToggle(order.id)}
-                                        className={cn("rounded-full w-8 h-8 p-0", expandedId === order.id && "bg-muted")}
+                                        onClick={(e) => { e.stopPropagation(); handleToggle(order.id); }}  // 👈
+                                        className={cn(
+                                            "rounded-full w-8 h-8 p-0 transition-transform duration-300",
+                                            expandedId === order.id && "bg-muted"
+                                        )}
                                     >
-                                        <ChevronDown className={cn("h-4 w-4 transition-transform duration-300", expandedId === order.id && "rotate-180")} />
+                                        <ChevronDown className={cn(
+                                            "h-4 w-4 transition-transform duration-300",
+                                            expandedId === order.id && "rotate-180"
+                                        )} />
                                     </Button>
                                 </div>
                             </div>

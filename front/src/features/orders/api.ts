@@ -179,6 +179,15 @@ export const ordersApi = {
             }
         ),
 
+    analyzeFolderFiles: (orderId: number, folder: "source" | "target") =>
+        apiFetch<{
+            folder: string;
+            total_stats: { chars_with_spaces: number; chars_no_spaces: number; images: number; physical_pages: number };
+            files: any[]
+        }>(`orders/${orderId}/analyze-folder/${folder}/`, {
+            method: "POST",
+        }),
+
     downloadFilesSource: (orderId: number) =>
         apiFetch<Blob>(`orders/${orderId}/download-files/source/`, {
             method: 'GET',
@@ -190,6 +199,15 @@ export const ordersApi = {
             method: 'GET',
             responseType: 'blob',
         }),
+
+    uploadTargetFiles: (orderId: number, body: FormData) =>
+        apiFetch<{ message: string; count: number; files: any[] }>(
+            `orders/${orderId}/upload-target-files/`,
+            {
+                method: "POST",
+                body,
+            }
+        ),
 
     confirmOrder: (orderId: number) =>
         apiFetch<{ message: string; slug: string }>(

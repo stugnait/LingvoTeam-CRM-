@@ -190,6 +190,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
             'upload_files': ['order.view'],
+            'upload_target_files': ['order.view'],
             'margins': ['order.view'],
             'editors_by_language_pair': ['order.view'],
         }
@@ -430,6 +431,59 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
 
         return {"total_stats": total_stats}
+
+    @extend_schema(
+        summary="Завантаження файлів перекладу (Target) менеджером",
+        request=UploadFileSerializer,
+        tags=["Order Files"]
+    )
+    @action(detail=True, methods=["post"], url_path="upload-target-files", parser_classes=[MultiPartParser, FormParser])
+    def upload_target_files(self, request, pk=None):
+        order = self.get_object()
+        user = request.user
+
+        is_authorized = (
+                user == order.manager_accept_id or
+                user == order.manager_delivery_id or
+                user == order.translator_id or
+                user == order.editor_id
+        )
+
+        if not is_authorized and not user.role.slug in ['admin', 'owner']:
+            return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["files"]
+        base_path = f"/orders/order_{order.id}"
+
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="target",
+            )
+            uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
+
+        for i, f in enumerate(files):
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+            dropbox_url = uploaded[i]["dropbox_path"]
+
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=dropbox_url,
+                detected_pages=0,
+                detected_symbols=0,
+            )
+
+        return Response(
+            {"message": "Target files uploaded", "count": len(uploaded), "files": uploaded},
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=True, methods=['post'], url_path=r'analyze-folder/(?P<folder>source|target)')
     def analyze_folder_files(self, request, pk=None, folder=None):
