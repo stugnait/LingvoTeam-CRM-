@@ -124,10 +124,10 @@ class TranslatorViewSet(viewsets.ModelViewSet):
 
     ordering_fields = ['created_at', 'full_name', 'orders_count']
 
-    def get_queryset(self):
-        return Translator.objects.annotate(
-            orders_count=Count('order')
-        ).order_by('-created_at').distinct()
+    # def get_queryset(self):
+    #     return Translator.objects.annotate(
+    #         orders_count=Count('order')
+    #     ).order_by('-created_at').distinct()
 
     def get_required_permissions(self, request):
         if self.action == 'create':
@@ -137,7 +137,7 @@ class TranslatorViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Translator.objects.annotate(
             orders_count=Count('order')
-        ).prefetch_related('translatortraffic').order_by('-created_at').distinct()
+        ).prefetch_related('traffic').order_by('-created_at').distinct()
 
 @extend_schema_view(
     list=extend_schema(summary="Тарифи перекладачів", tags=["Translators Pricing"]),
@@ -147,7 +147,7 @@ class TranslatorTrafficViewSet(viewsets.ModelViewSet):
     queryset = TranslatorTraffic.objects.select_related(
         'language_pair',
         'currency_id',
-        'translator',
+
         'category'
     ).all()
 
@@ -155,7 +155,7 @@ class TranslatorTrafficViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
-    filterset_fields = ['translator', 'language_pair', 'category', 'name']
+    filterset_fields = ['language_pair', 'category', 'name']
 
     search_fields = ['name']
 

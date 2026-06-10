@@ -27,7 +27,7 @@ class TranslatorLanguagePairsSerializer(serializers.ModelSerializer):
 
 
 class TranslatorTrafficSerializer(serializers.ModelSerializer):
-    translator_name = serializers.CharField(source='translator.full_name', read_only=True, default="-")
+    # translator_name = serializers.CharField(source='translator.full_name', read_only=True, default="-")
 
     currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
     currency_sign = serializers.CharField(source='currency_id.code_name', read_only=True, default="")
@@ -44,14 +44,13 @@ class TranslatorTrafficSerializer(serializers.ModelSerializer):
             'id',
             'name',
 
-            'translator',
             'language_pair',
             'currency_id',
             'category',
             'rate_per_page',
             'rate_per_action',
 
-            'translator_name',
+            # 'translator_name',
             'language_pair_name',
             'source_language',
             'target_language',
@@ -65,30 +64,44 @@ class TranslatorTrafficSerializer(serializers.ModelSerializer):
             return str(obj.language_pair)
         return "-"
 
+
 class TranslatorSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency_id.name', read_only=True, default="---")
     orders_count = serializers.IntegerField(read_only=True)
 
-    traffic = TranslatorTrafficSerializer(source='translatortraffic', many=True, read_only=True)
+    traffic = TranslatorTrafficSerializer(many=True, read_only=True)
+
+    tariff_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = Translator
         fields = [
-            'id',
-            'full_name',
-            'email',
-            'phone',
-            'rating',
-
-            'currency_id',
-            'currency_name',
-
-            'orders_count',
-            'created_at',
-
-            'traffic'
+            'id', 'full_name', 'email', 'phone', 'rating',
+            'currency_id', 'currency_name',
+            'orders_count', 'created_at',
+            'traffic', 'tariff_ids',
         ]
         read_only_fields = ['created_at', 'rating', 'orders_count']
+
+    def create(self, validated_data):
+        tariff_ids = validated_data.pop('tariff_ids', [])
+        translator = Translator.objects.create(**validated_data)
+        if tariff_ids:
+            translator.traffic.set(tariff_ids)
+        return translator
+
+    def update(self, instance, validated_data):
+        tariff_ids = validated_data.pop('tariff_ids', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if tariff_ids is not None:
+            instance.traffic.set(tariff_ids)
+        return instance
 
 class TranslatorUploadFileSerializer(serializers.Serializer):
     files = serializers.ListField(child=serializers.FileField(), write_only=True)
