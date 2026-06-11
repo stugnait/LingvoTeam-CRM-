@@ -123,7 +123,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         resetStats
     } = useOrderAnalysis()
 
-    const [currentStep, setCurrentStep] = useState(0) // 🔥 Стан для поточного кроку
+    const [currentStep, setCurrentStep] = useState(0)
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
@@ -171,15 +171,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         }
         closeModals()
     }
+
     const DRAFT_KEY = "create_order_draft"
 
-    // 1. ВІДНОВЛЕННЯ ЧЕРНЕТКИ
     useEffect(() => {
         if (!open) {
             setIsRestored(false)
             return
         }
-
         if (mode === "edit") {
             setIsRestored(true)
             return
@@ -206,14 +205,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     if (d.customDiscount) {setCustomDiscount(d.customDiscount)}
                     if (d.totalAmount) {setTotalAmount(d.totalAmount)}
 
-                    // 🔥 Відновлюємо крок
                     if (d.currentStep !== undefined) {setCurrentStep(d.currentStep)}
 
-                    // ВІДНОВЛЮЄМО ФАЙЛИ
                     if (d.files && Array.isArray(d.files)) {
                         setFiles(d.files)
-
-                        // Якщо файли вже були підтверджені раніше, автоматично запускаємо прорахунок
                         if (d.filesConfirmed) {
                             calculateStats(d.files)
                                 .then(() => setFilesConfirmed(true))
@@ -231,7 +226,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         restoreDraft()
     }, [open, mode])
 
-    // 2. ЗБЕРЕЖЕННЯ ЧЕРНЕТКИ
     useEffect(() => {
         if (!open || mode === "edit" || !isRestored) {return}
 
@@ -246,16 +240,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 customDiscount, totalAmount,
                 filesConfirmed,
                 files,
-                currentStep // 🔥 Зберігаємо поточний крок
+                currentStep
             }
-
             try {
                 await localforage.setItem(DRAFT_KEY, draft)
             } catch (e) {
                 console.error("Помилка збереження чернетки:", e)
             }
         }
-
         saveDraft()
     }, [
         clientId, sourceLanguage, targetLanguage, trafficId, currencyId,
@@ -271,7 +263,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             setImagesAnalyzed(false)
             setPriceData(null)
             setUseManualPrice(false)
-            setCurrentStep(0) // 🔥 Скидаємо крок на перший при закритті
+            setCurrentStep(0)
         }
         onOpenChange(open)
     }
@@ -306,15 +298,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         setImagesAnalyzed(true)
     }
 
-    // 🔥 ДОДАНО: Функція для очищення чернетки при сабміті форми
     const handleOrderSubmit = async () => {
         try {
             await localforage.removeItem(DRAFT_KEY);
         } catch (error) {
             console.error("Помилка видалення чернетки:", error);
         }
-
-        // Викликаємо оригінальну функцію onSubmit, яку передано в пропси
         onSubmit();
     }
 
@@ -369,7 +358,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         }
     }
 
-    // ─── Effects ────────────────────────────────────────────────────────────
+    // ─── Effects & Memo ─────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!trafficId) { return }
@@ -412,26 +401,61 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         handleCalculatePrice()
     }, [filesConfirmed, trafficId, selectedTranslatorId, translatorTrafficId])
 
+    // 🔥 ДОДАНО: Перевірка вигідності для списку перекладачів (ціна клієнта)
+    const clientPricePerPage = useMemo(() => {
+        const clientTariff = tariffs?.find((t) => String(t.id) === trafficId);
+        const basePrice = clientTariff?.price_per_page ? parseFloat(clientTariff.price_per_page) : 0;
 
+        if (activeDiscount > 0 && basePrice > 0) {
+            return basePrice * (1 - activeDiscount / 100);
+        }
+        return basePrice;
+    }, [trafficId, tariffs, activeDiscount]);
+
+    // Збагачуємо масив перекладачів міткою ✅, якщо в них є хоч один прибутковий тариф
+    const enrichedTranslators = useMemo(() => {
+        return translators.map(translator => {
+            if (!translator.traffic || translator.traffic.length === 0) return translator;
+
+            const hasProfitable = translator.traffic.some((t: any) => {
+                const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : Infinity;
+                return clientPricePerPage > 0 && tRate < clientPricePerPage;
+            });
+
+            return {
+                ...translator,
+                full_name: hasProfitable ? `✅ ${translator.full_name} (Є вигідний тариф)` : translator.full_name
+            };
+        });
+    }, [translators, clientPricePerPage]);
+
+    // Формуємо список тарифів і відразу рахуємо маржу для відображення в селекті
     const translatorTrafficOptions = useMemo(() => {
         const currentTranslator = translators.find(t => t.id === selectedTranslatorId);
         if (!currentTranslator?.traffic) {return [];}
 
-        return currentTranslator.traffic.map((t: any) => ({
-            value: String(t.id),
-            label: t.name || 'Особистий тариф',
-            meta: {
-                rate_per_page: t.rate_per_page,
-                rate_per_action: t.rate_per_action,
-                currency: t.currency_sign || ''
+        return currentTranslator.traffic.map((t: any) => {
+            const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : 0;
+            const margin = clientPricePerPage - tRate;
+            const marginPercent = clientPricePerPage > 0 ? ((margin / clientPricePerPage) * 100).toFixed(1) : 0;
+            const isProfitable = clientPricePerPage > 0 && tRate < clientPricePerPage;
+
+            return {
+                value: String(t.id),
+                label: t.name || 'Особистий тариф',
+                meta: {
+                    rate_per_page: t.rate_per_page,
+                    rate_per_action: t.rate_per_action,
+                    currency: t.currency_sign || '',
+                    isProfitable,
+                    marginStr: clientPricePerPage > 0 ? `${margin.toFixed(2)} (${marginPercent}%)` : null
+                }
             }
-        }));
-    }, [selectedTranslatorId, translators]);
+        });
+    }, [selectedTranslatorId, translators, clientPricePerPage]);
 
     // ─── Render ─────────────────────────────────────────────────────────────
 
-    // Блокуємо рендер модалки, поки чернетка не відновиться
-    // Завдяки цьому WizardModal "народиться" вже зі правильним currentStep.
     if (open && !isRestored && mode !== "edit") {
         return null;
     }
@@ -442,8 +466,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 open={open}
                 onOpenChange={onOpenChange}
                 title={mode === "edit" ? "Edit Order" : "Create New Order"}
-                step={currentStep} // Прокидаємо крок у Wizard
-                onStepChange={setCurrentStep} // Прокидаємо функцію оновлення
+                step={currentStep}
+                onStepChange={setCurrentStep}
                 steps={[
                     { title: "Client & Files" },
                     { title: "Tariff" },
@@ -453,7 +477,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 ]}
                 isLoading={loading}
                 onClose={handleModalClose}
-                onSubmit={handleOrderSubmit} // 🔥 Підставили нашу функцію обгортку
+                onSubmit={handleOrderSubmit}
                 stepValidation={stepValidation}
                 stepError={stepError}
             >
@@ -703,7 +727,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             </div>
                             <TranslatorSelect
                                 value={selectedTranslatorId}
-                                translators={translators}
+                                translators={enrichedTranslators} // 🔥 Передаємо збагачений масив з ✅
                                 sourceLanguage={sourceLanguage}
                                 targetLanguage={targetLanguage}
                                 placeholder="Select translator (optional)"
@@ -719,7 +743,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     const selectedTranslator = translators.find(t => t.id === translatorId)
 
                                     if (selectedTranslator?.traffic && selectedTranslator.traffic.length > 0) {
-                                        setTranslatorTrafficId(String(selectedTranslator.traffic[0].id))
+                                        // 🔥 АВТОВИБІР НАЙКРАЩОГО ТАРИФУ
+                                        const bestTariff = [...selectedTranslator.traffic].sort((a, b) => {
+                                            const rateA = a.rate_per_page ? parseFloat(a.rate_per_page) : Infinity;
+                                            const rateB = b.rate_per_page ? parseFloat(b.rate_per_page) : Infinity;
+                                            return rateA - rateB; // Той, де ставка менша, іде першим
+                                        })[0];
+
+                                        setTranslatorTrafficId(String(bestTariff.id))
                                     } else {
                                         setTranslatorTrafficId("")
                                     }
@@ -782,6 +813,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                         <div className="flex flex-col w-full py-1 gap-1.5">
                                             <div className="flex items-start justify-between w-full">
                                                 <span className="font-medium text-foreground">{option.label}</span>
+                                                {/* Маржа у випадаючому списку */}
+                                                {option.meta?.marginStr && (
+                                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${option.meta.isProfitable ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                                                        Маржа: {option.meta.marginStr}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                                 {option.meta?.rate_per_page !== undefined && option.meta?.rate_per_page !== null && (
@@ -806,9 +843,16 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                 {option.label}
                                             </span>
                                             <div className="flex items-center gap-2 shrink-0">
+                                                {/* Ставка перекладача у вибраному стані */}
                                                 {(option.meta?.rate_per_page !== undefined || option.meta?.rate_per_action !== undefined) && (
                                                     <span className="text-[11px] text-orange-700 font-semibold bg-orange-100/50 px-2 py-0.5 rounded-md border border-orange-200/50">
                                                         {option.meta?.rate_per_page ?? option.meta?.rate_per_action ?? 0} {option.meta?.currency}
+                                                    </span>
+                                                )}
+                                                {/* 🔥 ДОДАНО: Маржа у вибраному стані 🔥 */}
+                                                {option.meta?.marginStr && (
+                                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${option.meta.isProfitable ? 'bg-green-100/50 text-green-700 border-green-200/50' : 'bg-red-100/50 text-red-700 border-red-200/50'}`}>
+                                                        Маржа: {option.meta.marginStr}
                                                     </span>
                                                 )}
                                             </div>
@@ -871,158 +915,190 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                 {/* ── Крок 5: Statistics & Price ── */}
                 <WizardStep>
-                    <div className="space-y-6">
-                        <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                            <BarChart2 className="h-4 w-4 text-blue-600" />
-                            Статистика файлів
-                        </h3>
+                    {(() => {
+                        // Знаходимо код вибраної валюти для відображення
+                        const selectedCurrencyObj = currencies.find((c) => String(c.id) === currencyId);
+                        const orderCurrency = selectedCurrencyObj ? selectedCurrencyObj.code : "";
 
-                        {statsResult ? (
-                            <>
-                                <div className="rounded-xl border divide-y text-sm">
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Сторінок (авто)</span>
-                                        <span className="font-medium">{statsResult.total_stats.physical_pages}</span>
-                                    </div>
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Символів з пробілами</span>
-                                        <span className="font-medium">{statsResult.total_stats.chars_with_spaces}</span>
-                                    </div>
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Символів без пробілів</span>
-                                        <span className="font-medium">{statsResult.total_stats.chars_no_spaces}</span>
-                                    </div>
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Зображень</span>
-                                        <span className="font-medium">{statsResult.total_stats.images}</span>
-                                    </div>
-                                </div>
+                        // 🔥 ДОДАНО: Динамічний розрахунок реальної маржі
+                        // Враховує знижку клієнта або ручний ввід ціни менеджером
+                        let realMargin = priceData?.margin;
+                        let isMarginNegative = false;
 
-                                {statsResult.total_stats.images > 0 && (
-                                    <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                                        <span className="text-yellow-500 mt-0.5">⚠️</span>
-                                        <p className="text-yellow-700 text-xs leading-relaxed">
-                                            Документ містить <strong>{statsResult.total_stats.images}</strong> зображень.
-                                            Текст у зображеннях не враховується автоматично — підрахунок може бути некоректним.
-                                        </p>
-                                    </div>
-                                )}
+                        if (priceData?.translator_total && effectivePrice !== "-") {
+                            const currentClientPrice = parseFloat(String(effectivePrice));
+                            const translatorCost = parseFloat(priceData.translator_total);
 
-                                <div className="rounded-xl border p-4 space-y-3">
-                                    <label className="text-sm font-medium text-gray-700 block">
-                                        Знижка на замовлення (%)
-                                    </label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            value={customDiscount}
-                                            onChange={(e) => {
-                                                setCustomDiscount(e.target.value)
-                                                setUseManualPrice(false)
-                                            }}
-                                            placeholder={`Стандартна: ${defaultDiscountPercent}%`}
-                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        />
-                                        <span className="text-xs text-gray-500">
-                                            Залишіть порожнім для standard discount ({defaultDiscountPercent}%)
-                                        </span>
-                                    </div>
-                                </div>
+                            if (!isNaN(currentClientPrice) && !isNaN(translatorCost)) {
+                                const marginValue = currentClientPrice - translatorCost;
+                                realMargin = marginValue.toFixed(2);
+                                isMarginNegative = marginValue < 0;
+                            }
+                        } else if (priceData?.margin) {
+                            isMarginNegative = parseFloat(priceData.margin) < 0;
+                        }
 
-                                <div className="rounded-xl border p-4 space-y-3">
-                                    <label className="flex items-center gap-3 cursor-pointer select-none">
-                                        <input
-                                            type="checkbox"
-                                            checked={useManualPrice}
-                                            onChange={(e) => {
-                                                setUseManualPrice(e.target.checked)
-                                                if (!e.target.checked) {setTotalAmount(String(discountedAutoPrice))}
-                                            }}
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
-                                        />
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Вказати ціну вручну
-                                        </span>
-                                    </label>
+                        return (
+                            <div className="space-y-6">
+                                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                    <BarChart2 className="h-4 w-4 text-blue-600" />
+                                    Статистика файлів
+                                </h3>
 
-                                    {useManualPrice && (
-                                        <div className="flex items-center gap-3 pl-7">
-                                            <span className="text-sm text-gray-500">Ціна для клієнта:</span>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={totalAmount}
-                                                onChange={(e) => setTotalAmount(e.target.value)}
-                                                placeholder={priceData?.total_client_price ?? "0.00"}
-                                                className="w-32 px-3 py-1.5 border rounded-lg text-sm
-                                                           focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="pl-7 text-sm text-gray-500">
-                                        Фінальна ціна:{" "}
-                                        <span className="font-semibold text-gray-800">{effectivePrice}</span>
-                                    </div>
-                                </div>
-
-                                {priceLoading && (
-                                    <div className="text-sm text-gray-400 text-center py-2">
-                                        Розраховуємо ціну...
-                                    </div>
-                                )}
-
-                                {priceData && !priceLoading && (
-                                    <div className="rounded-xl border p-4 space-y-2 bg-green-50 text-sm">
-                                        <p className="font-semibold text-green-700">Розрахунок ціни</p>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Сторінок (авто):</span>
-                                            <span className="font-medium">{priceData.pages}</span>
+                                {statsResult ? (
+                                    <>
+                                        <div className="rounded-xl border divide-y text-sm">
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">Сторінок (авто)</span>
+                                                <span className="font-medium">{statsResult.total_stats.physical_pages}</span>
+                                            </div>
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">Символів з пробілами</span>
+                                                <span className="font-medium">{statsResult.total_stats.chars_with_spaces}</span>
+                                            </div>
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">Символів без пробілів</span>
+                                                <span className="font-medium">{statsResult.total_stats.chars_no_spaces}</span>
+                                            </div>
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">Зображень</span>
+                                                <span className="font-medium">{statsResult.total_stats.images}</span>
+                                            </div>
                                         </div>
 
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Базова авто-ціна:</span>
-                                            <span className="font-medium">{priceData.total_client_price}</span>
-                                        </div>
-                                        {activeDiscount > 0 && (
-                                            <div className="flex justify-between text-blue-600 mt-1">
-                                                <span className="font-medium">
-                                                    Знижка ({customDiscount !== "" ? "Ручна" : "Клієнта"} {activeDiscount}%):
-                                                </span>
-                                                <span className="font-bold">
-                                                    -{ (baseAutoPrice * (activeDiscount / 100)).toFixed(2) }
-                                                </span>
+                                        {statsResult.total_stats.images > 0 && (
+                                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                                <span className="text-yellow-500 mt-0.5">⚠️</span>
+                                                <p className="text-yellow-700 text-xs leading-relaxed">
+                                                    Документ містить <strong>{statsResult.total_stats.images}</strong> зображень.
+                                                    Текст у зображеннях не враховується автоматично — підрахунок може бути некоректним.
+                                                </p>
                                             </div>
                                         )}
-                                        <div className="flex justify-between border-t border-green-200 pt-2 mt-2">
-                                            <span className="text-gray-800 font-semibold">Ціна до сплати:</span>
-                                            <span className="font-bold text-green-700">{discountedAutoPrice}</span>
+
+                                        <div className="rounded-xl border p-4 space-y-3">
+                                            <label className="text-sm font-medium text-gray-700 block">
+                                                Знижка на замовлення (%)
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    value={customDiscount}
+                                                    onChange={(e) => {
+                                                        setCustomDiscount(e.target.value)
+                                                        setUseManualPrice(false)
+                                                    }}
+                                                    placeholder={`Стандартна: ${defaultDiscountPercent}%`}
+                                                    className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                                <span className="text-xs text-gray-500">
+                                                    Залишіть порожнім для standard discount ({defaultDiscountPercent}%)
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        {priceData.translator_rate_per_page && (
-                                            <>
-                                                <div className="flex justify-between mt-4">
-                                                    <span className="text-gray-600">Вартість перекладача:</span>
-                                                    <span className="font-medium">{priceData.translator_total}</span>
+                                        <div className="rounded-xl border p-4 space-y-3">
+                                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={useManualPrice}
+                                                    onChange={(e) => {
+                                                        setUseManualPrice(e.target.checked)
+                                                        if (!e.target.checked) {setTotalAmount(String(discountedAutoPrice))}
+                                                    }}
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                                                />
+                                                <span className="text-sm font-medium text-gray-700">
+                                                    Вказати ціну вручну
+                                                </span>
+                                            </label>
+
+                                            {useManualPrice && (
+                                                <div className="flex items-center gap-3 pl-7">
+                                                    <span className="text-sm text-gray-500">Ціна для клієнта:</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={totalAmount}
+                                                            onChange={(e) => setTotalAmount(e.target.value)}
+                                                            placeholder={priceData?.total_client_price ?? "0.00"}
+                                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm
+                                                                    focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-600">{orderCurrency}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex justify-between border-t border-green-200 pt-2 mt-1">
-                                                    <span className="text-gray-600">Маржа:</span>
-                                                    <span className="font-semibold text-green-700">{priceData.margin}</span>
-                                                </div>
-                                            </>
+                                            )}
+
+                                            <div className="pl-7 text-sm text-gray-500">
+                                                Фінальна ціна:{" "}
+                                                <span className="font-semibold text-gray-800">{effectivePrice} {orderCurrency}</span>
+                                            </div>
+                                        </div>
+
+                                        {priceLoading && (
+                                            <div className="text-sm text-gray-400 text-center py-2">
+                                                Розраховуємо ціну...
+                                            </div>
                                         )}
+
+                                        {priceData && !priceLoading && (
+                                            <div className="rounded-xl border p-4 space-y-2 bg-green-50 text-sm">
+                                                <p className="font-semibold text-green-700">Розрахунок ціни</p>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Сторінок (авто):</span>
+                                                    <span className="font-medium">{priceData.pages}</span>
+                                                </div>
+
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Базова авто-ціна:</span>
+                                                    <span className="font-medium">{priceData.total_client_price} {orderCurrency}</span>
+                                                </div>
+                                                {activeDiscount > 0 && (
+                                                    <div className="flex justify-between text-blue-600 mt-1">
+                                                        <span className="font-medium">
+                                                            Знижка ({customDiscount !== "" ? "Ручна" : "Клієнта"} {activeDiscount}%):
+                                                        </span>
+                                                        <span className="font-bold">
+                                                            -{ (baseAutoPrice * (activeDiscount / 100)).toFixed(2) } {orderCurrency}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between border-t border-green-200 pt-2 mt-2">
+                                                    <span className="text-gray-800 font-semibold">Ціна до сплати:</span>
+                                                    <span className="font-bold text-green-700">{discountedAutoPrice} {orderCurrency}</span>
+                                                </div>
+
+                                                {priceData.translator_rate_per_page && (
+                                                    <>
+                                                        <div className="flex justify-between mt-4">
+                                                            <span className="text-gray-600">Вартість перекладача:</span>
+                                                            <span className="font-medium">{priceData.translator_total} {orderCurrency}</span>
+                                                        </div>
+                                                        <div className="flex justify-between border-t border-green-200 pt-2 mt-1">
+                                                            <span className="text-gray-600">Маржа:</span>
+                                                            {/* 🔥 Враховуємо колір залежно від того, чи маржа в мінусі */}
+                                                            <span className={`font-semibold ${isMarginNegative ? 'text-red-600' : 'text-green-700'}`}>
+                                                                {realMargin} {orderCurrency}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="text-sm text-gray-400 text-center py-8">
+                                        Статистика недоступна — поверніться і підтвердіть файли
                                     </div>
                                 )}
-                            </>
-                        ) : (
-                            <div className="text-sm text-gray-400 text-center py-8">
-                                Статистика недоступна — поверніться і підтвердіть файли
                             </div>
-                        )}
-                    </div>
+                        );
+                    })()}
                 </WizardStep>
             </WizardModal>
 
