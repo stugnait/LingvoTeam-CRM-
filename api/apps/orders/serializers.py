@@ -105,6 +105,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'page_count',
             'symbols_count',
             'files',
+            'symbols_with_spaces_count',
+            'images_count',
             'translator_id',
             'total_amount',
             'traffic_id',
@@ -117,7 +119,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'client_status',
             'translator_status',
         ]
-        read_only_fields = ['page_count', 'symbols_count']
+        read_only_fields = [
+            'page_count',
+            'symbols_count',
+            'symbols_with_spaces_count',
+            'images_count'
+        ]
         extra_kwargs = {
             'language_pair_id': {'read_only': True},
             'translator_status': {'required': False},

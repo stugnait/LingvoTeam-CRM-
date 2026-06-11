@@ -69,9 +69,9 @@ const STATUS_OPTIONS = [
 
 // 👉 ДОДАНО опції виключно для фінансової колонки (client_status)
 const PAYMENT_STATUS_OPTIONS = [
-    { value: "14", label: "Unpaid", color: "bg-slate-400" },
+    { value: "15", label: "Unpaid", color: "bg-slate-400" },
     { value: "13", label: "Deposit", color: "bg-amber-500" },
-    { value: "12", label: "Paid", color: "bg-emerald-500" }
+    { value: "12", label: "Payed", color: "bg-emerald-500" }
 ];
 
 interface OrdersTableProps {
