@@ -5,6 +5,7 @@ import { useExternalOrder } from "@/src/features/translator_order/hooks/useExter
 import { PasswordForm } from "@/src/features/translator_order/components/PasswordForm"
 import { ExternalOrderView } from "@/src/features/translator_order/components/ExternalOrderView"
 import { ExpiredLink } from "@/src/features/translator_order/components/ExpiredLink"
+import { LoadingFallback } from "@/src/shared/i18n/LoadingFallback"
 
 export default function TranslatorExternalOrderPage({
                                                         params,
@@ -33,7 +34,7 @@ export default function TranslatorExternalOrderPage({
     }, [slug, init])
 
     if (step === "loading") {
-        return <>Loading...</>
+        return <LoadingFallback />
     }
 
     if (step === "expired") {

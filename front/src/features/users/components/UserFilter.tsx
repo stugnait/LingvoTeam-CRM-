@@ -10,6 +10,7 @@ import {
 } from "@/src/components/ui/select"
 import { Search } from "lucide-react"
 import type { UsersFilters, RoleFilter } from "../types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface UserFiltersProps {
     filters: UsersFilters
@@ -17,6 +18,7 @@ interface UserFiltersProps {
 }
 
 export function UserFilters({ filters, setFilters }: UserFiltersProps) {
+    const { t } = useI18n()
 
     return (
         <div className="flex flex-col sm:flex-row gap-4">
@@ -26,7 +28,7 @@ export function UserFilters({ filters, setFilters }: UserFiltersProps) {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
                 <Input
-                    placeholder="Search users..."
+                    placeholder={t("users.searchPlaceholder")}
                     value={filters.search}
                     onChange={(e) =>
                         setFilters({
@@ -49,15 +51,15 @@ export function UserFilters({ filters, setFilters }: UserFiltersProps) {
                 }
             >
                 <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="All roles" />
+                    <SelectValue placeholder={t("users.allRoles")} />
                 </SelectTrigger>
 
                 <SelectContent>
-                    <SelectItem value="all">All roles</SelectItem>
+                    <SelectItem value="all">{t("users.allRoles")}</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="editor">Editor</SelectItem>
-                    <SelectItem value="financier">Finance</SelectItem>
+                    <SelectItem value="manager">{t("common.manager")}</SelectItem>
+                    <SelectItem value="editor">{t("common.editor")}</SelectItem>
+                    <SelectItem value="financier">{t("common.finance")}</SelectItem>
                 </SelectContent>
             </Select>
 
@@ -81,13 +83,13 @@ export function UserFilters({ filters, setFilters }: UserFiltersProps) {
                 }
             >
                 <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="All status" />
+                    <SelectValue placeholder={t("users.allStatuses")} />
                 </SelectTrigger>
 
                 <SelectContent>
-                    <SelectItem value="all">All status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="all">{t("users.allStatuses")}</SelectItem>
+                    <SelectItem value="active">{t("common.active")}</SelectItem>
+                    <SelectItem value="inactive">{t("common.inactive")}</SelectItem>
                 </SelectContent>
             </Select>
 

@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
 import { useProfile } from "../hooks/useProfile"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export function UserSecurity() {
+    const { t } = useI18n()
     const {
         passwordForm,
         setPasswordForm,
@@ -16,13 +18,13 @@ export function UserSecurity() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Security</CardTitle>
+                <CardTitle>{t("profile.security")}</CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
                 <Input
                     type="password"
-                    placeholder="Current password"
+                    placeholder={t("profile.currentPassword")}
                     value={passwordForm.current_password}
                     onChange={(e) =>
                         setPasswordForm((v) => ({
@@ -39,7 +41,7 @@ export function UserSecurity() {
 
                 <Input
                     type="password"
-                    placeholder="New password"
+                    placeholder={t("profile.newPassword")}
                     value={passwordForm.new_password}
                     onChange={(e) =>
                         setPasswordForm((v) => ({
@@ -51,7 +53,7 @@ export function UserSecurity() {
 
                 <Input
                     type="password"
-                    placeholder="Confirm new password"
+                    placeholder={t("profile.confirmNewPassword")}
                     value={passwordForm.confirm_password}
                     onChange={(e) =>
                         setPasswordForm((v) => ({
@@ -67,7 +69,7 @@ export function UserSecurity() {
                     </p>
                 )}
 
-                <Button className="w-full sm:w-auto" onClick={changePassword}>Change password</Button>
+                <Button className="w-full sm:w-auto" onClick={changePassword}>{t("profile.changePassword")}</Button>
             </CardContent>
         </Card>
     )

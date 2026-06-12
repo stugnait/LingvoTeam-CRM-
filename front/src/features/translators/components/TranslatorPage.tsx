@@ -31,6 +31,7 @@ import { TranslatorTrafficTable } from "./TranslatorTrafficTable"
 import { Plus, Tag, UserPlus } from "lucide-react"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { TranslatorsFilters } from "@/src/features/translators/components/TranslatorFilter"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 const modalInputClassName =
     "h-11 rounded-xl border-slate-200 bg-white px-4 text-sm text-slate-950 shadow-none placeholder:text-slate-400 focus-visible:border-blue-500 focus-visible:ring-blue-500/25 sm:h-12 sm:text-base"
@@ -60,9 +61,9 @@ function ModalField({ label, required, error, className, children }: ModalFieldP
 }
 
 export default function TranslatorsPage() {
+    const { t } = useI18n()
     const {
         translators,
-        loading,
 
         form,
         setForm,
@@ -146,27 +147,27 @@ export default function TranslatorsPage() {
                         {/* Header */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
-                                <h2 className="text-2xl font-bold tracking-tight">Translators</h2>
-                                <p className="text-muted-foreground">Manage translators, contacts, and rates</p>
+                                <h2 className="text-2xl font-bold tracking-tight">{t("translators.title")}</h2>
+                                <p className="text-muted-foreground">{t("translators.description")}</p>
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
                                 <TabsList>
-                                    <TabsTrigger value="translators">Translators</TabsTrigger>
-                                    <TabsTrigger value="traffic">Translator Tariffs</TabsTrigger>
+                                    <TabsTrigger value="translators">{t("translators.title")}</TabsTrigger>
+                                    <TabsTrigger value="traffic">{t("translators.tariffsTab")}</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="translators" className="mt-0">
                                     <Button onClick={openAddTranslator}>
                                         <Plus className="h-4 w-4 mr-2" />
-                                        Add Translator
+                                        {t("translators.add")}
                                     </Button>
                                 </TabsContent>
 
                                 <TabsContent value="traffic" className="mt-0">
                                     <Button onClick={() => openAddTraffic()}>
                                         <Plus className="h-4 w-4 mr-2" />
-                                        Add Tariff
+                                        {t("translators.addTariff")}
                                     </Button>
                                 </TabsContent>
                             </div>
@@ -176,8 +177,8 @@ export default function TranslatorsPage() {
                         <TabsContent value="translators" className="space-y-6">
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Filters</CardTitle>
-                                    <CardDescription>Search translators by name or email</CardDescription>
+                                    <CardTitle>{t("common.filters")}</CardTitle>
+                                    <CardDescription>{t("translators.filtersDescription")}</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <TranslatorsFilters
@@ -196,8 +197,8 @@ export default function TranslatorsPage() {
 
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Translators List</CardTitle>
-                                    <CardDescription>All translators registered in the system</CardDescription>
+                                    <CardTitle>{t("translators.listTitle")}</CardTitle>
+                                    <CardDescription>{t("translators.listDescription")}</CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <TranslatorsTable
@@ -216,8 +217,8 @@ export default function TranslatorsPage() {
                         <TabsContent value="traffic" className="space-y-6">
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Translator Tariff List</CardTitle>
-                                    <CardDescription>Translator rates by language pair and category</CardDescription>
+                                    <CardTitle>{t("translators.tariffListTitle")}</CardTitle>
+                                    <CardDescription>{t("translators.tariffListDescription")}</CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <TranslatorTrafficTable
@@ -236,17 +237,17 @@ export default function TranslatorsPage() {
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={selectedTranslator ? "Edit Translator" : "Create Translator"}
-                description={selectedTranslator ? "Update translator details." : "Add a new translator to your team."}
+                title={selectedTranslator ? t("translators.edit") : t("translators.create")}
+                description={selectedTranslator ? t("translators.updateDescription") : t("translators.createDescription")}
                 icon={<UserPlus className="h-8 w-8" />}
                 variant="reference"
-                submitLabel="Save"
+                submitLabel={t("common.save")}
                 onSubmit={() => submitTranslator(form)}
             >
                 <div className="space-y-4 sm:space-y-5">
-                    <ModalField label="Full name" required error={errors?.full_name}>
+                    <ModalField label={t("orders.fullName")} required error={errors?.full_name}>
                         <Input
-                            placeholder="Enter full name"
+                            placeholder={t("translators.enterFullName")}
                             value={form.full_name}
                             autoFocus
                             className={`${modalInputClassName} ${errors?.full_name ? "border-red-500" : ""}`}
@@ -254,19 +255,19 @@ export default function TranslatorsPage() {
                         />
                     </ModalField>
 
-                    <ModalField label="Email" required error={errors?.email}>
+                    <ModalField label={t("auth.email")} required error={errors?.email}>
                         <Input
-                            placeholder="Enter email address"
+                            placeholder={t("translators.enterEmail")}
                             value={form.email}
                             className={`${modalInputClassName} ${errors?.email ? "border-red-500" : ""}`}
                             onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                         />
                     </ModalField>
 
-                    <ModalField label="Tariffs">
+                    <ModalField label={t("common.tariffs")}>
                         <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 p-3 space-y-2">
                             {traffic.length === 0 ? (
-                                <p className="text-sm text-slate-500">No tariffs available</p>
+                                <p className="text-sm text-slate-500">{t("translators.noTariffsAvailable")}</p>
                             ) : (
                                 traffic.map((tariff) => (
                                     <label
@@ -301,11 +302,11 @@ export default function TranslatorsPage() {
                             className="mt-2 w-full rounded-xl border-blue-200 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
                         >
                             <Plus className="mr-2 h-4 w-4" />
-                            Новий тариф
+                            {t("translators.newTariff")}
                         </Button>
                     </ModalField>
 
-                    <ModalField label="Phone" required error={errors?.phone}>
+                    <ModalField label={t("profile.phone")} required error={errors?.phone}>
                         <PatternFormat
                             format="+38 (###) ###-##-##"
                             allowEmptyFormatting
@@ -319,13 +320,13 @@ export default function TranslatorsPage() {
                         />
                     </ModalField>
 
-                    <ModalField label="Currency" required error={errors?.currency_id}>
+                    <ModalField label={t("orders.currency")} required error={errors?.currency_id}>
                         <Select
                             value={form.currency_id === 0 ? "" : String(form.currency_id)}
                             onValueChange={(value) => setForm(prev => ({ ...prev, currency_id: Number(value) }))}
                         >
                             <SelectTrigger className={`${modalSelectClassName} ${errors?.currency_id ? "border-red-500" : ""}`}>
-                                <SelectValue placeholder="Select currency" />
+                                <SelectValue placeholder={t("orders.selectCurrency")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {currencies.map((currency) => (
@@ -343,33 +344,33 @@ export default function TranslatorsPage() {
             <BaseFormModal
                 open={isTrafficFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={selectedTraffic ? "Edit Translator Tariff" : "Add Translator Tariff"}
-                description={selectedTraffic ? "Update the translator tariff for your services." : "Create a new tariff for translator services."}
+                title={selectedTraffic ? t("translators.editTariff") : t("translators.createTariff")}
+                description={selectedTraffic ? t("translators.updateTariffDescription") : t("translators.createTariffDescription")}
                 icon={<Tag className="h-8 w-8" />}
                 variant="reference"
-                submitLabel={selectedTraffic ? "Save" : "Create"}
+                submitLabel={selectedTraffic ? t("common.save") : t("common.create")}
                 onSubmit={submitTraffic}
             >
                 <div className="space-y-4">
-                    <ModalField label="Tariff name" required error={trafficErrors?.name}>
+                    <ModalField label={t("translators.tariffName")} required error={trafficErrors?.name}>
                         <Input
-                            placeholder="Enter tariff name"
+                            placeholder={t("translators.enterTariffName")}
                             value={trafficForm.name || ""}
                             onChange={(e) => setTrafficForm(prev => ({ ...prev, name: e.target.value }))}
                             className={`${modalInputClassName} ${trafficErrors?.name ? "border-red-500" : ""}`}
                         />
                     </ModalField>
 
-                    <ModalField label="Language pair" required error={trafficErrors?.language_pair}>
+                    <ModalField label={t("common.languagePair")} required error={trafficErrors?.language_pair}>
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
                             <Select
                                 value={trafficForm.language_pair === null ? "" : String(trafficForm.language_pair)}
                                 onValueChange={(val) => setTrafficForm(prev => ({ ...prev, language_pair: Number(val) }))}
                             >
                                 <SelectTrigger className={`${modalSelectClassName} ${trafficErrors?.language_pair ? "border-red-500" : ""}`}>
-                                    <SelectValue placeholder="Choose language pair" />
+                                    <SelectValue placeholder={t("common.chooseLanguagePair")} />
                                 </SelectTrigger>
-                                <SelectContent searchable searchPlaceholder="Search language pair...">
+                                <SelectContent searchable searchPlaceholder={t("common.searchLanguagePair")}>
                                     {languagePairs.map((pair) => (
                                         <SelectItem key={pair.id} value={String(pair.id)}>{pair.name}</SelectItem>
                                     ))}
@@ -382,18 +383,18 @@ export default function TranslatorsPage() {
                                 className="h-11 w-full rounded-xl border-blue-200 px-4 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 sm:h-12 sm:w-auto"
                             >
                                 <Plus className="mr-2 h-5 w-5" />
-                                Нова пара
+                                {t("translators.newLanguagePair")}
                             </Button>
                         </div>
                     </ModalField>
 
-                    <ModalField label="Currency" error={trafficErrors?.currency_id}>
+                    <ModalField label={t("orders.currency")} error={trafficErrors?.currency_id}>
                         <Select
                             value={trafficForm.currency_id === 0 ? "" : String(trafficForm.currency_id)}
                             onValueChange={(val) => setTrafficForm(prev => ({ ...prev, currency_id: Number(val) }))}
                         >
                             <SelectTrigger className={`${modalSelectClassName} ${trafficErrors?.currency_id ? "border-red-500" : ""}`}>
-                                <SelectValue placeholder="Select currency" />
+                                <SelectValue placeholder={t("orders.selectCurrency")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {currencies.map((currency) => (
@@ -403,13 +404,13 @@ export default function TranslatorsPage() {
                         </Select>
                     </ModalField>
 
-                    <ModalField label="Select category">
+                    <ModalField label={t("orders.category")}>
                         <Select
                             value={trafficForm.category === null ? "" : String(trafficForm.category)}
                             onValueChange={(val) => setTrafficForm(prev => ({ ...prev, category: Number(val) }))}
                         >
                             <SelectTrigger className={modalSelectClassName}>
-                                <SelectValue placeholder="Select category" />
+                                <SelectValue placeholder={t("clients.selectCategory")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {categories.map((cat) => (
@@ -419,22 +420,22 @@ export default function TranslatorsPage() {
                         </Select>
                     </ModalField>
 
-                    <ModalField label="Price per page">
+                    <ModalField label={t("translators.pricePerPage")}>
                         <Input
                             type="number"
                             step="0.01"
-                            placeholder="Enter price per page"
+                            placeholder={t("translators.pricePerPage")}
                             value={trafficForm.rate_per_page === 0 ? "" : trafficForm.rate_per_page}
                             onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
                             className={modalInputClassName}
                         />
                     </ModalField>
 
-                    <ModalField label="Price per action">
+                    <ModalField label={t("translators.pricePerAction")}>
                         <Input
                             type="number"
                             step="0.01"
-                            placeholder="Enter price per action"
+                            placeholder={t("translators.pricePerAction")}
                             value={trafficForm.rate_per_action === 0 ? "" : trafficForm.rate_per_action}
                             onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
                             className={modalInputClassName}
@@ -452,34 +453,34 @@ export default function TranslatorsPage() {
                         setInlineTrafficForm({ name: "", currency_id: 0, language_pair: null, category: null, rate_per_page: 0, rate_per_action: 0 })
                     }
                 }}
-                title="Новий тариф"
-                description="Створіть новий тариф — він одразу буде призначений перекладачу."
+                title={t("translators.newTariff")}
+                description={t("translators.newTariffDescription")}
                 icon={<Tag className="h-8 w-8" />}
                 variant="reference"
-                submitLabel={inlineTrafficLoading ? "Creating..." : "Create"}
+                submitLabel={inlineTrafficLoading ? t("tariffs.creating") : t("common.create")}
                 isLoading={inlineTrafficLoading}
                 onSubmit={createAndSelectTraffic}
             >
                 <div className="space-y-4">
-                    <ModalField label="Tariff name" required>
+                    <ModalField label={t("translators.tariffName")} required>
                         <Input
-                            placeholder="Enter tariff name"
+                            placeholder={t("translators.enterTariffName")}
                             value={inlineTrafficForm.name || ""}
                             onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, name: e.target.value }))}
                             className={modalInputClassName}
                         />
                     </ModalField>
 
-                    <ModalField label="Language pair" required>
+                    <ModalField label={t("common.languagePair")} required>
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
                             <Select
                                 value={inlineTrafficForm.language_pair === null ? "" : String(inlineTrafficForm.language_pair)}
                                 onValueChange={(val) => setInlineTrafficForm(prev => ({ ...prev, language_pair: Number(val) }))}
                             >
                                 <SelectTrigger className={modalSelectClassName}>
-                                    <SelectValue placeholder="Choose language pair" />
+                                    <SelectValue placeholder={t("common.chooseLanguagePair")} />
                                 </SelectTrigger>
-                                <SelectContent searchable searchPlaceholder="Search language pair...">
+                                <SelectContent searchable searchPlaceholder={t("common.searchLanguagePair")}>
                                     {languagePairs.map((pair) => (
                                         <SelectItem key={pair.id} value={String(pair.id)}>{pair.name}</SelectItem>
                                     ))}
@@ -492,18 +493,18 @@ export default function TranslatorsPage() {
                                 className="h-11 w-full rounded-xl border-blue-200 px-4 text-sm font-semibold text-blue-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 sm:h-12 sm:w-auto"
                             >
                                 <Plus className="mr-2 h-5 w-5" />
-                                Нова пара
+                                {t("translators.newLanguagePair")}
                             </Button>
                         </div>
                     </ModalField>
 
-                    <ModalField label="Currency">
+                    <ModalField label={t("orders.currency")}>
                         <Select
                             value={inlineTrafficForm.currency_id === 0 ? "" : String(inlineTrafficForm.currency_id)}
                             onValueChange={(val) => setInlineTrafficForm(prev => ({ ...prev, currency_id: Number(val) }))}
                         >
                             <SelectTrigger className={modalSelectClassName}>
-                                <SelectValue placeholder="Select currency" />
+                                <SelectValue placeholder={t("orders.selectCurrency")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {currencies.map((currency) => (
@@ -513,13 +514,13 @@ export default function TranslatorsPage() {
                         </Select>
                     </ModalField>
 
-                    <ModalField label="Select category">
+                    <ModalField label={t("orders.category")}>
                         <Select
                             value={inlineTrafficForm.category === null ? "" : String(inlineTrafficForm.category)}
                             onValueChange={(val) => setInlineTrafficForm(prev => ({ ...prev, category: Number(val) }))}
                         >
                             <SelectTrigger className={modalSelectClassName}>
-                                <SelectValue placeholder="Select category" />
+                                <SelectValue placeholder={t("clients.selectCategory")} />
                             </SelectTrigger>
                             <SelectContent>
                                 {categories.map((cat) => (
@@ -529,22 +530,22 @@ export default function TranslatorsPage() {
                         </Select>
                     </ModalField>
 
-                    <ModalField label="Price per page">
+                    <ModalField label={t("translators.pricePerPage")}>
                         <Input
                             type="number"
                             step="0.01"
-                            placeholder="Enter price per page"
+                            placeholder={t("translators.pricePerPage")}
                             value={inlineTrafficForm.rate_per_page === 0 ? "" : inlineTrafficForm.rate_per_page}
                             onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
                             className={modalInputClassName}
                         />
                     </ModalField>
 
-                    <ModalField label="Price per action">
+                    <ModalField label={t("translators.pricePerAction")}>
                         <Input
                             type="number"
                             step="0.01"
-                            placeholder="Enter price per action"
+                            placeholder={t("translators.pricePerAction")}
                             value={inlineTrafficForm.rate_per_action === 0 ? "" : inlineTrafficForm.rate_per_action}
                             onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
                             className={modalInputClassName}
@@ -558,23 +559,25 @@ export default function TranslatorsPage() {
                 open={isNewPairModalOpen}
                 onOpenChange={(open) => {
                     setIsNewPairModalOpen(open)
-                    if (!open) setNewPairForm({ source_language: 0, target_language: 0 })
+                    if (!open) {
+                        setNewPairForm({ source_language: 0, target_language: 0 })
+                    }
                 }}
-                title="Нова мовна пара"
-                submitLabel={newPairLoading ? "Creating..." : "Create"}
+                title={t("translators.newLanguagePair")}
+                submitLabel={newPairLoading ? t("tariffs.creating") : t("common.create")}
                 isLoading={newPairLoading}
                 onSubmit={createAndSelectLanguagePair}
             >
                 <div className="space-y-4">
-                    <ModalField label="Мова джерела" required>
+                    <ModalField label={t("common.sourceLanguage")} required>
                         <Select
                             value={newPairForm.source_language ? String(newPairForm.source_language) : ""}
                             onValueChange={(val) => setNewPairForm(prev => ({ ...prev, source_language: Number(val) }))}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Оберіть мову" />
+                                <SelectValue placeholder={t("common.chooseLanguage")} />
                             </SelectTrigger>
-                            <SelectContent searchable searchPlaceholder="Search language...">
+                            <SelectContent searchable searchPlaceholder={t("common.searchLanguage")}>
                                 {translatorLanguages.map((language) => (
                                     <SelectItem key={language.id} value={String(language.id)}>{language.name}</SelectItem>
                                 ))}
@@ -582,15 +585,15 @@ export default function TranslatorsPage() {
                         </Select>
                     </ModalField>
 
-                    <ModalField label="Мова перекладу" required>
+                    <ModalField label={t("common.targetLanguage")} required>
                         <Select
                             value={newPairForm.target_language ? String(newPairForm.target_language) : ""}
                             onValueChange={(val) => setNewPairForm(prev => ({ ...prev, target_language: Number(val) }))}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Оберіть мову" />
+                                <SelectValue placeholder={t("common.chooseLanguage")} />
                             </SelectTrigger>
-                            <SelectContent searchable searchPlaceholder="Search language...">
+                            <SelectContent searchable searchPlaceholder={t("common.searchLanguage")}>
                                 {translatorLanguages
                                     .filter((language) => language.id !== newPairForm.source_language)
                                     .map((language) => (
@@ -606,13 +609,13 @@ export default function TranslatorsPage() {
             <ConfirmModal
                 open={isConfirmOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Confirm deletion"
+                title={t("translators.deleteTitle")}
                 description={
                     selectedTranslator
-                        ? `Are you sure you want to delete "${selectedTranslator.full_name}"?`
-                        : "Are you sure you want to delete this translator tariff?"
+                        ? t("translators.deleteDescription", { name: selectedTranslator.full_name })
+                        : t("translators.deleteTariffDescription")
                 }
-                confirmLabel="Delete"
+                confirmLabel={t("common.delete")}
                 onConfirm={confirmActionHandler}
             />
         </>

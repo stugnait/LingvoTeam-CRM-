@@ -4,6 +4,8 @@ import { Bell, Search } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { cn } from "@/src/lib/utils";
+import { LanguageSwitcher } from "@/src/shared/i18n/LanguageSwitcher";
+import { useI18n } from "@/src/shared/i18n/I18nProvider";
 
 interface CrmHeaderProps {
     title: string;
@@ -11,6 +13,8 @@ interface CrmHeaderProps {
 }
 
 export function CrmHeader({ title, collapsed }: CrmHeaderProps) {
+    const { t } = useI18n();
+
     return (
         <header
             className={cn(
@@ -30,10 +34,12 @@ export function CrmHeader({ title, collapsed }: CrmHeaderProps) {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
                     type="search"
-                    placeholder="Пошук..."
+                    placeholder={t("common.search.placeholder")}
                     className="w-full pl-10 pr-4 border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 />
             </div>
+
+            <LanguageSwitcher />
 
             {/* Мобільна іконка пошуку */}
             <Button
@@ -79,7 +85,7 @@ export function CrmHeader({ title, collapsed }: CrmHeaderProps) {
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                         type="search"
-                        placeholder="Пошук..."
+                        placeholder={t("common.search.placeholder")}
                         className="w-full pl-10 pr-4 border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                     />
                 </div>

@@ -5,6 +5,7 @@ import React, { useMemo } from 'react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import SortableTask from './SortableTask';
 import ColumnDropZone from './ColumnDropZone';
+import { useI18n } from '@/src/shared/i18n/I18nProvider';
 
 export type TaskStatus = 'planned' | 'todo' | 'in_progress' | 'reject' | 'pause' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -34,7 +35,7 @@ interface KanbanTask {
     delivery_manager?: { name: string; avatar?: string } | null
 
     tags: string[]
-    subtasks?: any[]
+    subtasks?: unknown[]
 }
 
 interface KanbanColumnProps {
@@ -49,6 +50,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                                                                   tasks,
                                                                   onTaskOpen
                                                               }) => {
+    const { t } = useI18n()
     const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
 
     // const {
@@ -75,10 +77,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                     </div>
                     <div>
                         <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
-                            {column.title}
+                            {t(column.title)}
                         </h3>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+                            {tasks.length} {tasks.length === 1 ? t("kanban.taskSingular") : t("kanban.taskPlural")}
                         </div>
                     </div>
                 </div>

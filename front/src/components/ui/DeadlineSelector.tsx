@@ -5,6 +5,7 @@ import * as React from "react"
 import { Button } from "@/src/components/ui/button"
 import { CalendarIcon, Clock } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface DeadlineSelectorProps {
     value?: Date
@@ -19,6 +20,9 @@ export function DeadlineSelector({
                                      minDate,
                                      className
                                  }: DeadlineSelectorProps) {
+    const { locale, t } = useI18n()
+    const dateLocale = locale === "uk" ? "uk-UA" : "en-US"
+
     const [dateString, setDateString] = React.useState("")
     const [timeString, setTimeString] = React.useState("12:00")
 
@@ -68,10 +72,10 @@ export function DeadlineSelector({
     }
 
     const quickOptions = [
-        { label: "Tomorrow", days: 1 },
-        { label: "3 days", days: 3 },
-        { label: "1 week", days: 7 },
-        { label: "2 weeks", days: 14 },
+        { label: t("common.tomorrow"), days: 1 },
+        { label: t("common.threeDays"), days: 3 },
+        { label: t("common.oneWeek"), days: 7 },
+        { label: t("common.twoWeeks"), days: 14 },
     ]
 
     const setQuickDeadline = (days: number) => {
@@ -136,7 +140,10 @@ export function DeadlineSelector({
 
             {value && (
                 <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded-md">
-                    Deadline: {value.toLocaleDateString()} at {value.toLocaleTimeString()}
+                    {t("common.deadlineAt", {
+                        date: value.toLocaleDateString(dateLocale),
+                        time: value.toLocaleTimeString(dateLocale),
+                    })}
                 </div>
             )}
         </div>

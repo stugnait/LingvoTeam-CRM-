@@ -2,8 +2,11 @@
 
 import Link from "next/link"
 import { Globe, LogIn } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export default function Error401Page() {
+    const { t } = useI18n()
+
     return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
             <div className="flex items-center gap-2 mb-12">
@@ -21,11 +24,11 @@ export default function Error401Page() {
                 <h1 className="text-7xl font-bold text-primary mb-4">401</h1>
 
                 <h2 className="text-2xl font-semibold text-foreground mb-3">
-                    Сесія завершена
+                    {t("error.sessionEndedTitle")}
                 </h2>
 
                 <p className="text-muted-foreground mb-8">
-                    Ваша сесія закінчилася або у вас немає доступу. Будь ласка, авторизуйтесь ще раз для продовження роботи.
+                    {t("error.sessionEndedDescription")}
                 </p>
 
                 <div className="flex justify-center">
@@ -34,7 +37,7 @@ export default function Error401Page() {
                         className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors w-full sm:w-auto"
                     >
                         <LogIn className="w-4 h-4" />
-                        Перейти до входу
+                        {t("error.goToLogin")}
                     </Link>
                 </div>
             </div>

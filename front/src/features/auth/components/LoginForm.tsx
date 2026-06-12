@@ -8,11 +8,13 @@ import { Label } from "@/src/components/ui/label"
 import { useLogin } from "../hooks/useLogin"
 import { ForgotPasswordModal } from "./ForgotPasswordModal"
 import { Lock, Mail, Eye, EyeOff } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export function LoginForm() {
     const { email, password, setEmail, setPassword, handleSubmit, isLoading } = useLogin()
     const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
+    const { t } = useI18n()
 
     return (
         <>
@@ -21,7 +23,7 @@ export function LoginForm() {
                 <div className="space-y-2.5">
                     <Label htmlFor="email" className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />
-                        Email
+                        {t("auth.email")}
                     </Label>
                     <div className="relative">
                         <Input
@@ -45,7 +47,7 @@ export function LoginForm() {
                     <div className="flex items-center justify-between">
                         <Label htmlFor="password" className="flex items-center gap-2">
                             <Lock className="h-4 w-4" />
-                            Password
+                            {t("auth.password")}
                         </Label>
                         <button
                             type="button"
@@ -53,7 +55,7 @@ export function LoginForm() {
                             // py-1 px-1 — більша зона кліку на мобільному
                             className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200 py-1 px-1 -mr-1"
                         >
-                            Forgot password?
+                            {t("auth.forgotPassword")}
                         </button>
                     </div>
 
@@ -75,7 +77,7 @@ export function LoginForm() {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                         >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -91,15 +93,15 @@ export function LoginForm() {
                     {isLoading ? (
                         <>
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                            Signing in...
+                            {t("auth.signingIn")}
                         </>
                     ) : (
-                        "Sign in"
+                        t("auth.signIn")
                     )}
                 </Button>
 
                 <div className="text-center text-xs text-muted-foreground mt-4">
-                    By continuing, you agree to our Terms and Privacy Policy
+                    {t("auth.termsNotice")}
                 </div>
             </form>
 

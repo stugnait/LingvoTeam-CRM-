@@ -4,13 +4,14 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/src/lib/utils"
 import { LayoutDashboard, Users, Languages, Settings, DollarSign, X } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Users", href: "/dashboard/users", icon: Users },
-    { name: "Translators", href: "/dashboard/translations", icon: Languages },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
-    { name: "Tariffs", href: "/dashboard/tariffs", icon: DollarSign },
+    { name: "Dashboard", labelKey: "common.dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Users", labelKey: "common.users", href: "/dashboard/users", icon: Users },
+    { name: "Translators", labelKey: "common.translators", href: "/dashboard/translations", icon: Languages },
+    { name: "Settings", labelKey: "common.settings", href: "/dashboard/settings", icon: Settings },
+    { name: "Tariffs", labelKey: "common.tariffs", href: "/dashboard/tariffs", icon: DollarSign },
 ]
 
 interface DashboardSidebarProps {
@@ -20,6 +21,7 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
     const pathname = usePathname()
+    const { t } = useI18n()
 
     const sidebarContent = (
         <>
@@ -41,7 +43,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                 <button
                     onClick={onClose}
                     className="lg:hidden p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                    aria-label="Close menu"
+                    aria-label={t("common.closeMenu")}
                 >
                     <X className="h-5 w-5" />
                 </button>
@@ -64,7 +66,7 @@ export function DashboardSidebar({ isOpen, onClose }: DashboardSidebarProps) {
                             )}
                         >
                             <Icon className="h-5 w-5" />
-                            {item.name}
+                            {t(item.labelKey)}
                         </Link>
                     )
                 })}

@@ -111,7 +111,7 @@ MIDDLEWARE = [
 
 STATIC_URL = "static/"
 
-FRONTEND_URL = "https://lingvoteam.website"
+FRONTEND_URL = "http://localhost:3000"
 EMAIL_HOST_USER = os.getenv("MAIL_USERNAME")
 EMAIL_HOST_PASSWORD = os.getenv("MAIL_PASSWORD")
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

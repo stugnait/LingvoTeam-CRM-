@@ -1,7 +1,11 @@
 // src/features/auth/components/AuthLayout.tsx
+"use client"
+
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { Languages } from "lucide-react"
+import { LanguageSwitcher } from "@/src/shared/i18n/LanguageSwitcher"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface AuthLayoutProps {
     children: ReactNode
@@ -19,8 +23,13 @@ export function AuthLayout({
                                description,
                                backgroundImage = true,
                            }: AuthLayoutProps) {
+    const { t } = useI18n()
+
     return (
         <div className="auth-container min-h-screen flex items-center justify-center">
+            <div className="fixed right-4 top-4 z-10">
+                <LanguageSwitcher />
+            </div>
             <div className="w-full max-w-lg">
 
                 {/* Logo & Header */}
@@ -38,7 +47,7 @@ export function AuthLayout({
                                     LingvoTeam
                                 </span>
                             </div>
-                            <div className="text-xs text-muted-foreground font-medium">Translation Management</div>
+                            <div className="text-xs text-muted-foreground font-medium">{t("auth.translationManagement")}</div>
                         </div>
                     </div>
 
@@ -60,13 +69,13 @@ export function AuthLayout({
                 <div className="mt-6 sm:mt-8 text-center">
                     <div className="flex items-center justify-center flex-wrap gap-4 sm:gap-6 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border/50">
                         <Link href="/terms" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                            Terms of Service
+                            {t("auth.terms")}
                         </Link>
                         <Link href="/privacy" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                            Privacy Policy
+                            {t("auth.privacy")}
                         </Link>
                         <Link href="/support" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                            Support
+                            {t("auth.support")}
                         </Link>
                     </div>
                 </div>

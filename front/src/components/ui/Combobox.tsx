@@ -5,12 +5,13 @@ import * as Popover from "@radix-ui/react-popover"
 import * as ScrollArea from "@radix-ui/react-scroll-area"
 import { Check, ChevronsUpDown, Search } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface ComboboxOption {
     value: string
     label: string
     searchText?: string
-    meta?: any
+    meta?: unknown
 }
 
 interface ComboboxProps {
@@ -29,16 +30,20 @@ export function Combobox({
                              options = [],
                              value,
                              onChange,
-                             placeholder = "Select option",
-                             searchPlaceholder = "Search...",
-                             emptyMessage = "No results found.",
+                             placeholder,
+                             searchPlaceholder,
+                             emptyMessage,
                              searchable = true,
                              renderOption,
                              renderSelected,
                          }: ComboboxProps) {
+    const { t } = useI18n()
 
     const [open, setOpen] = React.useState(false)
     const [searchQuery, setSearchQuery] = React.useState("")
+    const resolvedPlaceholder = placeholder ?? t("common.selectOption")
+    const resolvedSearchPlaceholder = searchPlaceholder ?? t("common.search.placeholder")
+    const resolvedEmptyMessage = emptyMessage ?? t("common.noResults")
 
     const selected = React.useMemo(() => {
         if (!options || !Array.isArray(options)) { return undefined }
@@ -78,7 +83,7 @@ export function Combobox({
                             ? renderSelected
                                 ? renderSelected(selected)
                                 : selected.label
-                            : placeholder
+                            : resolvedPlaceholder
                         }
                     </span>
                     <ChevronsUpDown className={cn(
@@ -110,7 +115,7 @@ export function Combobox({
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
                                 <input
                                     type="text"
-                                    placeholder={searchPlaceholder}
+                                    placeholder={resolvedSearchPlaceholder}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full h-9 rounded-md border border-border/50 bg-background/50 pl-9 pr-3 text-sm outline-none transition-all placeholder:text-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/50"
@@ -126,13 +131,13 @@ export function Combobox({
                                 {!options || options.length === 0 ? (
                                     <div className="py-8 text-center">
                                         <div className="text-sm text-muted-foreground/70">
-                                            {emptyMessage}
+                                            {resolvedEmptyMessage}
                                         </div>
                                     </div>
                                 ) : filteredOptions.length === 0 ? (
                                     <div className="py-8 text-center">
                                         <div className="text-sm text-muted-foreground/70">
-                                            No matches found
+                                            {t("common.noMatches")}
                                         </div>
                                     </div>
                                 ) : (

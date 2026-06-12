@@ -10,6 +10,7 @@ import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu"
 import type { ClientCategory } from "../types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface CategoryTableProps {
     categories: ClientCategory[]
@@ -18,6 +19,8 @@ interface CategoryTableProps {
 }
 
 export function CategoryTable({ categories, onEdit, onDelete }: CategoryTableProps) {
+    const { t } = useI18n()
+
     return (
         <>
             {/* Desktop таблиця */}
@@ -26,8 +29,8 @@ export function CategoryTable({ categories, onEdit, onDelete }: CategoryTablePro
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[80px]">ID</TableHead>
-                            <TableHead className="w-full">Category Name</TableHead>
-                            <TableHead>Discount</TableHead>
+                            <TableHead className="w-full">{t("clients.categoryName")}</TableHead>
+                            <TableHead>{t("common.discount")}</TableHead>
                             <TableHead className="w-[70px]" />
                         </TableRow>
                     </TableHeader>
@@ -56,13 +59,13 @@ export function CategoryTable({ categories, onEdit, onDelete }: CategoryTablePro
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={() => onEdit(category)}>
-                                                <Pencil className="h-4 w-4 mr-2"/> Edit
+                                                <Pencil className="h-4 w-4 mr-2"/> {t("common.edit")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => onDelete(category)}
                                                 className="text-destructive"
                                             >
-                                                <Trash2 className="h-4 w-4 mr-2"/> Delete
+                                                <Trash2 className="h-4 w-4 mr-2"/> {t("common.delete")}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -72,7 +75,7 @@ export function CategoryTable({ categories, onEdit, onDelete }: CategoryTablePro
                         {categories.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                                    No categories found.
+                                    {t("clients.noCategories")}
                                 </TableCell>
                             </TableRow>
                         )}
@@ -83,7 +86,7 @@ export function CategoryTable({ categories, onEdit, onDelete }: CategoryTablePro
             {/* Мобільні картки */}
             <div className="sm:hidden">
                 {categories.length === 0 ? (
-                    <p className="text-center py-6 text-muted-foreground text-sm">No categories found.</p>
+                    <p className="text-center py-6 text-muted-foreground text-sm">{t("clients.noCategories")}</p>
                 ) : (
                     <div className="divide-y divide-border">
                         {categories.map((category) => (
@@ -110,10 +113,10 @@ export function CategoryTable({ categories, onEdit, onDelete }: CategoryTablePro
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => onEdit(category)}>
-                                            <Pencil className="h-4 w-4 mr-2"/> Edit
+                                            <Pencil className="h-4 w-4 mr-2"/> {t("common.edit")}
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => onDelete(category)} className="text-destructive">
-                                            <Trash2 className="h-4 w-4 mr-2"/> Delete
+                                            <Trash2 className="h-4 w-4 mr-2"/> {t("common.delete")}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

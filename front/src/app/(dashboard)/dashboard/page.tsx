@@ -14,7 +14,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/src/components/ui/table"
-import Link from "next/link"
 import dynamic from "next/dynamic"
 import {
     Clock,
@@ -31,9 +30,9 @@ import {
     Percent,
     ShoppingCart,
     Star,
-    ArrowRight,
     BarChart3
 } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 // Інтерфейси
 interface PnlData { revenue: number; cogs: number; net_profit: number; gross_margin_percent: number; avg_order_value: number; }
@@ -42,6 +41,12 @@ interface ManagerData { id: number; full_name: string; total_revenue: number; to
 interface TranslatorData { id: number; full_name: string; avg_rating: number; total_orders: number; revision_count: number; }
 interface EditorData { id: number; full_name: string; total_checked: number; }
 interface LanguageData { pair_name: string; total_orders: number; total_revenue: number; avg_order_value: number; }
+
+type ApiNumber = number | string | null | undefined
+
+interface PnlApiResponse {
+    summary?: Partial<Record<keyof PnlData, ApiNumber>>
+}
 
 interface DashboardData {
     pnl: PnlData;
@@ -59,6 +64,8 @@ const formatMoney = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
 
 function DashboardPage() {
+    const { locale, t } = useI18n()
+    const dateLocale = locale === "uk" ? "uk-UA" : "en-US"
     const { role, loading } = useMe()
     const userRole = String(role)
     const searchParams = useSearchParams()
@@ -88,12 +95,12 @@ function DashboardPage() {
                 const [
                     pnlData, salesData, managersData, translatorsData, editorsData, languagesData
                 ] = await Promise.all([
-                    apiFetch<any>(`stats/pnl/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
-                    apiFetch<any>(`stats/dashboard/sales-chart/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
-                    apiFetch<any>(`stats/dashboard/managers-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
-                    apiFetch<any>(`stats/dashboard/translators-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
-                    apiFetch<any>(`stats/dashboard/editors-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
-                    apiFetch<any>(`stats/dashboard/language-pairs-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" })
+                    apiFetch<PnlApiResponse>(`stats/pnl/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
+                    apiFetch<SalesChartData[]>(`stats/dashboard/sales-chart/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
+                    apiFetch<ManagerData[]>(`stats/dashboard/managers-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
+                    apiFetch<TranslatorData[]>(`stats/dashboard/translators-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
+                    apiFetch<EditorData[]>(`stats/dashboard/editors-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" }),
+                    apiFetch<LanguageData[]>(`stats/dashboard/language-pairs-stats/?start_date=${startDate}&end_date=${endDate}`, { method: "GET" })
                 ]);
 
                 if (isMounted) {
@@ -131,7 +138,7 @@ function DashboardPage() {
             <>
                 <DashboardHeader />
                 <main className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
-                    <p className="text-muted-foreground animate-pulse">Loading...</p>
+                    <p className="text-muted-foreground animate-pulse">{t("common.loading")}</p>
                 </main>
             </>
         )
@@ -145,9 +152,9 @@ function DashboardPage() {
             backlogCount: 8,
             avgSpeed: "18 min",
             priorityOrders: [
-                { id: "ORD-721", client: "Global Tech", deadline: "In 2 hours", priority: "High" },
-                { id: "ORD-725", client: "Legal Pro", deadline: "In 5 hours", priority: "Medium" },
-                { id: "ORD-730", client: "Health Care", deadline: "Tomorrow", priority: "Low" },
+                { id: "ORD-721", client: "Global Tech", deadlineKey: "dashboard.inTwoHours", priority: "High" },
+                { id: "ORD-725", client: "Legal Pro", deadlineKey: "dashboard.inFiveHours", priority: "Medium" },
+                { id: "ORD-730", client: "Health Care", deadlineKey: "common.tomorrow", priority: "Low" },
             ]
         }
 
@@ -160,30 +167,30 @@ function DashboardPage() {
                             {/* avgSpeed — повна ширина на мобільному */}
                             <Card className="col-span-2 md:col-span-2">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium text-muted-foreground">Average Proofreading Time</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.averageProofreadingTime")}</CardTitle>
                                     <Timer className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-semibold">{editorStats.avgSpeed}</div>
-                                    <p className="text-sm text-muted-foreground mt-1">Per 1000 characters</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{t("dashboard.per1000Characters")}</p>
                                 </CardContent>
                             </Card>
 
                             <Card className="col-span-2 md:col-span-1">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium text-muted-foreground">Backlog</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.backlog")}</CardTitle>
                                     <ListChecks className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-semibold">{editorStats.backlogCount}</div>
-                                    <p className="text-sm text-muted-foreground mt-1">Orders in &apos;Editing&apos; status</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{t("dashboard.ordersInEditing")}</p>
                                 </CardContent>
                             </Card>
 
                             {/* Priority Queue — повна ширина завжди */}
                             <Card className="col-span-2 md:col-span-3">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
-                                    <CardTitle className="text-base font-semibold">Priority Queue</CardTitle>
+                                    <CardTitle className="text-base font-semibold">{t("dashboard.priorityQueue")}</CardTitle>
                                     <Flame className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent className="pt-4">
@@ -197,9 +204,11 @@ function DashboardPage() {
                                                 <div className="flex items-center gap-6">
                                                     <div className="flex flex-col items-end gap-1">
                                                         <span className="text-sm font-medium flex items-center gap-1.5">
-                                                            <Clock className="h-3.5 w-3.5 text-muted-foreground" /> {order.deadline}
+                                                            <Clock className="h-3.5 w-3.5 text-muted-foreground" /> {t(order.deadlineKey)}
                                                         </span>
-                                                        <span className="text-xs text-muted-foreground">{order.priority} Priority</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {t("dashboard.prioritySuffix", { priority: t(order.priority) })}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -235,60 +244,60 @@ function DashboardPage() {
                             {/* Total Revenue — повна ширина на мобільному та md */}
                             <Card className="col-span-2 lg:col-span-2">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium text-muted-foreground">Total Processed Money</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.totalProcessedMoney")}</CardTitle>
                                     <BadgeDollarSign className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-3xl font-semibold">
                                         ${stats.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
-                                    <p className="text-sm text-muted-foreground mt-1">Processed by this manager</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{t("dashboard.processedByThisManager")}</p>
                                 </CardContent>
                             </Card>
 
                             <Card className="col-span-2 md:col-span-1">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium text-muted-foreground">Financial Pipeline</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.financialPipeline")}</CardTitle>
                                     <Wallet className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-semibold">
                                         ${stats.financialPipeline.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </div>
-                                    <p className="text-sm text-muted-foreground mt-1">Unpaid orders</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{t("Unpaid Orders")}</p>
                                 </CardContent>
                             </Card>
 
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium text-muted-foreground">In Progress Volume</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.inProgressVolume")}</CardTitle>
                                     <Briefcase className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-semibold">{stats.inProgress}</div>
-                                    <p className="text-sm text-muted-foreground mt-1">Orders currently in progress</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{t("dashboard.ordersCurrentlyInProgress")}</p>
                                 </CardContent>
                             </Card>
 
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming Deadlines</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.upcomingDeadlines")}</CardTitle>
                                     <Clock className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-semibold">{stats.deadlineSoon}</div>
-                                    <p className="text-sm text-muted-foreground mt-1">Deadlines approaching soon</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{t("dashboard.deadlinesApproachingSoon")}</p>
                                 </CardContent>
                             </Card>
 
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium text-muted-foreground">Overdue Orders</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-muted-foreground">{t("Overdue Orders")}</CardTitle>
                                     <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-semibold">{stats.overdue}</div>
-                                    <p className="text-sm text-muted-foreground mt-1">Orders past deadline</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{t("dashboard.ordersPastDeadline")}</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -308,7 +317,7 @@ function DashboardPage() {
                 <>
                     <DashboardHeader />
                     <main className="flex-1 p-6 flex items-center justify-center">
-                        <p className="text-muted-foreground animate-pulse">Завантаження аналітики...</p>
+                        <p className="text-muted-foreground animate-pulse">{t("dashboard.loadingAnalytics")}</p>
                     </main>
                 </>
             )
@@ -317,7 +326,7 @@ function DashboardPage() {
         const { pnl, salesChart, managers, translators, editors, languages } = dashboardData
 
         const salesSeries = [
-            { name: 'Дохід', data: salesChart?.map((d: SalesChartData) => d.daily_revenue) || [] }
+            { name: t("salary.revenue"), data: salesChart?.map((d: SalesChartData) => d.daily_revenue) || [] }
         ]
         const salesOptions: ApexCharts.ApexOptions = {
             chart: {
@@ -347,9 +356,13 @@ function DashboardPage() {
                     style: { colors: "#8c9097", fontSize: '11px', fontWeight: 600 },
                     rotate: -45,
                     formatter: function(val) {
-                        if (!val) return '';
+                        if (!val) {
+                            return '';
+                        }
                         const date = new Date(String(val));
-                        if (!isNaN(date.getTime())) return date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' });
+                        if (!isNaN(date.getTime())) {
+                            return date.toLocaleDateString(dateLocale, { day: '2-digit', month: '2-digit' });
+                        }
                         return String(val);
                     }
                 },
@@ -367,7 +380,7 @@ function DashboardPage() {
             }
         }
 
-        const managerSeries = [{ name: 'Принесений дохід', data: managers?.map((m: ManagerData) => m.total_revenue) || [] }]
+        const managerSeries = [{ name: t("dashboard.revenueBrought"), data: managers?.map((m: ManagerData) => m.total_revenue) || [] }]
         const managerOptions: ApexCharts.ApexOptions = {
             chart: { type: 'bar', fontFamily: 'ui-sans-serif, system-ui, sans-serif', toolbar: { show: false } },
             colors: ['#10b981'],
@@ -404,8 +417,8 @@ function DashboardPage() {
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                                     <div>
-                                        <h2 className="text-lg font-semibold">Фінансові показники (P&L)</h2>
-                                        <p className="text-sm text-muted-foreground mt-1">Огляд ключових показників P&L.</p>
+                                        <h2 className="text-lg font-semibold">{t("dashboard.financePnlTitle")}</h2>
+                                        <p className="text-sm text-muted-foreground mt-1">{t("dashboard.financePnlDescription")}</p>
                                     </div>
                                 </div>
 
@@ -413,7 +426,7 @@ function DashboardPage() {
                                 <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                                     <Card className="col-span-2 md:col-span-1">
                                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                                            <CardTitle className="text-sm font-medium text-muted-foreground">Загальний дохід</CardTitle>
+                                            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.totalRevenue")}</CardTitle>
                                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                                         </CardHeader>
                                         <CardContent>
@@ -423,7 +436,7 @@ function DashboardPage() {
 
                                     <Card>
                                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                                            <CardTitle className="text-sm font-medium text-muted-foreground">Собівартість (COGS)</CardTitle>
+                                            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.cogs")}</CardTitle>
                                             <TrendingDown className="h-4 w-4 text-muted-foreground" />
                                         </CardHeader>
                                         <CardContent>
@@ -433,7 +446,7 @@ function DashboardPage() {
 
                                     <Card>
                                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                                            <CardTitle className="text-sm font-medium text-muted-foreground">Чистий прибуток</CardTitle>
+                                            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.netProfit")}</CardTitle>
                                             <TrendingUp className="h-4 w-4 text-primary" />
                                         </CardHeader>
                                         <CardContent>
@@ -443,7 +456,7 @@ function DashboardPage() {
 
                                     <Card>
                                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                                            <CardTitle className="text-sm font-medium text-muted-foreground">Маржинальність</CardTitle>
+                                            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.grossMargin")}</CardTitle>
                                             <Percent className="h-4 w-4 text-muted-foreground" />
                                         </CardHeader>
                                         <CardContent>
@@ -453,7 +466,7 @@ function DashboardPage() {
 
                                     <Card>
                                         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                                            <CardTitle className="text-sm font-medium text-muted-foreground">Середній чек</CardTitle>
+                                            <CardTitle className="text-sm font-medium text-muted-foreground">{t("dashboard.avgOrderValue")}</CardTitle>
                                             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                                         </CardHeader>
                                         <CardContent>
@@ -466,7 +479,7 @@ function DashboardPage() {
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-base flex items-center gap-2">
-                                            <BarChart3 className="h-4 w-4" /> Динаміка продажів
+                                            <BarChart3 className="h-4 w-4" /> {t("dashboard.salesDynamics")}
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent>
@@ -488,8 +501,8 @@ function DashboardPage() {
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                                     <div>
-                                        <h2 className="text-lg font-semibold">Ефективність команди</h2>
-                                        <p className="text-sm text-muted-foreground mt-1">Показники менеджерів, перекладачів та редакторів.</p>
+                                        <h2 className="text-lg font-semibold">{t("dashboard.teamEfficiency")}</h2>
+                                        <p className="text-sm text-muted-foreground mt-1">{t("dashboard.teamEfficiencyDescription")}</p>
                                     </div>
                                 </div>
 
@@ -497,7 +510,7 @@ function DashboardPage() {
                                     {/* Графік менеджерів */}
                                     <Card className="lg:col-span-2">
                                         <CardHeader>
-                                            <CardTitle className="text-base">Дохід по менеджерах</CardTitle>
+                                            <CardTitle className="text-base">{t("dashboard.revenueByManagers")}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="h-[200px] sm:h-[250px] w-full relative">
@@ -514,16 +527,16 @@ function DashboardPage() {
                                     {/* Таблиця менеджерів */}
                                     <Card className="lg:col-span-2">
                                         <CardHeader className="border-b py-4">
-                                            <CardTitle className="text-base font-semibold">Менеджери</CardTitle>
+                                            <CardTitle className="text-base font-semibold">{t("common.managers")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-0">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead className="text-xs">Ім&apos;я</TableHead>
-                                                        <TableHead className="text-right text-xs">Дохід</TableHead>
-                                                        <TableHead className="text-right text-xs">Замовл.</TableHead>
-                                                        <TableHead className="text-right text-xs hidden sm:table-cell">Сер. чек</TableHead>
+                                                        <TableHead className="text-xs">{t("common.name")}</TableHead>
+                                                        <TableHead className="text-right text-xs">{t("salary.revenue")}</TableHead>
+                                                        <TableHead className="text-right text-xs">{t("dashboard.ordersShort")}</TableHead>
+                                                        <TableHead className="text-right text-xs hidden sm:table-cell">{t("dashboard.avgCheck")}</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -543,16 +556,16 @@ function DashboardPage() {
                                     {/* Таблиця перекладачів */}
                                     <Card>
                                         <CardHeader className="border-b py-4">
-                                            <CardTitle className="text-base font-semibold">Перекладачі</CardTitle>
+                                            <CardTitle className="text-base font-semibold">{t("common.translators")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-0">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead className="text-xs">Ім&apos;я</TableHead>
-                                                        <TableHead className="text-center text-xs">Рейтинг</TableHead>
-                                                        <TableHead className="text-right text-xs">Замовл.</TableHead>
-                                                        <TableHead className="text-right text-xs hidden sm:table-cell">Доопрац.</TableHead>
+                                                        <TableHead className="text-xs">{t("common.name")}</TableHead>
+                                                        <TableHead className="text-center text-xs">{t("dashboard.rating")}</TableHead>
+                                                        <TableHead className="text-right text-xs">{t("dashboard.ordersShort")}</TableHead>
+                                                        <TableHead className="text-right text-xs hidden sm:table-cell">{t("dashboard.revisionsShort")}</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -576,14 +589,14 @@ function DashboardPage() {
                                     {/* Таблиця редакторів */}
                                     <Card>
                                         <CardHeader className="border-b py-4">
-                                            <CardTitle className="text-base font-semibold">Редактори</CardTitle>
+                                            <CardTitle className="text-base font-semibold">{t("common.editors")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-0">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead className="text-xs">Ім&apos;я</TableHead>
-                                                        <TableHead className="text-right text-xs">Перевірено</TableHead>
+                                                        <TableHead className="text-xs">{t("common.name")}</TableHead>
+                                                        <TableHead className="text-right text-xs">{t("dashboard.checked")}</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -606,24 +619,24 @@ function DashboardPage() {
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
                                     <div>
-                                        <h2 className="text-lg font-semibold">Аналітика клієнтів та мов</h2>
-                                        <p className="text-sm text-muted-foreground mt-1">Популярні мовні пари та прибуток по них.</p>
+                                        <h2 className="text-lg font-semibold">{t("dashboard.clientsLanguagesAnalytics")}</h2>
+                                        <p className="text-sm text-muted-foreground mt-1">{t("dashboard.clientsLanguagesDescription")}</p>
                                     </div>
                                 </div>
 
                                 {/* Таблиця мовних пар */}
                                 <Card>
                                     <CardHeader className="border-b py-4">
-                                        <CardTitle className="text-base font-semibold">Мовні пари</CardTitle>
+                                        <CardTitle className="text-base font-semibold">{t("common.languagePair")}</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-0">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead className="text-xs">Мовна пара</TableHead>
-                                                    <TableHead className="text-right text-xs">Замовл.</TableHead>
-                                                    <TableHead className="text-right text-xs">Дохід</TableHead>
-                                                    <TableHead className="text-right text-xs hidden sm:table-cell">Сер. чек</TableHead>
+                                                    <TableHead className="text-xs">{t("common.languagePair")}</TableHead>
+                                                    <TableHead className="text-right text-xs">{t("dashboard.ordersShort")}</TableHead>
+                                                    <TableHead className="text-right text-xs">{t("salary.revenue")}</TableHead>
+                                                    <TableHead className="text-right text-xs hidden sm:table-cell">{t("dashboard.avgCheck")}</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -652,15 +665,21 @@ function DashboardPage() {
         <>
             <DashboardHeader />
             <main className="flex-1 p-6 flex items-center justify-center">
-                <p className="text-muted-foreground">Оновіть сторінку або перевірте права доступу.</p>
+                <p className="text-muted-foreground">{t("dashboard.refreshOrCheckAccess")}</p>
             </main>
         </>
     )
 }
 
+function DashboardFallback() {
+    const { t } = useI18n()
+
+    return <div className="p-6 text-muted-foreground">{t("common.loading")}</div>
+}
+
 export default function Page() {
     return (
-        <Suspense fallback={<div className="p-6 text-muted-foreground">Завантаження...</div>}>
+        <Suspense fallback={<DashboardFallback />}>
             <DashboardPage />
         </Suspense>
     )

@@ -10,6 +10,7 @@ import {
 } from "../ui/dialog"
 import { Button } from "../ui/button"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface ConfirmModalProps {
     open: boolean
@@ -35,12 +36,16 @@ export function ConfirmModal({
                                  onOpenChange,
                                  title,
                                  description,
-                                 confirmLabel = "Підтвердити",
-                                 cancelLabel = "Скасувати",
+                                 confirmLabel,
+                                 cancelLabel,
                                  confirmVariant = "default",
                                  isLoading,
                                  onConfirm,
                              }: ConfirmModalProps) {
+    const { t } = useI18n()
+    const resolvedConfirmLabel = confirmLabel ?? t("common.confirm")
+    const resolvedCancelLabel = cancelLabel ?? t("common.cancel")
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="w-[calc(100vw-32px)] sm:max-w-md">
@@ -56,7 +61,7 @@ export function ConfirmModal({
                         disabled={isLoading}
                         className="w-full sm:w-auto"
                     >
-                        {cancelLabel}
+                        {resolvedCancelLabel}
                     </Button>
                     <Button
                         className={cn(variantStyles[confirmVariant], "w-full sm:w-auto")}
@@ -66,10 +71,10 @@ export function ConfirmModal({
                         {isLoading ? (
                             <>
                                 <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                                Завантаження...
+                                {t("common.loading")}
                             </>
                         ) : (
-                            confirmLabel
+                            resolvedConfirmLabel
                         )}
                     </Button>
                 </DialogFooter>

@@ -12,17 +12,24 @@ import {
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu"
-import type { User } from "../types"
+import type { Role, User } from "../types"
 
 // Імпорт модалки
 import { RoleInfoModal } from "./RoleInfoModal"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL
 
 export const getImageUrl = (path: string | null | undefined) => {
-    if (!path) return undefined
-    if (path.startsWith("http")) return path
+    if (!path) {
+        return undefined
+    }
+    if (path.startsWith("http")) {
+        return path
+    }
     const cleanPath = path.startsWith("/") ? path.substring(1) : path
-    if (!cleanPath.startsWith("media/")) return `${BACKEND_URL}/media/${cleanPath}`
+    if (!cleanPath.startsWith("media/")) {
+        return `${BACKEND_URL}/media/${cleanPath}`
+    }
     return `${BACKEND_URL}/${cleanPath}`
 }
 
@@ -42,6 +49,7 @@ export function UserTable({
                           }: UserTableProps) {
 
     const [permUser, setPermUser] = useState<User | null>(null)
+    const { locale, t } = useI18n()
 
     const getRoleVariant = (slug: string) => {
         const variants: Record<string, "default" | "secondary" | "outline"> = {
@@ -51,7 +59,7 @@ export function UserTable({
     }
 
     const getStatusVariant = (isActive: boolean) => isActive ? "default" : "secondary"
-    const getStatusLabel  = (isActive: boolean) => isActive ? "Active" : "Inactive"
+    const getStatusLabel  = (isActive: boolean) => isActive ? t("common.active") : t("common.inactive")
 
     return (
         <>
@@ -60,10 +68,10 @@ export function UserTable({
                     <Table className="min-w-[580px]">
                         <TableHeader>
                             <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Joined</TableHead>
+                                <TableHead>{t("common.user")}</TableHead>
+                                <TableHead>{t("common.role")}</TableHead>
+                                <TableHead>{t("common.status")}</TableHead>
+                                <TableHead>{t("users.joined")}</TableHead>
                                 <TableHead className="w-[70px]" />
                             </TableRow>
                         </TableHeader>
@@ -105,7 +113,7 @@ export function UserTable({
                                     </TableCell>
 
                                     <TableCell className="text-muted-foreground">
-                                        {user.date_joined ? new Date(user.date_joined).toLocaleDateString() : "—"}
+                                        {user.date_joined ? new Date(user.date_joined).toLocaleDateString(locale === "uk" ? "uk-UA" : "en-US") : "—"}
                                     </TableCell>
 
                                     <TableCell>
@@ -119,24 +127,24 @@ export function UserTable({
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => setPermUser(user)}>
                                                     <ShieldCheck className="h-4 w-4 mr-2" />
-                                                    View permissions
+                                                    {t("users.viewPermissions")}
                                                 </DropdownMenuItem>
 
                                                 <DropdownMenuItem onClick={() => onResetPassword(user.id)}>
                                                     <KeyRound className="h-4 w-4 mr-2" />
-                                                    Reset password
+                                                    {t("users.resetPassword")}
                                                 </DropdownMenuItem>
 
                                                 <DropdownMenuItem onClick={() => onEdit(user)}>
                                                     <Pencil className="h-4 w-4 mr-2" />
-                                                    Edit
+                                                    {t("common.edit")}
                                                 </DropdownMenuItem>
 
                                                 <DropdownMenuItem onClick={() => onDeactivate(user)}>
                                                     {user.is_active ? (
-                                                        <><UserX className="h-4 w-4 mr-2" />Deactivate</>
+                                                        <><UserX className="h-4 w-4 mr-2" />{t("common.deactivate")}</>
                                                     ) : (
-                                                        <><UserCheck className="h-4 w-4 mr-2" />Activate</>
+                                                        <><UserCheck className="h-4 w-4 mr-2" />{t("common.activate")}</>
                                                     )}
                                                 </DropdownMenuItem>
 
@@ -145,7 +153,7 @@ export function UserTable({
                                                     className="text-destructive"
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-2" />
-                                                    Delete
+                                                    {t("common.delete")}
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -158,7 +166,7 @@ export function UserTable({
 
                 <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20 flex-wrap px-2">
                     <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)}>
-                        Previous
+                        {t("common.back")}
                     </Button>
                     <div className="flex items-center gap-1">
                         {Array.from({ length: totalPages }).map((_, i) => (
@@ -173,7 +181,7 @@ export function UserTable({
                         ))}
                     </div>
                     <Button variant="outline" size="sm" disabled={page === totalPages || totalPages === 0} onClick={() => onPageChange(page + 1)}>
-                        Next
+                        {t("common.next")}
                     </Button>
                 </div>
             </div>
@@ -182,7 +190,7 @@ export function UserTable({
             <RoleInfoModal
                 open={!!permUser}
                 onOpenChange={(open) => !open && setPermUser(null)}
-                roleData={permUser?.role as any}
+                roleData={permUser ? (permUser.role as Role) : null}
             />
         </>
     )

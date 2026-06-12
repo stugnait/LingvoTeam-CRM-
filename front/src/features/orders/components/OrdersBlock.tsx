@@ -51,6 +51,7 @@ import type {
     Client
 } from "@/src/features/orders/types"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 // 👉 ЗАБРАНО 12, 13, 14 із загального масиву статусів
 const STATUS_OPTIONS = [
@@ -156,6 +157,9 @@ export function OrdersTable({
                                 updateClientStatusLoading,
                                 onTaskOpen,
                             }: OrdersTableProps) {
+    const { locale, t } = useI18n()
+    const dateLocale = locale === "uk" ? "uk-UA" : "en-US"
+
     const [expandedId, setExpandedId] = useState<number | null>(null)
     const [details, setDetails] = useState<Details | null>(null)
     const [loadingId, setLoadingId] = useState<number | null>(null)
@@ -209,7 +213,7 @@ export function OrdersTable({
     const getTranslatorName = (translatorId: number | null) => {
         if (!translatorId) { return "—" }
         const translator = translatorsCache[translatorId]
-        return translator?.full_name || `Translator #${translatorId}`
+        return translator?.full_name || `${t("common.translator")} #${translatorId}`
     }
 
     const formatToYMD = (date: Date) => {
@@ -235,7 +239,7 @@ export function OrdersTable({
                     <div className="relative w-full lg:w-[250px] group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                            placeholder="Пошук (ID, Коментар)..."
+                            placeholder={t("orders.searchPlaceholder")}
                             className="pl-9 bg-background focus-visible:ring-primary h-10 w-full"
                             value={localSearch}
                             onChange={handleSearchInput}
@@ -248,20 +252,20 @@ export function OrdersTable({
                         onValueChange={(val) => onStatusChange && onStatusChange(val === "all" ? "" : val)}
                     >
                         <SelectTrigger className="w-full lg:w-[170px] bg-background h-10">
-                            <SelectValue placeholder="All Statuses" />
+                            <SelectValue placeholder={t("common.allStatuses")} />
                         </SelectTrigger>
                         <SelectContent className="z-[101]">
                             <SelectItem value="all">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-border" />
-                                    <span>All Statuses</span>
+                                    <span>{t("common.allStatuses")}</span>
                                 </div>
                             </SelectItem>
                             {STATUS_OPTIONS.map((status) => (
                                 <SelectItem key={status.value} value={status.value}>
                                     <div className="flex items-center gap-2">
                                         <div className={cn("w-2 h-2 rounded-full", status.color)} />
-                                        <span>{status.label}</span>
+                                        <span>{t(status.label)}</span>
                                     </div>
                                 </SelectItem>
                             ))}
@@ -274,10 +278,10 @@ export function OrdersTable({
                         onValueChange={(val) => onManagerChange && onManagerChange(val === "all" ? "" : val)}
                     >
                         <SelectTrigger className="w-full lg:w-[180px] bg-background h-10">
-                            <SelectValue placeholder="All Managers" />
+                            <SelectValue placeholder={t("common.allManagers")} />
                         </SelectTrigger>
                         <SelectContent className="z-[101]">
-                            <SelectItem value="all">All Managers</SelectItem>
+                            <SelectItem value="all">{t("common.allManagers")}</SelectItem>
                             {managers.map(manager => (
                                 <SelectItem key={manager.id} value={String(manager.id)}>
                                     {manager.full_name || manager.email}
@@ -306,7 +310,7 @@ export function OrdersTable({
                                         <div className="flex items-center gap-2 truncate">
                                             <CalendarIcon className="h-4 w-4 opacity-50" />
                                             <span className={cn("truncate", dateFromFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
-                                                {dateFromFilter ? new Date(dateFromFilter).toLocaleDateString() : "Date From"}
+                                                {dateFromFilter ? new Date(dateFromFilter).toLocaleDateString(dateLocale) : t("orders.dateFrom")}
                                             </span>
                                         </div>
                                         <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
@@ -346,7 +350,7 @@ export function OrdersTable({
                                         <div className="flex items-center gap-2 truncate">
                                             <CalendarIcon className="h-4 w-4 opacity-50" />
                                             <span className={cn("truncate", dateToFilter ? "text-black dark:text-white" : "text-muted-foreground/70")}>
-                                                {dateToFilter ? new Date(dateToFilter).toLocaleDateString() : "Date To"}
+                                                {dateToFilter ? new Date(dateToFilter).toLocaleDateString(dateLocale) : t("orders.dateTo")}
                                             </span>
                                         </div>
                                         <ChevronDown className="h-4 w-4 shrink-0 opacity-50 transition-all duration-300 group-hover:opacity-70 group-hover:scale-110" />
@@ -376,13 +380,13 @@ export function OrdersTable({
                     <TableHeader>
                         <TableRow className="hover:bg-transparent">
                             <TableHead className="font-semibold text-foreground h-14 pl-6">ID</TableHead>
-                            <TableHead className="font-semibold text-foreground h-14">Managers</TableHead>
-                            <TableHead className="font-semibold text-foreground h-14">Languages</TableHead>
-                            <TableHead className="font-semibold text-foreground h-14">Status</TableHead>
-                            <TableHead className="font-semibold text-foreground h-14">Payment</TableHead>
-                            <TableHead className="font-semibold text-foreground h-14">Deadline</TableHead>
-                            <TableHead className="font-semibold text-foreground h-14">Priority</TableHead>
-                            <TableHead className="font-semibold text-foreground h-14 pr-6 text-right">Actions</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14">{t("common.managers")}</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14">{t("common.languages")}</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14">{t("common.status")}</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14">{t("common.payment")}</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14">{t("common.deadline")}</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14">{t("common.priority")}</TableHead>
+                            <TableHead className="font-semibold text-foreground h-14 pr-6 text-right">{t("common.actions")}</TableHead>
                         </TableRow>
                     </TableHeader>
 
@@ -390,7 +394,7 @@ export function OrdersTable({
                         {orders.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                                    No orders found.
+                                    {t("orders.noOrders")}
                                 </TableCell>
                             </TableRow>
                         ) : orders.map((order: any) => (
@@ -415,10 +419,10 @@ export function OrdersTable({
                                                 </div>
                                                 <div className="leading-tight">
                                                     <p className="text-xs font-semibold text-foreground truncate max-w-[120px]" title={order.manager_accept_name}>
-                                                        {order.manager_accept_name || "Unassigned"}
+                                                        {order.manager_accept_name || t("common.notAssigned")}
                                                     </p>
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                                        Accept
+                                                        {t("common.accept")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -429,10 +433,10 @@ export function OrdersTable({
                                                 </div>
                                                 <div className="leading-tight">
                                                     <p className="text-xs font-semibold text-foreground truncate max-w-[120px]" title={order.manager_delivery_name}>
-                                                        {order.manager_delivery_name || "Unassigned"}
+                                                        {order.manager_delivery_name || t("common.notAssigned")}
                                                     </p>
                                                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                                                        Delivery
+                                                        {t("common.delivery")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -455,7 +459,7 @@ export function OrdersTable({
                                         {updateLoading === order.id ? (
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                                                <span>Saving...</span>
+                                                <span>{t("common.saving")}</span>
                                             </div>
                                         ) : (
                                             <Select
@@ -470,7 +474,7 @@ export function OrdersTable({
                                                         <SelectItem key={status.value} value={status.value}>
                                                             <div className="flex items-center gap-2">
                                                                 <div className={cn("w-2 h-2 rounded-full", status.color)} />
-                                                                <span>{status.label}</span>
+                                                                <span>{t(status.label)}</span>
                                                             </div>
                                                         </SelectItem>
                                                     ))}
@@ -483,7 +487,7 @@ export function OrdersTable({
                                         {updateClientStatusLoading === order.id ? (
                                             <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground">
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                                                <span>Saving...</span>
+                                                <span>{t("common.saving")}</span>
                                             </div>
                                         ) : (
                                             <Select
@@ -491,14 +495,14 @@ export function OrdersTable({
                                                 onValueChange={(val) => handleInlinePaymentChange(order.id, val)}
                                             >
                                                 <SelectTrigger className="h-8 w-[110px] text-xs font-semibold bg-background shadow-sm border-border">
-                                                    <SelectValue placeholder="Payment" />
+                                                    <SelectValue placeholder={t("common.payment")} />
                                                 </SelectTrigger>
                                                 <SelectContent className="z-[102]">
                                                     {PAYMENT_STATUS_OPTIONS.map((status) => (
                                                         <SelectItem key={status.value} value={status.value}>
                                                             <div className="flex items-center gap-2">
                                                                 <div className={cn("w-2 h-2 rounded-full", status.color)} />
-                                                                <span>{status.label}</span>
+                                                                <span>{t(status.label)}</span>
                                                             </div>
                                                         </SelectItem>
                                                     ))}
@@ -510,7 +514,7 @@ export function OrdersTable({
                                     <TableCell className="align-middle py-3">
                                         <div className="flex flex-col">
                                             <span className={cn("text-sm font-medium", isOverdue(order.deadline) ? "text-red-600" : "text-foreground")}>
-                                                {new Date(order.deadline).toLocaleDateString()}
+                                                {new Date(order.deadline).toLocaleDateString(dateLocale)}
                                             </span>
                                             <span className={cn("text-xs", isOverdue(order.deadline) ? "text-red-500" : "text-muted-foreground")}>
                                                 {new Date(order.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -526,9 +530,9 @@ export function OrdersTable({
                                         <div className="flex items-center justify-end gap-2">
                                             {order.status_id === 9 && (
                                                 <>
-                                                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); downloadOrderSourceFiles(order.id); }} className="h-8">Original</Button>
-                                                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); downloadOrderTargetFiles(order.id); }} className="h-8">Translation</Button>
-                                                    <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); confirmOrder(order.id); }} className="h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary">Send</Button>
+                                                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); downloadOrderSourceFiles(order.id); }} className="h-8">{t("common.original")}</Button>
+                                                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); downloadOrderTargetFiles(order.id); }} className="h-8">{t("common.translation")}</Button>
+                                                    <Button size="sm" variant="default" onClick={(e) => { e.stopPropagation(); confirmOrder(order.id); }} className="h-8 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary">{t("common.send")}</Button>
                                                 </>
                                             )}
 
@@ -543,10 +547,10 @@ export function OrdersTable({
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="z-[101]">
                                                         <DropdownMenuItem onClick={() => onEdit(order as any)}>
-                                                            <Pencil className="h-4 w-4 mr-2" /> Edit
+                                                            <Pencil className="h-4 w-4 mr-2" /> {t("common.edit")}
                                                         </DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => onDelete(order.id)} className="text-destructive">
-                                                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                                            <Trash2 className="h-4 w-4 mr-2" /> {t("common.delete")}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -579,7 +583,7 @@ export function OrdersTable({
                                                     {loadingId === order.id ? (
                                                         <div className="flex items-center justify-center gap-3 py-8 animate-in fade-in">
                                                             <div className="loading-spinner" />
-                                                            <p className="text-sm text-muted-foreground">Loading details...</p>
+                                                            <p className="text-sm text-muted-foreground">{t("common.loadingDetails")}</p>
                                                         </div>
                                                     ) : details && (
                                                         <div className="space-y-6 w-full">
@@ -589,7 +593,7 @@ export function OrdersTable({
                                                                     const client = details.client || clients?.find(c => c.id === clientId)
                                                                     return (
                                                                         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
+                                                                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("common.clientInformation")}</span>
                                                                             <span className="text-lg font-bold text-foreground">
                                                 {client ? client.full_name : `Client #${clientId}`}
                                             </span>
@@ -607,7 +611,7 @@ export function OrdersTable({
                                                                     const translator = details.translator || translatorsCache[translatorId]
                                                                     return (
                                                                         <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Translator Information</span>
+                                                                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("common.translatorInformation")}</span>
                                                                             <span className="text-lg font-bold text-foreground">
                                                 {translator ? translator.full_name : getTranslatorName(translatorId)}
                                             </span>
@@ -623,19 +627,19 @@ export function OrdersTable({
                                                             </div>
                                                             <div className="grid grid-cols-4 gap-4 w-full animate-stagger">
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
+                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("common.pages")}</span>
                                                                     <span className="text-xl font-bold text-foreground">{details.page_count}</span>
                                                                 </div>
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Images</span>
+                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("common.images")}</span>
                                                                     <span className="text-xl font-bold text-foreground">{details.images_count}</span>
                                                                 </div>
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
+                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("common.withSpaces")}</span>
                                                                     <span className="text-xl font-bold text-foreground">{details.symbols_with_spaces_count}</span>
                                                                 </div>
                                                                 <div className="flex flex-col gap-1.5 p-4 rounded-lg bg-background border border-border shadow-sm hover-lift transition-smooth">
-                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chars (no spaces)</span>
+                                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("common.withoutSpaces")}</span>
                                                                     <span className="text-xl font-bold text-foreground">{details.symbols_count}</span>
                                                                 </div>
                                                             </div>
@@ -656,7 +660,7 @@ export function OrdersTable({
             <div className="md:hidden divide-y divide-border">
                 {orders.length === 0 ? (
                     <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">
-                        No orders found.
+                        {t("orders.noOrders")}
                     </div>
                 ) : orders.map((order: any) => (
                     <Fragment key={order.id}>
@@ -685,7 +689,7 @@ export function OrdersTable({
                                                     <SelectItem key={status.value} value={status.value}>
                                                         <div className="flex items-center gap-1.5">
                                                             <div className={cn("w-1.5 h-1.5 rounded-full", status.color)} />
-                                                            <span>{status.label}</span>
+                                                            <span>{t(status.label)}</span>
                                                         </div>
                                                     </SelectItem>
                                                 ))}
@@ -702,14 +706,14 @@ export function OrdersTable({
                                             onValueChange={(val) => handleInlinePaymentChange(order.id, val)}
                                         >
                                             <SelectTrigger className="h-7 w-[100px] text-[11px] font-semibold bg-background border-border py-0 px-2">
-                                                <SelectValue placeholder="Payment" />
+                                                <SelectValue placeholder={t("common.payment")} />
                                             </SelectTrigger>
                                             <SelectContent className="z-[102]">
                                                 {PAYMENT_STATUS_OPTIONS.map((status) => (
                                                     <SelectItem key={status.value} value={status.value}>
                                                         <div className="flex items-center gap-1.5">
                                                             <div className={cn("w-1.5 h-1.5 rounded-full", status.color)} />
-                                                            <span>{status.label}</span>
+                                                            <span>{t(status.label)}</span>
                                                         </div>
                                                     </SelectItem>
                                                 ))}
@@ -729,10 +733,10 @@ export function OrdersTable({
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="z-[101]">
                                                 <DropdownMenuItem onClick={() => onEdit(order as any)}>
-                                                    <Pencil className="h-4 w-4 mr-2" /> Edit
+                                                    <Pencil className="h-4 w-4 mr-2" /> {t("common.edit")}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => onDelete(order.id)} className="text-destructive">
-                                                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                                    <Trash2 className="h-4 w-4 mr-2" /> {t("common.delete")}
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -771,23 +775,23 @@ export function OrdersTable({
                                             {order.manager_accept_name?.[0]?.toUpperCase() || "?"}
                                         </div>
                                         <span className="text-xs text-foreground truncate max-w-[130px]">
-                                            {order.manager_accept_name || "Unassigned"}
+                                            {order.manager_accept_name || t("common.notAssigned")}
                                         </span>
-                                        <span className="text-[10px] text-muted-foreground">Accept</span>
+                                        <span className="text-[10px] text-muted-foreground">{t("common.accept")}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <div className="w-5 h-5 shrink-0 rounded-full bg-emerald-500/10 flex items-center justify-center text-[10px] font-bold text-emerald-600 border border-emerald-500/20">
                                             {order.manager_delivery_name?.[0]?.toUpperCase() || "?"}
                                         </div>
                                         <span className="text-xs text-foreground truncate max-w-[130px]">
-                                            {order.manager_delivery_name || "Unassigned"}
+                                            {order.manager_delivery_name || t("common.notAssigned")}
                                         </span>
-                                        <span className="text-[10px] text-muted-foreground">Delivery</span>
+                                        <span className="text-[10px] text-muted-foreground">{t("common.delivery")}</span>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
                                     <p className={cn("text-sm font-medium", isOverdue(order.deadline) ? "text-red-600" : "text-foreground")}>
-                                        {new Date(order.deadline).toLocaleDateString()}
+                                        {new Date(order.deadline).toLocaleDateString(dateLocale)}
                                     </p>
                                     <p className={cn("text-xs", isOverdue(order.deadline) ? "text-red-500" : "text-muted-foreground")}>
                                         {new Date(order.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -799,15 +803,15 @@ export function OrdersTable({
                                 <div className="flex gap-2 pt-1">
                                     <Button size="sm" variant="outline" className="h-8 flex-1 text-xs"
                                             onClick={(e) => { e.stopPropagation(); downloadOrderSourceFiles(order.id); }}>
-                                        Original
+                                        {t("common.original")}
                                     </Button>
                                     <Button size="sm" variant="outline" className="h-8 flex-1 text-xs"
                                             onClick={(e) => { e.stopPropagation(); downloadOrderTargetFiles(order.id); }}>
-                                        Translation
+                                        {t("common.translation")}
                                     </Button>
                                     <Button size="sm" variant="default" className="h-8 flex-1 text-xs bg-gradient-to-r from-primary to-primary/80"
                                             onClick={(e) => { e.stopPropagation(); confirmOrder(order.id); }}>
-                                        Send
+                                        {t("common.send")}
                                     </Button>
                                 </div>
                             )}
@@ -817,7 +821,7 @@ export function OrdersTable({
                                     {loadingId === order.id ? (
                                         <div className="flex items-center justify-center gap-2 py-4">
                                             <div className="loading-spinner" />
-                                            <p className="text-sm text-muted-foreground">Loading details...</p>
+                                            <p className="text-sm text-muted-foreground">{t("common.loadingDetails")}</p>
                                         </div>
                                     ) : details && (
                                         <>
@@ -827,7 +831,7 @@ export function OrdersTable({
                                                     const client = details.client || clients?.find(c => c.id === clientId)
                                                     return (
                                                         <div className="flex flex-col gap-1 p-3 rounded-lg bg-background border border-border shadow-sm">
-                                                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Client Information</span>
+                                                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("common.clientInformation")}</span>
                                                             <span className="text-sm font-bold text-foreground">{client ? client.full_name : `Client #${clientId}`}</span>
                                                             {client?.email && <span className="text-xs text-muted-foreground">{client.email}</span>}
                                                             {(client as any)?.phone_number && <span className="text-xs text-muted-foreground">{(client as any).phone_number}</span>}
@@ -839,7 +843,7 @@ export function OrdersTable({
                                                     const translator = details.translator || translatorsCache[translatorId]
                                                     return (
                                                         <div className="flex flex-col gap-1 p-3 rounded-lg bg-background border border-border shadow-sm">
-                                                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Translator Information</span>
+                                                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("common.translatorInformation")}</span>
                                                             <span className="text-sm font-bold text-foreground">{translator ? translator.full_name : getTranslatorName(translatorId)}</span>
                                                             {translator?.email && <span className="text-xs text-muted-foreground">{translator.email}</span>}
                                                             {(translator as any)?.phone && <span className="text-xs text-muted-foreground">{(translator as any).phone}</span>}
@@ -849,19 +853,19 @@ export function OrdersTable({
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-background border border-border shadow-sm">
-                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Pages</span>
+                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("common.pages")}</span>
                                                     <span className="text-lg font-bold text-foreground">{details.page_count}</span>
                                                 </div>
                                                 <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-background border border-border shadow-sm">
-                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Images</span>
+                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("common.images")}</span>
                                                     <span className="text-lg font-bold text-foreground">{details.images_count}</span>
                                                 </div>
                                                 <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-background border border-border shadow-sm">
-                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Chars (with spaces)</span>
+                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("common.withSpaces")}</span>
                                                     <span className="text-lg font-bold text-foreground">{details.symbols_with_spaces_count}</span>
                                                 </div>
                                                 <div className="flex flex-col gap-0.5 p-3 rounded-lg bg-background border border-border shadow-sm">
-                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Chars (no spaces)</span>
+                                                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{t("common.withoutSpaces")}</span>
                                                     <span className="text-lg font-bold text-foreground">{details.symbols_count}</span>
                                                 </div>
                                             </div>
@@ -876,7 +880,7 @@ export function OrdersTable({
 
             <div className="flex items-center justify-center gap-2 py-4 border-t bg-muted/20">
                 <Button variant="outline" size="sm" disabled={page === 1} onClick={() => onPageChange(page - 1)}>
-                    Previous
+                    {t("common.back")}
                 </Button>
                 <div className="flex items-center gap-1">
                     {Array.from({ length: totalPages }).map((_, i) => {
@@ -889,7 +893,7 @@ export function OrdersTable({
                     })}
                 </div>
                 <Button variant="outline" size="sm" disabled={page === totalPages || totalPages === 0} onClick={() => onPageChange(page + 1)}>
-                    Next
+                    {t("common.next")}
                 </Button>
             </div>
         </div>

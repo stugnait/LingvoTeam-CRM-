@@ -5,6 +5,7 @@ import { useClients } from "@/src/features/clients/hooks/useClients"
 import { PasswordForm } from "@/src/features/translator_order/components/PasswordForm"
 import { MainClient } from "@/src/features/clients/components/MainClient"
 import { ExpiredLink } from "@/src/features/translator_order/components/ExpiredLink"
+import { LoadingFallback } from "@/src/shared/i18n/LoadingFallback"
 
 export default function ClientExternalOrderPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params)
@@ -30,7 +31,7 @@ export default function ClientExternalOrderPage({ params }: { params: Promise<{ 
     }, [slug, init])
 
     if (step === "loading") {
-        return <div className="p-10 text-center text-muted-foreground animate-pulse">Завантаження...</div>
+        return <LoadingFallback className="p-10 text-center text-muted-foreground animate-pulse" />
     }
 
     if (step === "expired") {

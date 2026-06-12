@@ -18,8 +18,11 @@ import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 import { Input } from "@/src/components/ui/input"
 
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export default function ClientCategoriesPage() {
+    const { t } = useI18n()
+
     const {
         categories,
 
@@ -48,25 +51,25 @@ export default function ClientCategoriesPage() {
                     <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                             <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-                                Client Categories
+                                {t("clients.categoriesTitle")}
                             </h2>
                             <p className="text-muted-foreground">
-                                Manage client categories and discounts
+                                {t("clients.categoriesDescription")}
                             </p>
                         </div>
 
                         <Button onClick={openAddCategory} className="shrink-0">
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Category
+                            {t("clients.addCategory")}
                         </Button>
                     </div>
 
                     {/* Table */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Categories</CardTitle>
+                            <CardTitle>{t("clients.categories")}</CardTitle>
                             <CardDescription>
-                                List of all client categories
+                                {t("clients.categoriesListDescription")}
                             </CardDescription>
                         </CardHeader>
 
@@ -87,17 +90,17 @@ export default function ClientCategoriesPage() {
                 onOpenChange={(open) => !open && closeModals()}
                 title={
                     selectedCategory
-                        ? "Edit Category"
-                        : "Add Category"
+                        ? t("clients.editCategory")
+                        : t("clients.addCategory")
                 }
                 submitLabel={
-                    selectedCategory ? "Update" : "Create"
+                    selectedCategory ? t("common.save") : t("common.create")
                 }
                 onSubmit={submitCategory}
             >
                 <div className="space-y-4">
                     <Input
-                        placeholder="Category name"
+                        placeholder={t("clients.categoryName")}
                         value={form.name}
                         onChange={(e) =>
                             setForm((prev) => ({
@@ -110,7 +113,7 @@ export default function ClientCategoriesPage() {
                     <Input
                         type="number"
                         min="0"
-                        placeholder="Discount (%)"
+                        placeholder={t("clients.discountPercent")}
                         className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         onKeyDown={(e) => {
                             if (["-", "e", "E", "+"].includes(e.key)) {
@@ -138,9 +141,9 @@ export default function ClientCategoriesPage() {
             <ConfirmModal
                 open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Delete category"
-                description={`Are you sure you want to delete ${selectedCategory?.name}? This action cannot be undone.`}
-                confirmLabel="Delete"
+                title={t("clients.deleteCategory")}
+                description={t("clients.deleteCategoryDescription", { name: selectedCategory?.name ?? "" })}
+                confirmLabel={t("common.delete")}
                 onConfirm={confirmDelete}
             />
         </>

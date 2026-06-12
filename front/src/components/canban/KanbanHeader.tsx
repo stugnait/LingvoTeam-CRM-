@@ -14,6 +14,7 @@ import { Button } from "@/src/components/ui/button";
 import { useToast } from "@/src/hooks/use-toast";
 import { NotificationsDropdown } from "@/src/features/notifications/components/NotificationsDropdown";
 import { KanbanDeadlineFilter, type DeadlineFilter } from './KanbanDeadlineFilter';
+import { useI18n } from '@/src/shared/i18n/I18nProvider';
 
 interface KanbanHeaderProps {
     searchQuery: string;
@@ -35,16 +36,17 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                                                        error,
                                                        onRefresh,
                                                        deadlineFilter,
-                                                       onDeadlineFilterChange,
-                                                       allTasks,
+                                                   onDeadlineFilterChange,
+                                                   allTasks,
                                                    }) => {
     const router = useRouter();
     const { toast } = useToast();
+    const { t } = useI18n()
 
     const handleLogout = () => {
         toast({
-            title: "Signed out",
-            description: "You have been successfully signed out.",
+            title: t("common.signedOut"),
+            description: t("common.signedOutDescription"),
         });
         router.push("/login");
     };
@@ -61,10 +63,10 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                     {/* Ліва частина: Заголовок */}
                     <div className="min-w-0 flex-1">
                         <h1 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
-                            Translation Orders
+                            {t("kanban.title")}
                         </h1>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">
-                            Drag and drop to update status
+                            {t("kanban.dragDropHint")}
                         </p>
                     </div>
 
@@ -75,7 +77,7 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 type="search"
-                                placeholder="Search orders..."
+                                placeholder={t("kanban.searchOrders")}
                                 value={searchQuery}
                                 onChange={(e) => onSearchChange(e.target.value)}
                                 className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm w-48 focus:w-64 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -113,7 +115,7 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                             <span className="hidden lg:inline">
-                                {isLoading ? 'Refreshing...' : 'Refresh'}
+                                {isLoading ? t("kanban.refreshing") : t("kanban.refresh")}
                             </span>
                         </Button>
 
@@ -151,7 +153,7 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                             <DropdownMenuContent align="end" className="w-56 mt-2">
                                 <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
                                     <User className="h-4 w-4 mr-2" />
-                                    Profile
+                                    {t("common.profile")}
                                 </DropdownMenuItem>
 
                                 <DropdownMenuSeparator />
@@ -161,7 +163,7 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                                     className="text-destructive cursor-pointer"
                                 >
                                     <LogOut className="h-4 w-4 mr-2" />
-                                    Sign Out
+                                    {t("common.signOut")}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -174,7 +176,7 @@ const KanbanHeader: React.FC<KanbanHeaderProps> = ({
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="search"
-                            placeholder="Search orders..."
+                            placeholder={t("kanban.searchOrders")}
                             value={searchQuery}
                             onChange={(e) => onSearchChange(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

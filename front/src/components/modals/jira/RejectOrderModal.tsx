@@ -6,8 +6,9 @@ import {
 } from "../../ui/dialog"
 import { Button } from "../../ui/button"
 import { Textarea } from "../../ui/textarea"
-import { X, AlertCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { useState } from "react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface RejectOrderModalProps {
     open: boolean
@@ -24,6 +25,7 @@ export function RejectOrderModal({
                                      onCancel,
                                      isLoading = false
                                  }: RejectOrderModalProps) {
+    const { t } = useI18n()
     const [showCommentField, setShowCommentField] = useState(false)
     const [comment, setComment] = useState("")
 
@@ -60,7 +62,7 @@ export function RejectOrderModal({
                             <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                         </div>
                         <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-                            Відхилення замовлення
+                            {t("reject.title")}
                         </h2>
                     </div>
                 </div>
@@ -68,7 +70,7 @@ export function RejectOrderModal({
                 {/* Content */}
                 <div className="px-4 sm:px-6 py-4 sm:py-6">
                     <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-6">
-                        Чи дійсно ви хочете відхилити замовлення?
+                        {t("reject.confirmQuestion")}
                     </p>
 
                     {!showCommentField ? (
@@ -79,26 +81,26 @@ export function RejectOrderModal({
                                 disabled={isLoading}
                                 className="flex-1 sm:flex-none min-w-[80px] border-gray-300 hover:bg-gray-50"
                             >
-                                Ні
+                                {t("reject.no")}
                             </Button>
                             <Button
                                 onClick={handleYes}
                                 disabled={isLoading}
                                 className="flex-1 sm:flex-none min-w-[80px] bg-red-600 hover:bg-red-700 text-white"
                             >
-                                Так
+                                {t("reject.yes")}
                             </Button>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             <div>
                                 <label className="text-sm text-gray-600 mb-2 block">
-                                    Залишіть коментар за бажанням
+                                    {t("reject.optionalComment")}
                                 </label>
                                 <Textarea
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
-                                    placeholder="Введіть ваш коментар..."
+                                    placeholder={t("reject.commentPlaceholder")}
                                     className="min-h-[100px] resize-none text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                                     disabled={isLoading}
                                 />
@@ -111,14 +113,14 @@ export function RejectOrderModal({
                                     disabled={isLoading}
                                     className="w-full sm:w-auto sm:min-w-[100px] border-gray-300 hover:bg-gray-50"
                                 >
-                                    Скасувати
+                                    {t("common.cancel")}
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
                                     disabled={isLoading}
                                     className="w-full sm:w-auto sm:min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white"
                                 >
-                                    {isLoading ? "Відправка..." : "Відправити звіт"}
+                                    {isLoading ? t("reject.sending") : t("reject.sendReport")}
                                 </Button>
                             </div>
                         </div>

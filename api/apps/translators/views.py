@@ -189,6 +189,10 @@ class ExternalOrderAccessView(APIView):
         responses={200: OpenApiTypes.OBJECT, 410: OpenApiTypes.OBJECT},
         tags=["External Access"]
     )
+    @extend_schema(
+        summary="Перевірка валідності посилання та наявності кукі",
+        tags=["External Access"]
+    )
     def get(self, request, slug):
         link_obj = get_object_or_404(OrderLink, link=slug)
         now = timezone.now()
@@ -202,6 +206,7 @@ class ExternalOrderAccessView(APIView):
         order = link_obj.order
         provided_password = request.COOKIES.get(f'order_auth_{order.id}')
 
+        # 🔥 Перевіряємо куку! Якщо вона є і валідна — пускаємо без пароля
         if provided_password and secrets.compare_digest(link_obj.password, provided_password):
             self._set_assignee_active(link_obj)
 
@@ -219,17 +224,17 @@ class ExternalOrderAccessView(APIView):
                 }
             }, status=http_status.HTTP_200_OK)
 
-            max_age = int((link_obj.expire_at - now).total_seconds())
             response.set_cookie(
                 key=f'order_auth_{order.id}',
                 value=provided_password,
-                max_age=max_age,
+                max_age=7200,
                 httponly=True,
                 samesite='Lax',
                 secure=False
             )
             return response
 
+        # Якщо кукі немає — тільки тоді просимо пароль
         return Response({
             "message": "URL валідний. Очікується пароль.",
             "status": "awaiting_password"
@@ -271,6 +276,7 @@ class ExternalOrderAccessView(APIView):
 
                 response = Response({
                     "access": "granted",
+                    "status": "granted", # Додано для фронтенду, щоб він одразу пускав
                     "order_data": {
                         "id": order.id,
                         "language_pair": str(order.language_pair_id),
@@ -282,11 +288,11 @@ class ExternalOrderAccessView(APIView):
                     }
                 }, status=http_status.HTTP_200_OK)
 
-                max_age = int((link_obj.expire_at - now).total_seconds())
+                # Встановлюємо таймер кукі на 2 години (7200 секунд)
                 response.set_cookie(
                     key=f'order_auth_{order.id}',
                     value=input_password,
-                    max_age=max_age,
+                    max_age=7200,
                     httponly=True,
                     samesite='Lax',
                     secure=False

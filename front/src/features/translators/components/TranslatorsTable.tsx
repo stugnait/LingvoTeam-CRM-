@@ -22,11 +22,11 @@ import {
     MoreHorizontal,
     Pencil,
     Trash2,
-    UserX,
 } from "lucide-react"
 
 import type { Translator } from "../types"
 import {cn} from "@/src/lib/utils";
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface Props {
     translators: Translator[]
@@ -45,37 +45,39 @@ export function TranslatorsTable({
                                      totalPages,
                                      onPageChange
                                  }: Props) {
+    const { t } = useI18n()
+
     return (
         <div className="border border-border rounded-lg bg-card">
             <div className="overflow-x-auto">
                 <Table className="min-w-[560px]">
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Translator</TableHead>
-                            <TableHead>Contacts</TableHead>
-                            <TableHead>Orders</TableHead>
-                            <TableHead>Tariffs</TableHead>
+                            <TableHead>{t("common.translator")}</TableHead>
+                            <TableHead>{t("translators.contacts")}</TableHead>
+                            <TableHead>{t("common.orders")}</TableHead>
+                            <TableHead>{t("common.tariffs")}</TableHead>
                             <TableHead className="w-[70px]" />
                         </TableRow>
                     </TableHeader>
 
                     <TableBody>
-                        {translators.map((t) => (
-                            <TableRow key={t.id}>
+                        {translators.map((translator) => (
+                            <TableRow key={translator.id}>
                                 <TableCell>
                                     <p className="font-medium">
-                                        {t.full_name}
+                                        {translator.full_name}
                                     </p>
                                 </TableCell>
 
                                 <TableCell>
                                     <div>
                                         <p className="text-sm text-muted-foreground">
-                                            {t.email}
+                                            {translator.email}
                                         </p>
 
                                         <p className="text-sm text-muted-foreground">
-                                            {t.phone || "—"}
+                                            {translator.phone || "—"}
                                         </p>
                                     </div>
                                 </TableCell>
@@ -85,12 +87,12 @@ export function TranslatorsTable({
         <span
             className={cn(
                 "px-2.5 py-1 rounded-md text-xs font-semibold",
-                t.orders_count === 0
+                translator.orders_count === 0
                     ? "bg-muted text-muted-foreground"
                     : "bg-primary/10 text-primary"
             )}
         >
-            {t.orders_count ?? 0}
+            {translator.orders_count ?? 0}
         </span>
                                     </div>
                                 </TableCell>
@@ -99,13 +101,13 @@ export function TranslatorsTable({
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="outline" size="sm">
-                                                {t.traffic?.length || 0} rates
+                                                {t("translators.ratesCount", { count: translator.traffic?.length || 0 })}
                                             </Button>
                                         </DropdownMenuTrigger>
 
                                         <DropdownMenuContent align="start" className="w-[280px]">
-                                            {t.traffic?.length ? (
-                                                t.traffic.map((tr) => (
+                                            {translator.traffic?.length ? (
+                                                translator.traffic.map((tr) => (
                                                     <div
                                                         key={tr.id}
                                                         className="px-3 py-2 border-b last:border-0"
@@ -120,17 +122,17 @@ export function TranslatorsTable({
 
                                                         <div className="flex justify-between mt-1 text-xs">
                             <span>
-                                Page: {tr.rate_per_page} {tr.currency_sign}
+                                {t("translators.pageRate", { value: tr.rate_per_page, currency: tr.currency_sign })}
                             </span>
                                                             <span>
-                                Action: {tr.rate_per_action} {tr.currency_sign}
+                                {t("translators.actionRate", { value: tr.rate_per_action, currency: tr.currency_sign })}
                             </span>
                                                         </div>
                                                     </div>
                                                 ))
                                             ) : (
                                                 <p className="px-3 py-2 text-sm text-muted-foreground">
-                                                    No rates
+                                                    {t("translators.noRates")}
                                                 </p>
                                             )}
                                         </DropdownMenuContent>
@@ -150,18 +152,18 @@ export function TranslatorsTable({
 
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem
-                                                onClick={() => onEdit(t)}
+                                                onClick={() => onEdit(translator)}
                                             >
                                                 <Pencil className="h-4 w-4 mr-2" />
-                                                Edit
+                                                {t("common.edit")}
                                             </DropdownMenuItem>
 
                                             <DropdownMenuItem
-                                                onClick={() => onDelete(t)}
+                                                onClick={() => onDelete(translator)}
                                                 className="text-destructive"
                                             >
                                                 <Trash2 className="h-4 w-4 mr-2" />
-                                                Delete
+                                                {t("common.delete")}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -172,7 +174,7 @@ export function TranslatorsTable({
                         {translators.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                    No translators found.
+                                    {t("translators.noFound")}
                                 </TableCell>
                             </TableRow>
                         )}
@@ -187,7 +189,7 @@ export function TranslatorsTable({
                     disabled={page === 1}
                     onClick={() => onPageChange(page - 1)}
                 >
-                    Previous
+                    {t("common.previous")}
                 </Button>
 
                 <div className="flex items-center gap-1">
@@ -214,7 +216,7 @@ export function TranslatorsTable({
                     disabled={page === totalPages || totalPages === 0}
                     onClick={() => onPageChange(page + 1)}
                 >
-                    Next
+                    {t("common.next")}
                 </Button>
             </div>
         </div>

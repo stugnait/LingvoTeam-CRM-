@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { cn } from "@/src/lib/utils"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
@@ -33,6 +33,9 @@ import {
 
 import type { User } from "@/src/features/salary/types"
 import { useSalaryManagement } from "@/src/features/salary/hooks/useSalary"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
+
+type SalaryDraft = { base_salary: number, bonus: number, premium: number }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -44,8 +47,8 @@ function formatCurrency(val: number) {
     }).format(val)
 }
 
-function formatMonthYear(date: Date) {
-    const formatter = new Intl.DateTimeFormat("uk-UA", { month: "long", year: "numeric" })
+function formatMonthYear(date: Date, locale: string) {
+    const formatter = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" })
     const formatted = formatter.format(date)
     return formatted.charAt(0).toUpperCase() + formatted.slice(1)
 }
@@ -64,6 +67,8 @@ function getMonthDates(currentDate: Date) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function FinanceTablePage() {
+    const { locale, t } = useI18n()
+    const dateLocale = locale === "uk" ? "uk-UA" : "en-US"
     const searchParams = useSearchParams()
     const router = useRouter()
 
@@ -75,23 +80,22 @@ export default function FinanceTablePage() {
 
     // Визначаємо підпис для бейджика під іменем
     const getRoleLabel = () => {
-        if (isManager) {return "Менеджер"}
-        if (isEditor) {return "Редактор"}
-        if (isTranslator) {return "Перекладач"}
-        return "Працівник"
+        if (isManager) {return t("common.manager")}
+        if (isEditor) {return t("common.editor")}
+        if (isTranslator) {return t("common.translator")}
+        return t("salary.worker")
     }
 
     const maxMonthDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     const [currentMonthDate, setCurrentMonthDate] = useState(() => maxMonthDate)
     const [expandedId, setExpandedId] = useState<number | null>(null)
 
-    const [drafts, setDrafts] = useState<Record<number, { base_salary: number, bonus: number, premium: number }>>({})
+    const [drafts, setDrafts] = useState<Record<number, SalaryDraft>>({})
 
     const {
         users,
         usersLoading,
         fetchUsers,
-        salaryList,
         fetchSalaryList,
         previews,
         previewsLoading,
@@ -113,20 +117,18 @@ export default function FinanceTablePage() {
         loadData()
     }, [activeRole, currentMonthDate])
 
-    useEffect(() => {
-        if (Object.keys(previews).length > 0) {
-            setDrafts(prev => {
-                const newDrafts = { ...prev }
-                Object.values(previews).forEach(p => {
-                    newDrafts[p.user] = {
-                        base_salary: Number(p.base_salary) || 0,
-                        bonus: Number(p.bonus) || 0,
-                        premium: Number(p.premium) || 0,
-                    }
-                })
-                return newDrafts
-            })
-        }
+    const previewDrafts = useMemo<Record<number, SalaryDraft>>(() => {
+        const nextDrafts: Record<number, SalaryDraft> = {}
+
+        Object.values(previews).forEach(p => {
+            nextDrafts[p.user] = {
+                base_salary: Number(p.base_salary) || 0,
+                bonus: Number(p.bonus) || 0,
+                premium: Number(p.premium) || 0,
+            }
+        })
+
+        return nextDrafts
     }, [previews])
 
 
@@ -142,7 +144,11 @@ export default function FinanceTablePage() {
     const handleDraftChange = (userId: number, field: string, value: string) => {
         setDrafts(prev => ({
             ...prev,
-            [userId]: { ...prev[userId], [field]: Number(value) || 0 }
+            [userId]: {
+                ...(previewDrafts[userId] || { base_salary: 0, bonus: 0, premium: 0 }),
+                ...prev[userId],
+                [field]: Number(value) || 0
+            }
         }))
     }
 
@@ -158,7 +164,7 @@ export default function FinanceTablePage() {
     }
 
     const handleSaveUserSalary = async (userId: number) => {
-        const draft = drafts[userId]
+        const draft = drafts[userId] ?? previewDrafts[userId]
         if (!draft) {return}
         const { startDate, endDate } = getMonthDates(currentMonthDate)
         await saveSalary(userId, draft, startDate, endDate, activeRole)
@@ -173,8 +179,8 @@ export default function FinanceTablePage() {
             <div className="flex flex-col h-full min-h-screen bg-background p-3 sm:p-6">
                 <div className="mb-4 sm:mb-6 mx-1 sm:mx-4 flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">Фінансова відомість</h1>
-                        <p className="text-muted-foreground text-sm">Управління нарахуваннями, ставками та бонусами</p>
+                        <h1 className="text-2xl font-bold text-foreground">{t("salary.title")}</h1>
+                        <p className="text-muted-foreground text-sm">{t("salary.description")}</p>
                     </div>
                 </div>
 
@@ -184,12 +190,12 @@ export default function FinanceTablePage() {
                         <div className="flex items-center gap-4 w-full sm:w-auto">
                             <Select value={String(activeRole)} onValueChange={handleRoleChange}>
                                 <SelectTrigger className="w-full sm:w-[200px] bg-background">
-                                    <SelectValue placeholder="Оберіть роль" />
+                                    <SelectValue placeholder={t("salary.selectRole")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="1">Менеджери</SelectItem>
-                                    <SelectItem value="2">Редактори</SelectItem>
-                                    <SelectItem value="5">Перекладачі</SelectItem>
+                                    <SelectItem value="1">{t("common.managers")}</SelectItem>
+                                    <SelectItem value="2">{t("common.editors")}</SelectItem>
+                                    <SelectItem value="5">{t("common.translators")}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -199,7 +205,7 @@ export default function FinanceTablePage() {
                                 <ChevronLeft className="w-5 h-5" />
                             </button>
                             <div className="px-4 py-2 min-w-[160px] text-center font-medium text-sm text-foreground">
-                                {formatMonthYear(currentMonthDate)}
+                                {formatMonthYear(currentMonthDate, dateLocale)}
                             </div>
                             <button
                                 onClick={handleNextMonth}
@@ -216,31 +222,31 @@ export default function FinanceTablePage() {
                         <Table className="w-full min-w-[1200px]">
                             <TableHeader>
                                 <TableRow className="hover:bg-transparent">
-                                    <TableHead className="font-semibold text-foreground h-14 pl-6 w-[200px]">Працівник</TableHead>
+                                    <TableHead className="font-semibold text-foreground h-14 pl-6 w-[200px]">{t("salary.employee")}</TableHead>
                                     {isManager ? (
                                         <>
-                                            <TableHead className="font-semibold text-foreground h-14">Замовлення (Всі / Простр.)</TableHead>
-                                            <TableHead className="font-semibold text-foreground h-14">Виручка / Маржа</TableHead>
+                                            <TableHead className="font-semibold text-foreground h-14">{t("salary.ordersAllOverdue")}</TableHead>
+                                            <TableHead className="font-semibold text-foreground h-14">{t("salary.revenueMargin")}</TableHead>
                                         </>
                                     ) : (
                                         <>
-                                            <TableHead className="font-semibold text-foreground h-14">Замовлення</TableHead>
-                                            <TableHead className="font-semibold text-foreground h-14">Виручка {isEditor && "/ Маржа"}</TableHead>
-                                            <TableHead className="font-semibold text-foreground h-14">Сторінки</TableHead>
-                                            <TableHead className="font-semibold text-foreground h-14">Символи (без / з)</TableHead>
+                                            <TableHead className="font-semibold text-foreground h-14">{t("common.orders")}</TableHead>
+                                            <TableHead className="font-semibold text-foreground h-14">{t("salary.revenue")} {isEditor && `/ ${t("orders.margin").replace(":", "").toLowerCase()}`}</TableHead>
+                                            <TableHead className="font-semibold text-foreground h-14">{t("common.pages")}</TableHead>
+                                            <TableHead className="font-semibold text-foreground h-14">{t("salary.charsNoWith")}</TableHead>
                                             {/* Додаємо колонку тільки для перекладача */}
                                             {isTranslator && (
-                                                <TableHead className="font-semibold text-foreground h-14 text-center">Сер. Оцінка</TableHead>
+                                                <TableHead className="font-semibold text-foreground h-14 text-center">{t("salary.averageScore")}</TableHead>
                                             )}
                                         </>
                                     )}
 
                                     {/* Спільні фінансові колонки */}
-                                    <TableHead className="font-semibold text-foreground h-14 w-[110px]">Ставка</TableHead>
-                                    <TableHead className="font-semibold text-foreground h-14 w-[110px]">Бонус</TableHead>
-                                    <TableHead className="font-semibold text-foreground h-14 w-[110px]">Премія</TableHead>
-                                    <TableHead className="font-semibold text-emerald-600 h-14 text-right">Разом</TableHead>
-                                    <TableHead className="font-semibold text-foreground h-14 pr-6 text-right">Дії</TableHead>
+                                    <TableHead className="font-semibold text-foreground h-14 w-[110px]">{t("salary.baseSalary")}</TableHead>
+                                    <TableHead className="font-semibold text-foreground h-14 w-[110px]">{t("salary.bonus")}</TableHead>
+                                    <TableHead className="font-semibold text-foreground h-14 w-[110px]">{t("salary.premium")}</TableHead>
+                                    <TableHead className="font-semibold text-emerald-600 h-14 text-right">{t("salary.total")}</TableHead>
+                                    <TableHead className="font-semibold text-foreground h-14 pr-6 text-right">{t("common.actions")}</TableHead>
                                 </TableRow>
                             </TableHeader>
 
@@ -248,19 +254,19 @@ export default function FinanceTablePage() {
                                 {usersLoading || previewsLoading ? (
                                     <TableRow>
                                         <TableCell colSpan={colSpanCount} className="h-24 text-center text-muted-foreground">
-                                            Завантаження статистики...
+                                            {t("salary.loadingStats")}
                                         </TableCell>
                                     </TableRow>
                                 ) : users.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={colSpanCount} className="h-24 text-center text-muted-foreground">
-                                            Працівників не знайдено.
+                                            {t("salary.noEmployees")}
                                         </TableCell>
                                     </TableRow>
                                 ) : users.map((user: User) => {
                                     // 🔥 Додаємо is_saved зі значенням за замовчуванням false
                                     const stats = previews[user.id] || { revenue: 0, orders_count: 0, overdue_orders_count: 0, margin: 0, pages_count: 0, chars_count: 0, chars_with_spaces_count: 0, average_score: 0, is_saved: false }
-                                    const draft = drafts[user.id] || { base_salary: 0, bonus: 0, premium: 0 }
+                                    const draft = drafts[user.id] ?? previewDrafts[user.id] ?? { base_salary: 0, bonus: 0, premium: 0 }
 
                                     const totalCalculated = draft.base_salary + draft.bonus + draft.premium;
 
@@ -296,7 +302,7 @@ export default function FinanceTablePage() {
                                                         <TableCell className="align-middle">
                                                             <div className="flex flex-col">
                                                                 <span className="text-sm font-semibold text-foreground">{formatCurrency(Number(stats.revenue))}</span>
-                                                                <span className="text-xs text-emerald-600 font-medium">Маржа: {stats.margin || 0}%</span>
+                                                                <span className="text-xs text-emerald-600 font-medium">{t("orders.margin")} {stats.margin || 0}%</span>
                                                             </div>
                                                         </TableCell>
                                                     </>
@@ -310,7 +316,7 @@ export default function FinanceTablePage() {
                                                                 <span className="text-sm font-semibold text-foreground">{formatCurrency(Number(stats.revenue))}</span>
                                                                 {/* Маржу показуємо тільки редакторам */}
                                                                 {isEditor && (
-                                                                    <span className="text-xs text-emerald-600 font-medium">Маржа: {stats.margin || 0}%</span>
+                                                                    <span className="text-xs text-emerald-600 font-medium">{t("orders.margin")} {stats.margin || 0}%</span>
                                                                 )}
                                                             </div>
                                                         </TableCell>
@@ -356,7 +362,7 @@ export default function FinanceTablePage() {
                                                             className="h-8 gap-1.5 shadow-sm"
                                                         >
                                                             <Save className="w-3.5 h-3.5" />
-                                                            {hasSavedSalary ? "Змінити" : "Зберегти"}
+                                                            {hasSavedSalary ? t("salary.change") : t("common.save")}
                                                         </Button>
                                                         <Button size="sm" variant="outline" onClick={() => handleToggleHistory(user.id)} className={cn("h-8 w-8 p-0 rounded-full transition-transform", expandedId === user.id && "bg-muted")}>
                                                             <History className="w-4 h-4 text-muted-foreground" />

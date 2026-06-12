@@ -3,8 +3,9 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, User, Hash, Globe } from 'lucide-react';
+import { Calendar, Hash, Globe } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { useI18n } from '@/src/shared/i18n/I18nProvider';
 
 type TaskStatus = 'planned' | 'todo' | 'in_progress' | 'reject' | 'pause' | 'done';
 type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -22,7 +23,8 @@ export interface KanbanTask {
     intake_manager?: { name: string; avatar?: string } | null
     delivery_manager?: { name: string; avatar?: string } | null
     tags: string[]
-    subtasks?: any[]
+    subtasks?: unknown[]
+    language_pair_id?: string | number | null
 }
 
 interface SortableTaskProps {
@@ -46,6 +48,8 @@ const Avatar = ({ name, avatar, color }: { name: string; avatar?: string; color:
 )
 
 const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick }) => {
+    const { locale, t } = useI18n()
+    const dateLocale = locale === "uk" ? "uk-UA" : "en-US"
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id.toString(),
     });
@@ -100,7 +104,7 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
                     {task.deadline && (
                         <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500 dark:text-gray-400">
                             <Calendar className="w-3 h-3"/>
-                            {new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {new Date(task.deadline).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' })}
                         </div>
                     )}
                 </div>
@@ -114,12 +118,12 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
                 {/* Client + pair */}
                 <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-2 sm:mb-3 text-[11px] sm:text-xs text-gray-500">
                     <div className="flex items-center gap-1 min-w-0">
-                        <span className="font-medium">Client:</span>
-                        <span className="truncate" title={task.client_name}>{task.client_name || 'Unknown'}</span>
+                        <span className="font-medium">{t("kanban.clientLabel")}</span>
+                        <span className="truncate" title={task.client_name}>{task.client_name || t("common.unknown")}</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <Globe className="w-3 h-3"/>
-                        <span>Pair: {(task as any).language_pair_id || 'N/A'}</span>
+                        <span>{t("kanban.pairLabel")} {task.language_pair_id || "N/A"}</span>
                     </div>
                 </div>
 
@@ -129,7 +133,7 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
                     <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
                         <Avatar name={task.intake_manager?.name || ''} avatar={task.intake_manager?.avatar} color="blue" />
                         <div className="min-w-0">
-                            <div className="text-[10px] text-gray-400 leading-none mb-0.5">Прийом</div>
+                            <div className="text-[10px] text-gray-400 leading-none mb-0.5">{t("common.accept")}</div>
                             <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 truncate max-w-[50px] sm:max-w-[60px]">
                                 {task.intake_manager?.name?.split(' ')[0] || '—'}
                             </div>
@@ -142,7 +146,7 @@ const SortableTask: React.FC<SortableTaskProps> = React.memo(({ task, onClick })
                     <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
                         <Avatar name={task.delivery_manager?.name || ''} avatar={task.delivery_manager?.avatar} color="purple" />
                         <div className="min-w-0">
-                            <div className="text-[10px] text-gray-400 leading-none mb-0.5">Здача</div>
+                            <div className="text-[10px] text-gray-400 leading-none mb-0.5">{t("common.delivery")}</div>
                             <div className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-300 truncate max-w-[50px] sm:max-w-[60px]">
                                 {task.delivery_manager?.name?.split(' ')[0] || '—'}
                             </div>

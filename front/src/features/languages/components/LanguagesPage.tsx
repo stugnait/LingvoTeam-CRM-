@@ -13,9 +13,11 @@ import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 
 import { useLanguages } from "../hooks/useLanguages"
 import type { Language } from "../types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export function LanguagesPage() {
     const { languages, loading, addLanguage, removeLanguage, page, totalPages, onPageChange, search, setSearch } = useLanguages()
+    const { t } = useI18n()
 
 
     const [isFormOpen, setIsFormOpen] = useState(false)
@@ -80,26 +82,26 @@ export function LanguagesPage() {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
                             <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-                                Languages
+                                {t("languages.title")}
                             </h2>
                             <p className="text-muted-foreground">
-                                Manage supported languages in the system
+                                {t("languages.description")}
                             </p>
                         </div>
 
                         <Button onClick={openAddLanguage} className="shrink-0">
                             <Plus className="h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Add Language</span>
+                            <span className="hidden sm:inline">{t("languages.add")}</span>
                         </Button>
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Search</CardTitle>
+                            <CardTitle>{t("languages.search")}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Input
-                                placeholder="Search by name or slug..."
+                                placeholder={t("languages.searchPlaceholder")}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
@@ -109,9 +111,9 @@ export function LanguagesPage() {
                     {/* Картка з таблицею */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Languages List</CardTitle>
+                            <CardTitle>{t("languages.list")}</CardTitle>
                             <CardDescription>
-                                All available languages for creating pairs
+                                {t("languages.supportedDescription")}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -133,10 +135,10 @@ export function LanguagesPage() {
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Add Language"
-                description="Add a new language to your system."
+                title={t("languages.add")}
+                description={t("languages.createDescription")}
                 icon={<Globe2 className="h-7 w-7" />}
-                submitLabel={isSubmitting ? "Saving..." : "Create"}
+                submitLabel={isSubmitting ? t("common.saving") : t("common.create")}
                 isLoading={isSubmitting}
                 onSubmit={submitLanguage}
                 variant="reference"
@@ -148,10 +150,10 @@ export function LanguagesPage() {
                 <div className="space-y-5">
                     <div>
                         <label className="mb-2 block text-sm font-semibold text-slate-950">
-                            Language Name <span className="text-red-500">*</span>
+                            {t("languages.languageName")} <span className="text-red-500">*</span>
                         </label>
                         <Input
-                            placeholder="Ex: English"
+                            placeholder={t("languages.languageNamePlaceholder")}
                             value={form.name}
                             onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
                             autoFocus
@@ -160,16 +162,16 @@ export function LanguagesPage() {
                     </div>
                     <div>
                         <label className="mb-2 block text-sm font-semibold text-slate-950">
-                            Slug (Code) <span className="text-red-500">*</span>
+                            {t("languages.slugLabel")} <span className="text-red-500">*</span>
                         </label>
                         <Input
-                            placeholder="Ex: en"
+                            placeholder={t("languages.slugPlaceholder")}
                             value={form.slug}
                             onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value }))}
                             className="h-12 rounded-xl border-slate-200 bg-white px-4 text-sm text-slate-950 shadow-sm placeholder:text-slate-400 focus-visible:border-blue-500 focus-visible:ring-4 focus-visible:ring-blue-100"
                         />
                         <p className="mt-2 text-xs leading-5 text-slate-500">
-                            A short identifier (e.g., &quot;en&quot;, &quot;uk&quot;).
+                            {t("languages.slugHint")}
                         </p>
                     </div>
                 </div>
@@ -179,9 +181,9 @@ export function LanguagesPage() {
             <ConfirmModal
                 open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Delete language"
-                description={`Are you sure you want to delete "${selectedLanguage?.name}"? This action cannot be undone.`}
-                confirmLabel="Delete"
+                title={t("languages.deleteTitle")}
+                description={t("languages.deleteDescription", { name: selectedLanguage?.name ?? "" })}
+                confirmLabel={t("common.delete")}
                 onConfirm={confirmDelete}
             />
         </>

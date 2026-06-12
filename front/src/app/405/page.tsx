@@ -3,9 +3,12 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Ban, Home, ArrowLeft, Globe } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export default function Error405Page() {
     const router = useRouter()
+    const { t } = useI18n()
+
     return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
             <div className="flex items-center gap-2 mb-12">
@@ -23,11 +26,11 @@ export default function Error405Page() {
                 <h1 className="text-7xl font-bold text-primary mb-4">405</h1>
 
                 <h2 className="text-2xl font-semibold text-foreground mb-3">
-                    Метод не дозволено
+                    {t("error.methodNotAllowedTitle")}
                 </h2>
 
                 <p className="text-muted-foreground mb-8">
-                    Цей метод запиту не підтримується для даного ресурсу. Спробуйте інший спосіб або поверніться на головну сторінку.
+                    {t("error.methodNotAllowedDescription")}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -36,14 +39,14 @@ export default function Error405Page() {
                         className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-border rounded-lg text-foreground hover:bg-accent transition-colors cursor-pointer"
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Назад
+                        {t("common.back")}
                     </button>
                     <Link
                         href="/dashboard"
                         className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                     >
                         <Home className="w-4 h-4" />
-                        На головну
+                        {t("error.goHome")}
                     </Link>
                 </div>
             </div>

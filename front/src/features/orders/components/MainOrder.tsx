@@ -16,8 +16,11 @@ import { useProfile } from "@/src/features/profile/hooks/useProfile"
 import { ordersApi } from "@/src/features/orders/api"
 import OrdersKanbanBoard from "./OrdersKanbanBoard"
 import { TaskModal } from "@/src/components/modals/jira/InfoModal"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export default function OrdersPage() {
+    const { locale, t } = useI18n()
+
     const {
         createOrder,
         updateOrder,
@@ -127,10 +130,10 @@ export default function OrdersPage() {
     }, [highlightId, router])
 
     const formatDate = (dateString?: string) => {
-        if (!dateString) { return 'Не вказано' }
+        if (!dateString) { return t("common.notSet") }
         try {
             const date = new Date(dateString)
-            return new Intl.DateTimeFormat('uk-UA', {
+            return new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -293,7 +296,7 @@ export default function OrdersPage() {
                                         viewMode === "table" ? "bg-white shadow-sm text-blue-600" : "text-gray-500"
                                     )}
                                 >
-                                    <LayoutList className="w-4 h-4" /> <span>Таблиця</span>
+                                    <LayoutList className="w-4 h-4" /> <span>{t("common.table")}</span>
                                 </button>
                                 <button
                                     onClick={() => setViewMode("kanban")}
@@ -302,7 +305,7 @@ export default function OrdersPage() {
                                         viewMode === "kanban" ? "bg-white shadow-sm text-blue-600" : "text-gray-500"
                                     )}
                                 >
-                                    <KanbanSquare className="w-4 h-4" /> <span>Канбан</span>
+                                    <KanbanSquare className="w-4 h-4" /> <span>{t("common.kanban")}</span>
                                 </button>
                             </div>
                         </div>
@@ -310,14 +313,14 @@ export default function OrdersPage() {
                         <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 self-start">
                             <Filter className="w-4 h-4 text-muted-foreground shrink-0 ml-1" />
                             <div className="flex bg-muted/50 p-1 rounded-lg">
-                                <button onClick={() => handleFilterChangeSync(false)} className={cn("px-4 py-1.5 text-sm font-medium rounded-md", !isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>All Orders</button>
-                                <button onClick={() => handleFilterChangeSync(true)} className={cn("px-4 py-1.5 text-sm font-medium rounded-md", isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>My Orders</button>
+                                <button onClick={() => handleFilterChangeSync(false)} className={cn("px-4 py-1.5 text-sm font-medium rounded-md", !isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>{t("common.allOrders")}</button>
+                                <button onClick={() => handleFilterChangeSync(true)} className={cn("px-4 py-1.5 text-sm font-medium rounded-md", isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>{t("common.myOrders")}</button>
                             </div>
                         </div>
                     </div>
 
                     <Button onClick={handleCreateClick} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center gap-2 px-6">
-                        <Plus className="w-5 h-5" /> Створити замовлення
+                        <Plus className="w-5 h-5" /> {t("orders.create")}
                     </Button>
                 </div>
 
@@ -364,15 +367,15 @@ export default function OrdersPage() {
                     open={isViewModalOpen}
                     onOpenChange={setIsViewModalOpen}
                     taskId={viewingOrder.id.toString()}
-                    taskTitle={viewingOrder.language_pair_name || `Order #${viewingOrder.id}`}
-                    taskDescription={viewingOrder.client_comment || 'No comment'}
+                    taskTitle={viewingOrder.language_pair_name || t("orders.orderNumber", { id: viewingOrder.id })}
+                    taskDescription={viewingOrder.client_comment || t("common.noComment")}
                     status={viewingOrder.status_name || viewingOrder.status || 'all_orders'}
                     priority={viewingOrder.priority || 'medium'}
                     intake_manager={viewingOrder.manager_accept_id ? { id: viewingOrder.manager_accept_id, name: viewingOrder.manager_accept_name || 'Сук' } : null}
                     delivery_manager={viewingOrder.manager_delivery_id ? { id: viewingOrder.manager_delivery_id, name: viewingOrder.manager_delivery_name || 'Сук' } : null}
-                    translator={viewingOrder.translator_name || 'Unassigned'}
-                    editor={viewingOrder.editor_name || 'Unassigned'}
-                    dueDate={formatDate(viewingOrder.deadline) || "Unsettled"}
+                    translator={viewingOrder.translator_name || t("common.notAssigned")}
+                    editor={viewingOrder.editor_name || t("common.notAssigned")}
+                    dueDate={formatDate(viewingOrder.deadline) || t("common.notSet")}
                     onDownloadOriginal={() => downloadOrderSourceFiles(viewingOrder.id)}
                     onDownloadTranslation={() => downloadOrderTargetFiles(viewingOrder.id)}
                     onCancel={() => setIsViewModalOpen(false)}

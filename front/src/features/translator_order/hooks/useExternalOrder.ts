@@ -84,7 +84,8 @@ export function useExternalOrder(slug: string) {
                 }
                 setError(null)
                 setRemainingAttempts(null)
-                updateBanStatus(null)
+                // u
+                //pdateBanStatus(null)
             }
         } catch (e: any) {
             const data = e
