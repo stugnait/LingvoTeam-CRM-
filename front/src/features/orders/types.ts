@@ -2,6 +2,7 @@ import {TaskPriority, TaskStatus} from "@/src/features/editor/types";
 
 export interface CreateOrderPayload {
     client_id: number
+    client_status?: number
     source_language: number
     target_language: number
     traffic_id: number
@@ -30,6 +31,26 @@ export interface CreateOrderResponse {
     full_url: string
     password: string
     expire_at: string
+}
+
+interface TariffOptionMeta {
+    category?: string
+    price_per_page?: number | null
+    price_per_action?: number | null
+}
+
+interface TranslatorTrafficOptionMeta {
+    rate_per_page?: number | null
+    rate_per_action?: number | null
+    currency?: string
+    isProfitable?: boolean
+    marginStr?: string | null
+}
+
+interface ComboboxOption {
+    value: string
+    label: string
+    meta?: TariffOptionMeta | TranslatorTrafficOptionMeta
 }
 
 export interface Details {

@@ -31,6 +31,24 @@ import { ordersApi } from "@/src/features/orders/api"
 import localforage from "localforage"
 import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
+// ─── Meta types ─────────────────────────────────────────────────────────────
+
+interface TariffMeta {
+    category?: string
+    price_per_page?: number | null
+    price_per_action?: number | null
+}
+
+interface TranslatorTrafficMeta {
+    rate_per_page?: number | null
+    rate_per_action?: number | null
+    currency?: string
+    isProfitable?: boolean
+    marginStr?: string | null
+}
+
+// ─── Props ───────────────────────────────────────────────────────────────────
+
 interface CreateOrderModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
@@ -91,6 +109,8 @@ type EditorOption = {
     label: string
     description?: string
 }
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function CreateOrderModal(props: CreateOrderModalProps) {
     const { t } = useI18n()
@@ -163,11 +183,11 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         if (onRefreshTranslators) {
             const freshTranslators = await onRefreshTranslators()
             if (Array.isArray(freshTranslators) && freshTranslators.length > 0) {
-                const newTranslator = freshTranslators.find((t: any) => t.email === form.email);
+                const newTranslator = freshTranslators.find((t: any) => t.email === form.email)
                 if (newTranslator) {
-                    setSelectedTranslatorId(newTranslator.id);
+                    setSelectedTranslatorId(newTranslator.id)
                     if (newTranslator.traffic && newTranslator.traffic.length > 0) {
-                        setTranslatorTrafficId(String(newTranslator.traffic[0].id));
+                        setTranslatorTrafficId(String(newTranslator.traffic[0].id))
                     }
                 }
             }
@@ -190,26 +210,23 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         const restoreDraft = async () => {
             try {
                 const d = await localforage.getItem<any>(DRAFT_KEY)
-
                 if (d) {
-                    if (d.clientId) {setClientId(d.clientId)}
-                    if (d.sourceLanguage) {setSourceLanguage(d.sourceLanguage)}
-                    if (d.targetLanguage) {setTargetLanguage(d.targetLanguage)}
-                    if (d.trafficId) {setTrafficId(d.trafficId)}
-                    if (d.currencyId) {setCurrencyId(d.currencyId)}
-                    if (d.editor) {setEditor(d.editor)}
-                    if (d.managerAccept) {setManagerAccept(d.managerAccept)}
-                    if (d.managerDelivery) {setManagerDelivery(d.managerDelivery)}
-                    if (d.selectedTranslatorId) {setSelectedTranslatorId(d.selectedTranslatorId)}
-                    if (d.translatorTrafficId) {setTranslatorTrafficId(d.translatorTrafficId)}
-                    if (d.comment) {setComment(d.comment)}
-                    if (d.priority) {setPriority(d.priority)}
-                    if (d.deadline) {setDeadline(new Date(d.deadline))}
-                    if (d.customDiscount) {setCustomDiscount(d.customDiscount)}
-                    if (d.totalAmount) {setTotalAmount(d.totalAmount)}
-
-                    if (d.currentStep !== undefined) {setCurrentStep(d.currentStep)}
-
+                    if (d.clientId) { setClientId(d.clientId) }
+                    if (d.sourceLanguage) { setSourceLanguage(d.sourceLanguage) }
+                    if (d.targetLanguage) { setTargetLanguage(d.targetLanguage) }
+                    if (d.trafficId) { setTrafficId(d.trafficId) }
+                    if (d.currencyId) { setCurrencyId(d.currencyId) }
+                    if (d.editor) { setEditor(d.editor) }
+                    if (d.managerAccept) { setManagerAccept(d.managerAccept) }
+                    if (d.managerDelivery) { setManagerDelivery(d.managerDelivery) }
+                    if (d.selectedTranslatorId) { setSelectedTranslatorId(d.selectedTranslatorId) }
+                    if (d.translatorTrafficId) { setTranslatorTrafficId(d.translatorTrafficId) }
+                    if (d.comment) { setComment(d.comment) }
+                    if (d.priority) { setPriority(d.priority) }
+                    if (d.deadline) { setDeadline(new Date(d.deadline)) }
+                    if (d.customDiscount) { setCustomDiscount(d.customDiscount) }
+                    if (d.totalAmount) { setTotalAmount(d.totalAmount) }
+                    if (d.currentStep !== undefined) { setCurrentStep(d.currentStep) }
                     if (d.files && Array.isArray(d.files)) {
                         setFiles(d.files)
                         if (d.filesConfirmed) {
@@ -230,7 +247,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     }, [open, mode])
 
     useEffect(() => {
-        if (!open || mode === "edit" || !isRestored) {return}
+        if (!open || mode === "edit" || !isRestored) { return }
 
         const saveDraft = async () => {
             const draft = {
@@ -243,7 +260,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 customDiscount, totalAmount,
                 filesConfirmed,
                 files,
-                currentStep
+                currentStep,
             }
             try {
                 await localforage.setItem(DRAFT_KEY, draft)
@@ -256,7 +273,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         clientId, sourceLanguage, targetLanguage, trafficId, currencyId,
         editor, managerAccept, managerDelivery, selectedTranslatorId,
         translatorTrafficId, comment, priority, deadline,
-        customDiscount, totalAmount, files, filesConfirmed, currentStep, open, isRestored, mode
+        customDiscount, totalAmount, files, filesConfirmed, currentStep, open, isRestored, mode,
     ])
 
     const handleModalClose = (open: boolean) => {
@@ -284,8 +301,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             const formData = new FormData()
             files.forEach(f => formData.append("files", f))
             formData.append("traffic_id", trafficId)
-            if (selectedTranslatorId) {formData.append("translator_id", String(selectedTranslatorId))}
-            if (translatorTrafficId) {formData.append("translator_traffic_id", translatorTrafficId)}
+            if (selectedTranslatorId) { formData.append("translator_id", String(selectedTranslatorId)) }
+            if (translatorTrafficId) { formData.append("translator_traffic_id", translatorTrafficId) }
             const res = await ordersApi.previewPrice(formData)
             setPriceData(res)
         } catch (e) {
@@ -303,11 +320,11 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const handleOrderSubmit = async () => {
         try {
-            await localforage.removeItem(DRAFT_KEY);
+            await localforage.removeItem(DRAFT_KEY)
         } catch (error) {
-            console.error("Помилка видалення чернетки:", error);
+            console.error("Помилка видалення чернетки:", error)
         }
-        onSubmit();
+        onSubmit()
     }
 
     // ─── Validation ─────────────────────────────────────────────────────────
@@ -318,9 +335,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 return !!clientId && !!sourceLanguage && !!targetLanguage && files.length > 0 && filesConfirmed
             case 1:
                 return !!trafficId && !!currencyId
-            case 2:
-                const isTranslatorValid = selectedTranslatorId ? !!translatorTrafficId : true;
+            case 2: {
+                const isTranslatorValid = selectedTranslatorId ? !!translatorTrafficId : true
                 return isTranslatorValid && !!editor && !!managerAccept && !!managerDelivery
+            }
             case 3:
                 return !!deadline && !!priority && !!comment.trim()
             case 4:
@@ -333,26 +351,26 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const stepError = (step: number): string | null => {
         switch (step) {
             case 0:
-                if (!clientId) {return t("orders.validation.selectClient")}
-                if (!sourceLanguage) {return t("orders.validation.selectSourceLanguage")}
-                if (!targetLanguage) {return t("orders.validation.selectTargetLanguage")}
-                if (!files.length) {return t("orders.validation.uploadFile")}
-                if (!filesConfirmed) {return t("orders.confirmFilesValidation", { button: t("orders.confirmFiles") })}
+                if (!clientId) { return t("orders.validation.selectClient") }
+                if (!sourceLanguage) { return t("orders.validation.selectSourceLanguage") }
+                if (!targetLanguage) { return t("orders.validation.selectTargetLanguage") }
+                if (!files.length) { return t("orders.validation.uploadFile") }
+                if (!filesConfirmed) { return t("orders.confirmFilesValidation", { button: t("orders.confirmFiles") }) }
                 return null
             case 1:
-                if (!trafficId) {return t("orders.validation.selectTariff")}
-                if (!currencyId) {return t("orders.validation.selectCurrency")}
+                if (!trafficId) { return t("orders.validation.selectTariff") }
+                if (!currencyId) { return t("orders.validation.selectCurrency") }
                 return null
             case 2:
-                if (selectedTranslatorId && !translatorTrafficId) {return t("orders.validation.selectTranslatorTariff")}
-                if (!editor) {return t("orders.validation.selectEditor")}
-                if (!managerAccept) {return t("orders.validation.selectAcceptManager")}
-                if (!managerDelivery) {return t("orders.validation.selectDeliveryManager")}
+                if (selectedTranslatorId && !translatorTrafficId) { return t("orders.validation.selectTranslatorTariff") }
+                if (!editor) { return t("orders.validation.selectEditor") }
+                if (!managerAccept) { return t("orders.validation.selectAcceptManager") }
+                if (!managerDelivery) { return t("orders.validation.selectDeliveryManager") }
                 return null
             case 3:
-                if (!priority) {return t("orders.validation.selectPriority")}
-                if (!deadline) {return t("orders.validation.setDeadline")}
-                if (!comment.trim()) {return t("orders.validation.addComment")}
+                if (!priority) { return t("orders.validation.selectPriority") }
+                if (!deadline) { return t("orders.validation.setDeadline") }
+                if (!comment.trim()) { return t("orders.validation.addComment") }
                 return null
             case 4:
                 return null
@@ -404,44 +422,38 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         handleCalculatePrice()
     }, [filesConfirmed, trafficId, selectedTranslatorId, translatorTrafficId])
 
-    // 🔥 ДОДАНО: Перевірка вигідності для списку перекладачів (ціна клієнта)
     const clientPricePerPage = useMemo(() => {
-        const clientTariff = tariffs?.find((t) => String(t.id) === trafficId);
-        const basePrice = clientTariff?.price_per_page ? parseFloat(clientTariff.price_per_page) : 0;
-
+        const clientTariff = tariffs?.find((t) => String(t.id) === trafficId)
+        const basePrice = clientTariff?.price_per_page ? parseFloat(clientTariff.price_per_page) : 0
         if (activeDiscount > 0 && basePrice > 0) {
-            return basePrice * (1 - activeDiscount / 100);
+            return basePrice * (1 - activeDiscount / 100)
         }
-        return basePrice;
-    }, [trafficId, tariffs, activeDiscount]);
+        return basePrice
+    }, [trafficId, tariffs, activeDiscount])
 
-    // Збагачуємо масив перекладачів міткою ✅, якщо в них є хоч один прибутковий тариф
     const enrichedTranslators = useMemo(() => {
         return translators.map(translator => {
-            if (!translator.traffic || translator.traffic.length === 0) return translator;
-
+            if (!translator.traffic || translator.traffic.length === 0) { return translator }
             const hasProfitable = translator.traffic.some((t: any) => {
-                const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : Infinity;
-                return clientPricePerPage > 0 && tRate < clientPricePerPage;
-            });
-
+                const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : Infinity
+                return clientPricePerPage > 0 && tRate < clientPricePerPage
+            })
             return {
                 ...translator,
-                full_name: hasProfitable ? `✅ ${translator.full_name} (Є вигідний тариф)` : translator.full_name
-            };
-        });
-    }, [translators, clientPricePerPage]);
+                full_name: hasProfitable ? `✅ ${translator.full_name} (Є вигідний тариф)` : translator.full_name,
+            }
+        })
+    }, [translators, clientPricePerPage])
 
-    // Формуємо список тарифів і відразу рахуємо маржу для відображення в селекті
-    const translatorTrafficOptions = useMemo(() => {
-        const currentTranslator = translators.find(t => t.id === selectedTranslatorId);
-        if (!currentTranslator?.traffic) {return [];}
+    const translatorTrafficOptions: { value: string; label: string; meta: TranslatorTrafficMeta }[] = useMemo(() => {
+        const currentTranslator = translators.find(t => t.id === selectedTranslatorId)
+        if (!currentTranslator?.traffic) { return [] }
 
         return currentTranslator.traffic.map((t: any) => {
-            const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : 0;
-            const margin = clientPricePerPage - tRate;
-            const marginPercent = clientPricePerPage > 0 ? ((margin / clientPricePerPage) * 100).toFixed(1) : 0;
-            const isProfitable = clientPricePerPage > 0 && tRate < clientPricePerPage;
+            const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : 0
+            const margin = clientPricePerPage - tRate
+            const marginPercent = clientPricePerPage > 0 ? ((margin / clientPricePerPage) * 100).toFixed(1) : 0
+            const isProfitable = clientPricePerPage > 0 && tRate < clientPricePerPage
 
             return {
                 value: String(t.id),
@@ -451,16 +463,28 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     rate_per_action: t.rate_per_action,
                     currency: t.currency_sign || '',
                     isProfitable,
-                    marginStr: clientPricePerPage > 0 ? `${margin.toFixed(2)} (${marginPercent}%)` : null
-                }
+                    marginStr: clientPricePerPage > 0 ? `${margin.toFixed(2)} (${marginPercent}%)` : null,
+                } satisfies TranslatorTrafficMeta,
             }
-        });
-    }, [selectedTranslatorId, translators, clientPricePerPage]);
+        })
+    }, [selectedTranslatorId, translators, clientPricePerPage])
+
+    const tariffOptions: { value: string; label: string; meta: TariffMeta }[] = useMemo(() => {
+        return (tariffs ?? []).map((tariff: any) => ({
+            value: String(tariff.id),
+            label: tariff.name,
+            meta: {
+                category: tariff.category_name,
+                price_per_page: tariff.price_per_page,
+                price_per_action: tariff.price_per_action,
+            } satisfies TariffMeta,
+        }))
+    }, [tariffs])
 
     // ─── Render ─────────────────────────────────────────────────────────────
 
     if (open && !isRestored && mode !== "edit") {
-        return null;
+        return null
     }
 
     return (
@@ -502,7 +526,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 }))}
                                 renderSelected={(option) => {
                                     const c = clients.find((cl) => String(cl.id) === option.value)
-                                    if (!c) {return option.label}
+                                    if (!c) { return option.label }
                                     return (
                                         <div className="flex items-center gap-2">
                                             <span>{c.full_name}</span>
@@ -574,7 +598,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 <p>{t("common.withSpaces")}: {statsResult.total_stats.chars_with_spaces}</p>
                                 <p>{t("orders.charsWithoutSpaces")}: {statsResult.total_stats.chars_no_spaces}</p>
                                 <p>{t("common.images")}: {statsResult.total_stats.images}</p>
-
                                 {statsResult.total_stats.images > 0 && (
                                     <div className="mt-3 flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                         <span className="text-yellow-500 mt-0.5">⚠️</span>
@@ -624,20 +647,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 <Tag className="h-4 w-4 text-blue-600" />
                                 {t("orders.tariff")} <span className="text-red-500">*</span>
                             </label>
-                            <Combobox
+                            <Combobox<TariffMeta>
                                 value={trafficId}
                                 onChange={setTrafficId}
                                 placeholder={t("orders.selectTariff")}
                                 searchPlaceholder={t("orders.searchTariff")}
-                                options={tariffs?.map((tariff) => ({
-                                    value: String(tariff.id),
-                                    label: tariff.name,
-                                    meta: {
-                                        category: tariff.category_name,
-                                        price_per_page: tariff.price_per_page,
-                                        price_per_action: tariff.price_per_action
-                                    }
-                                }))}
+                                options={tariffOptions}
                                 renderOption={(option) => (
                                     <div className="flex flex-col w-full py-1 gap-1.5">
                                         <div className="flex items-start justify-between w-full">
@@ -649,15 +664,15 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                            {option.meta?.price_per_page !== undefined && option.meta?.price_per_page !== null && (
+                                            {option.meta?.price_per_page != null && (
                                                 <span className="flex items-center gap-1">
                                                     {t("orders.page")}: <span className="font-semibold text-gray-700">{option.meta.price_per_page}</span>
                                                 </span>
                                             )}
-                                            {option.meta?.price_per_page !== null && option.meta?.price_per_action !== null && (
-                                                <span className="w-1 h-1 rounded-full bg-border"></span>
+                                            {option.meta?.price_per_page != null && option.meta?.price_per_action != null && (
+                                                <span className="w-1 h-1 rounded-full bg-border" />
                                             )}
-                                            {option.meta?.price_per_action !== undefined && option.meta?.price_per_action !== null && (
+                                            {option.meta?.price_per_action != null && (
                                                 <span className="flex items-center gap-1">
                                                     {t("orders.action")}: <span className="font-semibold text-gray-700">{option.meta.price_per_action}</span>
                                                 </span>
@@ -667,16 +682,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 )}
                                 renderSelected={(option) => (
                                     <div className="flex w-full items-center justify-between pr-4 gap-2">
-                                        <span className="truncate font-medium text-foreground">
-                                            {option.label}
-                                        </span>
+                                        <span className="truncate font-medium text-foreground">{option.label}</span>
                                         <div className="flex items-center gap-2 shrink-0">
                                             {option.meta?.category && (
                                                 <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-muted-foreground">
                                                     {option.meta.category}
                                                 </span>
                                             )}
-                                            {(option.meta?.price_per_page !== undefined || option.meta?.price_per_action !== undefined) && (
+                                            {(option.meta?.price_per_page != null || option.meta?.price_per_action != null) && (
                                                 <span className="text-[11px] text-green-700 font-semibold bg-green-100/50 px-2 py-0.5 rounded-md border border-green-200/50">
                                                     {option.meta?.price_per_page ?? 0} / {t("orders.perPageShort")}
                                                 </span>
@@ -728,29 +741,24 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             </div>
                             <TranslatorSelect
                                 value={selectedTranslatorId}
-                                translators={enrichedTranslators} // 🔥 Передаємо збагачений масив з ✅
+                                translators={enrichedTranslators}
                                 sourceLanguage={sourceLanguage}
                                 targetLanguage={targetLanguage}
                                 placeholder={t("orders.selectTranslatorOptional")}
                                 orderTrafficId={trafficId ? Number(trafficId) : null}
                                 onChange={(translatorId) => {
                                     setSelectedTranslatorId(translatorId)
-
                                     if (!translatorId) {
                                         setTranslatorTrafficId("")
                                         return
                                     }
-
                                     const selectedTranslator = translators.find(t => t.id === translatorId)
-
                                     if (selectedTranslator?.traffic && selectedTranslator.traffic.length > 0) {
-                                        // 🔥 АВТОВИБІР НАЙКРАЩОГО ТАРИФУ
                                         const bestTariff = [...selectedTranslator.traffic].sort((a, b) => {
-                                            const rateA = a.rate_per_page ? parseFloat(a.rate_per_page) : Infinity;
-                                            const rateB = b.rate_per_page ? parseFloat(b.rate_per_page) : Infinity;
-                                            return rateA - rateB; // Той, де ставка менша, іде першим
-                                        })[0];
-
+                                            const rateA = a.rate_per_page ? parseFloat(a.rate_per_page) : Infinity
+                                            const rateB = b.rate_per_page ? parseFloat(b.rate_per_page) : Infinity
+                                            return rateA - rateB
+                                        })[0]
                                         setTranslatorTrafficId(String(bestTariff.id))
                                     } else {
                                         setTranslatorTrafficId("")
@@ -804,8 +812,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     <Tag className="h-4 w-4 text-orange-500" />
                                     Translator Traffic
                                 </label>
-
-                                <Combobox
+                                <Combobox<TranslatorTrafficMeta>
                                     value={translatorTrafficId}
                                     onChange={setTranslatorTrafficId}
                                     placeholder={t("orders.selectTraffic")}
@@ -814,7 +821,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                         <div className="flex flex-col w-full py-1 gap-1.5">
                                             <div className="flex items-start justify-between w-full">
                                                 <span className="font-medium text-foreground">{option.label}</span>
-                                                {/* Маржа у випадаючому списку */}
                                                 {option.meta?.marginStr && (
                                                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${option.meta.isProfitable ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
                                                         {t("orders.margin")} {option.meta.marginStr}
@@ -822,15 +828,15 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                                {option.meta?.rate_per_page !== undefined && option.meta?.rate_per_page !== null && (
+                                                {option.meta?.rate_per_page != null && (
                                                     <span className="flex items-center gap-1">
                                                         {t("orders.page")}: <span className="font-semibold text-gray-700">{option.meta.rate_per_page} {option.meta.currency}</span>
                                                     </span>
                                                 )}
-                                                {option.meta?.rate_per_page !== null && option.meta?.rate_per_action !== null && (
-                                                    <span className="w-1 h-1 rounded-full bg-border"></span>
+                                                {option.meta?.rate_per_page != null && option.meta?.rate_per_action != null && (
+                                                    <span className="w-1 h-1 rounded-full bg-border" />
                                                 )}
-                                                {option.meta?.rate_per_action !== undefined && option.meta?.rate_per_action !== null && (
+                                                {option.meta?.rate_per_action != null && (
                                                     <span className="flex items-center gap-1">
                                                         {t("orders.action")}: <span className="font-semibold text-gray-700">{option.meta.rate_per_action} {option.meta.currency}</span>
                                                     </span>
@@ -840,17 +846,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     )}
                                     renderSelected={(option) => (
                                         <div className="flex w-full items-center justify-between pr-4 gap-2">
-                                            <span className="truncate font-medium text-foreground">
-                                                {option.label}
-                                            </span>
+                                            <span className="truncate font-medium text-foreground">{option.label}</span>
                                             <div className="flex items-center gap-2 shrink-0">
-                                                {/* Ставка перекладача у вибраному стані */}
-                                                {(option.meta?.rate_per_page !== undefined || option.meta?.rate_per_action !== undefined) && (
+                                                {(option.meta?.rate_per_page != null || option.meta?.rate_per_action != null) && (
                                                     <span className="text-[11px] text-orange-700 font-semibold bg-orange-100/50 px-2 py-0.5 rounded-md border border-orange-200/50">
                                                         {option.meta?.rate_per_page ?? option.meta?.rate_per_action ?? 0} {option.meta?.currency}
                                                     </span>
                                                 )}
-                                                {/* 🔥 ДОДАНО: Маржа у вибраному стані 🔥 */}
                                                 {option.meta?.marginStr && (
                                                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${option.meta.isProfitable ? 'bg-green-100/50 text-green-700 border-green-200/50' : 'bg-red-100/50 text-red-700 border-red-200/50'}`}>
                                                         {t("orders.margin")} {option.meta.marginStr}
@@ -860,11 +862,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                         </div>
                                     )}
                                 />
-
                                 {translatorTrafficOptions.length === 0 && (
-                                    <p className="text-xs text-red-500">
-                                        У цього перекладача немає тарифу!
-                                    </p>
+                                    <p className="text-xs text-red-500">У цього перекладача немає тарифу!</p>
                                 )}
                             </div>
                         )}
@@ -917,26 +916,22 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 {/* ── Крок 5: Statistics & Price ── */}
                 <WizardStep>
                     {(() => {
-                        // Знаходимо код вибраної валюти для відображення
-                        const selectedCurrencyObj = currencies.find((c) => String(c.id) === currencyId);
-                        const orderCurrency = selectedCurrencyObj ? selectedCurrencyObj.code : "";
+                        const selectedCurrencyObj = currencies.find((c) => String(c.id) === currencyId)
+                        const orderCurrency = selectedCurrencyObj ? selectedCurrencyObj.code : ""
 
-                        // 🔥 ДОДАНО: Динамічний розрахунок реальної маржі
-                        // Враховує знижку клієнта або ручний ввід ціни менеджером
-                        let realMargin = priceData?.margin;
-                        let isMarginNegative = false;
+                        let realMargin = priceData?.margin
+                        let isMarginNegative = false
 
                         if (priceData?.translator_total && effectivePrice !== "-") {
-                            const currentClientPrice = parseFloat(String(effectivePrice));
-                            const translatorCost = parseFloat(priceData.translator_total);
-
+                            const currentClientPrice = parseFloat(String(effectivePrice))
+                            const translatorCost = parseFloat(priceData.translator_total)
                             if (!isNaN(currentClientPrice) && !isNaN(translatorCost)) {
-                                const marginValue = currentClientPrice - translatorCost;
-                                realMargin = marginValue.toFixed(2);
-                                isMarginNegative = marginValue < 0;
+                                const marginValue = currentClientPrice - translatorCost
+                                realMargin = marginValue.toFixed(2)
+                                isMarginNegative = marginValue < 0
                             }
                         } else if (priceData?.margin) {
-                            isMarginNegative = parseFloat(priceData.margin) < 0;
+                            isMarginNegative = parseFloat(priceData.margin) < 0
                         }
 
                         return (
@@ -1007,7 +1002,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                     checked={useManualPrice}
                                                     onChange={(e) => {
                                                         setUseManualPrice(e.target.checked)
-                                                        if (!e.target.checked) {setTotalAmount(String(discountedAutoPrice))}
+                                                        if (!e.target.checked) { setTotalAmount(String(discountedAutoPrice)) }
                                                     }}
                                                     className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
                                                 />
@@ -1027,8 +1022,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                             value={totalAmount}
                                                             onChange={(e) => setTotalAmount(e.target.value)}
                                                             placeholder={priceData?.total_client_price ?? "0.00"}
-                                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm
-                                                                    focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                                                         />
                                                         <span className="text-sm font-medium text-gray-600">{orderCurrency}</span>
                                                     </div>
@@ -1054,7 +1048,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                     <span className="text-gray-600">{t("orders.autoPages")}:</span>
                                                     <span className="font-medium">{priceData.pages}</span>
                                                 </div>
-
                                                 <div className="flex justify-between">
                                                     <span className="text-gray-600">{t("orders.autoBasePrice")}</span>
                                                     <span className="font-medium">{priceData.total_client_price} {orderCurrency}</span>
@@ -1065,7 +1058,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                             {t("orders.discount")} ({customDiscount !== "" ? t("orders.manualDiscount") : t("orders.clientDiscount")} {activeDiscount}%):
                                                         </span>
                                                         <span className="font-bold">
-                                                            -{ (baseAutoPrice * (activeDiscount / 100)).toFixed(2) } {orderCurrency}
+                                                            -{(baseAutoPrice * (activeDiscount / 100)).toFixed(2)} {orderCurrency}
                                                         </span>
                                                     </div>
                                                 )}
@@ -1073,7 +1066,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                     <span className="text-gray-800 font-semibold">{t("orders.amountDue")}</span>
                                                     <span className="font-bold text-green-700">{discountedAutoPrice} {orderCurrency}</span>
                                                 </div>
-
                                                 {priceData.translator_rate_per_page && (
                                                     <>
                                                         <div className="flex justify-between mt-4">
@@ -1082,7 +1074,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                         </div>
                                                         <div className="flex justify-between border-t border-green-200 pt-2 mt-1">
                                                             <span className="text-gray-600">{t("orders.margin")}</span>
-                                                            {/* 🔥 Враховуємо колір залежно від того, чи маржа в мінусі */}
                                                             <span className={`font-semibold ${isMarginNegative ? 'text-red-600' : 'text-green-700'}`}>
                                                                 {realMargin} {orderCurrency}
                                                             </span>
@@ -1098,7 +1089,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     </div>
                                 )}
                             </div>
-                        );
+                        )
                     })()}
                 </WizardStep>
             </WizardModal>
@@ -1129,10 +1120,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         customInput={Input}
                         type="tel"
                         onValueChange={(values) => {
-                            setForm(prev => ({
-                                ...prev,
-                                phone: values.formattedValue,
-                            }))
+                            setForm(prev => ({ ...prev, phone: values.formattedValue }))
                         }}
                     />
                     <div className="grid grid-cols-2 gap-4">
@@ -1142,15 +1130,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             placeholder={t("orders.currencyId")}
                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             onKeyDown={(e) => {
-                                if (["-", "e", "E", "+"].includes(e.key)) {
-                                    e.preventDefault();
-                                }
+                                if (["-", "e", "E", "+"].includes(e.key)) { e.preventDefault() }
                             }}
                             onFocus={(e) => e.target.select()}
                             value={form.currency_id === 0 ? "" : form.currency_id}
                             onChange={(e) => {
-                                const val = e.target.value;
-                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
+                                const val = e.target.value
+                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10))
                                 setForm(prev => ({ ...prev, currency_id: numericValue }))
                             }}
                         />

@@ -130,7 +130,7 @@ export default function EditorMain() {
     const columnsWithIcons = useMemo(() =>
             columns.map(col => ({
                 ...col,
-                icon: COLUMN_ICONS[col.status] ?? null
+                icon: COLUMN_ICONS[col.editor_status] ?? null
             })),
         [columns]
     );
