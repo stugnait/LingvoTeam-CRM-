@@ -7,36 +7,36 @@ import { Check, ChevronsUpDown, Search } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
-interface ComboboxOption {
+export interface ComboboxOption<TMeta = unknown> {
     value: string
     label: string
     searchText?: string
-    meta?: unknown
+    meta?: TMeta
 }
 
-interface ComboboxProps {
-    options?: ComboboxOption[] | null
+interface ComboboxProps<TMeta = unknown> {
+    options?: ComboboxOption<TMeta>[] | null
     value?: string
     onChange: (value: string) => void
     placeholder?: string
     searchPlaceholder?: string
     emptyMessage?: string
     searchable?: boolean
-    renderOption?: (option: ComboboxOption, isSelected: boolean) => React.ReactNode
-    renderSelected?: (option: ComboboxOption) => React.ReactNode
+    renderOption?: (option: ComboboxOption<TMeta>, isSelected: boolean) => React.ReactNode
+    renderSelected?: (option: ComboboxOption<TMeta>) => React.ReactNode
 }
 
-export function Combobox({
-                             options = [],
-                             value,
-                             onChange,
-                             placeholder,
-                             searchPlaceholder,
-                             emptyMessage,
-                             searchable = true,
-                             renderOption,
-                             renderSelected,
-                         }: ComboboxProps) {
+export function Combobox<TMeta = unknown>({
+                                              options = [],
+                                              value,
+                                              onChange,
+                                              placeholder,
+                                              searchPlaceholder,
+                                              emptyMessage,
+                                              searchable = true,
+                                              renderOption,
+                                              renderSelected,
+                                          }: ComboboxProps<TMeta>) {
     const { t } = useI18n()
 
     const [open, setOpen] = React.useState(false)
@@ -53,11 +53,9 @@ export function Combobox({
     const filteredOptions = React.useMemo(() => {
         if (!options || !Array.isArray(options)) { return [] }
         if (!searchQuery) { return options }
-
         return options.filter(option => {
             const searchText = (option.searchText || option.label || "").toLowerCase()
-            const query = searchQuery.toLowerCase()
-            return searchText.includes(query)
+            return searchText.includes(searchQuery.toLowerCase())
         })
     }, [options, searchQuery])
 
@@ -88,7 +86,6 @@ export function Combobox({
                     </span>
                     <ChevronsUpDown className={cn(
                         "ml-2 h-4 w-4 shrink-0 opacity-50 transition-all duration-300",
-                        "group-hover:opacity-70 group-hover:scale-110",
                         open && "opacity-70 scale-110"
                     )} />
                 </button>
@@ -130,21 +127,16 @@ export function Combobox({
                             <div className="p-2">
                                 {!options || options.length === 0 ? (
                                     <div className="py-8 text-center">
-                                        <div className="text-sm text-muted-foreground/70">
-                                            {resolvedEmptyMessage}
-                                        </div>
+                                        <div className="text-sm text-muted-foreground/70">{resolvedEmptyMessage}</div>
                                     </div>
                                 ) : filteredOptions.length === 0 ? (
                                     <div className="py-8 text-center">
-                                        <div className="text-sm text-muted-foreground/70">
-                                            {t("common.noMatches")}
-                                        </div>
+                                        <div className="text-sm text-muted-foreground/70">{t("common.noMatches")}</div>
                                     </div>
                                 ) : (
                                     <div className="space-y-1">
                                         {filteredOptions.map((option) => {
                                             const isSelected = value === option.value
-
                                             return (
                                                 <div
                                                     key={option.value}
@@ -157,7 +149,6 @@ export function Combobox({
                                                         "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2.5 pl-9 pr-3 text-sm",
                                                         "outline-none transition-colors duration-200",
                                                         "hover:bg-accent/50",
-                                                        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
                                                         isSelected && "bg-accent/20 font-medium text-accent-foreground",
                                                         "active:scale-[0.98]"
                                                     )}
@@ -167,15 +158,12 @@ export function Combobox({
                                                             <Check className="h-4 w-4 animate-in zoom-in-50 fade-in-0 duration-200 text-primary" />
                                                         )}
                                                     </span>
-
                                                     {renderOption ? (
                                                         <div className="flex-1 min-w-0">
                                                             {renderOption(option, isSelected)}
                                                         </div>
                                                     ) : (
-                                                        <span className="flex-1 min-w-0 truncate">
-                                                            {option.label}
-                                                        </span>
+                                                        <span className="flex-1 min-w-0 truncate">{option.label}</span>
                                                     )}
                                                 </div>
                                             )
@@ -191,7 +179,6 @@ export function Combobox({
                         >
                             <ScrollArea.Thumb className="relative flex-1 rounded-full bg-border/60 hover:bg-border transition-colors" />
                         </ScrollArea.Scrollbar>
-
                         <ScrollArea.Corner />
                     </ScrollArea.Root>
                 </Popover.Content>

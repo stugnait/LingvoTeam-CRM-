@@ -3,7 +3,15 @@ from django.db import models
 from apps import core
 
 
+# translators/models.py
 class Translator(models.Model):
+    user = models.OneToOneField(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='translator_profile'
+    )
     full_name = models.CharField(max_length=120)
     email = models.EmailField()
     phone = models.CharField(max_length=120)

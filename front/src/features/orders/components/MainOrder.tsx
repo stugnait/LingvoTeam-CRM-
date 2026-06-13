@@ -65,7 +65,8 @@ export default function OrdersPage() {
         downloadSingleSourceFile,
         downloadSingleTargetFile,
         searchFilter,
-        handleSearchChange
+        handleSearchChange,
+        updateClientStatusLoading
     } = useOrders()
 
     const { user } = useProfile()
@@ -339,7 +340,7 @@ export default function OrdersPage() {
                             downloadOrderTargetFiles={downloadOrderTargetFiles} onEdit={handleEdit}
                             onDelete={(id) => deleteOrder(id)} updateOrder={updateOrder}
                             searchFilter={searchFilter} onSearchChange={handleSearchChange}
-                            updateClientStatus={handleUpdateClientStatus} updateClientStatusLoading={loading}
+                            updateClientStatus={handleUpdateClientStatus} updateClientStatusLoading={updateClientStatusLoading}
                             onTaskOpen={handleViewDetailsBoard}
                         />
                     ) : (

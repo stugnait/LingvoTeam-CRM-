@@ -102,6 +102,8 @@ export function useUsers() {
             is_active: true,
             avatar: null,
             extra_permission_ids: [],
+            is_translator: false,
+            currency_id: null,
         })
         setErrors({})
         setWizardStep(1)
@@ -117,8 +119,9 @@ export function useUsers() {
             role: user.role.id,
             is_active: user.is_active,
             avatar: null,
-            // Підтягуємо існуючі індивідуальні права юзера
             extra_permission_ids: user.extra_permission_ids ?? [],
+            is_translator: !!user.translator_id,
+            currency_id: null,
         })
         setErrors({})
         setWizardStep(1)

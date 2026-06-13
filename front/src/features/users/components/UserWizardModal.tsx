@@ -62,9 +62,9 @@ export function UserWizardModal({
 
     // Preview аватарки
     const avatarPreview = useMemo(() => {
-        if (!form.avatar) {return null}
-        if (typeof form.avatar === "string") {return form.avatar}
-        if (form.avatar instanceof File) {return URL.createObjectURL(form.avatar)}
+        if (!form.avatar) { return null }
+        if (typeof form.avatar === "string") { return form.avatar }
+        if (form.avatar instanceof File) { return URL.createObjectURL(form.avatar) }
         return null
     }, [form.avatar])
 
@@ -76,9 +76,11 @@ export function UserWizardModal({
         ? (ROLE_LOCKED_TABS[selectedRoleObj.slug ?? ""] ?? [])
         : []
 
+    const isEditorRole = selectedRoleObj?.slug === "editor"
+
     // Обчислюємо які permission_ids вже є у ролі (базові — locked)
     const rolePermissionIds = useMemo(() => {
-        if (!selectedRoleObj) {return new Set<number>()}
+        if (!selectedRoleObj) { return new Set<number>() }
         return new Set(
             permissions
                 .filter(p =>
@@ -92,7 +94,7 @@ export function UserWizardModal({
 
     // Toggle окремого таба (тільки не-locked)
     const toggleTab = (tabKey: string) => {
-        if (lockedTabs.includes(tabKey)) {return}
+        if (lockedTabs.includes(tabKey)) { return }
 
         const preset = TAB_PRESETS[tabKey]
         const tabPerms = permissions.filter(p => preset.slugs.includes(p.slug))
@@ -108,14 +110,23 @@ export function UserWizardModal({
     }
 
     const isTabSelected = (tabKey: string): boolean => {
-        if (lockedTabs.includes(tabKey)) {return true}
+        if (lockedTabs.includes(tabKey)) { return true }
         const preset = TAB_PRESETS[tabKey]
         const tabPerms = permissions.filter(p => preset.slugs.includes(p.slug))
-        if (tabPerms.length === 0) {return false}
+        if (tabPerms.length === 0) { return false }
         return tabPerms.every(p => form.extra_permission_ids?.includes(p.id))
     }
 
     const extraCount = form.extra_permission_ids?.length ?? 0
+
+    const toggleIsTranslator = () => {
+        setForm(prev => ({
+            ...prev,
+            is_translator: !prev.is_translator,
+            // скидаємо currency якщо знімають галочку
+            currency_id: prev.is_translator ? null : prev.currency_id,
+        }))
+    }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,7 +194,7 @@ export function UserWizardModal({
                                     id="wizard-avatar-upload"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0]
-                                        if (file) {setForm(prev => ({ ...prev, avatar: file }))}
+                                        if (file) { setForm(prev => ({ ...prev, avatar: file })) }
                                         e.target.value = ""
                                     }}
                                 />
@@ -269,8 +280,10 @@ export function UserWizardModal({
                                     setForm(prev => ({
                                         ...prev,
                                         role: Number(value),
-                                        // При зміні ролі скидаємо додаткові права
                                         extra_permission_ids: [],
+                                        // скидаємо translator-поля при зміні ролі
+                                        is_translator: false,
+                                        currency_id: null,
                                     }))
                                 }}
                             >
@@ -289,6 +302,57 @@ export function UserWizardModal({
                                 <p className="text-xs text-destructive mt-1">{errors.role}</p>
                             )}
                         </div>
+
+                        {/* ── Галочка "також перекладач" — тільки для editor ── */}
+                        {isEditorRole && (
+                            <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3">
+                                {/* Чекбокс */}
+                                <button
+                                    type="button"
+                                    onClick={toggleIsTranslator}
+                                    className="flex items-center gap-3 w-full text-left"
+                                >
+                                    <div className={cn(
+                                        "h-5 w-5 rounded border flex items-center justify-center shrink-0 transition-all",
+                                        form.is_translator
+                                            ? "bg-primary border-primary text-primary-foreground"
+                                            : "border-input bg-background"
+                                    )}>
+                                        {form.is_translator && <Check className="h-3.5 w-3.5" />}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">Також є перекладачем</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Буде створено запис у таблиці перекладачів
+                                        </p>
+                                    </div>
+                                </button>
+
+                                {/* Поле currency_id — з'являється тільки якщо галочка активна */}
+                                {form.is_translator && (
+                                    <div>
+                                        <label className="text-xs text-muted-foreground block mb-1">
+                                            ID валюти <span className="text-destructive">*</span>
+                                        </label>
+                                        <Input
+                                            type="number"
+                                            placeholder="Введіть currency_id"
+                                            value={form.currency_id ?? ""}
+                                            onChange={(e) =>
+                                                setForm(prev => ({
+                                                    ...prev,
+                                                    currency_id: e.target.value ? Number(e.target.value) : null,
+                                                }))
+                                            }
+                                            className={errors.currency_id ? "border-destructive" : ""}
+                                        />
+                                        {errors.currency_id && (
+                                            <p className="text-xs text-destructive mt-1">{errors.currency_id}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Таби — показуємо тільки якщо роль вибрана */}
                         {selectedRoleObj ? (
