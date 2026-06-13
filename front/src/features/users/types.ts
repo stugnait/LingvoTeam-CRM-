@@ -32,17 +32,19 @@ export interface User {
     permissions: string[]
     // Тільки індивідуальні id — для wizard-у
     extra_permission_ids: number[]
+    translator_id: number | null
 }
 
 export interface UserFormData {
     full_name: string
-    email: string
     phone: string
+    email: string
     role: number
     is_active: boolean
-    avatar?: File | null | string
-    // Індивідуальні додаткові права юзера
+    avatar: File | string | null
     extra_permission_ids: number[]
+    is_translator?: boolean
+    currency_id?: number | null
 }
 
 export interface UsersFilters {

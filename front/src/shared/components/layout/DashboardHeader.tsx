@@ -13,6 +13,8 @@ import { User, LogOut, Menu } from "lucide-react"
 import { useToast } from "@/src/hooks/use-toast"
 // shared/layout/DashboardHeader.tsx
 import { NotificationsDropdown } from "@/src/features/notifications/components/NotificationsDropdown"
+import { LanguageSwitcher } from "@/src/shared/i18n/LanguageSwitcher"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface DashboardHeaderProps {
     onMenuClick?: () => void
@@ -21,11 +23,12 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
     const router = useRouter()
     const { toast } = useToast()
+    const { t } = useI18n()
 
     const handleLogout = () => {
         toast({
-            title: "Signed out",
-            description: "You have been successfully signed out.",
+            title: t("common.signedOut"),
+            description: t("common.signedOutDescription"),
         })
         router.push("/login")
     }
@@ -44,16 +47,17 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                         size="icon"
                         onClick={onMenuClick}
                         className="lg:hidden shrink-0"
-                        aria-label="Open menu"
+                        aria-label={t("common.openMenu")}
                     >
                         <Menu className="h-5 w-5" />
                     </Button>
                 )}
-                <h2 className="text-lg font-semibold truncate">CRM Dashboard</h2>
+                <h2 className="text-lg font-semibold truncate">{t("common.dashboard")}</h2>
             </div>
 
             {/* Права частина */}
             <div className="flex items-center gap-2 shrink-0">
+                <LanguageSwitcher />
                 <NotificationsDropdown />
 
                 <DropdownMenu>
@@ -72,7 +76,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                     <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem onClick={handleProfile}>
                             <User className="h-4 w-4 mr-2" />
-                            Profile
+                            {t("common.profile")}
                         </DropdownMenuItem>
 
                         <DropdownMenuSeparator />
@@ -82,7 +86,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
                             className="text-destructive"
                         >
                             <LogOut className="h-4 w-4 mr-2" />
-                            Sign Out
+                            {t("common.signOut")}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

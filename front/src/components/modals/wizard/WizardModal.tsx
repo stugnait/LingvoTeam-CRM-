@@ -10,6 +10,7 @@ import {
 import { Button } from "../../ui/button"
 import { cn } from "@/src/lib/utils"
 import { ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface StepConfig {
     title: string
@@ -48,6 +49,7 @@ export function WizardModal({
                                 stepValidation,
                                 stepError
                             }: WizardModalProps) {
+    const { t } = useI18n()
 
     // Ми більше не тримаємо внутрішній стейт currentStep,
     // а використовуємо пропси `step` та `onStepChange`, які приходять зверху (контрольований компонент).
@@ -155,7 +157,7 @@ export function WizardModal({
                         )}
                     >
                         <ChevronLeft className="w-3.5 h-3.5" />
-                        <span className="hidden xs:inline sm:inline">Назад</span>
+                        <span className="hidden xs:inline sm:inline">{t("common.back")}</span>
                     </Button>
 
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -165,7 +167,7 @@ export function WizardModal({
                         )}
 
                         <span className="text-xs text-gray-500 whitespace-nowrap">
-                            Крок {currentStep + 1} з {steps.length}
+                            {t("wizard.stepProgress", { current: currentStep + 1, total: steps.length })}
                         </span>
 
                         {!isLast ? (
@@ -177,7 +179,7 @@ export function WizardModal({
                        hover:from-blue-700 hover:to-blue-800
                        disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Далі
+                                {t("common.next")}
                                 <ChevronRight className="w-3.5 h-3.5"/>
                             </Button>
                         ) : (
@@ -190,12 +192,12 @@ export function WizardModal({
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="w-3.5 h-3.5 animate-spin"/>
-                                        <span className="hidden sm:inline">Обробка...</span>
+                                        <span className="hidden sm:inline">{t("common.processing")}</span>
                                     </>
                                 ) : (
                                     <>
                                         <Check className="w-3.5 h-3.5"/>
-                                        Завершити
+                                        {t("common.finish")}
                                     </>
                                 )}
                             </Button>

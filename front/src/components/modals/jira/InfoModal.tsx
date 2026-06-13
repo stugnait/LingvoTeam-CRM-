@@ -6,20 +6,48 @@ import {
 } from "../../ui/dialog"
 import {Button} from "../../ui/button"
 import {Badge} from "../../ui/badge"
-import {Avatar, AvatarFallback, AvatarImage} from "../../ui/avatar"
-import {Textarea} from "../../ui/textarea"
 import {
     ChevronDown,
     Share2,
     MoreHorizontal,
     X,
-    Paperclip,
     Settings,
     Download,
-    FileText,
     Calendar,
-    Eye
+    Eye,
+    BarChart2,
+    Loader2,
+    FileUp // 👉 Додано іконку
 } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
+
+type Translate = ReturnType<typeof useI18n>["t"]
+
+interface FolderStats {
+    total_stats?: {
+        physical_pages?: number
+        images?: number
+        chars_with_spaces?: number
+        chars_no_spaces?: number
+    }
+}
+
+function renderStatsBlock(stats: FolderStats | null | undefined, t: Translate) {
+    if (!stats?.total_stats) {
+        return null
+    }
+
+    const s = stats.total_stats
+
+    return (
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200/60 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-gray-700 animate-in fade-in duration-200">
+            <div>{t("common.pages")}: <span className="font-bold text-gray-900">{s.physical_pages}</span></div>
+            <div>{t("common.images")}: <span className="font-bold text-gray-900">{s.images}</span></div>
+            <div className="truncate">{t("common.withSpaces")}: <span className="font-bold text-gray-900">{s.chars_with_spaces}</span></div>
+            <div className="truncate">{t("common.withoutSpaces")}: <span className="font-bold text-gray-900">{s.chars_no_spaces}</span></div>
+        </div>
+    )
+}
 
 interface TaskModalProps {
     open: boolean,
@@ -57,6 +85,17 @@ interface TaskModalProps {
     onLoadFiles?: (orderId: number) => void
     onDownloadSingleSource?: (orderId: number, fileId: number, filename: string) => void
     onDownloadSingleTarget?: (orderId: number, fileId: number, filename: string) => void
+
+    // Результати аналізу папок
+    sourceStats?: FolderStats | null
+    sourceStatsLoading?: boolean
+    targetStats?: FolderStats | null
+    targetStatsLoading?: boolean
+    onAnalyzeFolder?: (orderId: number, folder: "source" | "target") => void
+
+    // 👉 ДОДАНО: Пропси для завантаження в Target менеджером
+    onUploadTarget?: (files: File[]) => Promise<boolean>
+    isUploadingTarget?: boolean
 }
 
 export function TaskModal({
@@ -70,17 +109,8 @@ export function TaskModal({
                               priorityName,
                               translator,
                               dueDate,
-                              labels,
-                              sprint,
-                              team,
-                              startDate,
-                              isLoading,
                               clientName,
                               languagePair,
-                              onSave,
-                              onCancel,
-                              onDelete,
-                              onAssignToMe,
                               onDownloadOriginal,
                               onDownloadTranslation,
                               intake_manager,
@@ -94,7 +124,19 @@ export function TaskModal({
                               onLoadFiles,
                               onDownloadSingleSource,
                               onDownloadSingleTarget,
+
+                              sourceStats,
+                              sourceStatsLoading,
+                              targetStats,
+                              targetStatsLoading,
+                              onAnalyzeFolder,
+
+                          // Деструктуризація нових параметрів
+                              onUploadTarget,
+                              isUploadingTarget,
                           }: TaskModalProps) {
+    const { t } = useI18n()
+
     const getPriorityIcon = () => {
         const icons: Record<string, string> = {
             critical: "⚠️", "4": "⚠️",
@@ -102,8 +144,26 @@ export function TaskModal({
             medium: "🟡", "2": "🟡",
             low: "🟢", "1": "🟢"
         }
-
         return icons[priority?.toString().toLowerCase()] || "="
+    }
+
+    const getPriorityLabel = () => {
+        if (priorityName) {
+            return t(priorityName)
+        }
+
+        const priorityKeys: Record<string, string> = {
+            "1": "priority.low",
+            "2": "priority.medium",
+            "3": "priority.high",
+            "4": "priority.critical",
+            low: "priority.low",
+            medium: "priority.medium",
+            high: "priority.high",
+            critical: "priority.critical",
+        }
+
+        return t(priorityKeys[priority?.toString().toLowerCase()] || priority)
     }
 
     return (
@@ -114,7 +174,7 @@ export function TaskModal({
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500">✓</span>
-                            <span className="text-sm font-medium text-blue-600">Task #{taskId}</span>
+                            <span className="text-sm font-medium text-blue-600">{t("task.taskNumber", { id: taskId })}</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -127,12 +187,7 @@ export function TaskModal({
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreHorizontal className="h-4 w-4"/>
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onOpenChange(false)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
                             <X className="h-4 w-4"/>
                         </Button>
                     </div>
@@ -141,29 +196,22 @@ export function TaskModal({
                 <div className="flex flex-col sm:flex-row overflow-hidden h-[calc(95svh-49px)] sm:h-[calc(95vh-57px)]">
                     {/* Main Content */}
                     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4">
-                        {/* Title */}
-                        <h1 className="text-xl font-semibold text-gray-900 mb-6 pr-8">
-                            {taskTitle}
-                        </h1>
+                        <h1 className="text-xl font-semibold text-gray-900 mb-6 pr-8">{taskTitle}</h1>
 
-                        {/* Description Section */}
+                        {/* Description */}
                         <div className="mb-8">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-semibold text-gray-700">Опис</h3>
-                            </div>
+                            <h3 className="text-sm font-semibold text-gray-700 mb-2">{t("common.description")}</h3>
                             <div className="text-sm text-gray-600 whitespace-pre-line bg-gray-50 p-3 rounded">
-                                {taskDescription || "Редагувати опис"}
+                                {taskDescription || t("task.editDescription")}
                             </div>
                         </div>
 
-                        {/* Download Buttons Section */}
-                        {/* Files Section */}
                         {/* Files Section */}
                         <div className="mb-8">
                             <div className="flex items-center justify-between gap-3 mb-4">
                                 <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                                     <Eye className="h-4 w-4 text-gray-500" />
-                                    Файли для завантаження
+                                    {t("task.orderFiles")}
                                 </h3>
                                 <Button
                                     variant="outline"
@@ -172,42 +220,53 @@ export function TaskModal({
                                     disabled={filesLoading}
                                     className="h-7 text-xs border-gray-300 hover:bg-gray-50"
                                 >
-                                    Оновити
+                                    {t("task.refreshFileLists")}
                                 </Button>
                             </div>
 
-                            {/* Source */}
-                            <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+                            {/* SOURCE BLOCK */}
+                            <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/40 to-white p-4">
                                 <div className="flex items-center justify-between mb-3">
-                                    <p className="font-semibold text-blue-900">Source</p>
-                                    <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
-                                        {filesLoading ? "..." : sourceFiles.length}
-                                    </Badge>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-blue-900">{t("common.source")}</p>
+                                        <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
+                                            {filesLoading ? "..." : sourceFiles.length}
+                                        </Badge>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={filesLoading || sourceStatsLoading || sourceFiles.length === 0}
+                                        onClick={() => orderId && onAnalyzeFolder?.(orderId, "source")}
+                                        className="h-7 text-xs border-blue-200 bg-white text-blue-600 hover:bg-blue-50 gap-1"
+                                    >
+                                        {sourceStatsLoading ? (
+                                            <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                                        ) : (
+                                            <BarChart2 className="h-3 w-3 text-blue-500" />
+                                        )}
+                                        {sourceStatsLoading ? t("task.analyzing") : t("task.analyzeFolder", { folder: t("common.source") })}
+                                    </Button>
                                 </div>
 
-                                <div className="space-y-2">
+                                {renderStatsBlock(sourceStats, t)}
+
+                                <div className="space-y-2 mt-3">
                                     {filesLoading ? (
-                                        <div className="text-sm text-blue-500">Завантаження…</div>
+                                        <div className="text-sm text-blue-500">{t("common.loading")}</div>
                                     ) : sourceFiles.length === 0 ? (
-                                        <div className="text-sm text-blue-400">Файлів немає</div>
+                                        <div className="text-sm text-blue-400">{t("task.noFiles")}</div>
                                     ) : (
                                         sourceFiles.map(f => (
-                                            <div
-                                                key={f.id}
-                                                className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-blue-100"
-                                            >
+                                            <div key={f.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-white border border-blue-100">
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
-                                                    <p className="text-xs text-blue-400">ID: {f.id}</p>
                                                 </div>
                                                 <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                                                    onClick={() => orderId && onDownloadSingleSource?.(orderId, f.id, f.name)}
-                                                    disabled={downloadLoading}
+                                                    size="sm" variant="outline" className="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                    onClick={() => orderId && onDownloadSingleSource?.(orderId, f.id, f.name)} disabled={downloadLoading}
                                                 >
-                                                    Скачати
+                                                    {t("common.download")}
                                                 </Button>
                                             </div>
                                         ))
@@ -215,212 +274,206 @@ export function TaskModal({
                                 </div>
                             </div>
 
-                            {/* Target */}
-                            <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
+                            {/* TARGET BLOCK */}
+                            <div className="mt-4 rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50/30 to-white p-4">
                                 <div className="flex items-center justify-between mb-3">
-                                    <p className="font-semibold text-blue-900">Target</p>
-                                    <Badge variant="outline" className="border-blue-200 bg-white text-blue-700">
-                                        {filesLoading ? "..." : targetFiles.length}
-                                    </Badge>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-emerald-900">{t("common.target")}</p>
+                                        <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
+                                            {filesLoading ? "..." : targetFiles.length}
+                                        </Badge>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={filesLoading || targetStatsLoading || targetFiles.length === 0}
+                                        onClick={() => orderId && onAnalyzeFolder?.(orderId, "target")}
+                                        className="h-7 text-xs border-emerald-200 bg-white text-emerald-600 hover:bg-emerald-50 gap-1"
+                                    >
+                                        {targetStatsLoading ? (
+                                            <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
+                                        ) : (
+                                            <BarChart2 className="h-3 w-3 text-emerald-500" />
+                                        )}
+                                        {targetStatsLoading ? t("task.analyzing") : t("task.analyzeFolder", { folder: t("common.target") })}
+                                    </Button>
                                 </div>
 
-                                <div className="space-y-2">
+                                {renderStatsBlock(targetStats, t)}
+
+                                <div className="space-y-2 mt-3">
                                     {filesLoading ? (
-                                        <div className="text-sm text-blue-500">Завантаження…</div>
+                                        <div className="text-sm text-emerald-500">{t("common.loading")}</div>
                                     ) : targetFiles.length === 0 ? (
-                                        <div className="text-sm text-blue-400">Файлів немає</div>
+                                        <div className="text-sm text-emerald-400">{t("task.noFiles")}</div>
                                     ) : (
                                         targetFiles.map(f => (
-                                            <div
-                                                key={f.id}
-                                                className="flex items-center justify-between gap-3 p-3 rounded-lg bg-white border border-blue-100"
-                                            >
+                                            <div key={f.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-white border border-emerald-100">
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
-                                                    <p className="text-xs text-blue-400">ID: {f.id}</p>
+                                                    <p className="text-sm font-medium text-emerald-900 truncate">{f.name}</p>
                                                 </div>
                                                 <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                                                    onClick={() => orderId && onDownloadSingleTarget?.(orderId, f.id, f.name)}
-                                                    disabled={downloadLoading}
+                                                    size="sm" variant="outline" className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                                    onClick={() => orderId && onDownloadSingleTarget?.(orderId, f.id, f.name)} disabled={downloadLoading}
                                                 >
-                                                    Скачати
+                                                    {t("common.download")}
                                                 </Button>
                                             </div>
                                         ))
                                     )}
                                 </div>
+
+                                {/* 👉 ДОДАНО: Компактна зона завантаження перекладу менеджером */}
+                                {onUploadTarget && (
+                                    <div className="mt-4 pt-3 border-t border-dashed border-emerald-200/80">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            id="manager-target-upload"
+                                            className="hidden"
+                                            disabled={isUploadingTarget || filesLoading}
+                                            onChange={async (e) => {
+                                                const files = Array.from(e.target.files || []);
+                                                if (files.length > 0 && onUploadTarget) {
+                                                    await onUploadTarget(files);
+                                                }
+                                                e.target.value = ""; // Скидаємо інпут
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor="manager-target-upload"
+                                            className={`
+                                                flex flex-col items-center justify-center p-4 border-2 border-dashed 
+                                                border-emerald-200 rounded-lg cursor-pointer bg-white 
+                                                hover:bg-emerald-50/40 transition-all text-center
+                                                ${isUploadingTarget ? "opacity-50 pointer-events-none" : ""}
+                                            `}
+                                        >
+                                            {isUploadingTarget ? (
+                                                <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold">
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    <span>{t("task.uploadingTarget")}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-emerald-700 font-medium flex items-center gap-2">
+                                                    <FileUp className="h-4 w-4 text-emerald-500 animate-pulse" />
+                                                    <span>{t("task.addTargetFiles")}</span>
+                                                </div>
+                                            )}
+                                        </label>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Zip buttons */}
                             <div className="mt-4 flex justify-end gap-3">
                                 <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={onDownloadOriginal}
+                                    variant="outline" size="sm" onClick={onDownloadOriginal}
                                     disabled={filesLoading || downloadLoading || sourceFiles.length === 0}
                                     className="text-xs gap-1.5 border-gray-300 hover:bg-gray-50"
                                 >
-                                    <Download className="h-3.5 w-3.5" />
-                                    Скачати все (source)
+                                    <Download className="h-3.5 w-3.5" /> {t("task.downloadAll", { folder: t("common.source").toLowerCase() })}
                                 </Button>
                                 <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={onDownloadTranslation}
+                                    variant="outline" size="sm" onClick={onDownloadTranslation}
                                     disabled={filesLoading || downloadLoading || targetFiles.length === 0}
                                     className="text-xs gap-1.5 border-blue-300 text-blue-600 hover:bg-blue-50"
                                 >
-                                    <Download className="h-3.5 w-3.5" />
-                                    Скачати все (target)
+                                    <Download className="h-3.5 w-3.5" /> {t("task.downloadAll", { folder: t("common.target").toLowerCase() })}
                                 </Button>
                             </div>
                         </div>
-
                     </div>
 
                     {/* Right Sidebar */}
                     <div className="w-full sm:w-80 border-t sm:border-t-0 sm:border-l bg-gray-50 overflow-y-auto p-3 sm:p-4">
-                        {/* Status Dropdown */}
                         <div className="mb-6">
-                            <Button
-                                className="w-full justify-between bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                                variant="default"
-                            >
-                                <span className="font-medium">{status}</span>
+                            <Button className="w-full justify-between bg-blue-600 hover:bg-blue-700 text-white shadow-sm" variant="default">
+                                <span className="font-medium">{t(status)}</span>
                                 <ChevronDown className="h-4 w-4 ml-2"/>
                             </Button>
                         </div>
 
-                        {/* Details Section */}
                         <div className="space-y-1 bg-white rounded-lg border border-gray-200 p-1">
-                            <button
-                                className="flex items-center justify-between w-full py-2.5 px-3 hover:bg-gray-50 rounded">
-                                <span className="text-sm font-semibold text-gray-700">Деталі</span>
+                            <button className="flex items-center justify-between w-full py-2.5 px-3 hover:bg-gray-50 rounded">
+                                <span className="text-sm font-semibold text-gray-700">{t("common.details")}</span>
                                 <Settings className="h-4 w-4 text-gray-400"/>
                             </button>
 
                             {clientName && (
                                 <div className="py-3 px-3 border-t">
-                                    <label className="text-xs text-gray-600 mb-2 block">Клієнт</label>
+                                    <label className="text-xs text-gray-600 mb-2 block">{t("common.client")}</label>
                                     <div className="text-sm font-medium">{clientName}</div>
                                 </div>
                             )}
 
                             {languagePair && (
                                 <div className="py-3 px-3 border-t">
-                                    <label className="text-xs text-gray-600 mb-2 block">Мовна пара</label>
+                                    <label className="text-xs text-gray-600 mb-2 block">{t("common.languagePair")}</label>
                                     <div className="text-sm font-medium">{languagePair}</div>
                                 </div>
                             )}
 
-                            {/* Assignee */}
-                            {/* Перекладач */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Перекладач</label>
+                                <label className="text-xs text-gray-600 mb-2 block">{t("common.translator")}</label>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-green-100 dark:bg-green-900">
-            <span className="text-xs font-semibold text-green-600">
-                {translator?.charAt(0)?.toUpperCase() || '?'}
-            </span>
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-green-100">
+                                        <span className="text-xs font-semibold text-green-600">{translator?.charAt(0)?.toUpperCase() || '?'}</span>
                                     </div>
-                                    <span className="text-sm font-medium">{translator || 'Не призначено'}</span>
+                                    <span className="text-sm font-medium">{translator || t("common.notAssigned")}</span>
                                 </div>
                             </div>
 
-                            {/* Редактор */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Редактор</label>
+                                <label className="text-xs text-gray-600 mb-2 block">{t("common.editor")}</label>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-orange-100 dark:bg-orange-900">
-            <span className="text-xs font-semibold text-orange-600">
-                {editor?.charAt(0)?.toUpperCase() || '?'}
-            </span>
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-orange-100">
+                                        <span className="text-xs font-semibold text-orange-600">{editor?.charAt(0)?.toUpperCase() || '?'}</span>
                                     </div>
-                                    <span className="text-sm font-medium">{editor || 'Не призначено'}</span>
+                                    <span className="text-sm font-medium">{editor || t("common.notAssigned")}</span>
                                 </div>
                             </div>
 
-                            {/* Priority */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Пріоритет</label>
+                                <label className="text-xs text-gray-600 mb-2 block">{t("common.priority")}</label>
                                 <div className="flex items-center gap-2">
                                     <span>{getPriorityIcon()}</span>
-                                    <span className="text-sm font-medium capitalize">{priorityName || priority}</span>
+                                    <span className="text-sm font-medium capitalize">{getPriorityLabel()}</span>
                                 </div>
                             </div>
 
-                            {/* Due Date */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Термін виконання</label>
+                                <label className="text-xs text-gray-600 mb-2 block">{t("common.deadline")}</label>
                                 {dueDate ? (
-                                    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg w-fit ${
-                                        new Date(dueDate) < new Date()
-                                            ? 'bg-red-50 dark:bg-red-900/20'
-                                            : 'bg-blue-50 dark:bg-blue-900/20'
-                                    }`}>
-                                        <Calendar className={`h-3.5 w-3.5 flex-shrink-0 ${
-                                            new Date(dueDate) < new Date() ? 'text-red-500' : 'text-blue-500'
-                                        }`} />
-                                        <span className={`text-sm font-medium ${
-                                            new Date(dueDate) < new Date()
-                                                ? 'text-red-700 dark:text-red-300'
-                                                : 'text-blue-700 dark:text-blue-300'
-                                        }`}>{dueDate}</span>
-                                        {new Date(dueDate) < new Date() && (
-                                            <span className="text-xs text-red-500 font-semibold">Прострочено</span>
-                                        )}
+                                    <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg w-fit ${new Date(dueDate) < new Date() ? 'bg-red-50' : 'bg-blue-50'}`}>
+                                        <Calendar className={`h-3.5 w-3.5 flex-shrink-0 ${new Date(dueDate) < new Date() ? 'text-red-500' : 'text-blue-500'}`} />
+                                        <span className={`text-sm font-medium ${new Date(dueDate) < new Date() ? 'text-red-700' : 'text-blue-700'}`}>{dueDate}</span>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
+                                    <div className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-100 rounded-lg w-fit">
                                         <Calendar className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                                        <span className="text-sm text-gray-400">Не вказано</span>
+                                        <span className="text-sm text-gray-400">{t("common.notSet")}</span>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Team */}
-                            {team && (
-                                <div className="py-3 px-3 border-t">
-                                    <label className="text-xs text-gray-600 mb-2 block">Команда</label>
-                                    <div className="text-sm text-gray-700 font-medium">{team}</div>
-                                </div>
-                            )}
-
-                            {/* Reporter/Author */}
-                            {/* Менеджер прийому */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Менеджер прийому</label>
+                                <label className="text-xs text-gray-600 mb-2 block">{t("task.intakeManager")}</label>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-blue-100 dark:bg-blue-900">
-                                        {intake_manager?.avatar ? (
-                                            <img src={intake_manager.avatar} alt={intake_manager.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-xs font-semibold text-blue-600">
-                    {intake_manager?.name?.charAt(0)?.toUpperCase() || '?'}
-                </span>
-                                        )}
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-blue-100">
+                                        <span className="text-xs font-semibold text-blue-600">{intake_manager?.name?.charAt(0)?.toUpperCase() || '?'}</span>
                                     </div>
-                                    <span className="text-sm font-medium">{intake_manager?.name || 'Не призначено'}</span>
+                                    <span className="text-sm font-medium">{intake_manager?.name || t("common.notAssigned")}</span>
                                 </div>
                             </div>
 
-                            {/* Менеджер здачі */}
                             <div className="py-3 px-3 border-t">
-                                <label className="text-xs text-gray-600 mb-2 block">Менеджер здачі</label>
+                                <label className="text-xs text-gray-600 mb-2 block">{t("task.deliveryManager")}</label>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 bg-purple-100 dark:bg-purple-900">
-                                        {delivery_manager?.avatar ? (
-                                            <img src={delivery_manager.avatar} alt={delivery_manager.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-xs font-semibold text-purple-600">
-                    {delivery_manager?.name?.charAt(0)?.toUpperCase() || '?'}
-                </span>
-                                        )}
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden bg-purple-100">
+                                        <span className="text-xs font-semibold text-purple-600">{delivery_manager?.name?.charAt(0)?.toUpperCase() || '?'}</span>
                                     </div>
-                                    <span className="text-sm font-medium">{delivery_manager?.name || 'Не призначено'}</span>
+                                    <span className="text-sm font-medium">{delivery_manager?.name || t("common.notAssigned")}</span>
                                 </div>
                             </div>
                         </div>

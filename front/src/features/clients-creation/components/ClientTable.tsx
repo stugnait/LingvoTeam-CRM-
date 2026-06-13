@@ -26,6 +26,7 @@ import {
 } from "@/src/components/ui/dropdown-menu"
 
 import type { Client } from "../types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface ClientTableProps {
     clients: (Client & { category_name?: string; discount_percent?: number })[]
@@ -44,6 +45,7 @@ export function ClientTable({
                                 totalPages,
                                 onPageChange
                             }: ClientTableProps) {
+    const { t } = useI18n()
 
     return (
         <div className="border border-border rounded-lg bg-card">
@@ -53,8 +55,8 @@ export function ClientTable({
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Category</TableHead>
+                            <TableHead>{t("common.client")}</TableHead>
+                            <TableHead>{t("orders.category")}</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Phone</TableHead>
                             <TableHead className="w-[70px]" />
@@ -70,7 +72,7 @@ export function ClientTable({
                                 <TableCell>
                                     <div className="flex items-center gap-2">
                                         <Badge variant={client.category ? "secondary" : "outline"}>
-                                            {client.category ? client.category_name : "Без категорії"}
+                                            {client.category ? client.category_name : t("orders.noCategory")}
                                         </Badge>
                                         {client.category && client.discount_percent !== null && (
                                             <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -91,11 +93,11 @@ export function ClientTable({
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={() => onEdit(client)}>
                                                 <Pencil className="h-4 w-4 mr-2"/>
-                                                Edit
+                                                {t("common.edit")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => onDelete(client)} className="text-destructive">
                                                 <Trash2 className="h-4 w-4 mr-2"/>
-                                                Delete
+                                                {t("common.delete")}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -116,7 +118,7 @@ export function ClientTable({
                             <p className="text-xs text-muted-foreground">{client.phone_number || "—"}</p>
                             <div className="flex items-center gap-1 flex-wrap">
                                 <Badge variant={client.category ? "secondary" : "outline"} className="text-xs">
-                                    {client.category ? client.category_name : "Без категорії"}
+                                    {client.category ? client.category_name : t("orders.noCategory")}
                                 </Badge>
                                 {client.category && client.discount_percent !== null && (
                                     <Badge variant="outline" className="text-xs text-muted-foreground">
@@ -134,11 +136,11 @@ export function ClientTable({
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => onEdit(client)}>
                                     <Pencil className="h-4 w-4 mr-2"/>
-                                    Edit
+                                    {t("common.edit")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => onDelete(client)} className="text-destructive">
                                     <Trash2 className="h-4 w-4 mr-2"/>
-                                    Delete
+                                    {t("common.delete")}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -154,7 +156,7 @@ export function ClientTable({
                     disabled={page === 1}
                     onClick={() => onPageChange(page - 1)}
                 >
-                    Previous
+                    {t("common.back")}
                 </Button>
 
                 <div className="flex items-center gap-1">
@@ -177,7 +179,7 @@ export function ClientTable({
                     disabled={page === totalPages || totalPages === 0}
                     onClick={() => onPageChange(page + 1)}
                 >
-                    Next
+                    {t("common.next")}
                 </Button>
             </div>
         </div>

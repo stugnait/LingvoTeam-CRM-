@@ -18,6 +18,7 @@ import {
     DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu"
 import type { Language } from "../types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface LanguageTableProps {
     languages: Language[]
@@ -33,9 +34,11 @@ export function LanguageTable({
                                   onDelete,
                                   loading,
                                   page,
-                                  totalPages,
-                                  onPageChange
-                              }: LanguageTableProps) {
+                              totalPages,
+                              onPageChange
+                          }: LanguageTableProps) {
+    const { t } = useI18n()
+
     return (
         <div className="border border-border rounded-lg bg-card">
 
@@ -45,8 +48,8 @@ export function LanguageTable({
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[80px]">ID</TableHead>
-                            <TableHead>Назва мови</TableHead>
-                            <TableHead>Код (Slug)</TableHead>
+                            <TableHead>{t("languages.name")}</TableHead>
+                            <TableHead>{t("languages.slug")}</TableHead>
                             <TableHead className="w-[70px]" />
                         </TableRow>
                     </TableHeader>
@@ -54,13 +57,13 @@ export function LanguageTable({
                         {loading && languages.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                                    Завантаження...
+                                    {t("common.loading")}
                                 </TableCell>
                             </TableRow>
                         ) : languages.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
-                                    Мов не знайдено.
+                                    {t("languages.notFound")}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -90,7 +93,7 @@ export function LanguageTable({
                                                     className="text-destructive"
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-2"/>
-                                                    Видалити
+                                                    {t("common.delete")}
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -105,9 +108,9 @@ export function LanguageTable({
             {/* Мобільні картки */}
             <div className="sm:hidden divide-y divide-border">
                 {loading && languages.length === 0 ? (
-                    <p className="text-center py-6 text-muted-foreground text-sm">Завантаження...</p>
+                    <p className="text-center py-6 text-muted-foreground text-sm">{t("common.loading")}</p>
                 ) : languages.length === 0 ? (
-                    <p className="text-center py-6 text-muted-foreground text-sm">Мов не знайдено.</p>
+                    <p className="text-center py-6 text-muted-foreground text-sm">{t("languages.notFound")}</p>
                 ) : (
                     languages.map((language) => (
                         <div key={language.id} className="flex items-center justify-between px-4 py-3 gap-3">
@@ -129,7 +132,7 @@ export function LanguageTable({
                                         className="text-destructive"
                                     >
                                         <Trash2 className="h-4 w-4 mr-2"/>
-                                        Видалити
+                                        {t("common.delete")}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -146,7 +149,7 @@ export function LanguageTable({
                     disabled={page === 1}
                     onClick={() => onPageChange(page - 1)}
                 >
-                    Previous
+                    {t("common.back")}
                 </Button>
 
                 <div className="flex items-center gap-1">
@@ -169,7 +172,7 @@ export function LanguageTable({
                     disabled={page === totalPages || totalPages === 0}
                     onClick={() => onPageChange(page + 1)}
                 >
-                    Next
+                    {t("common.next")}
                 </Button>
             </div>
 

@@ -32,7 +32,11 @@ const buildFormData = (data: UserFormData): FormData => {
 
         // Решта примітивів
         if (value !== null && value !== undefined) {
-            formData.append(key, String(value))
+            if (typeof value === "boolean") {
+                formData.append(key, value ? "true" : "false")
+            } else {
+                formData.append(key, String(value))
+            }
         }
     })
 

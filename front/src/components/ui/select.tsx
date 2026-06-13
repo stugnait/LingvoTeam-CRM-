@@ -4,6 +4,7 @@ import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 const Select = SelectPrimitive.Root
 const SelectGroup = SelectPrimitive.Group
@@ -54,12 +55,15 @@ const SelectContent = React.forwardRef<
 
     const [search, setSearch] = React.useState("")
     const contentRef = React.useRef<HTMLDivElement>(null)
+    const { t } = useI18n()
 
     const filteredChildren = React.useMemo(() => {
         if (!searchable || !search) {return children}
 
-        return React.Children.map(children, (child: any) => {
-            if (!child?.props?.children) {return child}
+        return React.Children.map(children, (child) => {
+            if (!React.isValidElement<{ children?: React.ReactNode }>(child) || !child.props.children) {
+                return child
+            }
 
             const text = String(child.props.children).toLowerCase()
 
@@ -137,7 +141,7 @@ const SelectContent = React.forwardRef<
                 <SelectPrimitive.Viewport className="p-2 max-h-72">
                     {React.Children.count(filteredChildren) === 0 ? (
                         <div className="py-6 text-center text-sm text-muted-foreground/70">
-                            Нічого немає
+                            {t("common.noResults")}
                         </div>
                     ) : (
                         filteredChildren

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "@/src/styles/global.css"
 import { Toaster } from "@/src/components/ui/toaster"
 import ErrorInterceptor from "@/src/components/ErrorInterceptor"
+import { I18nProvider } from "@/src/shared/i18n/I18nProvider"
 
 const geistSans = Geist({
     subsets: ["latin"],
@@ -45,15 +46,17 @@ export default function RootLayout({
 }) {
     return (
         <html
-            lang="en"
+            lang="uk"
             className={`${geistSans.variable} ${geistMono.variable}`}
             suppressHydrationWarning
         >
         <body className="min-h-screen bg-background font-sans antialiased text-foreground">
-        <ErrorInterceptor>
-            {children}
-        </ErrorInterceptor>
-        <Toaster />
+        <I18nProvider>
+            <ErrorInterceptor>
+                {children}
+            </ErrorInterceptor>
+            <Toaster />
+        </I18nProvider>
         </body>
         </html>
     )

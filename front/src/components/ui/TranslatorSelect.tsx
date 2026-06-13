@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { Users, ChevronDown, CheckCircle, Search } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { ChevronDown, CheckCircle, Search } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 
 import { ordersApi } from "@/src/features/orders/api"
 import type { OrderMarginsResponse } from "@/src/features/orders/types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export interface Translator {
     id: number
@@ -35,8 +36,9 @@ export function TranslatorSelect({
                                      onChange,
                                      orderTrafficId,
                                      translators,
-                                     placeholder = "Choose a translator"
+                                     placeholder
                                  }: TranslatorSelectProps) {
+    const { t } = useI18n()
     const [isOpen, setIsOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
 
@@ -51,10 +53,12 @@ export function TranslatorSelect({
         [translators, value]
     )
 
-    const getDisplayName = (t?: Translator) => {
-        if (!t) return ""
-        return t.full_name || t.name || `Translator`
-    }
+    const getDisplayName = useCallback((translator?: Translator) => {
+        if (!translator) {
+            return ""
+        }
+        return translator.full_name || translator.name || t("common.translator")
+    }, [t])
 
     useEffect(() => {
         let cancelled = false
@@ -80,11 +84,11 @@ export function TranslatorSelect({
                 for (const row of res.results ?? []) {
                     order.push(row.translator_id)
 
-                    if (row.margin_percent != null && row.margin_label != null) {
+                    if (row.margin_percent !== null && row.margin_percent !== undefined && row.margin_label !== null && row.margin_label !== undefined) {
                         m[row.translator_id] = { percent: row.margin_percent, label: row.margin_label }
                     }
 
-                    if (row.translator_traffic_id != null) {
+                    if (row.translator_traffic_id !== null && row.translator_traffic_id !== undefined) {
                         tt[row.translator_id] = row.translator_traffic_id
                     }
 
@@ -100,7 +104,7 @@ export function TranslatorSelect({
                     setMatchByTranslator(match)
                     setOrderedTranslatorIds(order)
                 }
-            } catch (e) {
+            } catch {
                 if (!cancelled) {
                     setMarginByTranslator({})
                     setTtByTranslator({})
@@ -108,7 +112,9 @@ export function TranslatorSelect({
                     setOrderedTranslatorIds([])
                 }
             } finally {
-                if (!cancelled) setLoadingMargins(false)
+                if (!cancelled) {
+                    setLoadingMargins(false)
+                }
             }
         }
 
@@ -126,9 +132,15 @@ export function TranslatorSelect({
             sorted.sort((a, b) => {
                 const pa = pos.get(a.id)
                 const pb = pos.get(b.id)
-                if (pa == null && pb == null) return 0
-                if (pa == null) return 1
-                if (pb == null) return -1
+                if (pa === undefined && pb === undefined) {
+                    return 0
+                }
+                if (pa === undefined) {
+                    return 1
+                }
+                if (pb === undefined) {
+                    return -1
+                }
                 return pa - pb
             })
         }
@@ -142,10 +154,12 @@ export function TranslatorSelect({
         }
 
         return sorted
-    }, [translators, orderedTranslatorIds, searchQuery])
+    }, [translators, orderedTranslatorIds, searchQuery, getDisplayName])
 
     useEffect(() => {
-        if (!isOpen) setSearchQuery("")
+        if (!isOpen) {
+            setSearchQuery("")
+        }
     }, [isOpen])
 
     return (
@@ -172,12 +186,12 @@ export function TranslatorSelect({
                             </div>
                             {orderTrafficId && !loadingMargins && marginByTranslator[selectedTranslator.id] && (
                                 <span className="text-xs text-gray-500 whitespace-nowrap">
-                                    Margin: {Number(marginByTranslator[selectedTranslator.id].percent).toFixed(1)}%
+                                    {t("orders.margin")} {Number(marginByTranslator[selectedTranslator.id].percent).toFixed(1)}%
                                 </span>
                             )}
                         </div>
                     ) : (
-                        <span className="text-gray-500 dark:text-gray-400 text-sm">{placeholder}</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">{placeholder ?? t("translators.chooseTranslator")}</span>
                     )}
 
                     <ChevronDown
@@ -199,7 +213,7 @@ export function TranslatorSelect({
                                     <input
                                         type="text"
                                         autoFocus
-                                        placeholder="Search by name or ID..."
+                                        placeholder={t("translators.searchByNameOrId")}
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="w-full pl-8 pr-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -210,7 +224,7 @@ export function TranslatorSelect({
                             <div className="max-h-72 overflow-y-auto p-1">
                                 {filteredAndSortedTranslators.length === 0 ? (
                                     <div className="p-4 text-center text-sm text-gray-500">
-                                        No translators found
+                                        {t("translators.noFound")}
                                     </div>
                                 ) : (
                                     filteredAndSortedTranslators.map((translator) => {
@@ -244,10 +258,10 @@ export function TranslatorSelect({
                                                     </div>
                                                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                                                         {mi && (
-                                                            <span className="whitespace-nowrap">Margin: {Number(mi.percent).toFixed(1)}%</span>
+                                                            <span className="whitespace-nowrap">{t("orders.margin")} {Number(mi.percent).toFixed(1)}%</span>
                                                         )}
                                                         {orderTrafficId && (
-                                                            <span className="whitespace-nowrap">{match?.lp || "No lang pair"} {match?.cat || ""}</span>
+                                                            <span className="whitespace-nowrap">{match?.lp || t("translators.noLanguagePair")} {match?.cat || ""}</span>
                                                         )}
                                                         <span className="whitespace-nowrap">⭐ {translator.rating ?? 0}</span>
                                                         {translator.specializations && translator.specializations.length > 0 && (
@@ -267,7 +281,7 @@ export function TranslatorSelect({
 
             {orderTrafficId && (
                 <p className="text-[10px] text-gray-500 mt-1 px-1">
-                    Showing translators optimized for traffic ID: {orderTrafficId}
+                    {t("translators.optimizedForTraffic", { id: orderTrafficId })}
                 </p>
             )}
         </div>

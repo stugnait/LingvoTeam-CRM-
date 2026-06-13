@@ -105,6 +105,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'page_count',
             'symbols_count',
             'files',
+            'symbols_with_spaces_count',
+            'images_count',
             'translator_id',
             'total_amount',
             'traffic_id',
@@ -117,7 +119,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'client_status',
             'translator_status',
         ]
-        read_only_fields = ['page_count', 'symbols_count']
+        read_only_fields = [
+            'page_count',
+            'symbols_count',
+            'symbols_with_spaces_count',
+            'images_count'
+        ]
         extra_kwargs = {
             'language_pair_id': {'read_only': True},
             'translator_status': {'required': False},
@@ -193,7 +200,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'created_at',
             'client_comment', 'translator_comment',
             'manager_avatar',
-            "editor_status"
+            "editor_status",
+            "client_status"
         ]
 
     def get_language_pair_name(self, order):

@@ -6,7 +6,7 @@ export interface TranslatorTraffic {
     id: number
     name: string | null
 
-    translator: number
+    translator: number | null
     translator_name: string
 
     language_pair: number
@@ -49,7 +49,9 @@ export interface TranslatorPayload {
     full_name: string
     email: string
     phone: string
-    currency_id?: number
+    currency_id: number
+
+    tariff_ids: number[]
 }
 
 export interface TranslatorListResponse {
@@ -75,7 +77,6 @@ export interface TranslatorFilters {
 
 export interface TranslatorTrafficPayload {
     name: string
-    translator: number
     language_pair: number | null
     category: number | null
     currency_id: number

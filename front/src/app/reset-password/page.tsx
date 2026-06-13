@@ -1,18 +1,27 @@
+"use client"
+
+import { Suspense } from "react"
 import { ResetPasswordForm } from "@/src/features/auth/components/ResetPasswordForm"
+import { useSearchParams } from "next/navigation"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
-interface PageProps {
-    searchParams: Promise<{
-        uid?: string
-        token?: string
-    }>
-}
-
-export default async function ResetPasswordPage({ searchParams }: PageProps) {
-    const { uid, token } = await searchParams
+function ResetPasswordContent() {
+    const searchParams = useSearchParams()
+    const { t } = useI18n()
+    const uid = searchParams.get("uid")
+    const token = searchParams.get("token")
 
     if (!uid || !token) {
-        return <p>Invalid or expired reset link</p>
+        return <p>{t("auth.invalidResetLink")}</p>
     }
 
     return <ResetPasswordForm uid={uid} token={token} />
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={null}>
+            <ResetPasswordContent />
+        </Suspense>
+    )
 }

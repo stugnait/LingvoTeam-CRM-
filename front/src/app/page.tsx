@@ -1,10 +1,18 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/src/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { LanguageSwitcher } from "@/src/shared/i18n/LanguageSwitcher"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export default function Home() {
+    const { t } = useI18n()
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20">
+            <div className="fixed right-4 top-4">
+                <LanguageSwitcher />
+            </div>
             <div className="max-w-2xl mx-auto px-6 text-center">
                 {/* Logo/Brand */}
                 <div className="mb-8">
@@ -21,12 +29,11 @@ export default function Home() {
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 text-balance">Translation Management CRM</h1>
+                <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6 text-balance">{t("home.title")}</h1>
 
                 {/* Description */}
                 <p className="text-xl text-muted-foreground mb-12 text-balance leading-relaxed">
-                    A professional system used by companies and internal teams to manage users, translation workflows, and project
-                    coordination in one secure platform.
+                    {t("home.description")}
                 </p>
 
                 {/* CTA Buttons */}
@@ -38,13 +45,13 @@ export default function Home() {
                     {/*    </Link>*/}
                     {/*</Button>*/}
                     <Button asChild size="lg" variant="outline" className="w-full sm:w-auto min-w-40 bg-transparent">
-                        <Link href="/login">Log in</Link>
+                        <Link href="/login">{t("home.login")}</Link>
                     </Button>
                 </div>
 
                 {/* Trust indicator */}
                 <div className="mt-16 pt-8 border-t border-border/40">
-                    <p className="text-sm text-muted-foreground">Secure enterprise-grade translation management</p>
+                    <p className="text-sm text-muted-foreground">{t("home.secure")}</p>
                 </div>
             </div>
         </div>

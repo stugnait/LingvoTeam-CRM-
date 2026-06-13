@@ -41,7 +41,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiExample
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter, SearchFilter
-from django.db.models import Q, Avg
+from django.db.models import Q, Avg, F
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 
@@ -190,17 +190,16 @@ class OrderViewSet(viewsets.ModelViewSet):
             'download_files': ['order.view'],
             'analyze_images': ['order.update'],
             'upload_files': ['order.view'],
+            'upload_target_files': ['order.view'],
             'margins': ['order.view'],
             'editors_by_language_pair': ['order.view'],
         }
 
         if self.action in ['update', 'partial_update']:
             status_fields = {'status_id', 'editor_status', 'client_status', 'translator_status'}
-
             data_keys = set(request.data.keys())
             if data_keys.intersection(status_fields):
                 return ['order.change.status']
-
             return ['order.update']
 
         return mapping.get(self.action, [])
@@ -263,21 +262,19 @@ class OrderViewSet(viewsets.ModelViewSet):
                 except InvalidOperation:
                     pass
 
-        # Отримуємо статуси по точних slug'ах
         status_planned = Status.objects.filter(slug__iexact="planned").first()
         status_to_do = Status.objects.filter(slug__iexact="to do").first() or status_planned
+        client_unpaid = Status.objects.filter(slug__iexact="unpaid").first()
 
+        # 1. Створюємо замовлення в базі, щоб отримати його order.id
         order = serializer.save(
             manager_accept_id_id=request.data.get('manager_accept_id'),
             manager_delivery_id_id=data.get('manager_delivery_id'),
             language_pair_id=language_pair_instance,
-
-            # РОЗПОДІЛ СТАТУСІВ ПРИ СТВОРЕННІ
-            status_id=status_planned,           # Менеджер: Planned
-            editor_status=status_planned,       # Редактор: Planned
-            translator_status=status_to_do,     # Перекладач: To Do
-            client_status=status_planned,       # Клієнт: Planned
-
+            status_id=status_planned,
+            editor_status=status_planned,
+            translator_status=status_to_do,
+            client_status=client_unpaid,
             total_amount=final_total_amount,
             editor_id_id=data.get('editor_id'),
             traffic_id_id=data.get('traffic_id'),
@@ -297,20 +294,27 @@ class OrderViewSet(viewsets.ModelViewSet):
             expire_at=expire_date
         )
 
+        # 2. Аналізуємо файли і завантажуємо в Dropbox
         uploaded_files = request.FILES.getlist('files')
         stats_data = self._analyze_and_upload_files(order, uploaded_files)
 
-        order.save()
+        # 3. Витягуємо результати аналізу
+        totals = stats_data.get("total_stats", {})
+
+        # 4. Записуємо їх у вже створений об'єкт замовлення
+        order.page_count = totals.get("physical_pages", 0)
+        order.symbols_count = totals.get("chars_no_spaces", 0)
+        order.symbols_with_spaces_count = totals.get("chars_with_spaces", 0)
+        order.images_count = totals.get("images", 0)
+
+        # 5. Оновлюємо базу даних
+        order.save(update_fields=['page_count', 'symbols_count', 'symbols_with_spaces_count', 'images_count'])
 
         base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         full_link = f"{base_url}/translator/{generated_link_slug}"
 
         if order.translator_id and order.translator_id.email:
             self._send_translator_invite(order, full_link, generated_password, expire_date, order.translator_id)
-
-        lp_response_data = None
-        if language_pair_instance:
-            lp_response_data = LanguagePairSelectSerializer(language_pair_instance).data
 
         return Response({
             "message": "Замовлення успішно створено",
@@ -320,7 +324,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 "source": source_id,
                 "target": target_id
             },
-            "stats": stats_data["total_stats"],
+            "stats": totals,
             "translator_link": {
                 "slug": generated_link_slug,
                 "password": generated_password,
@@ -429,47 +433,171 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return {"total_stats": total_stats}
 
+    @extend_schema(
+        summary="Завантаження файлів перекладу (Target) менеджером",
+        request=UploadFileSerializer,
+        tags=["Order Files"]
+    )
+    @action(detail=True, methods=["post"], url_path="upload-target-files", parser_classes=[MultiPartParser, FormParser])
+    def upload_target_files(self, request, pk=None):
+        order = self.get_object()
+        user = request.user
+
+        is_authorized = (
+            user == order.manager_accept_id or
+            user == order.manager_delivery_id or
+            user == order.translator_id or
+            user == order.editor_id
+        )
+
+        if not is_authorized and not user.role.slug in ['admin', 'owner']:
+            return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["files"]
+        base_path = f"/orders/order_{order.id}"
+
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="target",
+            )
+            uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
+
+        for i, f in enumerate(files):
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+            dropbox_url = uploaded[i]["dropbox_path"]
+
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=dropbox_url,
+                detected_pages=0,
+                detected_symbols=0,
+            )
+
+        return Response(
+            {"message": "Target files uploaded", "count": len(uploaded), "files": uploaded},
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=['post'], url_path=r'analyze-folder/(?P<folder>source|target)')
+    def analyze_folder_files(self, request, pk=None, folder=None):
+        order = self.get_object()
+        folder_param = (folder or "").strip().lower()
+
+        files_qs = File.objects.filter(order=order)
+        base_folder_path = f"/orders/order_{order.id}/{folder_param}"
+        folder_files = files_qs.filter(dropbox_url__startswith=base_folder_path)
+
+        if not folder_files.exists():
+            return Response(
+                {"detail": f"Файли у папці {folder_param} відсутні або ще не завантажені."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        total_stats = {
+            "chars_with_spaces": 0,
+            "chars_no_spaces": 0,
+            "images": 0,
+            "physical_pages": 0
+        }
+        file_results = []
+
+        try:
+            dbx = get_dbx()
+            for f_obj in folder_files:
+                if not f_obj.dropbox_url or f_obj.dropbox_url == "None":
+                    continue
+
+                metadata, resp = dbx.files_download(f_obj.dropbox_url)
+                file_bytes = resp.content
+                filename = os.path.basename(f_obj.dropbox_url)
+
+                file_mock = BytesIO(file_bytes)
+                file_mock.name = filename
+                file_mock.seek(0)
+
+                stats = analyze_file_content(file_mock)
+
+                total_stats["chars_with_spaces"] += stats.get("chars_with_spaces", 0)
+                total_stats["chars_no_spaces"] += stats.get("chars_no_spaces", 0)
+                total_stats["images"] += stats.get("images", 0)
+                total_stats["physical_pages"] += stats.get("pages", 0)
+
+                file_results.append({
+                    "filename": filename,
+                    "stats": stats
+                })
+
+            return Response({
+                "folder": folder_param,
+                "total_stats": total_stats,
+                "files": file_results
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Помилка аналізу папки {folder_param} для замовлення {order.id}: {str(e)}")
+            return Response(
+                {"detail": f"Помилка під час аналізу файлів з сховища: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     @action(detail=False, methods=['post'], url_path='calculate-full', parser_classes=[MultiPartParser])
     def calculate_full(self, request):
         files = request.FILES.getlist('files')
         traffic_id = request.data.get('traffic_id')
-        translator_id = request.data.get('translator_id')
+
+        # Замість translator_id приймаємо конкретний ID обраного тарифу перекладача
+        translator_traffic_id = request.data.get('translator_traffic_id')
 
         if not files or not traffic_id:
-            return Response({"detail": "files and traffic_id required"}, status=400)
+            return Response({"detail": "files and traffic_id required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        total_pages = 0
+        total_pages = Decimal('0')
 
         for f in files:
             f.seek(0)
             stats = analyze_file_content(f)
-            total_pages += stats["pages"]
+            total_pages += Decimal(str(stats["pages"]))
 
+        # 1. Розрахунок ціни для клієнта (за тарифом замовлення)
         traffic = get_object_or_404(OrderTraffic, id=traffic_id)
-        client_price = Decimal(total_pages) * Decimal(traffic.price_per_page)
+        client_price = total_pages * Decimal(str(traffic.price_per_page))
 
         translator_rate = None
+        translator_total = None
         margin = None
 
-        if translator_id:
-            tt = TranslatorTraffic.objects.filter(
-                translator_id=translator_id,
-                language_pair_id=traffic.language_pair_id
-            ).first()
-
-            if tt and tt.rate_per_page:
-                translator_rate = Decimal(tt.rate_per_page)
-                margin = (client_price - (translator_rate * total_pages))
+        # 2. Розрахунок оплати перекладачу (за ОБРАНИМ тарифом)
+        if translator_traffic_id:
+            try:
+                tt = TranslatorTraffic.objects.get(id=translator_traffic_id)
+                if tt.rate_per_page is not None:
+                    translator_rate = Decimal(str(tt.rate_per_page))
+                    translator_total = translator_rate * total_pages
+                    margin = client_price - translator_total
+            except TranslatorTraffic.DoesNotExist:
+                return Response(
+                    {"detail": "Обраний тариф перекладача не знайдено"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
         return Response({
-            "pages": total_pages,
+            "pages": float(total_pages),
             "client_price_per_page": str(traffic.price_per_page),
-            "total_client_price": str(client_price),
-            "translator_rate_per_page": str(translator_rate) if translator_rate else None,
-            "translator_total": str(translator_rate * total_pages) if translator_rate else None,
-            "margin": str(margin) if margin else None,
+            "total_client_price": str(client_price.quantize(Decimal("0.01"))),
+            # Явна перевірка is not None вирішує проблему з нулями
+            "translator_rate_per_page": str(translator_rate) if translator_rate is not None else None,
+            "translator_total": str(
+                translator_total.quantize(Decimal("0.01"))) if translator_total is not None else None,
+            "margin": str(margin.quantize(Decimal("0.01"))) if margin is not None else None,
         })
-
     @action(detail=True, methods=['post'], url_path='reject-translation')
     def reject_translation(self, request, pk=None):
         order = self.get_object()
@@ -478,7 +606,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         comment = serializer.validated_data['review_comment']
 
-        # Якщо відхиляємо - падає на Revision перекладачу та редактору, а менеджеру в Rejected
         status_revision = Status.objects.filter(slug__iexact="revision").first()
         status_rejected = Status.objects.filter(slug__iexact="rejected").first()
 
@@ -627,7 +754,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             review_status='approved'
         )
 
-        # Оскільки ми використовуємо High-level підхід (5 колонок), все відправляємо в Done
         status_done = Status.objects.filter(slug__iexact="done").first()
 
         if status_done:
@@ -709,10 +835,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         user = request.user
 
         is_authorized = (
-                user == order.manager_accept_id or
-                user == order.manager_delivery_id or
-                user == order.translator_id or
-                user == order.editor_id
+            user == order.manager_accept_id or
+            user == order.manager_delivery_id or
+            user == order.translator_id or
+            user == order.editor_id
         )
 
         if not is_authorized and not user.role.slug in ['admin', 'owner']:
@@ -925,10 +1051,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         user = request.user
 
         is_authorized = (
-                user == order.manager_accept_id or
-                user == order.manager_delivery_id or
-                user == order.translator_id or
-                user == order.editor_id
+            user == order.manager_accept_id or
+            user == order.manager_delivery_id or
+            user == order.translator_id or
+            user == order.editor_id
         )
 
         if not is_authorized and not user.role.slug in ['admin', 'owner']:
@@ -969,15 +1095,18 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary="Розрахунок маржинальності",
-        description="Порівнює ціну замовлення з тарифами всіх доступних перекладачів для обраної мовної пари.",
+        description="Порівнює ціну замовлення з тарифами перекладачів. Якщо передати translator_traffic_id, рахує тільки для нього.",
         parameters=[
-            OpenApiParameter("traffic_id", int, required=True, description="ID тарифу замовлення")
+            OpenApiParameter("traffic_id", int, required=True, description="ID тарифу клієнта (замовлення)"),
+            OpenApiParameter("translator_traffic_id", int, required=False, description="ID обраного тарифу перекладача")
         ],
         tags=["Order Pricing"]
     )
     @action(detail=False, methods=["get"], url_path="margins")
     def margins(self, request):
         traffic_id = request.query_params.get("traffic_id")
+        translator_traffic_id = request.query_params.get("translator_traffic_id")
+
         if not traffic_id:
             return Response({"detail": "traffic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -986,86 +1115,85 @@ class OrderViewSet(viewsets.ModelViewSet):
         except ValueError:
             return Response({"detail": "traffic_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
 
-        ot = (OrderTraffic.objects
-              .filter(id=traffic_id_int)
-              .values("id", "price_per_page", "currency_id_id", "language_pair_id", "category_id")
-              .first())
+        ot = OrderTraffic.objects.filter(id=traffic_id_int).values(
+            "price_per_page", "currency_id_id", "language_pair_id", "category_id"
+        ).first()
 
-        if not ot:
-            return Response({"detail": "OrderTraffic not found"}, status=status.HTTP_404_NOT_FOUND)
+        if not ot or ot.get("price_per_page") is None:
+            return Response({"detail": "OrderTraffic not found or invalid"}, status=status.HTTP_404_NOT_FOUND)
 
-        price_per_page = ot.get("price_per_page")
-        if price_per_page is None:
-            return Response({"detail": "OrderTraffic.price_per_page is null"}, status=status.HTTP_400_BAD_REQUEST)
-
-        order_price = Decimal(str(price_per_page))
-        if order_price <= 0:
-            return Response({"detail": "OrderTraffic.price_per_page must be > 0"}, status=status.HTTP_400_BAD_REQUEST)
-
+        order_price = Decimal(str(ot["price_per_page"]))
         currency_id = ot.get("currency_id_id")
         lp_id = ot.get("language_pair_id")
         category_id = ot.get("category_id")
 
-        traffics = (TranslatorTraffic.objects
-                    .filter(language_pair_id=lp_id)
-                    .select_related("translator"))
+        translator_traffics = TranslatorTraffic.objects.filter(language_pair_id=lp_id).prefetch_related('translators')
 
-        by_translator = {}
-        for tt in traffics:
-            by_translator.setdefault(tt.translator_id, []).append(tt)
+        # ЯКЩО ПЕРЕДАЛИ КОНКРЕТНИЙ ТАРИФ ПЕРЕКЛАДАЧА - ФІЛЬТРУЄМО ТІЛЬКИ ЙОГО
+        if translator_traffic_id:
+            try:
+                tt_id = int(str(translator_traffic_id).strip())
+                translator_traffics = translator_traffics.filter(id=tt_id)
+            except ValueError:
+                pass
 
-        translators = Translator.objects.all().only("id", "full_name")
         results = []
-        for tr in translators:
-            lp_matches = by_translator.get(tr.id, [])
-            has_lp = bool(lp_matches)
 
-            best_tt = None
-            has_cat = False
-            if has_lp:
-                if category_id is None:
-                    has_cat = True
-                    best_tt = lp_matches[0]
-                else:
-                    cat_exact = [tt for tt in lp_matches if tt.category_id == category_id]
-                    if cat_exact:
-                        has_cat = True
-                        best_tt = cat_exact[0]
+        for tt in translator_traffics:
+            is_exact_match = (tt.category_id == category_id)
+            is_fallback = (category_id is not None and tt.category_id is None)
+
+            # Відсіюємо чужі категорії, тільки якщо ми шукаємо списком (немає конкретного translator_traffic_id)
+            if not translator_traffic_id:
+                if tt.category_id is not None and tt.category_id != category_id:
+                    continue
+
+            for tr in tt.translators.all():
+                tr_rate = Decimal(str(tt.rate_per_page)) if tt.rate_per_page is not None else None
+                margin_percent = None
+                margin_absolute = None
+                margin_label = None
+
+                if tr_rate is not None:
+                    margin_absolute = order_price - tr_rate
+                    # Запобігаємо діленню на нуль
+                    if order_price > 0:
+                        margin_percent = (margin_absolute / order_price) * Decimal("100")
                     else:
-                        cat_null = [tt for tt in lp_matches if tt.category_id is None]
-                        best_tt = cat_null[0] if cat_null else lp_matches[0]
+                        margin_percent = Decimal("0")
 
-            tr_rate = None
-            margin_percent = None
-            margin_label = None
-            translator_traffic_id = None
-            if best_tt and best_tt.rate_per_page is not None:
-                tr_rate = Decimal(str(best_tt.rate_per_page))
-                margin_percent = (order_price - tr_rate) / order_price * Decimal("100")
-                margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
-                translator_traffic_id = best_tt.id
+                    margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
 
-            results.append({
-                "translator_id": tr.id,
-                "translator_name": getattr(tr, "full_name", None),
-                "translator_traffic_id": translator_traffic_id,
-                "order_price_per_page": str(order_price),
-                "translator_rate_per_page": str(tr_rate) if tr_rate is not None else None,
-                "margin_percent": str(margin_percent.quantize(Decimal("0.01"))) if margin_percent is not None else None,
-                "margin_label": margin_label,
-                "language_pair_label": "Є мовна пара" if has_lp else "Нема мовної пари",
-                "category_label": "Є категорія" if has_cat else "Нема категорії",
-            })
+                # Додаємо КОЖЕН тариф окремо (ніякого злиття чи заміни)
+                results.append({
+                    "translator_id": tr.id,
+                    "translator_name": getattr(tr, "full_name", None),
+                    "translator_traffic_id": tt.id,
+                    "translator_currency_id": tt.currency_id_id,
+                    "order_price_per_page": str(order_price),
+                    "translator_rate_per_page": str(tr_rate) if tr_rate is not None else None,
+                    "margin_absolute": str(
+                        margin_absolute.quantize(Decimal("0.01"))) if margin_absolute is not None else None,
+                    "margin_percent": str(
+                        margin_percent.quantize(Decimal("0.01"))) if margin_percent is not None else None,
+                    "margin_label": margin_label,
+                    "language_pair_label": "Є мовна пара",
+                    "category_label": "Є категорія" if is_exact_match else (
+                        "Загальний тариф" if is_fallback else "Нема категорії"),
+                    "is_exact_match": is_exact_match
+                })
 
         def sort_key(x):
             mval = Decimal(x["margin_percent"]) if x["margin_percent"] is not None else Decimal("-Infinity")
             return (
-                1 if x["language_pair_label"] == "Є мовна пара" else 0,
-                1 if x["category_label"] == "Є категорія" else 0,
-                mval,
+                1 if x["is_exact_match"] else 0,  # Пріоритет 1: Точний збіг категорії
+                mval,  # Пріоритет 2: Найкраща маржа
             )
 
         results.sort(key=sort_key, reverse=True)
+
+        for r in results:
+            r.pop("is_exact_match", None)
 
         return Response({
             "traffic_id": traffic_id_int,
@@ -1074,6 +1202,23 @@ class OrderViewSet(viewsets.ModelViewSet):
             "category_id": category_id,
             "results": results,
         }, status=status.HTTP_200_OK)
+
+        # def sort_key(x):
+        #     mval = Decimal(x["margin_percent"]) if x["margin_percent"] is not None else Decimal("-Infinity")
+        #     return (
+        #         1 if x["category_label"] == "Є категорія" else 0,
+        #         mval,
+        #     )
+        #
+        # results.sort(key=sort_key, reverse=True)
+        #
+        # return Response({
+        #     "traffic_id": traffic_id_int,
+        #     "language_pair_id": lp_id,
+        #     "currency_id": currency_id,
+        #     "category_id": category_id,
+        #     "results": results,
+        # }, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="Редактори по мовній парі",
@@ -1168,8 +1313,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="Підтвердити та активувати замовлення",
         description=(
-                "Змінює статус замовлення на 'Виконано' (ID 4), генерує унікальне посилання з паролем "
-                "для клієнта, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
+            "Змінює статус замовлення на 'Виконано' (ID 4), генерує унікальне посилання з паролем "
+            "для клієнта, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
         ),
         operation_id="confirm_order_with_files",
         responses={200: OpenApiTypes.OBJECT},
@@ -1275,8 +1420,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             'in_checking': ("Замовлення на перевірці", "передано на перевірку"),
             'in progress': ("Замовлення в роботі", "взято в роботу"),
             'in_progress': ("Замовлення в роботі", "взято в роботу"),
-            'payed': ("Замовлення оплачено", "оплачено повністю"),
-            'deposit': ("Отримано завдаток", "оплачено частково (завдаток)"),
         }
 
         current_user = self.request.user
@@ -1299,8 +1442,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         elif old_states['client'] != (updated_instance.client_status.id if updated_instance.client_status else None):
             changed_slug = new_c_slug
             changed_status_obj = updated_instance.client_status
-        elif old_states['translator'] != (
-        updated_instance.translator_status.id if updated_instance.translator_status else None):
+        elif old_states['translator'] != (updated_instance.translator_status.id if updated_instance.translator_status else None):
             changed_slug = new_t_slug
             changed_status_obj = updated_instance.translator_status
 
@@ -1338,6 +1480,83 @@ class OrderViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 logger.error(f"Failed to send email to manager: {e}")
 
+    @extend_schema(
+        summary="Оновити статус клієнта (оплата)",
+        description="Змінює поле client_status для фіксації оплат (payed, deposit) без зміни загального статусу замовлення.",
+        tags=["Order Workflow"]
+    )
+    @action(detail=True, methods=['post', 'patch'], url_path='update-client-status')
+    def update_client_status(self, request, pk=None):
+        order = self.get_object()
+
+        new_status_id = request.data.get('client_status_id')
+        if not new_status_id:
+            return Response(
+                {"detail": "Необхідно передати client_status_id."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_status = get_object_or_404(Status, id=new_status_id)
+
+        if order.client_status_id == new_status.id:
+            return Response(
+                {"detail": "Цей статус клієнта вже встановлено."},
+                status=status.HTTP_200_OK
+            )
+
+        order.client_status = new_status
+        order.save(update_fields=['client_status'])
+
+        CLIENT_NOTIFY_TRIGGERS = {
+            'payed': ("Замовлення оплачено", "оплачено повністю"),
+            'deposit': ("Отримано завдаток", "оплачено частково (завдаток)"),
+        }
+
+        slug = new_status.slug.lower() if new_status.slug else ""
+        current_user = request.user
+        manager_obj = order.manager_accept_id
+
+        if slug in CLIENT_NOTIFY_TRIGGERS and manager_obj and current_user != manager_obj:
+            notif_title, notif_verb = CLIENT_NOTIFY_TRIGGERS[slug]
+            msg_text = f"Клієнтський статус замовлення #{order.id} змінено: {notif_verb}"
+
+            try:
+                Notification.objects.create(
+                    recipient=manager_obj,
+                    order=order,
+                    title=notif_title,
+                    message=msg_text
+                )
+            except Exception as e:
+                logger.error(f"Failed to create client status notification: {e}")
+
+            try:
+                subject = f"Замовлення #{order.id}: {notif_title} — LingvoTeam"
+                message = (
+                    f"Вітаємо, {manager_obj.full_name}!\n\n"
+                    f"Оновлено фінансовий статус замовлення #{order.id}.\n"
+                    f"Новий статус: {new_status.name}\n\n"
+                    f"З повагою, команда LingvoTeam."
+                )
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[manager_obj.email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                logger.error(f"Failed to send email regarding client status: {e}")
+
+        return Response({
+            "message": "Статус клієнта успішно оновлено.",
+            "client_status": {
+                "id": new_status.id,
+                "name": new_status.name,
+                "slug": new_status.slug
+            }
+        }, status=status.HTTP_200_OK)
+
     def _send_translator_invite(self, order, full_link, password, expire_date, recipient):
         try:
             subject = f"Нове замовлення - LingvoTeam"
@@ -1348,7 +1567,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
                 f"З повагою, команда LingvoTeam."
             )
-
             send_mail(
                 subject=subject,
                 message=message,
@@ -1369,7 +1587,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
                 f"З повагою, команда LingvoTeam."
             )
-
             send_mail(
                 subject=subject,
                 message=message,
@@ -1419,8 +1636,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         if source_column in ['all_orders', 'All Orders'] or board_type in ['all_orders', 'All Orders']:
             return Response(
-                {
-                    "detail": "Переміщення завдань у колонці 'Всі замовлення' суворо заборонено. Вона лише для відображення."},
+                {"detail": "Переміщення завдань у колонці 'Всі замовлення' суворо заборонено. Вона лише для відображення."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1441,7 +1657,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             first_order = Order.objects.filter(
                 status_id=order.status_id
             ).order_by('position').first()
-
             pos_above = (float(first_order.position) - 10000.0) if first_order else 0.0
 
         next_order_obj = None
@@ -1455,16 +1670,13 @@ class OrderViewSet(viewsets.ModelViewSet):
             last_order = Order.objects.filter(
                 status_id=order.status_id
             ).order_by('-position').first()
-
             pos_below = (float(last_order.position) + 10000.0) if last_order else 10000.0
 
         if (pos_below - pos_above) < 0.001:
-
             if next_order_obj:
                 new_next_pos = pos_above + 10000.0
                 next_order_obj.position = new_next_pos
                 next_order_obj.save(update_fields=['position'])
-
                 pos_below = new_next_pos
             else:
                 pos_below = pos_above + 10000.0

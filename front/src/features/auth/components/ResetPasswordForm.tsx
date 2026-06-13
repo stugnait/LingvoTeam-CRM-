@@ -1,13 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { BaseFormModal } from "@/src/components/modals/BaseFormModal"
 import { Input } from "@/src/components/ui/input"
 import { Label } from "@/src/components/ui/label"
 import { Button } from "@/src/components/ui/button"
-import { CheckCircle2, Lock, Eye, EyeOff, ShieldCheck, ArrowRight } from "lucide-react"
+import { CheckCircle2, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react"
 import { useResetPassword } from "../hooks/useResetPassword"
-import { useRouter } from "next/navigation"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface ResetPasswordFormProps {
     uid: string
@@ -15,7 +14,7 @@ interface ResetPasswordFormProps {
 }
 
 export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
-    const router = useRouter()
+    const { t } = useI18n()
 
     const [password, setPassword] = useState("")
     const [confirm, setConfirm] = useState("")
@@ -26,12 +25,14 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
     const { submit, isLoading } = useResetPassword({ uid, token })
 
     const onSubmit = async () => {
-        if (password !== confirm || !password.trim()) return
+        if (password !== confirm || !password.trim()) {
+            return
+        }
         try {
             await submit(password, confirm)
             setIsSuccess(true)
-        } catch (error: any) {
-            console.log(error.message || "Something went wrong")
+        } catch (error: unknown) {
+            console.log(error instanceof Error ? error.message : "Something went wrong")
         }
     }
 
@@ -43,12 +44,12 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                     <CheckCircle2 className="h-7 w-7 sm:h-8 sm:w-8 text-green-500" />
                 </div>
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-                    Пароль оновлено
+                    {t("auth.passwordUpdated")}
                 </h1>
                 <div className="space-y-4 mt-4">
                     <p className="text-sm sm:text-base text-muted-foreground">
-                        Ваш пароль було успішно змінено. <br />
-                        <span className="font-medium text-foreground">Ви можете закрити дану сторінку</span>
+                        {t("auth.passwordUpdatedDescription")} <br />
+                        <span className="font-medium text-foreground">{t("auth.closeThisPage")}</span>
                     </p>
                 </div>
             </div>
@@ -62,10 +63,10 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                     <ShieldCheck className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                 </div>
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-                    Новий пароль
+                    {t("auth.newPassword")}
                 </h1>
                 <p className="text-sm text-muted-foreground mt-2">
-                    Встановіть новий надійний пароль для вашого акаунту
+                    {t("auth.newPasswordDescription")}
                 </p>
             </div>
 
@@ -77,7 +78,7 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                 <div className="space-y-3">
                     <Label htmlFor="new-password" className="flex items-center gap-2">
                         <Lock className="h-4 w-4" />
-                        Новий пароль
+                        {t("auth.newPassword")}
                     </Label>
                     <div className="relative">
                         <Input
@@ -96,7 +97,7 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label={showPassword ? "Сховати пароль" : "Показати пароль"}
+                            aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                         >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -107,7 +108,7 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                 <div className="space-y-3">
                     <Label htmlFor="confirm-password" className="flex items-center gap-2">
                         <Lock className="h-4 w-4" />
-                        Підтвердження
+                        {t("auth.confirmPassword")}
                     </Label>
                     <div className="relative">
                         <Input
@@ -125,7 +126,7 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                             type="button"
                             onClick={() => setShowConfirm(!showConfirm)}
                             className="absolute right-0 top-0 h-full px-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label={showConfirm ? "Сховати пароль" : "Показати пароль"}
+                            aria-label={showConfirm ? t("auth.hidePassword") : t("auth.showPassword")}
                         >
                             {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -140,15 +141,15 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
                     {isLoading ? (
                         <>
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                            Оновлення...
+                            {t("auth.updating")}
                         </>
                     ) : (
-                        "Зберегти зміни"
+                        t("auth.saveChanges")
                     )}
                 </Button>
 
                 <div className="text-center text-xs text-muted-foreground pt-4 border-t">
-                    Використовуйте щонайменше 8 символів
+                    {t("auth.passwordHint")}
                 </div>
             </form>
         </div>

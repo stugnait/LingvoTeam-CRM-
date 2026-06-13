@@ -10,6 +10,7 @@ import {
     Flame,
     Check
 } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export type Priority = 'low' | 'medium' | 'high' | 'critical'
 
@@ -74,9 +75,11 @@ export function PrioritySelector({
                                      value,
                                      onChange,
                                      className,
-                                     label = "Priority",
+                                     label,
                                      required = false
                                  }: PrioritySelectorProps) {
+    const { t } = useI18n()
+    const visibleLabel = label ?? t("common.priority")
 
     const handleChange = (newValue: Priority) => {
         // Перевіряємо чи onChange є функцією перед викликом
@@ -87,9 +90,9 @@ export function PrioritySelector({
 
     return (
         <div className={cn("space-y-3", className)}>
-            {label && (
+            {visibleLabel && (
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <span className="text-gray-700">{label}</span>
+                    <span className="text-gray-700">{visibleLabel}</span>
                     {required && <span className="text-red-500">*</span>}
                 </label>
             )}
@@ -139,7 +142,7 @@ export function PrioritySelector({
                                 "text-sm font-medium",
                                 isSelected ? option.color : "text-gray-700"
                             )}>
-                                {option.label}
+                                {t(`priority.${option.value}`)}
                             </span>
 
                             {/* Індикатор вибору */}
@@ -161,10 +164,10 @@ export function PrioritySelector({
             {/* Підказка */}
             {value && (
                 <p className="text-xs text-gray-500 mt-2">
-                    {value === 'critical' && '⚠️ Critical priority - immediate attention required'}
-                    {value === 'high' && '⚡ High priority - should be done soon'}
-                    {value === 'medium' && '📋 Medium priority - standard processing'}
-                    {value === 'low' && '⏳ Low priority - can be done anytime'}
+                    {value === 'critical' && `⚠️ ${t("priority.criticalHint")}`}
+                    {value === 'high' && `⚡ ${t("priority.highHint")}`}
+                    {value === 'medium' && `📋 ${t("priority.mediumHint")}`}
+                    {value === 'low' && `⏳ ${t("priority.lowHint")}`}
                 </p>
             )}
         </div>
@@ -179,6 +182,7 @@ export function PrioritySelectorHorizontal({
                                                label,
                                                required
                                            }: PrioritySelectorProps) {
+    const { t } = useI18n()
 
     const handleChange = (newValue: Priority) => {
         // Перевіряємо чи onChange є функцією перед викликом
@@ -234,7 +238,7 @@ export function PrioritySelectorHorizontal({
                                 "text-sm font-medium",
                                 isSelected ? option.color : "text-gray-700"
                             )}>
-                                {option.label}
+                                {t(`priority.${option.value}`)}
                             </span>
                             {isSelected && (
                                 <Check className={cn("h-3.5 w-3.5 ml-1", option.color)} />

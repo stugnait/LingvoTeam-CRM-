@@ -19,8 +19,11 @@ import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { useClientsCreation } from "@/src/features/clients-creation/hooks/useClientsCreation"
 import { useClientsCategories } from "@/src/features/clients-creation/hooks/useClientsCategories"
 import { ClientFilters } from "@/src/features/clients-creation/components/ClientFilter"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export function ClientPage() {
+    const { t } = useI18n()
+
     // === СТАН ДЛЯ ПЕРЕМИКАННЯ РЕЖИМІВ ===
     const [viewMode, setViewMode] = useState<"clients" | "categories">("clients")
 
@@ -66,10 +69,10 @@ export function ClientPage() {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
                             <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-                                {viewMode === "clients" ? "Clients" : "Client Categories"}
+                                {viewMode === "clients" ? t("clients.title") : t("clients.categoriesTitle")}
                             </h2>
                             <p className="text-muted-foreground">
-                                Manage {viewMode === "clients" ? "clients" : "categories"} in the system
+                                {t("clients.manage", { entity: viewMode === "clients" ? t("clients.entityClients") : t("clients.entityCategories") })}
                             </p>
                         </div>
 
@@ -87,7 +90,7 @@ export function ClientPage() {
                                     )}
                                 >
                                     <Users className="w-4 h-4"/>
-                                    Clients
+                                    {t("clients.title")}
                                 </button>
                                 <button
                                     onClick={() => setViewMode("categories")}
@@ -99,14 +102,16 @@ export function ClientPage() {
                                     )}
                                 >
                                     <Tags className="w-4 h-4"/>
-                                    Categories
+                                    {t("clients.categories")}
                                 </button>
                             </div>
 
                             {/* Динамічна кнопка */}
                             <Button onClick={viewMode === "clients" ? openAddClient : openAddCategory} className="shrink-0">
                                 <Plus className="h-4 w-4 sm:mr-2" />
-                                <span className="hidden sm:inline">Add {viewMode === "clients" ? "Client" : "Category"}</span>
+                                <span className="hidden sm:inline">
+                                    {viewMode === "clients" ? t("clients.addClient") : t("clients.addCategory")}
+                                </span>
                             </Button>
                         </div>
                     </div>
@@ -115,7 +120,7 @@ export function ClientPage() {
                     {viewMode === "clients" && (
                         <Card>
                             <CardHeader>
-                                <CardTitle>Search</CardTitle>
+                                <CardTitle>{t("common.search")}</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ClientFilters search={search} setSearch={setSearch} />
@@ -127,10 +132,10 @@ export function ClientPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>
-                                {viewMode === "clients" ? "Clients List" : "Categories List"}
+                                {viewMode === "clients" ? t("clients.clientsList") : t("clients.categoriesList")}
                             </CardTitle>
                             <CardDescription>
-                                All registered {viewMode}
+                                {t("clients.allRegistered", { entity: viewMode === "clients" ? t("clients.entityClients") : t("clients.entityCategories") })}
                             </CardDescription>
                         </CardHeader>
 
@@ -164,14 +169,14 @@ export function ClientPage() {
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={selectedClient ? "Edit Client" : "Add Client"}
-                submitLabel={selectedClient ? "Update" : "Create"}
+                title={selectedClient ? t("clients.editClient") : t("clients.addClient")}
+                submitLabel={selectedClient ? t("common.save") : t("common.create")}
                 onSubmit={() => submitClient(form)}
             >
                 <div className="space-y-4">
                     <div>
                         <Input
-                            placeholder="Client name"
+                            placeholder={t("clients.clientName")}
                             value={form.full_name}
                             className={errors?.full_name ? "border-red-500" : ""}
                             onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
@@ -181,7 +186,7 @@ export function ClientPage() {
 
                     <div>
                         <Input
-                            placeholder="Email"
+                            placeholder={t("auth.email")}
                             value={form.email}
                             className={errors?.email ? "border-red-500" : ""}
                             onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
@@ -210,7 +215,7 @@ export function ClientPage() {
                             options={categoryOptions}
                             value={String(form.category || "")}
                             onChange={(value) => setForm(prev => ({ ...prev, category: Number(value) }))}
-                            placeholder="Select category"
+                            placeholder={t("clients.selectCategory")}
                         />
                     </div>
                 </div>
@@ -219,9 +224,9 @@ export function ClientPage() {
             <ConfirmModal
                 open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Delete client"
-                description={`Are you sure you want to delete ${selectedClient?.full_name}? This action cannot be undone.`}
-                confirmLabel="Delete"
+                title={t("clients.deleteClient")}
+                description={t("clients.deleteClientDescription", { name: selectedClient?.full_name ?? "" })}
+                confirmLabel={t("common.delete")}
                 onConfirm={handleConfirm}
             />
 
@@ -231,15 +236,15 @@ export function ClientPage() {
             <BaseFormModal
                 open={isCatFormOpen}
                 onOpenChange={(open) => !open && closeCatModals()}
-                title={selectedCategory ? "Edit Category" : "Add Category"}
-                submitLabel={selectedCategory ? "Update" : "Create"}
+                title={selectedCategory ? t("clients.editCategory") : t("clients.addCategory")}
+                submitLabel={selectedCategory ? t("common.save") : t("common.create")}
                 onSubmit={() => submitCategory(catForm)}
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="text-sm font-medium mb-1 block">Category Name</label>
+                        <label className="text-sm font-medium mb-1 block">{t("clients.categoryName")}</label>
                         <Input
-                            placeholder="Ex: VIP"
+                            placeholder={t("clients.categoryNamePlaceholder")}
                             value={catForm.name}
                             className={catErrors?.name ? "border-red-500" : ""}
                             onChange={(e) => setCatForm(prev => ({ ...prev, name: e.target.value }))}
@@ -247,7 +252,7 @@ export function ClientPage() {
                         {catErrors.name && <p className="text-red-500 text-sm mt-1">{catErrors.name}</p>}
                     </div>
                     <div>
-                        <label className="text-sm font-medium mb-1 block">Discount Percent (%)</label>
+                        <label className="text-sm font-medium mb-1 block">{t("clients.discountPercent")}</label>
                         <Input
                             type="number"
                             min="0"
@@ -265,9 +270,9 @@ export function ClientPage() {
             <ConfirmModal
                 open={isCatDeleteOpen}
                 onOpenChange={(open) => !open && closeCatModals()}
-                title="Delete Category"
-                description={`Are you sure you want to delete the "${selectedCategory?.name}" category? This action cannot be undone.`}
-                confirmLabel="Delete"
+                title={t("clients.deleteCategory")}
+                description={t("clients.deleteCategoryDescription", { name: selectedCategory?.name ?? "" })}
+                confirmLabel={t("common.delete")}
                 onConfirm={handleCatConfirm}
             />
         </>

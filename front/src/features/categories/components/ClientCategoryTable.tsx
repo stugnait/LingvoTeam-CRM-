@@ -17,6 +17,7 @@ import {
 } from "@/src/components/ui/dropdown-menu"
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import type { ClientCategory } from "../types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface ClientCategoryTableProps {
     categories: ClientCategory[]
@@ -29,14 +30,16 @@ export function ClientCategoryTable({
                                         onEdit,
                                         onDelete,
                                     }: ClientCategoryTableProps) {
+    const { t } = useI18n()
+
     return (
         <>
             <div className="hidden sm:block border border-border rounded-lg bg-card">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Discount</TableHead>
+                            <TableHead>{t("common.name")}</TableHead>
+                            <TableHead>{t("common.discount")}</TableHead>
                             <TableHead className="w-[70px]" />
                         </TableRow>
                     </TableHeader>
@@ -48,7 +51,7 @@ export function ClientCategoryTable({
                                     colSpan={3}
                                     className="text-center text-muted-foreground py-6"
                                 >
-                                    No categories found
+                                    {t("clients.noCategories")}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -61,7 +64,7 @@ export function ClientCategoryTable({
                                     <TableCell>
                                         {category.discount > 0
                                             ? `${category.discount}%`
-                                            : "No discount"}
+                                            : t("clients.noDiscount")}
                                     </TableCell>
 
                                     <TableCell>
@@ -82,7 +85,7 @@ export function ClientCategoryTable({
                                                     }
                                                 >
                                                     <Pencil className="h-4 w-4 mr-2" />
-                                                    Edit
+                                                    {t("common.edit")}
                                                 </DropdownMenuItem>
 
                                                 <DropdownMenuItem
@@ -92,7 +95,7 @@ export function ClientCategoryTable({
                                                     className="text-destructive"
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-2" />
-                                                    Delete
+                                                    {t("common.delete")}
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -108,7 +111,7 @@ export function ClientCategoryTable({
             <div className="sm:hidden">
                 {categories.length === 0 ? (
                     <p className="text-center text-muted-foreground py-6">
-                        No categories found
+                        {t("clients.noCategories")}
                     </p>
                 ) : (
                     <div className="divide-y divide-border">
@@ -124,7 +127,7 @@ export function ClientCategoryTable({
                                     <p className="text-xs text-muted-foreground mt-0.5">
                                         {category.discount > 0
                                             ? `${category.discount}%`
-                                            : "No discount"}
+                                            : t("clients.noDiscount")}
                                     </p>
                                 </div>
 
@@ -144,7 +147,7 @@ export function ClientCategoryTable({
                                             onClick={() => onEdit(category)}
                                         >
                                             <Pencil className="h-4 w-4 mr-2" />
-                                            Edit
+                                            {t("common.edit")}
                                         </DropdownMenuItem>
 
                                         <DropdownMenuItem
@@ -152,7 +155,7 @@ export function ClientCategoryTable({
                                             className="text-destructive"
                                         >
                                             <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete
+                                            {t("common.delete")}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

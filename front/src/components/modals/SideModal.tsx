@@ -8,6 +8,7 @@ import {
     CheckCircle
 } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface SideModalProps {
     open: boolean
@@ -24,14 +25,17 @@ export function SideModal({
                               open,
                               onOpenChange,
                               title,
-                              submitLabel = "Save",
-                              cancelLabel = "Cancel",
+                              submitLabel,
+                              cancelLabel,
                               isLoading,
                               onSubmit,
                               children,
                           }: SideModalProps) {
+    const { t } = useI18n()
     const [shouldRender, setShouldRender] = useState(false)
     const [animationState, setAnimationState] = useState<'enter' | 'exit' | null>(null)
+    const resolvedSubmitLabel = submitLabel ?? t("common.save")
+    const resolvedCancelLabel = cancelLabel ?? t("common.cancel")
 
     useEffect(() => {
         const timers: ReturnType<typeof setTimeout>[] = []
@@ -102,7 +106,7 @@ export function SideModal({
                                     {title}
                                 </h2>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                                    Fill in the order details
+                                    {t("common.fillOrderDetails")}
                                 </p>
                             </div>
                         </div>
@@ -132,7 +136,7 @@ export function SideModal({
                                 disabled={isLoading}
                                 className="w-full sm:w-auto px-4 py-2 h-9 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-lg text-sm"
                             >
-                                {cancelLabel}
+                                {resolvedCancelLabel}
                             </Button>
                             <Button
                                 onClick={onSubmit}
@@ -142,12 +146,12 @@ export function SideModal({
                                 {isLoading ? (
                                     <div className="flex items-center gap-2">
                                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                                        <span>{submitLabel}...</span>
+                                        <span>{resolvedSubmitLabel}...</span>
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-2">
                                         <CheckCircle className="h-4 w-4" />
-                                        <span>{submitLabel}</span>
+                                        <span>{resolvedSubmitLabel}</span>
                                     </div>
                                 )}
                             </Button>

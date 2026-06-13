@@ -19,10 +19,13 @@ import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs"
 import { BarChart3, Table as TableIcon } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false })
 
 export function StatsPage() {
+    const { t } = useI18n()
+
     const {
         loading,
 
@@ -106,9 +109,9 @@ export function StatsPage() {
 
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
                         <div>
-                            <h2 className="text-2xl font-bold">Statistics Dashboard</h2>
+                            <h2 className="text-2xl font-bold">{t("stats.dashboard")}</h2>
                             <p className="text-muted-foreground">
-                                Business insights and financial analytics
+                                {t("stats.description")}
                             </p>
                         </div>
                     </div>
@@ -116,7 +119,7 @@ export function StatsPage() {
                     {/* DATE FILTER */}
                     <Card className="relative z-50 overflow-visible">
                         <CardHeader>
-                            <CardTitle>Filters</CardTitle>
+                            <CardTitle>{t("common.filters")}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <PeriodSelector onPeriodChange={handlePeriodChange} />
@@ -134,10 +137,10 @@ export function StatsPage() {
                     <Tabs defaultValue="charts" className="space-y-6">
                         <TabsList className="grid w-full sm:w-[400px] grid-cols-2">
                             <TabsTrigger value="charts" className="flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4" /> Charts
+                                <BarChart3 className="w-4 h-4" /> {t("stats.charts")}
                             </TabsTrigger>
                             <TabsTrigger value="tables" className="flex items-center gap-2">
-                                <TableIcon className="w-4 h-4" /> Tables
+                                <TableIcon className="w-4 h-4" /> {t("stats.tables")}
                             </TabsTrigger>
                         </TabsList>
 
@@ -184,12 +187,12 @@ export function StatsPage() {
 
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Conversion</CardTitle>
+                                    <CardTitle>{t("stats.conversion")}</CardTitle>
                                 </CardHeader>
                                 <CardContent className="flex flex-wrap gap-4 sm:gap-6">
-                                    <div>Total: {conversion?.total_requests}</div>
-                                    <div>Accepted: {conversion?.accepted_services}</div>
-                                    <div>Rejected: {conversion?.refused_services}</div>
+                                    <div>{t("stats.total")}: {conversion?.total_requests}</div>
+                                    <div>{t("stats.accepted")}: {conversion?.accepted_services}</div>
+                                    <div>{t("stats.rejected")}: {conversion?.refused_services}</div>
                                     <div>%: {conversion?.conversion_percent}</div>
                                 </CardContent>
                             </Card>
@@ -204,7 +207,9 @@ export function StatsPage() {
 
 
 function SalesApexChart({ data }: { data: SalesChartItem[] }) {
-    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>Sales Chart</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">Немає даних</CardContent></Card>;
+    const { t } = useI18n()
+
+    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>{t("stats.salesChart")}</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">{t("common.noData")}</CardContent></Card>;
 
     const options: any = {
         chart: { type: 'line', fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
@@ -217,18 +222,20 @@ function SalesApexChart({ data }: { data: SalesChartItem[] }) {
         tooltip: { theme: 'light', y: { formatter: (val: number) => `$${val}` } },
         dataLabels: { enabled: false }
     };
-    const series = [{ name: 'Revenue', data: data.map(item => item.daily_revenue) }];
+    const series = [{ name: t("Revenue"), data: data.map(item => item.daily_revenue) }];
 
     return (
         <Card>
-            <CardHeader><CardTitle>Динаміка продажів</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("stats.salesDynamics")}</CardTitle></CardHeader>
             <CardContent><Chart options={options} series={series} type="line" height={320} /></CardContent>
         </Card>
     );
 }
 
 function PnLApexChart({ data }: { data: PnLBreakdownItem[] | undefined }) {
-    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>PnL Breakdown</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">Немає даних</CardContent></Card>;
+    const { t } = useI18n()
+
+    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>{t("stats.pnlBreakdown")}</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">{t("common.noData")}</CardContent></Card>;
 
     const options: any = {
         chart: { type: 'bar', fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
@@ -240,22 +247,24 @@ function PnLApexChart({ data }: { data: PnLBreakdownItem[] | undefined }) {
         dataLabels: { enabled: false },
         tooltip: { theme: 'light', y: { formatter: (val: number) => `$${val}` } }
     };
-    const series = [{ name: 'Прибуток', data: data.map(item => item.val_profit) }];
+    const series = [{ name: t("Profit"), data: data.map(item => item.val_profit) }];
 
     return (
         <Card>
-            <CardHeader><CardTitle>Прибуток за категоріями</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("stats.profitByCategory")}</CardTitle></CardHeader>
             <CardContent><Chart options={options} series={series} type="bar" height={320} /></CardContent>
         </Card>
     );
 }
 
 function ConversionApexChart({ data }: { data: ConversionStats | null }) {
-    if (!data) return <Card><CardHeader><CardTitle>Conversion</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">Немає даних</CardContent></Card>;
+    const { t } = useI18n()
+
+    if (!data) return <Card><CardHeader><CardTitle>{t("stats.conversion")}</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">{t("common.noData")}</CardContent></Card>;
 
     const options: any = {
         chart: { type: 'donut', fontFamily: 'Inter, sans-serif' },
-        labels: ['Accepted', 'Rejected'],
+        labels: [t("stats.accepted"), t("stats.rejected")],
         colors: ['#10b981', '#ef4444'], // Зелений для прийнятих, червоний для відхилених
         dataLabels: { enabled: false },
         plotOptions: {
@@ -265,7 +274,7 @@ function ConversionApexChart({ data }: { data: ConversionStats | null }) {
                         show: true,
                         name: { show: true },
                         value: { show: true, formatter: (val: string) => val },
-                        total: { show: true, label: 'Total', formatter: () => data.total_requests }
+                        total: { show: true, label: t("stats.total"), formatter: () => data.total_requests }
                     }
                 }
             }
@@ -276,7 +285,7 @@ function ConversionApexChart({ data }: { data: ConversionStats | null }) {
 
     return (
         <Card>
-            <CardHeader><CardTitle>Conversion ({data.conversion_percent}%)</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("stats.conversion")} ({data.conversion_percent}%)</CardTitle></CardHeader>
             <CardContent className="flex justify-center">
                 <Chart options={options} series={series} type="donut" height={320} />
             </CardContent>
@@ -285,7 +294,9 @@ function ConversionApexChart({ data }: { data: ConversionStats | null }) {
 }
 
 function PeopleStatsApexChart({ title, data }: { title: string, data: StatsItem[] }) {
-    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">Немає даних</CardContent></Card>;
+    const { t } = useI18n()
+
+    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>{t(title)}</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">{t("common.noData")}</CardContent></Card>;
 
     const chartData = data.slice(0, 5); // Беремо топ 5
     const options: any = {
@@ -301,11 +312,11 @@ function PeopleStatsApexChart({ title, data }: { title: string, data: StatsItem[
         grid: { borderColor: 'rgba(0,0,0,0.05)', strokeDashArray: 3 },
         tooltip: { theme: 'light', y: { formatter: (val: number) => `$${val}` } }
     };
-    const series = [{ name: 'Revenue', data: chartData.map(item => item.total_revenue) }];
+    const series = [{ name: t("Revenue"), data: chartData.map(item => item.total_revenue) }];
 
     return (
         <Card>
-            <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t(title)}</CardTitle></CardHeader>
             <CardContent>
                 <Chart options={options} series={series} type="bar" height={320} />
             </CardContent>
@@ -314,7 +325,9 @@ function PeopleStatsApexChart({ title, data }: { title: string, data: StatsItem[
 }
 
 function OrdersApexChart({ title, data, color }: { title: string, data: Order[], color: string }) {
-    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">Немає даних</CardContent></Card>;
+    const { t } = useI18n()
+
+    if (!data || data.length === 0) return <Card><CardHeader><CardTitle>{t(title)}</CardTitle></CardHeader><CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">{t("common.noData")}</CardContent></Card>;
 
     const chartData = data.slice(0, 5); // Беремо топ 5 замовлень
     const options: any = {
@@ -334,7 +347,7 @@ function OrdersApexChart({ title, data, color }: { title: string, data: Order[],
 
     return (
         <Card>
-            <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t(title)}</CardTitle></CardHeader>
             <CardContent>
                 <Chart options={options} series={series} type="bar" height={320} />
             </CardContent>
@@ -343,10 +356,12 @@ function OrdersApexChart({ title, data, color }: { title: string, data: Order[],
 }
 
 function KpiCard({ title, value }: { title: string; value?: number }) {
+    const { t } = useI18n()
+
     return (
         <Card>
             <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground font-medium">{title}</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground font-medium">{t(title)}</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{value !== undefined ? `$${value}` : '-'}</div>
@@ -356,9 +371,11 @@ function KpiCard({ title, value }: { title: string; value?: number }) {
 }
 
 function OrdersMiniTable({ title, data }: { title: string; data: Order[] }) {
+    const { t } = useI18n()
+
     return (
         <Card>
-            <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t(title)}</CardTitle></CardHeader>
             <CardContent className="space-y-2">
                 {data.slice(0, 5).map((o) => (
                     <div key={o.id} className="flex justify-between text-sm py-1 border-b last:border-0">
@@ -372,9 +389,11 @@ function OrdersMiniTable({ title, data }: { title: string; data: Order[] }) {
 }
 
 function StatsTable({ title, data }: { title: string; data: StatsItem[] }) {
+    const { t } = useI18n()
+
     return (
         <Card>
-            <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t(title)}</CardTitle></CardHeader>
             <CardContent className="space-y-2">
                 {data.slice(0, 5).map((item, i) => (
                     <div key={i} className="flex justify-between text-sm py-1 border-b last:border-0">

@@ -26,8 +26,10 @@ import {
 
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export function TariffsPage() {
+    const { t } = useI18n()
     const {
         tariffs,
         categories,
@@ -66,21 +68,21 @@ export function TariffsPage() {
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                            <h2 className="text-2xl font-bold tracking-tight">Tariffs</h2>
+                            <h2 className="text-2xl font-bold tracking-tight">{t("tariffs.title")}</h2>
                             <p className="text-muted-foreground">
-                                Manage pricing plans and configurations
+                                {t("tariffs.description")}
                             </p>
                         </div>
                         <Button onClick={openAddTariff}>
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Tariff
+                            {t("tariffs.add")}
                         </Button>
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Tariffs List</CardTitle>
-                            <CardDescription>All available system tariffs</CardDescription>
+                            <CardTitle>{t("tariffs.listTitle")}</CardTitle>
+                            <CardDescription>{t("tariffs.listDescription")}</CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                             <TariffTable
@@ -99,15 +101,15 @@ export function TariffsPage() {
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={selectedTariff ? "Edit Tariff" : "Add Tariff"}
-                submitLabel={selectedTariff ? "Update" : "Create"}
+                title={selectedTariff ? t("tariffs.edit") : t("tariffs.add")}
+                submitLabel={selectedTariff ? t("tariffs.update") : t("common.create")}
                 onSubmit={() => submitTariff(form)}
             >
                 <div className="space-y-4">
 
                     {/* Name */}
                     <Input
-                        placeholder="Tariff name"
+                        placeholder={t("tariffs.namePlaceholder")}
                         value={form.name}
                         className={errors?.name ? "border-red-500" : ""}
                         onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
@@ -137,7 +139,7 @@ export function TariffsPage() {
                         onValueChange={(val) => setForm(prev => ({ ...prev, currency_id: Number(val) }))}
                     >
                         <SelectTrigger className={errors?.currency_id ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Currency" />
+                            <SelectValue placeholder={t("orders.currency")} />
                         </SelectTrigger>
                         <SelectContent>
                             {currencies.map(currency => (
@@ -157,7 +159,7 @@ export function TariffsPage() {
                         onValueChange={(val) => setForm(prev => ({ ...prev, category: Number(val) }))}
                     >
                         <SelectTrigger className={errors?.category ? "border-red-500" : ""}>
-                            <SelectValue placeholder="Select category" />
+                            <SelectValue placeholder={t("clients.selectCategory")} />
                         </SelectTrigger>
                         <SelectContent>
                             {categories.map(category => (
@@ -178,7 +180,7 @@ export function TariffsPage() {
                         type="number"
                         min="0"
                         step="any"
-                        placeholder="Price per page"
+                        placeholder={t("translators.pricePerPage")}
                         className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.price_per_page ? "border-red-500" : ""}`}
                         onKeyDown={(e) => {
                             if (["-", "e", "E", "+"].includes(e.key)) {
@@ -207,7 +209,7 @@ export function TariffsPage() {
                         type="number"
                         min="0"
                         step="any"
-                        placeholder="Price per action"
+                        placeholder={t("translators.pricePerAction")}
                         className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.price_per_action ? "border-red-500" : ""}`}
                         onKeyDown={(e) => {
                             if (["-", "e", "E", "+"].includes(e.key)) {
@@ -237,8 +239,8 @@ export function TariffsPage() {
                 open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}
                 onConfirm={confirmDelete}
-                title="Delete Tariff"
-                description="Are you sure you want to delete this tariff?"
+                title={t("tariffs.deleteTitle")}
+                description={t("tariffs.deleteDescription")}
             />
         </>
     )

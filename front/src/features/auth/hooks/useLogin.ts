@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/src/hooks/use-toast"
 import { authApi } from "../api"
 import type { LoginPayload, ValidationErrorResponse } from "../types"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 type LoginErrorResponse = ValidationErrorResponse & {
     status?: number
@@ -17,6 +18,7 @@ export function useLogin() {
 
     const router = useRouter()
     const { toast } = useToast()
+    const { t } = useI18n()
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
@@ -28,8 +30,8 @@ export function useLogin() {
             await authApi.login(payload)
 
             toast({
-                title: "Successfully entered",
-                description: "Now you can use the product",
+                title: t("auth.loginSuccessTitle"),
+                description: t("auth.loginSuccessDescription"),
             })
 
             // Єдиний редірект
@@ -40,20 +42,20 @@ export function useLogin() {
 
             if (errors?.status === 401) {
                 toast({
-                    title: "Login failed",
-                    description: "Incorrect password or email",
+                    title: t("auth.loginFailed"),
+                    description: t("auth.incorrectCredentials"),
                     variant: "error",
                 })
             } else if (errors?.email) {
                 toast({
-                    title: "Login failed",
+                    title: t("auth.loginFailed"),
                     description: errors.email[0],
                     variant: "error",
                 })
             } else {
                 toast({
-                    title: "Error",
-                    description: "Invalid credentials or server error",
+                    title: t("auth.error"),
+                    description: t("auth.invalidCredentials"),
                     variant: "error",
                 })
             }

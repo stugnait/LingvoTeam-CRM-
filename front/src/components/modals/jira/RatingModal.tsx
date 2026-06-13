@@ -8,6 +8,7 @@ import { Button } from "../../ui/button"
 import { Textarea } from "../../ui/textarea"
 import { X, Star, Upload, File, Trash2 } from "lucide-react"
 import { useState, useCallback, useRef } from "react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface RatingModalProps {
     open: boolean
@@ -18,22 +19,15 @@ interface RatingModalProps {
     title?: string
 }
 
-const ratingDescriptions: Record<number, string> = {
-    1: "Погано",
-    2: "Незадовільно",
-    3: "Задовільно",
-    4: "Добре",
-    5: "Чудово"
-}
-
 export function RatingModal({
                                 open,
                                 onOpenChange,
                                 onConfirm,
                                 onCancel,
                                 isLoading = false,
-                                title = "Оцініть замовлення"
+                                title
                             }: RatingModalProps) {
+    const { t } = useI18n()
     const [rating, setRating] = useState(0)
     const [hoveredRating, setHoveredRating] = useState(0)
     const [comment, setComment] = useState("")
@@ -75,14 +69,18 @@ export function RatingModal({
     }, [])
 
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) addFiles(e.target.files)
+        if (e.target.files) {
+            addFiles(e.target.files)
+        }
         e.target.value = ""
     }
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(false)
-        if (e.dataTransfer.files) addFiles(e.dataTransfer.files)
+        if (e.dataTransfer.files) {
+            addFiles(e.dataTransfer.files)
+        }
     }, [addFiles])
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -97,8 +95,12 @@ export function RatingModal({
     }
 
     const formatSize = (bytes: number) => {
-        if (bytes < 1024) return `${bytes} B`
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+        if (bytes < 1024) {
+            return `${bytes} B`
+        }
+        if (bytes < 1024 * 1024) {
+            return `${(bytes / 1024).toFixed(1)} KB`
+        }
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
     }
 
@@ -110,7 +112,7 @@ export function RatingModal({
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 sticky top-0 z-10">
                     <h2 className="text-base sm:text-xl font-semibold text-gray-900">
-                        {title}
+                        {title || t("rating.defaultTitle")}
                     </h2>
                     <Button
                         variant="ghost"
@@ -128,7 +130,7 @@ export function RatingModal({
                     {/* Rating Section */}
                     <div className="flex flex-col items-center mb-4 sm:mb-6">
                         <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 text-center">
-                            Як би ви оцінили виконання цього замовлення?
+                            {t("rating.question")}
                         </p>
 
                         {/* Stars */}
@@ -163,7 +165,7 @@ export function RatingModal({
                                                 displayRating === 4 ? "text-blue-600" :
                                                     "text-green-600"
                                 }`}>
-                                    {ratingDescriptions[displayRating]}
+                                    {t(`rating.${displayRating}`)}
                                 </p>
                             )}
                         </div>
@@ -172,7 +174,7 @@ export function RatingModal({
                     {/* Scale */}
                     <div className="bg-gray-50 rounded-lg p-4 mb-5 border border-gray-200">
                         <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">
-                            Шкала оцінювання:
+                            {t("rating.scale")}
                         </p>
                         <div className="grid grid-cols-5 gap-2">
                             {[1, 2, 3, 4, 5].map((star) => (
@@ -197,7 +199,7 @@ export function RatingModal({
                                                     star === 4 ? "text-blue-600" :
                                                         "text-green-600"
                                     }`}>
-                                        {ratingDescriptions[star]}
+                                        {t(`rating.${star}`)}
                                     </span>
                                 </div>
                             ))}
@@ -207,9 +209,9 @@ export function RatingModal({
                     {/* File Upload Section */}
                     <div className="mb-5">
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Завантажити файли{" "}
+                            {t("rating.uploadFiles")}{" "}
                             <span className="text-gray-400 font-normal">
-                                (необов'язково — замінить файли в папці target)
+                                {t("rating.optionalTargetReplace")}
                             </span>
                         </label>
 
@@ -239,12 +241,12 @@ export function RatingModal({
                             <Upload className={`h-8 w-8 mx-auto mb-2 ${isDragging ? "text-blue-500" : "text-gray-400"}`} />
                             <p className="text-sm text-gray-600">
                                 {isDragging
-                                    ? "Відпустіть файли тут"
-                                    : "Перетягніть файли або натисніть для вибору"
+                                    ? t("rating.dropFilesHere")
+                                    : t("rating.dragOrClickFiles")
                                 }
                             </p>
                             <p className="text-xs text-gray-400 mt-1">
-                                Будь-які формати файлів
+                                {t("rating.anyFileTypes")}
                             </p>
                         </div>
 
@@ -274,7 +276,7 @@ export function RatingModal({
                                     </div>
                                 ))}
                                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-1.5">
-                                    ⚠️ Ці файли замінять усі поточні файли в папці target
+                                    ⚠️ {t("rating.replaceWarning")}
                                 </p>
                             </div>
                         )}
@@ -283,13 +285,13 @@ export function RatingModal({
                     {/* Comment Section */}
                     <div className="mb-6">
                         <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Залишіть коментар{" "}
-                            <span className="text-gray-400 font-normal">(необов'язково)</span>
+                            {t("rating.commentLabel")}{" "}
+                            <span className="text-gray-400 font-normal">{t("rating.optional")}</span>
                         </label>
                         <Textarea
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
-                            placeholder="Поділіться своїми враженнями..."
+                            placeholder={t("rating.commentPlaceholder")}
                             className="min-h-[90px] resize-none text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             disabled={isLoading}
                         />
@@ -303,7 +305,7 @@ export function RatingModal({
                             disabled={isLoading}
                             className="w-full sm:w-auto sm:min-w-[100px] border-gray-300 hover:bg-gray-50"
                         >
-                            Скасувати
+                            {t("common.cancel")}
                         </Button>
                         <Button
                             onClick={handleSubmit}
@@ -311,10 +313,10 @@ export function RatingModal({
                             className="w-full sm:w-auto sm:min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isLoading
-                                ? "Відправка..."
+                                ? t("reject.sending")
                                 : files.length > 0
-                                    ? `Відправити (${files.length} файл${files.length === 1 ? "" : "и"})`
-                                    : "Відправити оцінку"
+                                    ? t("rating.submitWithFiles", { count: files.length })
+                                    : t("rating.submitRating")
                             }
                         </Button>
                     </div>

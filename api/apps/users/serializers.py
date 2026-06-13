@@ -14,7 +14,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 
 from .models import Permission, RolePermission
-from .models.user_permission import UserPermission  # 👈 нова модель
+from .models.user_permission import UserPermission
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +134,11 @@ def _get_extra_permission_ids(user: User) -> list[int]:
     )
 
 
+def _get_translator_id(user: User) -> int | None:
+    profile = getattr(user, 'translator_profile', None)
+    return profile.id if profile else None
+
+
 # ---------------------------------------------------------------------------
 # UserSerializer  (використовується для /me та токена)
 # ---------------------------------------------------------------------------
@@ -148,12 +153,9 @@ class UserSerializer(serializers.ModelSerializer):
         write_only=True
     )
     avatar = serializers.SerializerMethodField()
-
-    # Всі slug-и (роль + індивідуальні) — для фронту щоб перевіряти доступи
     permissions = serializers.SerializerMethodField()
-
-    # Тільки індивідуальні id — для wizard-у редагування
     extra_permission_ids = serializers.SerializerMethodField()
+    translator_id = serializers.SerializerMethodField()
 
     def get_avatar(self, obj):
         return obj.avatar or None
@@ -164,14 +166,18 @@ class UserSerializer(serializers.ModelSerializer):
     def get_extra_permission_ids(self, obj):
         return _get_extra_permission_ids(obj)
 
+    def get_translator_id(self, obj):
+        return _get_translator_id(obj)
+
     class Meta:
         model = User
         fields = [
             'id', 'email', 'full_name', 'phone',
             'role', 'role_id',
             'is_active', 'avatar',
-            'permissions',        # slug-и для перевірки доступу
-            'extra_permission_ids',  # id для wizard-у
+            'permissions',
+            'extra_permission_ids',
+            'translator_id',   # null або id запису в translators
         ]
 
 
@@ -184,6 +190,7 @@ class UserListSerializer(serializers.ModelSerializer):
     language_pairs = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
     extra_permission_ids = serializers.SerializerMethodField()
+    translator_id = serializers.SerializerMethodField()
 
     def get_avatar(self, obj):
         return obj.avatar or None
@@ -206,6 +213,9 @@ class UserListSerializer(serializers.ModelSerializer):
     def get_extra_permission_ids(self, obj):
         return _get_extra_permission_ids(obj)
 
+    def get_translator_id(self, obj):
+        return _get_translator_id(obj)
+
     class Meta:
         model = User
         fields = (
@@ -213,6 +223,7 @@ class UserListSerializer(serializers.ModelSerializer):
             'role', 'is_active',
             'language_pairs', 'avatar',
             'extra_permission_ids',
+            'translator_id',   # null або id запису в translators
         )
 
 
@@ -230,19 +241,30 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     )
     role = RoleSerializer(read_only=True)
 
-
-    # Індивідуальні права (write-only при збереженні, read через SerializerMethod)
     extra_permission_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
         required=False,
     )
-    # Вказуємо, що чекаємо файл, але не зберігаємо його стандартно
     avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
+
+    # --- Поля для перекладача ---
+    is_translator = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=None,
+        allow_null=True,
+    )
+    currency_id = serializers.IntegerField(
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     # Read-only поля
     permissions = serializers.SerializerMethodField()
     extra_permission_ids_read = serializers.SerializerMethodField()
+    translator_id = serializers.SerializerMethodField()
 
     def get_permissions(self, obj):
         return _get_all_permission_slugs(obj)
@@ -250,19 +272,36 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def get_extra_permission_ids_read(self, obj):
         return _get_extra_permission_ids(obj)
 
+    def get_translator_id(self, obj):
+        return _get_translator_id(obj)
+
+    def validate(self, attrs):
+        is_translator = attrs.get('is_translator')
+        currency_id = attrs.get('currency_id')
+        # Перевіряємо currency_id тільки якщо is_translator=True
+        # і у юзера ще немає translator_profile (тобто це перший раз)
+        if is_translator is True and not currency_id:
+            instance = self.instance
+            has_profile = instance and getattr(instance, 'translator_profile', None)
+            if not has_profile:
+                raise serializers.ValidationError(
+                    {"currency_id": "Обов'язкове поле при першому призначенні перекладача."}
+                )
+        return attrs
+
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep['avatar'] = instance.avatar or None
-        # Перейменовуємо read-поле на зручне ім'я для фронту
         rep['extra_permission_ids'] = rep.pop('extra_permission_ids_read', [])
         return rep
 
     def update(self, instance, validated_data):
         avatar_file = validated_data.pop('avatar', None)
         extra_permission_ids = validated_data.pop('extra_permission_ids', None)
-        # 2. Оновлюємо всі інші текстові поля
-        instance = super().update(instance, validated_data)
+        is_translator = validated_data.pop('is_translator', None)
+        currency_id = validated_data.pop('currency_id', None)
 
+        instance = super().update(instance, validated_data)
 
         # Оновлення аватарки через Dropbox
         if avatar_file:
@@ -272,14 +311,31 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                 instance.avatar = avatar_url
                 instance.save(update_fields=['avatar'])
 
-        # Оновлення індивідуальних прав (якщо передані)
+        # Оновлення індивідуальних прав
         if extra_permission_ids is not None:
             UserPermission.objects.filter(user=instance).delete()
             for perm_id in extra_permission_ids:
                 try:
                     UserPermission.objects.create(user=instance, permission_id=perm_id)
                 except Exception:
-                    pass  # ігноруємо дублікати або невалідні id
+                    pass
+
+        # Оновлення translator_profile
+        if is_translator is True:
+            from apps.translators.models import Translator
+            Translator.objects.get_or_create(
+                user=instance,
+                defaults={
+                    'full_name': instance.full_name,
+                    'email': instance.email,
+                    'phone': instance.phone or '',
+                    'currency_id_id': currency_id,
+                    'is_active': True,
+                }
+            )
+        elif is_translator is False:
+            from apps.translators.models import Translator
+            Translator.objects.filter(user=instance).delete()
 
         return instance
 
@@ -288,14 +344,21 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'email', 'full_name', 'phone',
             'role_id', 'role', 'avatar',
-            'extra_permission_ids',       # write
-            'extra_permission_ids_read',  # read (буде перейменовано в to_representation)
+            'extra_permission_ids',
+            'extra_permission_ids_read',
             'permissions',
+            'is_translator',   # write: true/false/null
+            'currency_id',     # write: потрібен при першому is_translator=true
+            'translator_id',   # read: null або id
         )
         read_only_fields = ('id',)
 
+
+# ---------------------------------------------------------------------------
+# UserSelfUpdateSerializer
+# ---------------------------------------------------------------------------
+
 class UserSelfUpdateSerializer(serializers.ModelSerializer):
-    # Те саме тут
     avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
     def to_representation(self, instance):
@@ -347,7 +410,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     avatar = serializers.ImageField(required=False, allow_null=True, write_only=True)
 
-    # Індивідуальні права одразу при реєстрації (опціонально)
     extra_permission_ids = serializers.ListField(
         child=serializers.IntegerField(),
         write_only=True,
@@ -355,14 +417,40 @@ class RegistrationSerializer(serializers.ModelSerializer):
         default=list,
     )
 
+    # --- Поля для перекладача ---
+    is_translator = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+    )
+    currency_id = serializers.IntegerField(
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = User
-        fields = ('email', 'full_name', 'phone', 'role', 'password', 'avatar', 'extra_permission_ids')
+        fields = (
+            'email', 'full_name', 'phone', 'role', 'password',
+            'avatar', 'extra_permission_ids',
+            'is_translator',   # галочка з UI
+            'currency_id',     # обов'язкове якщо is_translator=true
+        )
+
+    def validate(self, attrs):
+        if attrs.get('is_translator') and not attrs.get('currency_id'):
+            raise serializers.ValidationError(
+                {"currency_id": "Обов'язкове поле при створенні редактора-перекладача."}
+            )
+        return attrs
 
     def create(self, validated_data):
         avatar = validated_data.pop('avatar', None)
         password = validated_data.pop('password')
         extra_permission_ids = validated_data.pop('extra_permission_ids', [])
+        is_translator = validated_data.pop('is_translator', False)
+        currency_id = validated_data.pop('currency_id', None)
 
         user = User(**validated_data)
         user.set_password(password)
@@ -380,6 +468,19 @@ class RegistrationSerializer(serializers.ModelSerializer):
                 UserPermission.objects.create(user=user, permission_id=perm_id)
             except Exception:
                 pass
+
+        # Якщо галочка "зробити перекладачем" — створюємо запис в translators
+        if is_translator:
+            from apps.translators.models import Translator
+            from apps.core.models import Currency
+            Translator.objects.create(
+                user=user,
+                full_name=user.full_name,
+                email=user.email,
+                phone=user.phone or '',
+                currency_id_id=currency_id,  # ✅ Django сам зрозуміє якщо поле називається currency_id
+                is_active=True,
+            )
 
         return user
 

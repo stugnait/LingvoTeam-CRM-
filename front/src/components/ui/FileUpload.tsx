@@ -3,6 +3,7 @@
 import { Input } from "@/src/components/ui/input"
 import { Upload, FileText, X } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface FileUploadProps {
     files: File[]
@@ -10,6 +11,8 @@ interface FileUploadProps {
 }
 
 export function FileUpload({ files, onFilesChange }: FileUploadProps) {
+    const { t } = useI18n()
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files) {return}
 
@@ -31,7 +34,7 @@ export function FileUpload({ files, onFilesChange }: FileUploadProps) {
         <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300">
                 <Upload className="h-3.5 w-3.5 text-blue-600" />
-                <span>Upload Files</span>
+                <span>{t("common.uploadFiles")}</span>
             </label>
 
             <div className="relative">
@@ -53,10 +56,10 @@ export function FileUpload({ files, onFilesChange }: FileUploadProps) {
                             files.length > 0 ? "text-blue-600" : "text-gray-400"
                         )} />
                         <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            Click or drag files
+                            {t("common.clickOrDragFiles")}
                         </p>
                         <p className="text-[10px] text-gray-500">
-                            PDF, DOCX, TXT (10MB max)
+                            {t("common.fileTypesHint")}
                         </p>
                     </div>
                 </div>

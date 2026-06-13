@@ -18,7 +18,6 @@ import {
 
 import { useToast } from "@/src/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import {translatorOrderApi} from "@/src/features/translator_order/api";
 
 export function useOrders() {
 
@@ -32,6 +31,8 @@ export function useOrders() {
     const [loading, setLoading] = useState(false)
     const [deleteLoading, setDeleteLoading] = useState<number | null>(null)
     const [updateLoading, setUpdateLoading] = useState<number | null>(null)
+    const [updateClientStatusLoading, setUpdateClientStatusLoading] = useState<number | null>(null) // 👉 ДОДАНО
+
     const [sourceFiles, setSourceFiles] = useState<{ id: number; name: string }[]>([])
     const [targetFiles, setTargetFiles] = useState<{ id: number; name: string }[]>([])
     const [filesLoading, setFilesLoading] = useState(false)
@@ -41,7 +42,6 @@ export function useOrders() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
 
-    // 👉 Стан для збереження поточного фільтру "тільки мої"
     const [isOnlyMineFilter, setIsOnlyMineFilter] = useState(false)
     const [statusFilter, setStatusFilter] = useState<string | number>("")
     const [managerFilter, setManagerFilter] = useState<string | number>("")
@@ -233,7 +233,7 @@ export function useOrders() {
         manager: string | number = managerFilter,
         dateFrom: string = dateFromFilter,
         dateTo: string = dateToFilter,
-        search: string = searchFilter // 👈 ДОДАНО
+        search: string = searchFilter
     ) => {
         try {
             setLoading(true)
@@ -245,7 +245,7 @@ export function useOrders() {
                 manager: manager || undefined,
                 date_from: dateFrom || undefined,
                 date_to: dateTo || undefined,
-                search: search || undefined // 👈 ДОДАНО
+                search: search || undefined
             })
 
             const sortedResults = [...res.results].sort((a, b) => b.id - a.id)
@@ -259,7 +259,7 @@ export function useOrders() {
             setManagerFilter(manager)
             setDateFromFilter(dateFrom)
             setDateToFilter(dateTo)
-            setSearchFilter(search) // 👈 ДОДАНО
+            setSearchFilter(search)
 
             const pairIds = [...new Set(res.results.map(o => o.language_pair_id))]
             const missing = pairIds.filter(id => !languagePairs[id])
@@ -310,7 +310,6 @@ export function useOrders() {
         loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, val, searchFilter)
     }
 
-    // 👉 ДОДАЄМО НОВИЙ ОБРОБНИК ДЛЯ ПОШУКУ
     const handleSearchChange = (val: string) => {
         setSearchFilter(val)
         loadOrders(1, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, val)
@@ -331,7 +330,6 @@ export function useOrders() {
             })
             setTranslatorsCache(cache)
 
-            // 🔥 ВАЖЛИВО: повертаємо результат, щоб компонент міг його використати
             return res.results
         } catch (e) {
             handleError(e, "Failed to refresh translators")
@@ -349,8 +347,6 @@ export function useOrders() {
             setDeleteLoading(orderId)
             await ordersApi.deleteOrder(orderId)
             handleSuccess("Deleted", `Order #${orderId} deleted`)
-
-            // Оновлюємо з урахуванням поточного фільтра
             await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
         } catch (e) {
             handleError(e, "Failed to delete order")
@@ -370,7 +366,6 @@ export function useOrders() {
             }
 
             handleSuccess("Confirmed", `Order #${orderId} confirmed successfully`)
-
             await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
         } catch (e) {
             handleError(e, "Failed to confirm order")
@@ -400,8 +395,6 @@ export function useOrders() {
 
             await ordersApi.updateOrder(orderId, formData)
             handleSuccess("Updated", `Order #${orderId} updated`)
-
-            // 👉 Оновлюємо з урахуванням поточного фільтра
             await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter)
         } catch (e) {
             handleError(e, "Failed to update order")
@@ -409,6 +402,25 @@ export function useOrders() {
             setUpdateLoading(null)
         }
     }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, loadOrders, handleError, handleSuccess])
+
+
+    /* ======================
+       UPDATE CLIENT STATUS (PAYMENT)
+    ====================== */
+
+    // 👉 ДОДАНО: логіка для оновлення статусу оплати
+    const updateClientStatus = useCallback(async (orderId: number, statusId: number) => {
+        try {
+            setUpdateClientStatusLoading(orderId)
+            await ordersApi.updateClientStatus(orderId, statusId)
+            handleSuccess("Updated", `Payment status for Order #${orderId} updated`)
+            await loadOrders(page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, searchFilter)
+        } catch (e) {
+            handleError(e, "Failed to update payment status")
+        } finally {
+            setUpdateClientStatusLoading(null)
+        }
+    }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, searchFilter, loadOrders, handleError, handleSuccess])
 
 
     /* ======================
@@ -533,6 +545,7 @@ export function useOrders() {
         loading,
         deleteLoading,
         updateLoading,
+        updateClientStatusLoading, // 👉 ДОДАНО
 
         orders,
         order,
@@ -552,7 +565,6 @@ export function useOrders() {
         page,
         totalPages,
 
-        // Стан фільтрів
         isOnlyMineFilter,
         setIsOnlyMineFilter,
         statusFilter,
@@ -575,6 +587,7 @@ export function useOrders() {
 
         deleteOrder,
         updateOrder,
+        updateClientStatus, // 👉 ДОДАНО
         confirmOrder,
 
         downloadOrderSourceFiles,

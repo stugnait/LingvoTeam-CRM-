@@ -5,12 +5,14 @@ import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { Plus } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { useI18n } from '@/src/shared/i18n/I18nProvider';
 
 interface ColumnDropZoneProps {
     columnId: string;
 }
 
 const ColumnDropZone: React.FC<ColumnDropZoneProps> = ({ columnId }) => {
+    const { t } = useI18n()
     const { setNodeRef, isOver } = useDroppable({
         id: `dropzone-${columnId}`,
         data: {
@@ -33,7 +35,7 @@ const ColumnDropZone: React.FC<ColumnDropZoneProps> = ({ columnId }) => {
                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-1.5 sm:mb-2">
                     <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-400" />
                 </div>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Drop tasks here</p>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{t("common.dropTasksHere")}</p>
             </div>
         </div>
     );

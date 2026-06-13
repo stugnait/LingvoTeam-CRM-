@@ -29,6 +29,25 @@ import { PrioritySelector } from "@/src/components/ui/PrioritySelector"
 import { useOrderAnalysis } from "@/src/features/orders/hooks/useOrderAnalysis"
 import { ordersApi } from "@/src/features/orders/api"
 import localforage from "localforage"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
+
+// ─── Meta types ─────────────────────────────────────────────────────────────
+
+interface TariffMeta {
+    category?: string
+    price_per_page?: number | null
+    price_per_action?: number | null
+}
+
+interface TranslatorTrafficMeta {
+    rate_per_page?: number | null
+    rate_per_action?: number | null
+    currency?: string
+    isProfitable?: boolean
+    marginStr?: string | null
+}
+
+// ─── Props ───────────────────────────────────────────────────────────────────
 
 interface CreateOrderModalProps {
     open: boolean
@@ -91,7 +110,11 @@ type EditorOption = {
     description?: string
 }
 
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export function CreateOrderModal(props: CreateOrderModalProps) {
+    const { t } = useI18n()
+
     const {
         open, onOpenChange, onSubmit, loading,
         clientId, setClientId,
@@ -123,7 +146,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         resetStats
     } = useOrderAnalysis()
 
-    const [currentStep, setCurrentStep] = useState(0) // 🔥 Стан для поточного кроку
+    const [currentStep, setCurrentStep] = useState(0)
     const [filesConfirmed, setFilesConfirmed] = useState(false)
     const [imagesAnalyzed, setImagesAnalyzed] = useState(false)
     const [editorOptions, setEditorOptions] = useState<EditorOption[]>([])
@@ -160,26 +183,25 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         if (onRefreshTranslators) {
             const freshTranslators = await onRefreshTranslators()
             if (Array.isArray(freshTranslators) && freshTranslators.length > 0) {
-                const newTranslator = freshTranslators.find((t: any) => t.email === form.email);
+                const newTranslator = freshTranslators.find((t: any) => t.email === form.email)
                 if (newTranslator) {
-                    setSelectedTranslatorId(newTranslator.id);
+                    setSelectedTranslatorId(newTranslator.id)
                     if (newTranslator.traffic && newTranslator.traffic.length > 0) {
-                        setTranslatorTrafficId(String(newTranslator.traffic[0].id));
+                        setTranslatorTrafficId(String(newTranslator.traffic[0].id))
                     }
                 }
             }
         }
         closeModals()
     }
+
     const DRAFT_KEY = "create_order_draft"
 
-    // 1. ВІДНОВЛЕННЯ ЧЕРНЕТКИ
     useEffect(() => {
         if (!open) {
             setIsRestored(false)
             return
         }
-
         if (mode === "edit") {
             setIsRestored(true)
             return
@@ -188,32 +210,25 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         const restoreDraft = async () => {
             try {
                 const d = await localforage.getItem<any>(DRAFT_KEY)
-
                 if (d) {
-                    if (d.clientId) {setClientId(d.clientId)}
-                    if (d.sourceLanguage) {setSourceLanguage(d.sourceLanguage)}
-                    if (d.targetLanguage) {setTargetLanguage(d.targetLanguage)}
-                    if (d.trafficId) {setTrafficId(d.trafficId)}
-                    if (d.currencyId) {setCurrencyId(d.currencyId)}
-                    if (d.editor) {setEditor(d.editor)}
-                    if (d.managerAccept) {setManagerAccept(d.managerAccept)}
-                    if (d.managerDelivery) {setManagerDelivery(d.managerDelivery)}
-                    if (d.selectedTranslatorId) {setSelectedTranslatorId(d.selectedTranslatorId)}
-                    if (d.translatorTrafficId) {setTranslatorTrafficId(d.translatorTrafficId)}
-                    if (d.comment) {setComment(d.comment)}
-                    if (d.priority) {setPriority(d.priority)}
-                    if (d.deadline) {setDeadline(new Date(d.deadline))}
-                    if (d.customDiscount) {setCustomDiscount(d.customDiscount)}
-                    if (d.totalAmount) {setTotalAmount(d.totalAmount)}
-
-                    // 🔥 Відновлюємо крок
-                    if (d.currentStep !== undefined) {setCurrentStep(d.currentStep)}
-
-                    // ВІДНОВЛЮЄМО ФАЙЛИ
+                    if (d.clientId) { setClientId(d.clientId) }
+                    if (d.sourceLanguage) { setSourceLanguage(d.sourceLanguage) }
+                    if (d.targetLanguage) { setTargetLanguage(d.targetLanguage) }
+                    if (d.trafficId) { setTrafficId(d.trafficId) }
+                    if (d.currencyId) { setCurrencyId(d.currencyId) }
+                    if (d.editor) { setEditor(d.editor) }
+                    if (d.managerAccept) { setManagerAccept(d.managerAccept) }
+                    if (d.managerDelivery) { setManagerDelivery(d.managerDelivery) }
+                    if (d.selectedTranslatorId) { setSelectedTranslatorId(d.selectedTranslatorId) }
+                    if (d.translatorTrafficId) { setTranslatorTrafficId(d.translatorTrafficId) }
+                    if (d.comment) { setComment(d.comment) }
+                    if (d.priority) { setPriority(d.priority) }
+                    if (d.deadline) { setDeadline(new Date(d.deadline)) }
+                    if (d.customDiscount) { setCustomDiscount(d.customDiscount) }
+                    if (d.totalAmount) { setTotalAmount(d.totalAmount) }
+                    if (d.currentStep !== undefined) { setCurrentStep(d.currentStep) }
                     if (d.files && Array.isArray(d.files)) {
                         setFiles(d.files)
-
-                        // Якщо файли вже були підтверджені раніше, автоматично запускаємо прорахунок
                         if (d.filesConfirmed) {
                             calculateStats(d.files)
                                 .then(() => setFilesConfirmed(true))
@@ -231,9 +246,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         restoreDraft()
     }, [open, mode])
 
-    // 2. ЗБЕРЕЖЕННЯ ЧЕРНЕТКИ
     useEffect(() => {
-        if (!open || mode === "edit" || !isRestored) {return}
+        if (!open || mode === "edit" || !isRestored) { return }
 
         const saveDraft = async () => {
             const draft = {
@@ -246,22 +260,20 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 customDiscount, totalAmount,
                 filesConfirmed,
                 files,
-                currentStep // 🔥 Зберігаємо поточний крок
+                currentStep,
             }
-
             try {
                 await localforage.setItem(DRAFT_KEY, draft)
             } catch (e) {
                 console.error("Помилка збереження чернетки:", e)
             }
         }
-
         saveDraft()
     }, [
         clientId, sourceLanguage, targetLanguage, trafficId, currencyId,
         editor, managerAccept, managerDelivery, selectedTranslatorId,
         translatorTrafficId, comment, priority, deadline,
-        customDiscount, totalAmount, files, filesConfirmed, currentStep, open, isRestored, mode
+        customDiscount, totalAmount, files, filesConfirmed, currentStep, open, isRestored, mode,
     ])
 
     const handleModalClose = (open: boolean) => {
@@ -271,7 +283,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             setImagesAnalyzed(false)
             setPriceData(null)
             setUseManualPrice(false)
-            setCurrentStep(0) // 🔥 Скидаємо крок на перший при закритті
+            setCurrentStep(0)
         }
         onOpenChange(open)
     }
@@ -289,8 +301,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             const formData = new FormData()
             files.forEach(f => formData.append("files", f))
             formData.append("traffic_id", trafficId)
-            if (selectedTranslatorId) {formData.append("translator_id", String(selectedTranslatorId))}
-            if (translatorTrafficId) {formData.append("translator_traffic_id", translatorTrafficId)}
+            if (selectedTranslatorId) { formData.append("translator_id", String(selectedTranslatorId)) }
+            if (translatorTrafficId) { formData.append("translator_traffic_id", translatorTrafficId) }
             const res = await ordersApi.previewPrice(formData)
             setPriceData(res)
         } catch (e) {
@@ -306,16 +318,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         setImagesAnalyzed(true)
     }
 
-    // 🔥 ДОДАНО: Функція для очищення чернетки при сабміті форми
     const handleOrderSubmit = async () => {
         try {
-            await localforage.removeItem(DRAFT_KEY);
+            await localforage.removeItem(DRAFT_KEY)
         } catch (error) {
-            console.error("Помилка видалення чернетки:", error);
+            console.error("Помилка видалення чернетки:", error)
         }
-
-        // Викликаємо оригінальну функцію onSubmit, яку передано в пропси
-        onSubmit();
+        onSubmit()
     }
 
     // ─── Validation ─────────────────────────────────────────────────────────
@@ -326,9 +335,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 return !!clientId && !!sourceLanguage && !!targetLanguage && files.length > 0 && filesConfirmed
             case 1:
                 return !!trafficId && !!currencyId
-            case 2:
-                const isTranslatorValid = selectedTranslatorId ? !!translatorTrafficId : true;
+            case 2: {
+                const isTranslatorValid = selectedTranslatorId ? !!translatorTrafficId : true
                 return isTranslatorValid && !!editor && !!managerAccept && !!managerDelivery
+            }
             case 3:
                 return !!deadline && !!priority && !!comment.trim()
             case 4:
@@ -341,26 +351,26 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const stepError = (step: number): string | null => {
         switch (step) {
             case 0:
-                if (!clientId) {return "Оберіть клієнта"}
-                if (!sourceLanguage) {return "Оберіть мову оригіналу"}
-                if (!targetLanguage) {return "Оберіть мову перекладу"}
-                if (!files.length) {return "Завантажте хоча б один файл"}
-                if (!filesConfirmed) {return "Підтвердіть файли кнопкою «Confirm files»"}
+                if (!clientId) { return t("orders.validation.selectClient") }
+                if (!sourceLanguage) { return t("orders.validation.selectSourceLanguage") }
+                if (!targetLanguage) { return t("orders.validation.selectTargetLanguage") }
+                if (!files.length) { return t("orders.validation.uploadFile") }
+                if (!filesConfirmed) { return t("orders.confirmFilesValidation", { button: t("orders.confirmFiles") }) }
                 return null
             case 1:
-                if (!trafficId) {return "Оберіть тариф"}
-                if (!currencyId) {return "Оберіть валюту"}
+                if (!trafficId) { return t("orders.validation.selectTariff") }
+                if (!currencyId) { return t("orders.validation.selectCurrency") }
                 return null
             case 2:
-                if (selectedTranslatorId && !translatorTrafficId) {return "Оберіть тариф для перекладача"}
-                if (!editor) {return "Оберіть редактора"}
-                if (!managerAccept) {return "Оберіть менеджера на прийом"}
-                if (!managerDelivery) {return "Оберіть менеджера на здачу"}
+                if (selectedTranslatorId && !translatorTrafficId) { return t("orders.validation.selectTranslatorTariff") }
+                if (!editor) { return t("orders.validation.selectEditor") }
+                if (!managerAccept) { return t("orders.validation.selectAcceptManager") }
+                if (!managerDelivery) { return t("orders.validation.selectDeliveryManager") }
                 return null
             case 3:
-                if (!priority) {return "Оберіть пріоритет"}
-                if (!deadline) {return "Вкажіть дедлайн"}
-                if (!comment.trim()) {return "Будь ласка, додайте коментар"}
+                if (!priority) { return t("orders.validation.selectPriority") }
+                if (!deadline) { return t("orders.validation.setDeadline") }
+                if (!comment.trim()) { return t("orders.validation.addComment") }
                 return null
             case 4:
                 return null
@@ -369,7 +379,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         }
     }
 
-    // ─── Effects ────────────────────────────────────────────────────────────
+    // ─── Effects & Memo ─────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!trafficId) { return }
@@ -412,28 +422,69 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         handleCalculatePrice()
     }, [filesConfirmed, trafficId, selectedTranslatorId, translatorTrafficId])
 
+    const clientPricePerPage = useMemo(() => {
+        const clientTariff = tariffs?.find((t) => String(t.id) === trafficId)
+        const basePrice = clientTariff?.price_per_page ? parseFloat(clientTariff.price_per_page) : 0
+        if (activeDiscount > 0 && basePrice > 0) {
+            return basePrice * (1 - activeDiscount / 100)
+        }
+        return basePrice
+    }, [trafficId, tariffs, activeDiscount])
 
-    const translatorTrafficOptions = useMemo(() => {
-        const currentTranslator = translators.find(t => t.id === selectedTranslatorId);
-        if (!currentTranslator?.traffic) {return [];}
-
-        return currentTranslator.traffic.map((t: any) => ({
-            value: String(t.id),
-            label: t.name || 'Особистий тариф',
-            meta: {
-                rate_per_page: t.rate_per_page,
-                rate_per_action: t.rate_per_action,
-                currency: t.currency_sign || ''
+    const enrichedTranslators = useMemo(() => {
+        return translators.map(translator => {
+            if (!translator.traffic || translator.traffic.length === 0) { return translator }
+            const hasProfitable = translator.traffic.some((t: any) => {
+                const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : Infinity
+                return clientPricePerPage > 0 && tRate < clientPricePerPage
+            })
+            return {
+                ...translator,
+                full_name: hasProfitable ? `✅ ${translator.full_name} (Є вигідний тариф)` : translator.full_name,
             }
-        }));
-    }, [selectedTranslatorId, translators]);
+        })
+    }, [translators, clientPricePerPage])
+
+    const translatorTrafficOptions: { value: string; label: string; meta: TranslatorTrafficMeta }[] = useMemo(() => {
+        const currentTranslator = translators.find(t => t.id === selectedTranslatorId)
+        if (!currentTranslator?.traffic) { return [] }
+
+        return currentTranslator.traffic.map((t: any) => {
+            const tRate = t.rate_per_page ? parseFloat(t.rate_per_page) : 0
+            const margin = clientPricePerPage - tRate
+            const marginPercent = clientPricePerPage > 0 ? ((margin / clientPricePerPage) * 100).toFixed(1) : 0
+            const isProfitable = clientPricePerPage > 0 && tRate < clientPricePerPage
+
+            return {
+                value: String(t.id),
+                label: t.name || 'Особистий тариф',
+                meta: {
+                    rate_per_page: t.rate_per_page,
+                    rate_per_action: t.rate_per_action,
+                    currency: t.currency_sign || '',
+                    isProfitable,
+                    marginStr: clientPricePerPage > 0 ? `${margin.toFixed(2)} (${marginPercent}%)` : null,
+                } satisfies TranslatorTrafficMeta,
+            }
+        })
+    }, [selectedTranslatorId, translators, clientPricePerPage])
+
+    const tariffOptions: { value: string; label: string; meta: TariffMeta }[] = useMemo(() => {
+        return (tariffs ?? []).map((tariff: any) => ({
+            value: String(tariff.id),
+            label: tariff.name,
+            meta: {
+                category: tariff.category_name,
+                price_per_page: tariff.price_per_page,
+                price_per_action: tariff.price_per_action,
+            } satisfies TariffMeta,
+        }))
+    }, [tariffs])
 
     // ─── Render ─────────────────────────────────────────────────────────────
 
-    // Блокуємо рендер модалки, поки чернетка не відновиться
-    // Завдяки цьому WizardModal "народиться" вже зі правильним currentStep.
     if (open && !isRestored && mode !== "edit") {
-        return null;
+        return null
     }
 
     return (
@@ -441,19 +492,19 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             <WizardModal
                 open={open}
                 onOpenChange={onOpenChange}
-                title={mode === "edit" ? "Edit Order" : "Create New Order"}
-                step={currentStep} // Прокидаємо крок у Wizard
-                onStepChange={setCurrentStep} // Прокидаємо функцію оновлення
+                title={mode === "edit" ? t("orders.edit") : t("orders.createNew")}
+                step={currentStep}
+                onStepChange={setCurrentStep}
                 steps={[
-                    { title: "Client & Files" },
-                    { title: "Tariff" },
-                    { title: "Assignment" },
-                    { title: "Deadline" },
-                    { title: "Statistics" },
+                    { title: t("orders.clientAndFiles") },
+                    { title: t("orders.tariff") },
+                    { title: t("orders.assignment") },
+                    { title: t("common.deadline") },
+                    { title: t("orders.statistics") },
                 ]}
                 isLoading={loading}
                 onClose={handleModalClose}
-                onSubmit={handleOrderSubmit} // 🔥 Підставили нашу функцію обгортку
+                onSubmit={handleOrderSubmit}
                 stepValidation={stepValidation}
                 stepError={stepError}
             >
@@ -463,25 +514,25 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div>
                             <label className="flex items-center gap-2 text-sm font-medium">
                                 <User className="h-4 w-4 text-blue-600" />
-                                Client *
+                                {t("common.client")} *
                             </label>
                             <Combobox
                                 value={clientId}
                                 onChange={setClientId}
-                                placeholder="Select client"
+                                placeholder={t("orders.selectClient")}
                                 options={clients.map((c) => ({
                                     value: String(c.id),
                                     label: c.full_name,
                                 }))}
                                 renderSelected={(option) => {
                                     const c = clients.find((cl) => String(cl.id) === option.value)
-                                    if (!c) {return option.label}
+                                    if (!c) { return option.label }
                                     return (
                                         <div className="flex items-center gap-2">
                                             <span>{c.full_name}</span>
                                             {c.category_name && (
                                                 <span className="text-xs text-muted-foreground">
-                                                    Категорія: {c.category_name}{c.discount_percent ? ` · Знижка: ${c.discount_percent}%` : ""}
+                                                    {t("orders.category")}: {c.category_name}{c.discount_percent ? ` · ${t("orders.discount")}: ${c.discount_percent}%` : ""}
                                                 </span>
                                             )}
                                         </div>
@@ -494,8 +545,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             <span>{c?.full_name}</span>
                                             <span className="text-xs text-muted-foreground">
                                                 {c?.category_name
-                                                    ? `Категорія: ${c.category_name}${c.discount_percent ? ` · Знижка: ${c.discount_percent}%` : ""}`
-                                                    : "Без категорії"
+                                                    ? `${t("orders.category")}: ${c.category_name}${c.discount_percent ? ` · ${t("orders.discount")}: ${c.discount_percent}%` : ""}`
+                                                    : t("orders.noCategory")
                                                 }
                                             </span>
                                         </div>
@@ -508,13 +559,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             <Combobox
                                 value={sourceLanguage}
                                 onChange={setSourceLanguage}
-                                placeholder="Source language"
+                                placeholder={t("common.sourceLanguage")}
                                 options={languages.map((l) => ({ value: String(l.id), label: l.name }))}
                             />
                             <Combobox
                                 value={targetLanguage}
                                 onChange={setTargetLanguage}
-                                placeholder="Target language"
+                                placeholder={t("common.targetLanguage")}
                                 options={languages.map((l) => ({ value: String(l.id), label: l.name }))}
                             />
                         </div>
@@ -537,24 +588,21 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 disabled={!files.length || statsLoading}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50"
                             >
-                                {statsLoading ? "Calculating..." : "Confirm files"}
+                                {statsLoading ? t("orders.calculating") : t("orders.confirmFiles")}
                             </button>
                         )}
 
                         {filesConfirmed && statsResult && (
                             <div className="bg-gray-100 p-4 rounded-lg text-sm space-y-1">
-                                <p>Pages: {statsResult.total_stats.physical_pages}</p>
-                                <p>Chars (with spaces): {statsResult.total_stats.chars_with_spaces}</p>
-                                <p>Chars (without spaces): {statsResult.total_stats.chars_no_spaces}</p>
-                                <p>Images: {statsResult.total_stats.images}</p>
-
+                                <p>{t("common.pages")}: {statsResult.total_stats.physical_pages}</p>
+                                <p>{t("common.withSpaces")}: {statsResult.total_stats.chars_with_spaces}</p>
+                                <p>{t("orders.charsWithoutSpaces")}: {statsResult.total_stats.chars_no_spaces}</p>
+                                <p>{t("common.images")}: {statsResult.total_stats.images}</p>
                                 {statsResult.total_stats.images > 0 && (
                                     <div className="mt-3 flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                         <span className="text-yellow-500 mt-0.5">⚠️</span>
                                         <p className="text-yellow-700 text-xs leading-relaxed">
-                                            Документ містить <strong>{statsResult.total_stats.images}</strong> зображень.
-                                            Текст у зображеннях не враховується автоматично — підрахунок може бути некоректним.
-                                            Рекомендуємо використати аналіз зображень (OCR) нижче.
+                                            {t("orders.documentImagesWarning", { count: statsResult.total_stats.images })}
                                         </p>
                                     </div>
                                 )}
@@ -563,9 +611,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                         {analysisResult && (
                             <div className="bg-purple-50 p-4 rounded-lg text-sm">
-                                <p className="text-purple-700 font-medium">OCR completed successfully</p>
-                                <p>Total images found: {analysisResult.total_images_found}</p>
-                                <p>Total detected symbols: {analysisResult.total_detected_symbols_from_images}</p>
+                                <p className="text-purple-700 font-medium">{t("orders.ocrCompleted")}</p>
+                                <p>{t("orders.ocrTotalImages")}: {analysisResult.total_images_found}</p>
+                                <p>{t("orders.ocrTotalSymbols")}: {analysisResult.total_detected_symbols_from_images}</p>
                                 <div className="mt-3 space-y-2">
                                     {analysisResult.results?.map((r: any, idx: number) => (
                                         <div key={idx} className="p-2 bg-white rounded border">
@@ -574,8 +622,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                 <div className="text-red-600">{r.error}</div>
                                             ) : (
                                                 <>
-                                                    <div>Images: {r.images_found}</div>
-                                                    <div>Symbols: {r.detected_symbols_from_images}</div>
+                                                    <div>{t("common.images")}: {r.images_found}</div>
+                                                    <div>{t("orders.symbols")}: {r.detected_symbols_from_images}</div>
                                                     {r.preview_text && <div className="text-gray-600">{r.preview_text}</div>}
                                                 </>
                                             )}
@@ -586,7 +634,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         )}
 
                         {imagesAnalyzed && !analysisLoading && (
-                            <div className="text-green-600 text-sm font-medium">✅ Images analysis completed</div>
+                            <div className="text-green-600 text-sm font-medium">✅ {t("orders.imagesAnalysisCompleted")}</div>
                         )}
                     </div>
                 </WizardStep>
@@ -597,22 +645,14 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <Tag className="h-4 w-4 text-blue-600" />
-                                Tariff <span className="text-red-500">*</span>
+                                {t("orders.tariff")} <span className="text-red-500">*</span>
                             </label>
-                            <Combobox
+                            <Combobox<TariffMeta>
                                 value={trafficId}
                                 onChange={setTrafficId}
-                                placeholder="Select tariff"
-                                searchPlaceholder="Search tariff..."
-                                options={tariffs?.map((tariff) => ({
-                                    value: String(tariff.id),
-                                    label: tariff.name,
-                                    meta: {
-                                        category: tariff.category_name,
-                                        price_per_page: tariff.price_per_page,
-                                        price_per_action: tariff.price_per_action
-                                    }
-                                }))}
+                                placeholder={t("orders.selectTariff")}
+                                searchPlaceholder={t("orders.searchTariff")}
+                                options={tariffOptions}
                                 renderOption={(option) => (
                                     <div className="flex flex-col w-full py-1 gap-1.5">
                                         <div className="flex items-start justify-between w-full">
@@ -624,17 +664,17 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                            {option.meta?.price_per_page !== undefined && option.meta?.price_per_page !== null && (
+                                            {option.meta?.price_per_page != null && (
                                                 <span className="flex items-center gap-1">
-                                                    Сторінка: <span className="font-semibold text-gray-700">{option.meta.price_per_page}</span>
+                                                    {t("orders.page")}: <span className="font-semibold text-gray-700">{option.meta.price_per_page}</span>
                                                 </span>
                                             )}
-                                            {option.meta?.price_per_page !== null && option.meta?.price_per_action !== null && (
-                                                <span className="w-1 h-1 rounded-full bg-border"></span>
+                                            {option.meta?.price_per_page != null && option.meta?.price_per_action != null && (
+                                                <span className="w-1 h-1 rounded-full bg-border" />
                                             )}
-                                            {option.meta?.price_per_action !== undefined && option.meta?.price_per_action !== null && (
+                                            {option.meta?.price_per_action != null && (
                                                 <span className="flex items-center gap-1">
-                                                    Дія: <span className="font-semibold text-gray-700">{option.meta.price_per_action}</span>
+                                                    {t("orders.action")}: <span className="font-semibold text-gray-700">{option.meta.price_per_action}</span>
                                                 </span>
                                             )}
                                         </div>
@@ -642,18 +682,16 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 )}
                                 renderSelected={(option) => (
                                     <div className="flex w-full items-center justify-between pr-4 gap-2">
-                                        <span className="truncate font-medium text-foreground">
-                                            {option.label}
-                                        </span>
+                                        <span className="truncate font-medium text-foreground">{option.label}</span>
                                         <div className="flex items-center gap-2 shrink-0">
                                             {option.meta?.category && (
                                                 <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-muted-foreground">
                                                     {option.meta.category}
                                                 </span>
                                             )}
-                                            {(option.meta?.price_per_page !== undefined || option.meta?.price_per_action !== undefined) && (
+                                            {(option.meta?.price_per_page != null || option.meta?.price_per_action != null) && (
                                                 <span className="text-[11px] text-green-700 font-semibold bg-green-100/50 px-2 py-0.5 rounded-md border border-green-200/50">
-                                                    {option.meta?.price_per_page ?? 0} / стор.
+                                                    {option.meta?.price_per_page ?? 0} / {t("orders.perPageShort")}
                                                 </span>
                                             )}
                                         </div>
@@ -665,13 +703,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <DollarSign className="h-4 w-4 text-blue-600" />
-                                Currency
+                                {t("orders.currency")}
                             </label>
                             <Combobox
                                 value={currencyId}
                                 onChange={setCurrencyId}
-                                placeholder="Select currency"
-                                searchPlaceholder="Search currency..."
+                                placeholder={t("orders.selectCurrency")}
+                                searchPlaceholder={t("orders.searchCurrency")}
                                 options={currencies.map((currency) => ({
                                     value: String(currency.id),
                                     label: `${currency.code} - ${currency.name}`,
@@ -698,28 +736,30 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     onClick={openAddTranslator}
                                 >
                                     <UserPlus className="h-3.5 w-3.5 mr-1" />
-                                    Quick Create
+                                    {t("orders.quickCreate")}
                                 </Button>
                             </div>
                             <TranslatorSelect
                                 value={selectedTranslatorId}
-                                translators={translators}
+                                translators={enrichedTranslators}
                                 sourceLanguage={sourceLanguage}
                                 targetLanguage={targetLanguage}
-                                placeholder="Select translator (optional)"
+                                placeholder={t("orders.selectTranslatorOptional")}
                                 orderTrafficId={trafficId ? Number(trafficId) : null}
                                 onChange={(translatorId) => {
                                     setSelectedTranslatorId(translatorId)
-
                                     if (!translatorId) {
                                         setTranslatorTrafficId("")
                                         return
                                     }
-
                                     const selectedTranslator = translators.find(t => t.id === translatorId)
-
                                     if (selectedTranslator?.traffic && selectedTranslator.traffic.length > 0) {
-                                        setTranslatorTrafficId(String(selectedTranslator.traffic[0].id))
+                                        const bestTariff = [...selectedTranslator.traffic].sort((a, b) => {
+                                            const rateA = a.rate_per_page ? parseFloat(a.rate_per_page) : Infinity
+                                            const rateB = b.rate_per_page ? parseFloat(b.rate_per_page) : Infinity
+                                            return rateA - rateB
+                                        })[0]
+                                        setTranslatorTrafficId(String(bestTariff.id))
                                     } else {
                                         setTranslatorTrafficId("")
                                     }
@@ -735,7 +775,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             <Combobox
                                 value={editor}
                                 onChange={setEditor}
-                                placeholder="Select editor (optional)"
+                                placeholder={t("orders.selectEditorOptional")}
                                 options={editorOptions}
                             />
                         </div>
@@ -748,7 +788,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             <Combobox
                                 value={managerAccept}
                                 onChange={setManagerAccept}
-                                placeholder="Select manager"
+                                placeholder={t("orders.selectManager")}
                                 options={managers.map((m) => ({ value: String(m.id), label: m.full_name }))}
                             />
                         </div>
@@ -761,7 +801,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             <Combobox
                                 value={managerDelivery}
                                 onChange={setManagerDelivery}
-                                placeholder="Select manager"
+                                placeholder={t("orders.selectManager")}
                                 options={managers.map((m) => ({ value: String(m.id), label: m.full_name }))}
                             />
                         </div>
@@ -772,29 +812,33 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     <Tag className="h-4 w-4 text-orange-500" />
                                     Translator Traffic
                                 </label>
-
-                                <Combobox
+                                <Combobox<TranslatorTrafficMeta>
                                     value={translatorTrafficId}
                                     onChange={setTranslatorTrafficId}
-                                    placeholder="Select Traffic"
+                                    placeholder={t("orders.selectTraffic")}
                                     options={translatorTrafficOptions}
                                     renderOption={(option) => (
                                         <div className="flex flex-col w-full py-1 gap-1.5">
                                             <div className="flex items-start justify-between w-full">
                                                 <span className="font-medium text-foreground">{option.label}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                                {option.meta?.rate_per_page !== undefined && option.meta?.rate_per_page !== null && (
-                                                    <span className="flex items-center gap-1">
-                                                        Сторінка: <span className="font-semibold text-gray-700">{option.meta.rate_per_page} {option.meta.currency}</span>
+                                                {option.meta?.marginStr && (
+                                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${option.meta.isProfitable ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                                                        {t("orders.margin")} {option.meta.marginStr}
                                                     </span>
                                                 )}
-                                                {option.meta?.rate_per_page !== null && option.meta?.rate_per_action !== null && (
-                                                    <span className="w-1 h-1 rounded-full bg-border"></span>
-                                                )}
-                                                {option.meta?.rate_per_action !== undefined && option.meta?.rate_per_action !== null && (
+                                            </div>
+                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                                {option.meta?.rate_per_page != null && (
                                                     <span className="flex items-center gap-1">
-                                                        Дія: <span className="font-semibold text-gray-700">{option.meta.rate_per_action} {option.meta.currency}</span>
+                                                        {t("orders.page")}: <span className="font-semibold text-gray-700">{option.meta.rate_per_page} {option.meta.currency}</span>
+                                                    </span>
+                                                )}
+                                                {option.meta?.rate_per_page != null && option.meta?.rate_per_action != null && (
+                                                    <span className="w-1 h-1 rounded-full bg-border" />
+                                                )}
+                                                {option.meta?.rate_per_action != null && (
+                                                    <span className="flex items-center gap-1">
+                                                        {t("orders.action")}: <span className="font-semibold text-gray-700">{option.meta.rate_per_action} {option.meta.currency}</span>
                                                     </span>
                                                 )}
                                             </div>
@@ -802,24 +846,24 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                     )}
                                     renderSelected={(option) => (
                                         <div className="flex w-full items-center justify-between pr-4 gap-2">
-                                            <span className="truncate font-medium text-foreground">
-                                                {option.label}
-                                            </span>
+                                            <span className="truncate font-medium text-foreground">{option.label}</span>
                                             <div className="flex items-center gap-2 shrink-0">
-                                                {(option.meta?.rate_per_page !== undefined || option.meta?.rate_per_action !== undefined) && (
+                                                {(option.meta?.rate_per_page != null || option.meta?.rate_per_action != null) && (
                                                     <span className="text-[11px] text-orange-700 font-semibold bg-orange-100/50 px-2 py-0.5 rounded-md border border-orange-200/50">
                                                         {option.meta?.rate_per_page ?? option.meta?.rate_per_action ?? 0} {option.meta?.currency}
+                                                    </span>
+                                                )}
+                                                {option.meta?.marginStr && (
+                                                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${option.meta.isProfitable ? 'bg-green-100/50 text-green-700 border-green-200/50' : 'bg-red-100/50 text-red-700 border-red-200/50'}`}>
+                                                        {t("orders.margin")} {option.meta.marginStr}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                     )}
                                 />
-
                                 {translatorTrafficOptions.length === 0 && (
-                                    <p className="text-xs text-red-500">
-                                        У цього перекладача немає тарифу!
-                                    </p>
+                                    <p className="text-xs text-red-500">У цього перекладача немає тарифу!</p>
                                 )}
                             </div>
                         )}
@@ -834,7 +878,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <CalendarClock className="h-4 w-4 text-blue-600" />
-                                Deadline <span className="text-red-500">*</span>
+                                {t("common.deadline")} <span className="text-red-500">*</span>
                             </label>
                             <DeadlineSelector value={deadline} onChange={setDeadline} minDate={new Date()} />
                         </div>
@@ -842,28 +886,28 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         <div className="space-y-2">
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                                 <MessageSquare className="h-4 w-4 text-blue-600" />
-                                Comment
+                                {t("orders.comment")}
                             </label>
                             <textarea
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value)}
-                                placeholder="Add any additional notes or instructions..."
+                                placeholder={t("orders.additionalNotes")}
                                 className="w-full px-3 py-2 border rounded-md min-h-[120px] resize-y"
                             />
                         </div>
 
                         <div className="bg-gray-50 p-4 rounded-lg">
-                            <h4 className="text-sm font-medium mb-2">Order Summary</h4>
+                            <h4 className="text-sm font-medium mb-2">{t("orders.summary")}</h4>
                             <div className="space-y-1 text-sm text-gray-600">
-                                <p>• Client: {clients.find((c) => String(c.id) === clientId)?.full_name || "Not selected"}</p>
-                                <p>• Files: {files.length} file(s)</p>
+                                <p>• {t("common.client")}: {clients.find((c) => String(c.id) === clientId)?.full_name || t("orders.notSelected")}</p>
+                                <p>• {t("orders.files")}: {t("orders.fileCount", { count: files.length })}</p>
                                 <p>
-                                    • Languages: {languages.find((l) => String(l.id) === sourceLanguage)?.name || "?"} →{" "}
+                                    • {t("orders.summaryLanguages")}: {languages.find((l) => String(l.id) === sourceLanguage)?.name || "?"} →{" "}
                                     {languages.find((l) => String(l.id) === targetLanguage)?.name || "?"}
                                 </p>
-                                <p>• Tariff: {tariffs?.find((t) => String(t.id) === trafficId)?.name || "Not selected"}</p>
-                                <p>• Priority: {priority || "none"}</p>
-                                <p>• Deadline: {deadline?.toLocaleDateString() || "Not set"}</p>
+                                <p>• {t("orders.tariff")}: {tariffs?.find((t) => String(t.id) === trafficId)?.name || t("orders.notSelected")}</p>
+                                <p>• {t("common.priority")}: {priority || t("orders.none")}</p>
+                                <p>• {t("common.deadline")}: {deadline?.toLocaleDateString() || t("common.notSet")}</p>
                             </div>
                         </div>
                     </div>
@@ -871,176 +915,200 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
                 {/* ── Крок 5: Statistics & Price ── */}
                 <WizardStep>
-                    <div className="space-y-6">
-                        <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                            <BarChart2 className="h-4 w-4 text-blue-600" />
-                            Статистика файлів
-                        </h3>
+                    {(() => {
+                        const selectedCurrencyObj = currencies.find((c) => String(c.id) === currencyId)
+                        const orderCurrency = selectedCurrencyObj ? selectedCurrencyObj.code : ""
 
-                        {statsResult ? (
-                            <>
-                                <div className="rounded-xl border divide-y text-sm">
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Сторінок (авто)</span>
-                                        <span className="font-medium">{statsResult.total_stats.physical_pages}</span>
-                                    </div>
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Символів з пробілами</span>
-                                        <span className="font-medium">{statsResult.total_stats.chars_with_spaces}</span>
-                                    </div>
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Символів без пробілів</span>
-                                        <span className="font-medium">{statsResult.total_stats.chars_no_spaces}</span>
-                                    </div>
-                                    <div className="flex justify-between px-4 py-3">
-                                        <span className="text-gray-500">Зображень</span>
-                                        <span className="font-medium">{statsResult.total_stats.images}</span>
-                                    </div>
-                                </div>
+                        let realMargin = priceData?.margin
+                        let isMarginNegative = false
 
-                                {statsResult.total_stats.images > 0 && (
-                                    <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                                        <span className="text-yellow-500 mt-0.5">⚠️</span>
-                                        <p className="text-yellow-700 text-xs leading-relaxed">
-                                            Документ містить <strong>{statsResult.total_stats.images}</strong> зображень.
-                                            Текст у зображеннях не враховується автоматично — підрахунок може бути некоректним.
-                                        </p>
-                                    </div>
-                                )}
+                        if (priceData?.translator_total && effectivePrice !== "-") {
+                            const currentClientPrice = parseFloat(String(effectivePrice))
+                            const translatorCost = parseFloat(priceData.translator_total)
+                            if (!isNaN(currentClientPrice) && !isNaN(translatorCost)) {
+                                const marginValue = currentClientPrice - translatorCost
+                                realMargin = marginValue.toFixed(2)
+                                isMarginNegative = marginValue < 0
+                            }
+                        } else if (priceData?.margin) {
+                            isMarginNegative = parseFloat(priceData.margin) < 0
+                        }
 
-                                <div className="rounded-xl border p-4 space-y-3">
-                                    <label className="text-sm font-medium text-gray-700 block">
-                                        Знижка на замовлення (%)
-                                    </label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            value={customDiscount}
-                                            onChange={(e) => {
-                                                setCustomDiscount(e.target.value)
-                                                setUseManualPrice(false)
-                                            }}
-                                            placeholder={`Стандартна: ${defaultDiscountPercent}%`}
-                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        />
-                                        <span className="text-xs text-gray-500">
-                                            Залишіть порожнім для standard discount ({defaultDiscountPercent}%)
-                                        </span>
-                                    </div>
-                                </div>
+                        return (
+                            <div className="space-y-6">
+                                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                    <BarChart2 className="h-4 w-4 text-blue-600" />
+                                    {t("orders.fileStatistics")}
+                                </h3>
 
-                                <div className="rounded-xl border p-4 space-y-3">
-                                    <label className="flex items-center gap-3 cursor-pointer select-none">
-                                        <input
-                                            type="checkbox"
-                                            checked={useManualPrice}
-                                            onChange={(e) => {
-                                                setUseManualPrice(e.target.checked)
-                                                if (!e.target.checked) {setTotalAmount(String(discountedAutoPrice))}
-                                            }}
-                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
-                                        />
-                                        <span className="text-sm font-medium text-gray-700">
-                                            Вказати ціну вручну
-                                        </span>
-                                    </label>
-
-                                    {useManualPrice && (
-                                        <div className="flex items-center gap-3 pl-7">
-                                            <span className="text-sm text-gray-500">Ціна для клієнта:</span>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={totalAmount}
-                                                onChange={(e) => setTotalAmount(e.target.value)}
-                                                placeholder={priceData?.total_client_price ?? "0.00"}
-                                                className="w-32 px-3 py-1.5 border rounded-lg text-sm
-                                                           focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="pl-7 text-sm text-gray-500">
-                                        Фінальна ціна:{" "}
-                                        <span className="font-semibold text-gray-800">{effectivePrice}</span>
-                                    </div>
-                                </div>
-
-                                {priceLoading && (
-                                    <div className="text-sm text-gray-400 text-center py-2">
-                                        Розраховуємо ціну...
-                                    </div>
-                                )}
-
-                                {priceData && !priceLoading && (
-                                    <div className="rounded-xl border p-4 space-y-2 bg-green-50 text-sm">
-                                        <p className="font-semibold text-green-700">Розрахунок ціни</p>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Сторінок (авто):</span>
-                                            <span className="font-medium">{priceData.pages}</span>
+                                {statsResult ? (
+                                    <>
+                                        <div className="rounded-xl border divide-y text-sm">
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">{t("orders.autoPages")}</span>
+                                                <span className="font-medium">{statsResult.total_stats.physical_pages}</span>
+                                            </div>
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">{t("common.withSpaces")}</span>
+                                                <span className="font-medium">{statsResult.total_stats.chars_with_spaces}</span>
+                                            </div>
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">{t("common.withoutSpaces")}</span>
+                                                <span className="font-medium">{statsResult.total_stats.chars_no_spaces}</span>
+                                            </div>
+                                            <div className="flex justify-between px-4 py-3">
+                                                <span className="text-gray-500">{t("common.images")}</span>
+                                                <span className="font-medium">{statsResult.total_stats.images}</span>
+                                            </div>
                                         </div>
 
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Базова авто-ціна:</span>
-                                            <span className="font-medium">{priceData.total_client_price}</span>
-                                        </div>
-                                        {activeDiscount > 0 && (
-                                            <div className="flex justify-between text-blue-600 mt-1">
-                                                <span className="font-medium">
-                                                    Знижка ({customDiscount !== "" ? "Ручна" : "Клієнта"} {activeDiscount}%):
-                                                </span>
-                                                <span className="font-bold">
-                                                    -{ (baseAutoPrice * (activeDiscount / 100)).toFixed(2) }
-                                                </span>
+                                        {statsResult.total_stats.images > 0 && (
+                                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                                <span className="text-yellow-500 mt-0.5">⚠️</span>
+                                                <p className="text-yellow-700 text-xs leading-relaxed">
+                                                    Документ містить <strong>{statsResult.total_stats.images}</strong> зображень.
+                                                    Текст у зображеннях не враховується автоматично — підрахунок може бути некоректним.
+                                                </p>
                                             </div>
                                         )}
-                                        <div className="flex justify-between border-t border-green-200 pt-2 mt-2">
-                                            <span className="text-gray-800 font-semibold">Ціна до сплати:</span>
-                                            <span className="font-bold text-green-700">{discountedAutoPrice}</span>
+
+                                        <div className="rounded-xl border p-4 space-y-3">
+                                            <label className="text-sm font-medium text-gray-700 block">
+                                                {t("orders.orderDiscount")}
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    value={customDiscount}
+                                                    onChange={(e) => {
+                                                        setCustomDiscount(e.target.value)
+                                                        setUseManualPrice(false)
+                                                    }}
+                                                    placeholder={t("orders.standardDiscount", { value: defaultDiscountPercent })}
+                                                    className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                                <span className="text-xs text-gray-500">
+                                                    {t("orders.leaveEmptyForStandardDiscount", { value: defaultDiscountPercent })}
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        {priceData.translator_rate_per_page && (
-                                            <>
-                                                <div className="flex justify-between mt-4">
-                                                    <span className="text-gray-600">Вартість перекладача:</span>
-                                                    <span className="font-medium">{priceData.translator_total}</span>
+                                        <div className="rounded-xl border p-4 space-y-3">
+                                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={useManualPrice}
+                                                    onChange={(e) => {
+                                                        setUseManualPrice(e.target.checked)
+                                                        if (!e.target.checked) { setTotalAmount(String(discountedAutoPrice)) }
+                                                    }}
+                                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                                                />
+                                                <span className="text-sm font-medium text-gray-700">
+                                                    {t("orders.manualPrice")}
+                                                </span>
+                                            </label>
+
+                                            {useManualPrice && (
+                                                <div className="flex items-center gap-3 pl-7">
+                                                    <span className="text-sm text-gray-500">{t("orders.clientPrice")}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={totalAmount}
+                                                            onChange={(e) => setTotalAmount(e.target.value)}
+                                                            placeholder={priceData?.total_client_price ?? "0.00"}
+                                                            className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                                        />
+                                                        <span className="text-sm font-medium text-gray-600">{orderCurrency}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex justify-between border-t border-green-200 pt-2 mt-1">
-                                                    <span className="text-gray-600">Маржа:</span>
-                                                    <span className="font-semibold text-green-700">{priceData.margin}</span>
-                                                </div>
-                                            </>
+                                            )}
+
+                                            <div className="pl-7 text-sm text-gray-500">
+                                                {t("orders.finalPrice")}:{" "}
+                                                <span className="font-semibold text-gray-800">{effectivePrice} {orderCurrency}</span>
+                                            </div>
+                                        </div>
+
+                                        {priceLoading && (
+                                            <div className="text-sm text-gray-400 text-center py-2">
+                                                {t("orders.calculatingPrice")}
+                                            </div>
                                         )}
+
+                                        {priceData && !priceLoading && (
+                                            <div className="rounded-xl border p-4 space-y-2 bg-green-50 text-sm">
+                                                <p className="font-semibold text-green-700">{t("orders.priceCalculation")}</p>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">{t("orders.autoPages")}:</span>
+                                                    <span className="font-medium">{priceData.pages}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">{t("orders.autoBasePrice")}</span>
+                                                    <span className="font-medium">{priceData.total_client_price} {orderCurrency}</span>
+                                                </div>
+                                                {activeDiscount > 0 && (
+                                                    <div className="flex justify-between text-blue-600 mt-1">
+                                                        <span className="font-medium">
+                                                            {t("orders.discount")} ({customDiscount !== "" ? t("orders.manualDiscount") : t("orders.clientDiscount")} {activeDiscount}%):
+                                                        </span>
+                                                        <span className="font-bold">
+                                                            -{(baseAutoPrice * (activeDiscount / 100)).toFixed(2)} {orderCurrency}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-between border-t border-green-200 pt-2 mt-2">
+                                                    <span className="text-gray-800 font-semibold">{t("orders.amountDue")}</span>
+                                                    <span className="font-bold text-green-700">{discountedAutoPrice} {orderCurrency}</span>
+                                                </div>
+                                                {priceData.translator_rate_per_page && (
+                                                    <>
+                                                        <div className="flex justify-between mt-4">
+                                                            <span className="text-gray-600">{t("orders.translatorCost")}</span>
+                                                            <span className="font-medium">{priceData.translator_total} {orderCurrency}</span>
+                                                        </div>
+                                                        <div className="flex justify-between border-t border-green-200 pt-2 mt-1">
+                                                            <span className="text-gray-600">{t("orders.margin")}</span>
+                                                            <span className={`font-semibold ${isMarginNegative ? 'text-red-600' : 'text-green-700'}`}>
+                                                                {realMargin} {orderCurrency}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="text-sm text-gray-400 text-center py-8">
+                                        {t("orders.statisticsUnavailable")}
                                     </div>
                                 )}
-                            </>
-                        ) : (
-                            <div className="text-sm text-gray-400 text-center py-8">
-                                Статистика недоступна — поверніться і підтвердіть файли
                             </div>
-                        )}
-                    </div>
+                        )
+                    })()}
                 </WizardStep>
             </WizardModal>
 
             <BaseFormModal
                 open={isFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title="Create New Translator"
-                submitLabel="Save"
+                title={t("orders.createTranslator")}
+                submitLabel={t("common.save")}
                 onSubmit={handleQuickCreateTranslator}
             >
                 <div className="space-y-4 pt-2">
                     <Input
-                        placeholder="Full name"
+                        placeholder={t("orders.fullName")}
                         value={form.full_name}
                         onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
                     />
                     <Input
-                        placeholder="Email"
+                        placeholder={t("auth.email")}
                         value={form.email}
                         onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                     />
@@ -1052,28 +1120,23 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         customInput={Input}
                         type="tel"
                         onValueChange={(values) => {
-                            setForm(prev => ({
-                                ...prev,
-                                phone: values.formattedValue,
-                            }))
+                            setForm(prev => ({ ...prev, phone: values.formattedValue }))
                         }}
                     />
                     <div className="grid grid-cols-2 gap-4">
                         <Input
                             type="number"
                             min="0"
-                            placeholder="Currency ID"
+                            placeholder={t("orders.currencyId")}
                             className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             onKeyDown={(e) => {
-                                if (["-", "e", "E", "+"].includes(e.key)) {
-                                    e.preventDefault();
-                                }
+                                if (["-", "e", "E", "+"].includes(e.key)) { e.preventDefault() }
                             }}
                             onFocus={(e) => e.target.select()}
                             value={form.currency_id === 0 ? "" : form.currency_id}
                             onChange={(e) => {
-                                const val = e.target.value;
-                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10));
+                                const val = e.target.value
+                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10))
                                 setForm(prev => ({ ...prev, currency_id: numericValue }))
                             }}
                         />

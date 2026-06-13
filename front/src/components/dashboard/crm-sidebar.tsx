@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMe } from "@/src/features/auth/hooks/useMe";
 import { Button } from "../ui/button";
+import { useI18n } from "@/src/shared/i18n/I18nProvider";
 import {
     LayoutDashboard,
     FileText,
@@ -115,6 +116,7 @@ interface CrmSidebarProps {
 export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const { t } = useI18n();
 
     const { user, loading } = useMe();
     const role = user?.role;
@@ -210,7 +212,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                             {(!collapsed || isMobile) && (
                                 <div className="px-3 py-1">
                                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-                                        {group.name}
+                                        {t(group.name)}
                                     </span>
                                 </div>
                             )}
@@ -245,7 +247,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                                                     )}
                                                     <div className="flex items-center gap-3 whitespace-nowrap">
                                                         <Icon className="h-5 w-5 shrink-0" />
-                                                        {(!collapsed || isMobile) && <span>{item.name}</span>}
+                                                        {(!collapsed || isMobile) && <span>{t(item.name)}</span>}
                                                     </div>
                                                     {(!collapsed || isMobile) && (
                                                         <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -276,7 +278,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                                                                         ${isChildActive ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground"}
                                                                     `}
                                                                 >
-                                                                    {child.name}
+                                                                    {t(child.name)}
                                                                 </Link>
                                                             );
                                                         })}
@@ -296,14 +298,14 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
                                                 ${isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}
                                                 ${collapsed && !isMobile ? "justify-center" : ""}
                                             `}
-                                            title={collapsed ? item.name : undefined}
+                                            title={collapsed ? t(item.name) : undefined}
                                         >
                                             {isActive && (
                                                 <span className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r bg-primary" />
                                             )}
                                             <Icon className="h-5 w-5 shrink-0" />
                                             {(!collapsed || isMobile) && (
-                                                <span className="ml-3 whitespace-nowrap">{item.name}</span>
+                                                <span className="ml-3 whitespace-nowrap">{t(item.name)}</span>
                                             )}
                                         </Link>
                                     );
@@ -315,7 +317,7 @@ export function CrmSidebar({ collapsed, toggle }: CrmSidebarProps) {
 
                 <div className={`border-t p-4 text-sm text-muted-foreground overflow-hidden whitespace-nowrap ${collapsed && !isMobile ? "px-2 text-center" : ""}`}>
                     {(!collapsed || isMobile) ? (
-                        <span>Role: <b className="text-foreground">{role?.name || role}</b></span>
+                        <span>{t("common.role")}: <b className="text-foreground">{role?.name || role}</b></span>
                     ) : (
                         <b className="uppercase text-foreground">{(role?.name || role)?.charAt(0)}</b>
                     )}

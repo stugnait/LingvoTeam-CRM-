@@ -10,6 +10,7 @@ import {
 } from "../ui/dialog"
 import { Button } from "../ui/button"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface BaseFormModalProps {
     open: boolean
@@ -35,8 +36,8 @@ export function BaseFormModal({
                                   title,
                                   description,
                                   icon,
-                                  submitLabel = "Save",
-                                  cancelLabel = "Cancel",
+                                  submitLabel,
+                                  cancelLabel,
                                   isLoading,
                                   onSubmit,
                                   children,
@@ -46,7 +47,10 @@ export function BaseFormModal({
                               headerClassName,
                               footerClassName,
                           }: BaseFormModalProps) {
+    const { t } = useI18n()
     const isReference = variant === "reference"
+    const resolvedSubmitLabel = submitLabel ?? t("common.save")
+    const resolvedCancelLabel = cancelLabel ?? t("common.cancel")
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,14 +108,14 @@ export function BaseFormModal({
                         disabled={isLoading}
                         className={isReference ? "h-10 w-full rounded-xl px-6 text-sm sm:h-11 sm:w-auto" : "w-full sm:w-auto"}
                     >
-                        {cancelLabel}
+                        {resolvedCancelLabel}
                     </Button>
                     <Button
                         onClick={onSubmit}
                         disabled={isLoading}
                         className={isReference ? "h-10 w-full rounded-xl px-8 text-sm sm:h-11 sm:w-auto" : "w-full sm:w-auto"}
                     >
-                        {submitLabel}
+                        {resolvedSubmitLabel}
                     </Button>
                 </DialogFooter>
             </DialogContent>

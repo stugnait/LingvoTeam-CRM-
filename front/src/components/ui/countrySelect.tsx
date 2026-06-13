@@ -4,6 +4,7 @@ import * as React from "react"
 import * as SelectPrimitive from "@radix-ui/react-select"
 import { Check, ChevronDown, Search, Globe } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 const COUNTRY_CODES = [
     { code: "+1", name: "United States", flag: "🇺🇸" },
@@ -41,6 +42,7 @@ export function CountrySelect({
                                   disabled,
                                   className,
                               }: CountrySelectProps) {
+    const { t } = useI18n()
     const [search, setSearch] = React.useState("")
     const [open, setOpen] = React.useState(false)
 
@@ -104,7 +106,7 @@ export function CountrySelect({
                 ) : (
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Globe className="h-4 w-4" />
-                        <span>Code</span>
+                        <span>{t("common.countryCode")}</span>
                     </div>
                 )}
 
@@ -131,7 +133,7 @@ export function CountrySelect({
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                             <input
                                 type="text"
-                                placeholder="Search country..."
+                                placeholder={t("common.searchCountry")}
                                 value={search}
                                 onChange={(e) => {
                                     console.log("Search changed:", e.target.value)
@@ -201,7 +203,7 @@ export function CountrySelect({
                             ))
                         ) : (
                             <div className="py-8 text-center text-sm text-muted-foreground">
-                                No countries found
+                                {t("common.noCountries")}
                             </div>
                         )}
                     </SelectPrimitive.Viewport>

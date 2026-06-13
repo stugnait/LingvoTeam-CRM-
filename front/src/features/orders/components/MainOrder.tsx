@@ -13,10 +13,14 @@ import type { Priority } from "@/src/components/ui/PrioritySelector"
 import { cn } from "@/src/lib/utils"
 import { useProfile } from "@/src/features/profile/hooks/useProfile"
 
+import { ordersApi } from "@/src/features/orders/api"
 import OrdersKanbanBoard from "./OrdersKanbanBoard"
 import { TaskModal } from "@/src/components/modals/jira/InfoModal"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export default function OrdersPage() {
+    const { locale, t } = useI18n()
+
     const {
         createOrder,
         updateOrder,
@@ -61,14 +65,13 @@ export default function OrdersPage() {
         downloadSingleSourceFile,
         downloadSingleTargetFile,
         searchFilter,
-        handleSearchChange
+        handleSearchChange,
+        updateClientStatusLoading
     } = useOrders()
 
     const { user } = useProfile()
 
     const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
-
-    // 👉 ЗАГАЛЬНИЙ СТАН ФІЛЬТРУ — синхронізується між таблицею і канбаном
     const [isOnlyMine, setIsOnlyMine] = useState(false)
 
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -76,6 +79,15 @@ export default function OrdersPage() {
 
     const [viewingOrder, setViewingOrder] = useState<any | null>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+
+    // Результати аналізу парок
+    const [sourceStats, setSourceStats] = useState<any | null>(null)
+    const [sourceStatsLoading, setSourceStatsLoading] = useState(false)
+    const [targetStats, setTargetStats] = useState<any | null>(null)
+    const [targetStatsLoading, setTargetStatsLoading] = useState(false)
+
+    // 👉 ДОДАНО: Стан завантаження для target-файлів менеджером
+    const [isUploadingTarget, setIsUploadingTarget] = useState(false)
 
     const [clientId, setClientId] = useState("")
     const [sourceLanguage, setSourceLanguage] = useState("")
@@ -98,8 +110,15 @@ export default function OrdersPage() {
     const [managerAccept, setManagerAccept] = useState("")
     const [managerDelivery, setManagerDelivery] = useState("")
     const router = useRouter()
-
     const [totalAmount, setTotalAmount] = useState("")
+
+    const handleUpdateClientStatus = async (orderId: number, statusId: number) => {
+        try {
+            await updateOrder(orderId, { client_status: statusId })
+        } catch (error) {
+            console.error("Помилка при оновленні статусу оплати:", error)
+        }
+    }
 
     useEffect(() => {
         if (!highlightId) { return }
@@ -112,10 +131,10 @@ export default function OrdersPage() {
     }, [highlightId, router])
 
     const formatDate = (dateString?: string) => {
-        if (!dateString) { return 'Не вказано' }
+        if (!dateString) { return t("common.notSet") }
         try {
             const date = new Date(dateString)
-            return new Intl.DateTimeFormat('uk-UA', {
+            return new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -196,24 +215,70 @@ export default function OrdersPage() {
         } else {
             await createOrder(payload)
         }
-
         resetForm()
         setIsModalOpen(false)
     }
 
-    // 👉 ЗАГАЛЬНИЙ ХЕНДЛЕР ФІЛЬТРУ — працює для обох вʼюх
     const handleFilterChangeSync = (onlyMine: boolean) => {
         setIsOnlyMine(onlyMine)
-        handleFilterChange(onlyMine) // синхронізує таблицю (робить запит на бек)
+        handleFilterChange(onlyMine)
     }
 
     const handleViewDetailsBoard = (id: number) => {
+        setSourceStats(null)
+        setTargetStats(null)
         const order = orders.find(o => o.id === id)
         if (order) {
             setViewingOrder(order)
             setIsViewModalOpen(true)
         }
         loadOrderDetails(id)
+        loadOrderFiles(id)
+    }
+
+    const handleAnalyzeFolderFiles = async (orderId: number, folder: "source" | "target") => {
+        if (folder === "source") {
+            try {
+                setSourceStatsLoading(true)
+                const res = await ordersApi.analyzeFolderFiles(orderId, "source")
+                setSourceStats(res)
+            } catch (e) {
+                console.error("Помилка прорахунку source папки", e)
+            } finally {
+                setSourceStatsLoading(false)
+            }
+        } else {
+            try {
+                setTargetStatsLoading(true)
+                const res = await ordersApi.analyzeFolderFiles(orderId, "target")
+                setTargetStats(res)
+            } catch (e) {
+                console.error("Помилка прорахунку target папки", e)
+            } finally {
+                setTargetStatsLoading(false)
+            }
+        }
+    }
+
+    // 👉 ДОДАНО: Функція завантаження файлів у Target папку замовлення менеджером
+    const handleUploadTargetFiles = async (files: File[]) => {
+        if (!viewingOrder) return false
+        try {
+            setIsUploadingTarget(true)
+            const formData = new FormData()
+            files.forEach(file => formData.append('files', file))
+
+            await ordersApi.uploadTargetFiles(viewingOrder.id, formData)
+
+            // Після завантаження автоматично оновлюємо файлову структуру в модалці
+            loadOrderFiles(viewingOrder.id)
+            return true
+        } catch (error) {
+            console.error("Помилка при завантаженні файлів у Target менеджером:", error)
+            return false
+        } finally {
+            setIsUploadingTarget(false)
+        }
     }
 
     return (
@@ -222,189 +287,80 @@ export default function OrdersPage() {
 
             <div className="space-y-6 w-full min-w-0 overflow-hidden px-4 md:px-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-6">
-
-                    {/* ПАНЕЛЬ ІНСТРУМЕНТІВ */}
                     <div className="flex flex-col gap-4 pt-6">
-
-                        {/* Верхній рядок: Перемикач вигляду та Кнопка створення */}
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full">
-                            {/* TOGGLE ВИГЛЯДУ */}
                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-full sm:w-auto">
                                 <button
                                     onClick={() => setViewMode("table")}
                                     className={cn(
-                                        "flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
-                                        viewMode === "table"
-                                            ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
-                                            : "text-gray-500 hover:text-gray-700"
+                                        "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                        viewMode === "table" ? "bg-white shadow-sm text-blue-600" : "text-gray-500"
                                     )}
                                 >
-                                    <LayoutList className="w-4 h-4" />
-                                    <span>Таблиця</span>
+                                    <LayoutList className="w-4 h-4" /> <span>{t("common.table")}</span>
                                 </button>
                                 <button
                                     onClick={() => setViewMode("kanban")}
                                     className={cn(
-                                        "flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
-                                        viewMode === "kanban"
-                                            ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600"
-                                            : "text-gray-500 hover:text-gray-700"
+                                        "flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                        viewMode === "kanban" ? "bg-white shadow-sm text-blue-600" : "text-gray-500"
                                     )}
                                 >
-                                    <KanbanSquare className="w-4 h-4" />
-                                    <span>Канбан</span>
+                                    <KanbanSquare className="w-4 h-4" /> <span>{t("common.kanban")}</span>
                                 </button>
                             </div>
                         </div>
 
-                        {/* Нижній рядок: ПЛАШКА З ФІЛЬТРАЦІЄЮ (перенесено сюди) */}
-                        <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100 dark:border-gray-800 self-start">
+                        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 self-start">
                             <Filter className="w-4 h-4 text-muted-foreground shrink-0 ml-1" />
                             <div className="flex bg-muted/50 p-1 rounded-lg">
-                                <button
-                                    onClick={() => handleFilterChangeSync(false)}
-                                    className={cn(
-                                        "px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
-                                        !isOnlyMine
-                                            ? "bg-background shadow-sm text-foreground"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    )}
-                                >
-                                    All Orders
-                                </button>
-                                <button
-                                    onClick={() => handleFilterChangeSync(true)}
-                                    className={cn(
-                                        "px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
-                                        isOnlyMine
-                                            ? "bg-background shadow-sm text-foreground"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    )}
-                                >
-                                    My Orders
-                                </button>
+                                <button onClick={() => handleFilterChangeSync(false)} className={cn("px-4 py-1.5 text-sm font-medium rounded-md", !isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>{t("common.allOrders")}</button>
+                                <button onClick={() => handleFilterChangeSync(true)} className={cn("px-4 py-1.5 text-sm font-medium rounded-md", isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}>{t("common.myOrders")}</button>
                             </div>
                         </div>
-
                     </div>
 
-                    <Button
-                        onClick={handleCreateClick}
-                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center gap-2 px-4 sm:px-6"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Створити замовлення
+                    <Button onClick={handleCreateClick} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center justify-center gap-2 px-6">
+                        <Plus className="w-5 h-5" /> {t("orders.create")}
                     </Button>
                 </div>
 
                 <div className="w-full min-w-0 pb-6">
                     {viewMode === "table" ? (
                         <OrdersTable
-                            orders={orders}
-                            page={page}
-                            totalPages={totalPages}
-                            onPageChange={onPageChange}
-
-                            isOnlyMineFilter={isOnlyMine}
-                            onFilterChange={handleFilterChangeSync}
-                            statusFilter={statusFilter}
-                            onStatusChange={handleStatusChange}
-                            managerFilter={managerFilter}
-                            onManagerChange={handleManagerChange}
-                            dateFromFilter={dateFromFilter}
-                            onDateFromChange={handleDateFromChange}
-                            dateToFilter={dateToFilter}
-                            onDateToChange={handleDateToChange}
-
-                            managers={managers || []}
-
-                            onOpen={loadOrderDetails}
-                            languagePairs={languagePairs}
-                            translatorsCache={translatorsCache}
-                            clients={clients || []}
-                            highlightId={activeHighlightId}
-                            confirmOrder={confirmOrder}
-                            downloadOrderSourceFiles={downloadOrderSourceFiles}
-                            downloadOrderTargetFiles={downloadOrderTargetFiles}
-                            onEdit={handleEdit}
-                            onDelete={(id) => deleteOrder(id)}
-                            updateOrder={updateOrder}
-                            searchFilter={searchFilter}
-                            onSearchChange={handleSearchChange}
+                            orders={orders} page={page} totalPages={totalPages} onPageChange={onPageChange}
+                            isOnlyMineFilter={isOnlyMine} onFilterChange={handleFilterChangeSync}
+                            statusFilter={statusFilter} onStatusChange={handleStatusChange}
+                            managerFilter={managerFilter} onManagerChange={handleManagerChange}
+                            dateFromFilter={dateFromFilter} onDateFromChange={handleDateFromChange}
+                            dateToFilter={dateToFilter} onDateToChange={handleDateToChange}
+                            managers={managers || []} onOpen={loadOrderDetails} languagePairs={languagePairs}
+                            translatorsCache={translatorsCache} clients={clients || []} highlightId={activeHighlightId}
+                            confirmOrder={confirmOrder} downloadOrderSourceFiles={downloadOrderSourceFiles}
+                            downloadOrderTargetFiles={downloadOrderTargetFiles} onEdit={handleEdit}
+                            onDelete={(id) => deleteOrder(id)} updateOrder={updateOrder}
+                            searchFilter={searchFilter} onSearchChange={handleSearchChange}
+                            updateClientStatus={handleUpdateClientStatus} updateClientStatusLoading={updateClientStatusLoading}
+                            onTaskOpen={handleViewDetailsBoard}
                         />
                     ) : (
-                        <OrdersKanbanBoard
-                            orders={orders}
-                            updateOrder={updateOrder}
-                            onTaskOpen={handleViewDetailsBoard}
-                            currentUserId={user?.id ? Number(user.id) : 0}
-                            isOnlyMine={isOnlyMine}
-                        />
+                        <OrdersKanbanBoard orders={orders} updateOrder={updateOrder} onTaskOpen={handleViewDetailsBoard} currentUserId={user?.id ? Number(user.id) : 0} isOnlyMine={isOnlyMine} />
                     )}
                 </div>
             </div>
 
             <CreateOrderModal
-                open={isModalOpen}
-                onOpenChange={setIsModalOpen}
-                onSubmit={handleSubmit}
-                loading={loading}
-
-                mode={editingOrder ? "edit" : "create"}
-                orderId={editingOrder?.id}
-
-                clientId={clientId}
-                setClientId={setClientId}
-
-                sourceLanguage={sourceLanguage}
-                setSourceLanguage={setSourceLanguage}
-                targetLanguage={targetLanguage}
-                setTargetLanguage={setTargetLanguage}
-
-                files={files}
-                setFiles={setFiles}
-
-                trafficId={trafficId}
-                setTrafficId={setTrafficId}
-
-                currencyId={currencyId}
-                setCurrencyId={setCurrencyId}
-
-                selectedTranslatorId={selectedTranslatorId}
-                setSelectedTranslatorId={setSelectedTranslatorId}
-
-                editor={editor}
-                setEditor={setEditor}
-
-                translatorTrafficId={translatorTrafficId}
-                setTranslatorTrafficId={setTranslatorTrafficId}
-
-                deadline={deadline}
-                setDeadline={setDeadline}
-
-                comment={comment}
-                setComment={setComment}
-
-                priority={priority}
-                setPriority={setPriority}
-
-                clients={clients || []}
-                languages={languages || []}
-                editors={editors || []}
-                currencies={currencies || []}
-                translators={translators || []}
-                tariffs={traffics || []}
-
-                managerAccept={managerAccept}
-                setManagerAccept={setManagerAccept}
-                managerDelivery={managerDelivery}
-                setManagerDelivery={setManagerDelivery}
-                managers={managers || []}
-
-                onRefreshTranslators={refreshTranslators}
-
-                totalAmount={totalAmount}
-                setTotalAmount={setTotalAmount}
+                open={isModalOpen} onOpenChange={setIsModalOpen} onSubmit={handleSubmit} loading={loading}
+                mode={editingOrder ? "edit" : "create"} orderId={editingOrder?.id} clientId={clientId} setClientId={setClientId}
+                sourceLanguage={sourceLanguage} setSourceLanguage={setSourceLanguage} targetLanguage={targetLanguage} setTargetLanguage={setTargetLanguage}
+                files={files} setFiles={setFiles} trafficId={trafficId} setTrafficId={setTrafficId} currencyId={currencyId} setCurrencyId={setCurrencyId}
+                selectedTranslatorId={selectedTranslatorId} setSelectedTranslatorId={setSelectedTranslatorId} editor={editor} setEditor={setEditor}
+                translatorTrafficId={translatorTrafficId} setTranslatorTrafficId={setTranslatorTrafficId} deadline={deadline} setDeadline={setDeadline}
+                comment={comment} setComment={setComment} priority={priority} setPriority={setPriority} clients={clients || []}
+                languages={languages || []} editors={editors || []} currencies={currencies || []} translators={translators || []}
+                tariffs={traffics || []} managerAccept={managerAccept} setManagerAccept={setManagerAccept} managerDelivery={managerDelivery}
+                setManagerDelivery={setManagerDelivery} managers={managers || []} onRefreshTranslators={refreshTranslators}
+                totalAmount={totalAmount} setTotalAmount={setTotalAmount}
             />
 
             {viewingOrder && (
@@ -412,23 +368,15 @@ export default function OrdersPage() {
                     open={isViewModalOpen}
                     onOpenChange={setIsViewModalOpen}
                     taskId={viewingOrder.id.toString()}
-                    taskTitle={viewingOrder.language_pair_name || `Order #${viewingOrder.id}`}
-                    taskDescription={viewingOrder.client_comment || 'No comment'}
+                    taskTitle={viewingOrder.language_pair_name || t("orders.orderNumber", { id: viewingOrder.id })}
+                    taskDescription={viewingOrder.client_comment || t("common.noComment")}
                     status={viewingOrder.status_name || viewingOrder.status || 'all_orders'}
                     priority={viewingOrder.priority || 'medium'}
-                    intake_manager={viewingOrder.manager_accept_id ? {
-                        id: viewingOrder.manager_accept_id,
-                        name: viewingOrder.manager_accept_name || 'Сук',
-                        avatar: viewingOrder.manager_accept_avatar ?? undefined
-                    } : null}
-                    delivery_manager={viewingOrder.manager_delivery_id ? {
-                        id: viewingOrder.manager_delivery_id,
-                        name: viewingOrder.manager_delivery_name || 'Сук',
-                        avatar: viewingOrder.manager_delivery_avatar ?? undefined
-                    } : null}
-                    translator={viewingOrder.translator_name || 'Unassigned'}
-                    editor={viewingOrder.editor_name || 'Unassigned'}
-                    dueDate={formatDate(viewingOrder.deadline) || "Unsettled"}
+                    intake_manager={viewingOrder.manager_accept_id ? { id: viewingOrder.manager_accept_id, name: viewingOrder.manager_accept_name || 'Сук' } : null}
+                    delivery_manager={viewingOrder.manager_delivery_id ? { id: viewingOrder.manager_delivery_id, name: viewingOrder.manager_delivery_name || 'Сук' } : null}
+                    translator={viewingOrder.translator_name || t("common.notAssigned")}
+                    editor={viewingOrder.editor_name || t("common.notAssigned")}
+                    dueDate={formatDate(viewingOrder.deadline) || t("common.notSet")}
                     onDownloadOriginal={() => downloadOrderSourceFiles(viewingOrder.id)}
                     onDownloadTranslation={() => downloadOrderTargetFiles(viewingOrder.id)}
                     onCancel={() => setIsViewModalOpen(false)}
@@ -442,6 +390,16 @@ export default function OrdersPage() {
                     onLoadFiles={loadOrderFiles}
                     onDownloadSingleSource={downloadSingleSourceFile}
                     onDownloadSingleTarget={downloadSingleTargetFile}
+
+                    sourceStats={sourceStats}
+                    sourceStatsLoading={sourceStatsLoading}
+                    targetStats={targetStats}
+                    targetStatsLoading={targetStatsLoading}
+                    onAnalyzeFolder={handleAnalyzeFolderFiles}
+
+                    // 👉 ПРОКИДАЄМО ФУНКЦІЮ ЗАВАНТАЖЕННЯ І СТАН
+                    onUploadTarget={handleUploadTargetFiles}
+                    isUploadingTarget={isUploadingTarget}
                 />
             )}
         </div>

@@ -13,6 +13,7 @@ import {
     DialogDescription,
 } from "@/src/components/ui/dialog"
 import { useForgotPassword } from "../hooks/useForgotPassword"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface ForgotPasswordModalProps {
     open: boolean
@@ -21,6 +22,7 @@ interface ForgotPasswordModalProps {
 
 export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalProps) {
     const { email, setEmail, submit, isLoading, isSuccess, resetForm } = useForgotPassword()
+    const { t } = useI18n()
 
     const handleOpenChange = (value: boolean) => {
         if (!value) { resetForm() }
@@ -32,9 +34,9 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
             {/* w-[calc(100%-2rem)] — модалка з відступами на мобільному */}
             <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md rounded-xl">
                 <DialogHeader>
-                    <DialogTitle>Forgot password</DialogTitle>
+                    <DialogTitle>{t("auth.forgotPassword")}</DialogTitle>
                     <DialogDescription>
-                        Enter your email and we&#39;ll send you a reset link.
+                        {t("auth.forgotPasswordDescription")}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -44,16 +46,16 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                             <Mail className="h-6 w-6 text-green-600" />
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Check your inbox — we&#39;ve sent the reset instructions.
+                            {t("auth.checkInbox")}
                         </p>
                         <Button variant="outline" onClick={() => handleOpenChange(false)} className="w-full sm:w-auto">
-                            Close
+                            {t("common.close")}
                         </Button>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="forgot-email">Email</Label>
+                            <Label htmlFor="forgot-email">{t("auth.email")}</Label>
                             <div className="relative">
                                 <Input
                                     id="forgot-email"
@@ -78,7 +80,7 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                                 disabled={isLoading}
                                 className="w-full sm:w-auto"
                             >
-                                Cancel
+                                {t("common.cancel")}
                             </Button>
                             <Button
                                 onClick={submit}
@@ -88,10 +90,10 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                                 {isLoading ? (
                                     <>
                                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                                        Sending...
+                                        {t("auth.sending")}
                                     </>
                                 ) : (
-                                    "Send reset link"
+                                    t("auth.sendResetLink")
                                 )}
                             </Button>
                         </div>

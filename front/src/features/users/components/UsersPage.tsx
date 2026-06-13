@@ -12,8 +12,11 @@ import { useRoles } from "../hooks/useRoles"
 import { UserWizardModal } from "./UserWizardModal"
 import { ConfirmModal } from "@/src/components/modals/ConfirmModal"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export function UsersPage() {
+    const { t } = useI18n()
+
     const {
         users, page, totalPages, onPageChange, filters, setFilters,
         roles: dropdownRoles,
@@ -35,25 +38,25 @@ export function UsersPage() {
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div>
                             <h2 className="text-2xl font-bold tracking-tight">
-                                Користувачі
+                                {t("users.title")}
                             </h2>
                             <p className="text-muted-foreground">
-                                Управління обліковими записами користувачів
+                                {t("users.description")}
                             </p>
                         </div>
 
                         <div className="flex items-center gap-4">
                             <Button onClick={openAddUser}>
                                 <Plus className="h-4 w-4 mr-2" />
-                                Додати юзера
+                                {t("users.add")}
                             </Button>
                         </div>
                     </div>
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Фільтри</CardTitle>
-                            <CardDescription>Пошук та фільтрація користувачів</CardDescription>
+                            <CardTitle>{t("users.filtersTitle")}</CardTitle>
+                            <CardDescription>{t("users.filtersDescription")}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <UserFilters filters={filters} setFilters={setFilters} />
@@ -62,9 +65,9 @@ export function UsersPage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Список користувачів</CardTitle>
+                            <CardTitle>{t("users.listTitle")}</CardTitle>
                             <CardDescription>
-                                Всі зареєстровані користувачі в системі
+                                {t("users.listDescription")}
                             </CardDescription>
                         </CardHeader>
 
@@ -105,13 +108,13 @@ export function UsersPage() {
             <ConfirmModal
                 open={isDeleteOpen}
                 onOpenChange={(open) => !open && closeModals()}
-                title={confirmAction === "delete" ? "Delete user" : "Deactivate user"}
+                title={confirmAction === "delete" ? t("users.deleteTitle") : t("users.deactivateTitle")}
                 description={
                     confirmAction === "delete"
-                        ? `Are you sure you want to delete ${selectedUser?.full_name}? This action cannot be undone.`
-                        : `Are you sure you want to deactivate ${selectedUser?.full_name}? The user will lose access to the system.`
+                        ? t("users.deleteDescription", { name: selectedUser?.full_name ?? "" })
+                        : t("users.deactivateDescription", { name: selectedUser?.full_name ?? "" })
                 }
-                confirmLabel={confirmAction === "delete" ? "Delete" : "Deactivate"}
+                confirmLabel={confirmAction === "delete" ? t("common.delete") : t("common.deactivate")}
                 onConfirm={handleConfirm}
             />
         </>

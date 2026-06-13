@@ -10,7 +10,7 @@ import {
 } from "@/src/components/ui/table"
 
 import { Button } from "@/src/components/ui/button"
-import {MoreHorizontal, Pencil, DollarSign, FileText, Hash, Trash} from "lucide-react"
+import {MoreHorizontal, Pencil, DollarSign, FileText, Trash} from "lucide-react"
 
 import {
     DropdownMenu,
@@ -21,6 +21,7 @@ import {
 
 import type { Tariff } from "../types"
 import { cn } from "@/src/lib/utils"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface TariffTableProps {
     tariffs: Tariff[]
@@ -39,18 +40,20 @@ export function TariffTable({
                                 totalPages,
                                 onPageChange
                             }: TariffTableProps) {
+    const { t } = useI18n()
+
     return (
         <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
                 <Table className="min-w-[700px]">
                     <TableHeader>
                         <TableRow className="bg-muted/50 hover:bg-muted/50">
-                            <TableHead className="font-semibold text-foreground/80">Name</TableHead>
-                            <TableHead className="font-semibold text-foreground/80">Language Pair</TableHead>
-                            <TableHead className="font-semibold text-foreground/80">Category</TableHead>
-                            <TableHead className="font-semibold text-foreground/80">Price / Page</TableHead>
-                            <TableHead className="font-semibold text-foreground/80">Price / Action</TableHead>
-                            <TableHead className="font-semibold text-foreground/80">Currency</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">{t("common.name")}</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">{t("common.languagePair")}</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">{t("orders.category")}</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">{t("tariffs.pricePerPage")}</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">{t("tariffs.pricePerAction")}</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">{t("orders.currency")}</TableHead>
                             <TableHead className="w-[70px] font-semibold text-foreground/80" />
                         </TableRow>
                     </TableHeader>
@@ -96,7 +99,7 @@ export function TariffTable({
                                         {tariff.currency_sign}
                                         {tariff.price_per_page}
                                     </span>
-                                        <span className="text-xs text-muted-foreground">/page</span>
+                                        <span className="text-xs text-muted-foreground">/{t("common.pageUnit")}</span>
                                     </div>
                                 </TableCell>
 
@@ -106,7 +109,7 @@ export function TariffTable({
                                         {tariff.currency_sign}
                                         {tariff.price_per_action}
                                     </span>
-                                        <span className="text-xs text-muted-foreground">/action</span>
+                                        <span className="text-xs text-muted-foreground">/{t("common.actionUnit")}</span>
                                     </div>
                                 </TableCell>
 
@@ -138,7 +141,7 @@ export function TariffTable({
                                                 className="cursor-pointer hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
                                             >
                                                 <Pencil className="h-4 w-4 mr-2" />
-                                                Edit
+                                                {t("common.edit")}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={() => onDelete(tariff)}
@@ -153,7 +156,7 @@ export function TariffTable({
     "
                                             >
                                                 <Trash className="h-4 w-4 mr-2" />
-                                                Delete
+                                                {t("common.delete")}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -169,9 +172,9 @@ export function TariffTable({
                                 >
                                     <div className="flex flex-col items-center gap-2">
                                         <FileText className="w-12 h-12 text-muted-foreground/30" />
-                                        <p className="text-lg font-medium">No tariffs found</p>
+                                        <p className="text-lg font-medium">{t("tariffs.noFound")}</p>
                                         <p className="text-sm text-muted-foreground/70">
-                                            Get started by creating your first tariff
+                                            {t("tariffs.createFirst")}
                                         </p>
                                     </div>
                                 </TableCell>
@@ -188,7 +191,7 @@ export function TariffTable({
                     disabled={page === 1}
                     onClick={() => onPageChange(page - 1)}
                 >
-                    Previous
+                    {t("common.previous")}
                 </Button>
 
                 <div className="flex items-center gap-1">
@@ -215,7 +218,7 @@ export function TariffTable({
                     disabled={page === totalPages || totalPages === 0}
                     onClick={() => onPageChange(page + 1)}
                 >
-                    Next
+                    {t("common.next")}
                 </Button>
             </div>
         </div>

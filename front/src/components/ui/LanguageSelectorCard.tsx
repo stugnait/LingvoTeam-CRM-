@@ -9,6 +9,7 @@ import {
 } from "@/src/components/ui/select"
 
 import { Globe, Languages } from "lucide-react"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface Language {
     id: number | string
@@ -30,6 +31,7 @@ export function LanguageSelectorCompact({
                                             languages,
                                             searchable = true,
                                         }: Props) {
+    const { t } = useI18n()
 
     return (
         <div className="space-y-3">
@@ -43,13 +45,13 @@ export function LanguageSelectorCompact({
             <Select value={value} onValueChange={onChange}>
                 <SelectTrigger className="h-14 text-base px-5 rounded-2xl">
                     <div className="flex items-center gap-3">
-                        <SelectValue placeholder="Оберіть мову" />
+                        <SelectValue placeholder={t("common.chooseLanguage")} />
                     </div>
                 </SelectTrigger>
 
                 <SelectContent
                     searchable={searchable}
-                    searchPlaceholder="Пошук мови..."
+                    searchPlaceholder={t("common.searchLanguage")}
                 >
                     {languages.map((lang) => (
                         <SelectItem

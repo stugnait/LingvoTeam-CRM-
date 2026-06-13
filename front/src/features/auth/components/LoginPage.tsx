@@ -1,15 +1,20 @@
 "use client"
 
+"use client"
+
 import { LoginForm } from "./LoginForm"
 import { AuthLayout } from "./AuthLayout"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 export function LoginPage() {
+    const { t } = useI18n()
+
     return (
         <AuthLayout
-            title="Welcome back"
-            description="Sign in to your account to continue"
-            footerText="Don't have an account?"
-            footerLinkText="Sign up"
+            title={t("auth.welcomeBack")}
+            description={t("auth.loginDescription")}
+            footerText={t("auth.signupPrompt")}
+            footerLinkText={t("auth.signup")}
             footerLinkHref="/register"
         >
             <LoginForm />

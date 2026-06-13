@@ -9,6 +9,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/src/components/ui/select"
+import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface Props {
     search: string
@@ -34,10 +35,12 @@ export function TranslatorsFilters({
                                        setOrdering,
                                        sourceLanguage,
                                        setSourceLanguage,
-                                       targetLanguage,
-                                       setTargetLanguage,
-                                       languages,
+                                   targetLanguage,
+                                   setTargetLanguage,
+                                   languages,
                                    }: Props) {
+    const { t } = useI18n()
+
     return (
         <div className="flex flex-col lg:flex-row gap-4">
 
@@ -46,7 +49,7 @@ export function TranslatorsFilters({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
                 <Input
-                    placeholder="Search translators..."
+                    placeholder={t("translators.searchPlaceholder")}
                     value={search}
                     onChange={(e) => {
                         setSearch(e.target.value)
@@ -63,20 +66,25 @@ export function TranslatorsFilters({
             {/* 📊 Sorting */}
             <Select
                 value={ordering ?? "default"}
-                onValueChange={(val) =>
-                    setOrdering(val === "default" ? null : (val as any))
-                }
+                onValueChange={(val) => {
+                    if (val === "-orders_count" || val === "orders_count") {
+                        setOrdering(val)
+                        return
+                    }
+
+                    setOrdering(null)
+                }}
             >
                 <SelectTrigger className="w-full lg:w-[200px]">
-                    <SelectValue placeholder="Sort by" />
+                    <SelectValue placeholder={t("common.sortBy")} />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="default">Default</SelectItem>
+                    <SelectItem value="default">{t("common.default")}</SelectItem>
                     <SelectItem value="-orders_count">
-                        Most orders
+                        {t("common.mostOrders")}
                     </SelectItem>
                     <SelectItem value="orders_count">
-                        Least orders
+                        {t("common.leastOrders")}
                     </SelectItem>
                 </SelectContent>
             </Select>
@@ -90,10 +98,10 @@ export function TranslatorsFilters({
                 }}
             >
                 <SelectTrigger className="w-full lg:w-[200px]">
-                    <SelectValue placeholder="Source language" />
+                    <SelectValue placeholder={t("common.sourceLanguage")} />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">{t("common.all")}</SelectItem>
                     {languages.map((lang) => (
                         <SelectItem key={lang.id} value={String(lang.id)}>
                             {lang.name}
@@ -111,10 +119,10 @@ export function TranslatorsFilters({
                 }}
             >
                 <SelectTrigger className="w-full lg:w-[200px]">
-                    <SelectValue placeholder="Target language" />
+                    <SelectValue placeholder={t("common.targetLanguage")} />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">{t("common.all")}</SelectItem>
                     {languages.map((lang) => (
                         <SelectItem key={lang.id} value={String(lang.id)}>
                             {lang.name}
