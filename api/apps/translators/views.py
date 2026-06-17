@@ -46,6 +46,12 @@ from .serializers import (
     TranslatorUploadFileSerializer,
 )
 
+
+import openpyxl
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
+
 logger = logging.getLogger(__name__)
 
 
@@ -138,6 +144,45 @@ class TranslatorViewSet(viewsets.ModelViewSet):
         return Translator.objects.annotate(
             orders_count=Count('order')
         ).prefetch_related('traffic').order_by('-created_at').distinct()
+
+    @action(detail=False, methods=['post'])
+    def import_excel(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "Файл не знайдено"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            wb = openpyxl.load_workbook(file)
+            sheet = wb.active
+
+            created_count = 0
+            # min_row=2 пропускає перший рядок із заголовками
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                # Перевіряємо, чи є хоча б 3 колонки
+                if len(row) >= 3:
+                    full_name = row[0]
+                    email = row[1]
+                    phone = row[2]
+
+                    # Якщо хоча б одне з трьох обов'язкових полів пусте — пропускаємо рядок
+                    if not full_name or not email or not phone:
+                        continue
+
+                    # Створюємо перекладача, попутно обрізаючи зайві пробіли
+                    # Заміни Translator на назву твоєї моделі, якщо вона відрізняється
+                    Translator.objects.create(
+                        full_name=str(full_name).strip(),
+                        email=str(email).strip(),
+                        phone=str(phone).strip()
+                    )
+                    created_count += 1
+
+            return Response({
+                "message": f"Успішно імпортовано {created_count} перекладачів."
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema_view(
     list=extend_schema(summary="Тарифи перекладачів", tags=["Translators Pricing"]),

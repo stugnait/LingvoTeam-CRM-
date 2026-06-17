@@ -29,6 +29,13 @@ from .models.client import Client
 from .models.client_category import ClientCategory
 from .serializers import ClientCategorySerializer, ClientSerializer
 
+import openpyxl
+from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser
+from rest_framework.response import Response
+from rest_framework import status
+from .models.client import Client
+
 logger = logging.getLogger(__name__)
 
 @extend_schema_view(
@@ -81,6 +88,46 @@ class ClientViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return ['client.view']
         return ['client.category.manage']
+
+    @action(detail=False, methods=['post'], parser_classes=[MultiPartParser])
+    def import_excel(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "Файл не надано."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            wb = openpyxl.load_workbook(file, data_only=True)
+            ws = wb.active
+            clients_to_create = []
+
+            # Очікуємо структуру: Колонки A: Ім'я, B: Email, C: Телефон
+            # min_row=2 пропускає перший рядок (заголовки таблиці)
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                full_name = str(row[0]).strip() if row[0] is not None else None
+                email = str(row[1]).strip() if row[1] is not None else None
+                phone = str(row[2]).strip() if row[2] is not None else None
+
+                # Ім'я обов'язкове. Якщо його немає — пропускаємо рядок
+                if not full_name:
+                    continue
+
+                clients_to_create.append(Client(
+                    full_name=full_name,
+                    email=email if email else None,
+                    phone_number=phone if phone else None
+                    # Категорію спеціально не вказуємо (вона буде null)
+                ))
+
+            # Масове створення для швидкодії (1 запит до БД замість тисячі)
+            Client.objects.bulk_create(clients_to_create)
+
+            return Response(
+                {"message": f"Успішно імпортовано {len(clients_to_create)} клієнтів."},
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response({"error": f"Помилка обробки файлу: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 class ClientOrderAccessView(APIView):
     permission_classes = [AllowAny]
