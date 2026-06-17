@@ -75,6 +75,8 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     ordering_fields = ['full_name', 'created_at']
 
+    filterset_fields = ['category']
+
     def get_required_permissions(self, request):
         if self.action in ['list', 'retrieve']:
             return ['client.view']

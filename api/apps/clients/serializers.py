@@ -24,3 +24,9 @@ class ClientSerializer(serializers.ModelSerializer):
             'discount_percent'
         ]
         read_only_fields = ['created_at']
+        # Робимо поля необов'язковими на рівні API
+        extra_kwargs = {
+            'email': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'phone_number': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'category': {'required': False, 'allow_null': True},
+        }
