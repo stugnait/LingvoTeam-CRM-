@@ -255,11 +255,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         default=None,
         allow_null=True,
     )
-    currency_id = serializers.IntegerField(
-        write_only=True,
-        required=False,
-        allow_null=True,
-    )
 
     # Read-only поля
     permissions = serializers.SerializerMethodField()
@@ -275,20 +270,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def get_translator_id(self, obj):
         return _get_translator_id(obj)
 
-    def validate(self, attrs):
-        is_translator = attrs.get('is_translator')
-        currency_id = attrs.get('currency_id')
-        # Перевіряємо currency_id тільки якщо is_translator=True
-        # і у юзера ще немає translator_profile (тобто це перший раз)
-        if is_translator is True and not currency_id:
-            instance = self.instance
-            has_profile = instance and getattr(instance, 'translator_profile', None)
-            if not has_profile:
-                raise serializers.ValidationError(
-                    {"currency_id": "Обов'язкове поле при першому призначенні перекладача."}
-                )
-        return attrs
-
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep['avatar'] = instance.avatar or None
@@ -299,7 +280,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         avatar_file = validated_data.pop('avatar', None)
         extra_permission_ids = validated_data.pop('extra_permission_ids', None)
         is_translator = validated_data.pop('is_translator', None)
-        currency_id = validated_data.pop('currency_id', None)
 
         instance = super().update(instance, validated_data)
 
@@ -329,7 +309,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
                     'full_name': instance.full_name,
                     'email': instance.email,
                     'phone': instance.phone or '',
-                    'currency_id_id': currency_id,
                     'is_active': True,
                 }
             )
@@ -347,9 +326,8 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'extra_permission_ids',
             'extra_permission_ids_read',
             'permissions',
-            'is_translator',   # write: true/false/null
-            'currency_id',     # write: потрібен при першому is_translator=true
-            'translator_id',   # read: null або id
+            'is_translator',
+            'translator_id',
         )
         read_only_fields = ('id',)
 
@@ -423,34 +401,20 @@ class RegistrationSerializer(serializers.ModelSerializer):
         required=False,
         default=False,
     )
-    currency_id = serializers.IntegerField(
-        write_only=True,
-        required=False,
-        allow_null=True,
-    )
 
     class Meta:
         model = User
         fields = (
             'email', 'full_name', 'phone', 'role', 'password',
             'avatar', 'extra_permission_ids',
-            'is_translator',   # галочка з UI
-            'currency_id',     # обов'язкове якщо is_translator=true
+            'is_translator',
         )
-
-    def validate(self, attrs):
-        if attrs.get('is_translator') and not attrs.get('currency_id'):
-            raise serializers.ValidationError(
-                {"currency_id": "Обов'язкове поле при створенні редактора-перекладача."}
-            )
-        return attrs
 
     def create(self, validated_data):
         avatar = validated_data.pop('avatar', None)
         password = validated_data.pop('password')
         extra_permission_ids = validated_data.pop('extra_permission_ids', [])
         is_translator = validated_data.pop('is_translator', False)
-        currency_id = validated_data.pop('currency_id', None)
 
         user = User(**validated_data)
         user.set_password(password)
@@ -469,16 +433,13 @@ class RegistrationSerializer(serializers.ModelSerializer):
             except Exception:
                 pass
 
-        # Якщо галочка "зробити перекладачем" — створюємо запис в translators
         if is_translator:
             from apps.translators.models import Translator
-            from apps.core.models import Currency
             Translator.objects.create(
                 user=user,
                 full_name=user.full_name,
                 email=user.email,
                 phone=user.phone or '',
-                currency_id_id=currency_id,  # ✅ Django сам зрозуміє якщо поле називається currency_id
                 is_active=True,
             )
 
