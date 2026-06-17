@@ -319,24 +319,6 @@ export default function TranslatorsPage() {
                             onValueChange={(values) => setForm(prev => ({ ...prev, phone: values.formattedValue }))}
                         />
                     </ModalField>
-
-                    <ModalField label={t("orders.currency")} required error={errors?.currency_id}>
-                        <Select
-                            value={form.currency_id === 0 ? "" : String(form.currency_id)}
-                            onValueChange={(value) => setForm(prev => ({ ...prev, currency_id: Number(value) }))}
-                        >
-                            <SelectTrigger className={`${modalSelectClassName} ${errors?.currency_id ? "border-red-500" : ""}`}>
-                                <SelectValue placeholder={t("orders.selectCurrency")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {currencies.map((currency) => (
-                                    <SelectItem key={currency.id} value={String(currency.id)}>
-                                        {currency.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </ModalField>
                 </div>
             </BaseFormModal>
 

@@ -103,7 +103,7 @@ export function useUsers() {
             avatar: null,
             extra_permission_ids: [],
             is_translator: false,
-            currency_id: null,
+            // currency_id: null,
         })
         setErrors({})
         setWizardStep(1)
@@ -121,7 +121,7 @@ export function useUsers() {
             avatar: null,
             extra_permission_ids: user.extra_permission_ids ?? [],
             is_translator: !!user.translator_id,
-            currency_id: null,
+            // currency_id: null,
         })
         setErrors({})
         setWizardStep(1)

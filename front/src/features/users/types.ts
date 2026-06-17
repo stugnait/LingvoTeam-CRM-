@@ -44,7 +44,7 @@ export interface UserFormData {
     avatar: File | string | null
     extra_permission_ids: number[]
     is_translator?: boolean
-    currency_id?: number | null
+    // currency_id?: number | null
 }
 
 export interface UsersFilters {

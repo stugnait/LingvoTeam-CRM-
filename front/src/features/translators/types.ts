@@ -32,9 +32,6 @@ export interface Translator {
     email: string
     phone: string
 
-    currency_id: number
-    currency_name: string
-
     traffic: TranslatorTraffic[]
 
     created_at: string // ISO datetime
@@ -49,7 +46,6 @@ export interface TranslatorPayload {
     full_name: string
     email: string
     phone: string
-    currency_id: number
 
     tariff_ids: number[]
 }

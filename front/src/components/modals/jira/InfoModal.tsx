@@ -4,11 +4,16 @@ import {
     Dialog,
     DialogContent,
 } from "../../ui/dialog"
-import {Button} from "../../ui/button"
-import {Badge} from "../../ui/badge"
+import { Button } from "../../ui/button"
+import { Badge } from "../../ui/badge"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "../../ui/dropdown-menu"
 import {
     ChevronDown,
-    Share2,
     MoreHorizontal,
     X,
     Settings,
@@ -17,7 +22,9 @@ import {
     Eye,
     BarChart2,
     Loader2,
-    FileUp // 👉 Додано іконку
+    FileUp,
+    Pencil,
+    Trash2
 } from "lucide-react"
 import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
@@ -71,6 +78,7 @@ interface TaskModalProps {
     onSave: () => void,
     onCancel: () => void,
     onDelete?: () => void,
+    onEdit?: () => void,
     onAssignToMe?: () => void,
     onDownloadOriginal?: () => void,
     onDownloadTranslation?: () => void,
@@ -93,7 +101,7 @@ interface TaskModalProps {
     targetStatsLoading?: boolean
     onAnalyzeFolder?: (orderId: number, folder: "source" | "target") => void
 
-    // 👉 ДОДАНО: Пропси для завантаження в Target менеджером
+    // Пропси для завантаження в Target менеджером
     onUploadTarget?: (files: File[]) => Promise<boolean>
     isUploadingTarget?: boolean
 }
@@ -131,9 +139,11 @@ export function TaskModal({
                               targetStatsLoading,
                               onAnalyzeFolder,
 
-                          // Деструктуризація нових параметрів
                               onUploadTarget,
                               isUploadingTarget,
+
+                              onDelete,
+                              onEdit,
                           }: TaskModalProps) {
     const { t } = useI18n()
 
@@ -178,15 +188,29 @@ export function TaskModal({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <span className="text-lg">👁️</span>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Share2 className="h-4 w-4"/>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4"/>
-                        </Button>
+                        {/* 👉 ВИТЯГНУТЕ МЕНЮ ДЛЯ РЕДАГУВАННЯ І ВИДАЛЕННЯ */}
+                        {(onEdit || onDelete) && (
+                            <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal className="h-4 w-4"/>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="z-[9999]">
+                                    {onEdit && (
+                                        <DropdownMenuItem onSelect={() => onEdit()}>
+                                            <Pencil className="h-4 w-4 mr-2" /> {t("common.edit")}
+                                        </DropdownMenuItem>
+                                    )}
+                                    {onDelete && (
+                                        <DropdownMenuItem onSelect={() => onDelete()} className="text-destructive focus:text-destructive">
+                                            <Trash2 className="h-4 w-4 mr-2" /> {t("common.delete")}
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}>
                             <X className="h-4 w-4"/>
                         </Button>
@@ -323,7 +347,7 @@ export function TaskModal({
                                     )}
                                 </div>
 
-                                {/* 👉 ДОДАНО: Компактна зона завантаження перекладу менеджером */}
+                                {/* Компактна зона завантаження перекладу менеджером */}
                                 {onUploadTarget && (
                                     <div className="mt-4 pt-3 border-t border-dashed border-emerald-200/80">
                                         <input

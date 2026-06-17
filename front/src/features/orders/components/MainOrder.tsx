@@ -382,6 +382,16 @@ export default function OrdersPage() {
                     onCancel={() => setIsViewModalOpen(false)}
                     onSave={() => setIsViewModalOpen(false)}
 
+                    // 👉 ДОДАНО ФУНКЦІЇ ДЛЯ ТРЬОХ КРАПОК
+                    onEdit={() => {
+                        setIsViewModalOpen(false) // Закриваємо модалку деталей
+                        handleEdit(viewingOrder)  // Відкриваємо модалку редагування
+                    }}
+                    onDelete={() => {
+                        setIsViewModalOpen(false)     // Закриваємо модалку
+                        deleteOrder(viewingOrder.id)  // Видаляємо
+                    }}
+
                     orderId={viewingOrder.id}
                     sourceFiles={sourceFiles}
                     targetFiles={targetFiles}
@@ -397,7 +407,6 @@ export default function OrdersPage() {
                     targetStatsLoading={targetStatsLoading}
                     onAnalyzeFolder={handleAnalyzeFolderFiles}
 
-                    // 👉 ПРОКИДАЄМО ФУНКЦІЮ ЗАВАНТАЖЕННЯ І СТАН
                     onUploadTarget={handleUploadTargetFiles}
                     isUploadingTarget={isUploadingTarget}
                 />

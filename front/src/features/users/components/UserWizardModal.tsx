@@ -328,29 +328,6 @@ export function UserWizardModal({
                                     </div>
                                 </button>
 
-                                {/* Поле currency_id — з'являється тільки якщо галочка активна */}
-                                {form.is_translator && (
-                                    <div>
-                                        <label className="text-xs text-muted-foreground block mb-1">
-                                            ID валюти <span className="text-destructive">*</span>
-                                        </label>
-                                        <Input
-                                            type="number"
-                                            placeholder="Введіть currency_id"
-                                            value={form.currency_id ?? ""}
-                                            onChange={(e) =>
-                                                setForm(prev => ({
-                                                    ...prev,
-                                                    currency_id: e.target.value ? Number(e.target.value) : null,
-                                                }))
-                                            }
-                                            className={errors.currency_id ? "border-destructive" : ""}
-                                        />
-                                        {errors.currency_id && (
-                                            <p className="text-xs text-destructive mt-1">{errors.currency_id}</p>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                         )}
 

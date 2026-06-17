@@ -51,7 +51,6 @@ export function useTranslators() {
         full_name: "",
         email: "",
         phone: "",
-        currency_id: 0,
 
         tariff_ids: [],
     })
@@ -274,7 +273,6 @@ export function useTranslators() {
             full_name: "",
             email: "",
             phone: "",
-            currency_id: 0,
 
             tariff_ids: [],
         })
@@ -290,7 +288,6 @@ export function useTranslators() {
             full_name: translator.full_name,
             email: translator.email,
             phone: translator.phone,
-            currency_id: translator.currency_id,
 
             tariff_ids:
                 translator.traffic?.map(t => t.id) || [],
@@ -408,7 +405,7 @@ export function useTranslators() {
         } catch (err) {
             const errorData = err as { detail?: unknown; non_field_errors?: unknown }
             const nonFieldError = Array.isArray(errorData.non_field_errors)
-                && typeof errorData.non_field_errors[0] === "string"
+            && typeof errorData.non_field_errors[0] === "string"
                 ? errorData.non_field_errors[0]
                 : undefined
             const detail = typeof errorData.detail === "string" ? errorData.detail : undefined
@@ -440,9 +437,6 @@ export function useTranslators() {
             }
             if (!data.phone.trim()) {
                 newErrors.phone = "Phone is required"
-            }
-            if (!data.currency_id || Number(data.currency_id) <= 0) {
-                newErrors.currency_id = "Please select a currency"
             }
 
             if (Object.keys(newErrors).length > 0) {
