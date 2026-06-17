@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react" // <--- ДОДАНО useRef
 import type { ReactNode } from "react"
 import { useTranslators } from "../hooks/useTranslators"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
@@ -28,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/ta
 
 import { TranslatorsTable } from "./TranslatorsTable"
 import { TranslatorTrafficTable } from "./TranslatorTrafficTable"
-import { Plus, Tag, UserPlus } from "lucide-react"
+import { Plus, Tag, UserPlus, Upload } from "lucide-react" // <--- ДОДАНО Upload
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { TranslatorsFilters } from "@/src/features/translators/components/TranslatorFilter"
 import { useI18n } from "@/src/shared/i18n/I18nProvider"
@@ -122,9 +123,25 @@ export default function TranslatorsPage() {
         setInlineTrafficForm,
         inlineTrafficLoading,
         createAndSelectTraffic,
+
+        loading, // <--- ДІСТАЄМО loading
+        handleImportExcel // <--- ДІСТАЄМО ФУНКЦІЮ ІМПОРТУ
     } = useTranslators()
 
     const { languages: orderLanguages } = useOrders()
+
+    // === РЕФ ДЛЯ ІНПУТА ФАЙЛІВ ===
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            await handleImportExcel(file)
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ""
+            }
+        }
+    }
 
     return (
         <>
@@ -157,13 +174,32 @@ export default function TranslatorsPage() {
                                     <TabsTrigger value="traffic">{t("translators.tariffsTab")}</TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="translators" className="mt-0">
+                                {/* Кнопки для вкладки "Перекладачі" */}
+                                <TabsContent value="translators" className="mt-0 flex gap-2">
+                                    <input
+                                        type="file"
+                                        accept=".xlsx, .xls"
+                                        className="hidden"
+                                        ref={fileInputRef}
+                                        onChange={onFileSelect}
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={loading}
+                                        className="shrink-0 bg-white"
+                                    >
+                                        <Upload className="h-4 w-4 sm:mr-2 text-blue-600" />
+                                        <span className="hidden sm:inline">Імпорт Excel</span>
+                                    </Button>
+
                                     <Button onClick={openAddTranslator}>
                                         <Plus className="h-4 w-4 mr-2" />
                                         {t("translators.add")}
                                     </Button>
                                 </TabsContent>
 
+                                {/* Кнопка для вкладки "Тарифи" */}
                                 <TabsContent value="traffic" className="mt-0">
                                     <Button onClick={() => openAddTraffic()}>
                                         <Plus className="h-4 w-4 mr-2" />
@@ -322,7 +358,7 @@ export default function TranslatorsPage() {
                 </div>
             </BaseFormModal>
 
-            {/* ─── MODAL: ТАРИФ (з вкладки Tariffs) ─── */}
+            {/* ─── ІНШІ МОДАЛКИ (БЕЗ ЗМІН) ─── */}
             <BaseFormModal
                 open={isTrafficFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
@@ -333,6 +369,7 @@ export default function TranslatorsPage() {
                 submitLabel={selectedTraffic ? t("common.save") : t("common.create")}
                 onSubmit={submitTraffic}
             >
+                {/* ... (КОД МОДАЛКИ ТАРИФУ БЕЗ ЗМІН) ... */}
                 <div className="space-y-4">
                     <ModalField label={t("translators.tariffName")} required error={trafficErrors?.name}>
                         <Input
@@ -426,7 +463,6 @@ export default function TranslatorsPage() {
                 </div>
             </BaseFormModal>
 
-            {/* ─── MODAL: INLINE НОВИЙ ТАРИФ (з модалки перекладача) ─── */}
             <BaseFormModal
                 open={isInlineTrafficOpen}
                 onOpenChange={(open) => {
@@ -536,7 +572,6 @@ export default function TranslatorsPage() {
                 </div>
             </BaseFormModal>
 
-            {/* ─── MODAL: НОВА МОВНА ПАРА ─── */}
             <BaseFormModal
                 open={isNewPairModalOpen}
                 onOpenChange={(open) => {
@@ -587,7 +622,6 @@ export default function TranslatorsPage() {
                 </div>
             </BaseFormModal>
 
-            {/* ─── MODAL: DELETE CONFIRM ─── */}
             <ConfirmModal
                 open={isConfirmOpen}
                 onOpenChange={(open) => !open && closeModals()}

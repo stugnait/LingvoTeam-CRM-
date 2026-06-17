@@ -32,6 +32,30 @@ export function useClientsCreation() {
 
     const [selectedClient, setSelectedClient] = useState<Client | null>(null)
 
+    const handleImportExcel = async (file: File) => {
+        try {
+            setLoading(true)
+            const response = await clientsCreationApi.importExcel(file)
+
+            toast({
+                title: "Успіх",
+                description: response.message || "Клієнтів успішно імпортовано",
+            })
+
+            // Перезавантажуємо першу сторінку після імпорту
+            await loadClients(1)
+
+        } catch (error: any) {
+            toast({
+                title: "Помилка імпорту",
+                description: error?.response?.data?.error || "Не вдалося імпортувати клієнтів",
+                variant: "error"
+            })
+        } finally {
+            setLoading(false)
+        }
+    }
+
 
     const loadClients = useCallback(async (pageNumber: number = 1) => {
         try {
@@ -213,5 +237,6 @@ export function useClientsCreation() {
         confirmDelete,
         handleConfirm,
         closeModals,
+        handleImportExcel
     }
 }

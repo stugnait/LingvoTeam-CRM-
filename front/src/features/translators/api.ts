@@ -53,6 +53,16 @@ export const translatorsApi = {
         })
     },
 
+    importExcel: (file: File) => {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        return apiFetch<{ message: string }>("translators/import_excel/", {
+            method: "POST",
+            body: formData as any,
+        })
+    },
+
     getById: (id: number) =>
         apiFetch<Translator>(`translators/${id}/`, {
             method: "GET",

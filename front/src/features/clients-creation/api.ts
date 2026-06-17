@@ -19,7 +19,6 @@ export const clientsCreationApi = {
             params.append('search', search)
         }
 
-        // Якщо вибрана конкретна категорія (не "all"), передаємо її в запит
         if (categoryId && categoryId !== "all") {
             params.append('category', categoryId)
         }
@@ -82,4 +81,15 @@ export const clientsCreationApi = {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
+
+    importExcel: (file: File) => {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        return apiFetch<{ message: string }>("clients/import_excel/", {
+            method: "POST",
+            body: formData as never, // Не робимо JSON.stringify!
+            // Браузер сам встановить Content-Type: multipart/form-data
+        })
+    },
 }

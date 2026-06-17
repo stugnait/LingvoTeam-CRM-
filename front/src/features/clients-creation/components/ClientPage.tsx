@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
-import { Plus, Users, Tags } from "lucide-react"
+import { Plus, Users, Tags, Upload } from "lucide-react"
 import { PatternFormat } from 'react-number-format'
 import { cn } from "@/src/lib/utils"
 
@@ -30,10 +30,11 @@ export function ClientPage() {
     // === КЛІЄНТИ ===
     const {
         clients, page, totalPages, onPageChange, search, setSearch,
-        categoryFilter, setCategoryFilter, // <--- ДІСТАЄМО СТАНИ ФІЛЬТРА
+        categoryFilter, setCategoryFilter,
         isFormOpen, isDeleteOpen, selectedClient, form, setForm, errors,
         openAddClient, openEditClient, openDeleteClient, submitClient,
         handleConfirm, closeModals,
+        loading, handleImportExcel // <--- ДІСТАЄМО СТАНИ ТА ФУНКЦІЮ ІМПОРТУ
     } = useClientsCreation()
 
     // === КАТЕГОРІЇ ===
@@ -58,6 +59,19 @@ export function ClientPage() {
         label: cat.name,
     }))
 
+    // === РЕФ ДЛЯ ІНПУТА ФАЙЛІВ ===
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            await handleImportExcel(file)
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ""
+            }
+        }
+    }
+
     return (
         <>
             <DashboardHeader />
@@ -76,7 +90,7 @@ export function ClientPage() {
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex-1 sm:flex-none">
                                 <button
                                     onClick={() => setViewMode("clients")}
@@ -104,12 +118,36 @@ export function ClientPage() {
                                 </button>
                             </div>
 
-                            <Button onClick={viewMode === "clients" ? openAddClient : openAddCategory} className="shrink-0">
-                                <Plus className="h-4 w-4 sm:mr-2" />
-                                <span className="hidden sm:inline">
-                                    {viewMode === "clients" ? t("clients.addClient") : t("clients.addCategory")}
-                                </span>
-                            </Button>
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                                {/* Кнопка імпорту показується тільки для клієнтів */}
+                                {viewMode === "clients" && (
+                                    <>
+                                        <input
+                                            type="file"
+                                            accept=".xlsx, .xls"
+                                            className="hidden"
+                                            ref={fileInputRef}
+                                            onChange={onFileSelect}
+                                        />
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={loading}
+                                            className="shrink-0 bg-white"
+                                        >
+                                            <Upload className="h-4 w-4 sm:mr-2 text-blue-600" />
+                                            <span className="hidden sm:inline">Імпорт Excel</span>
+                                        </Button>
+                                    </>
+                                )}
+
+                                <Button onClick={viewMode === "clients" ? openAddClient : openAddCategory} className="shrink-0">
+                                    <Plus className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">
+                                        {viewMode === "clients" ? t("clients.addClient") : t("clients.addCategory")}
+                                    </span>
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -123,9 +161,9 @@ export function ClientPage() {
                                 <ClientFilters
                                     search={search}
                                     setSearch={setSearch}
-                                    categoryFilter={categoryFilter}             // <--- ПЕРЕДАЄМО
-                                    setCategoryFilter={setCategoryFilter}       // <--- ПЕРЕДАЄМО
-                                    categories={categories}                     // <--- ПЕРЕДАЄМО
+                                    categoryFilter={categoryFilter}
+                                    setCategoryFilter={setCategoryFilter}
+                                    categories={categories}
                                 />
                             </CardContent>
                         </Card>

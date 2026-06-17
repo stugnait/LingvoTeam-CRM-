@@ -529,6 +529,30 @@ export function useTranslators() {
         }
     }
 
+    const handleImportExcel = async (file: File) => {
+        try {
+            setLoading(true)
+            const response = await translatorsApi.importExcel(file)
+
+            toast({
+                title: "Успіх",
+                description: response.message || "Перекладачів успішно імпортовано",
+            })
+
+            // Перезавантажуємо першу сторінку після імпорту
+            await loadTranslators(1)
+
+        } catch (error: any) {
+            toast({
+                title: "Помилка імпорту",
+                description: error?.response?.data?.error || "Не вдалося імпортувати перекладачів",
+                variant: "error"
+            })
+        } finally {
+            setLoading(false)
+        }
+    }
+
     // -------------------------
     // Public API
     // -------------------------
@@ -594,5 +618,6 @@ export function useTranslators() {
         setInlineTrafficForm,
         inlineTrafficLoading,
         createAndSelectTraffic,
+        handleImportExcel
     }
 }
