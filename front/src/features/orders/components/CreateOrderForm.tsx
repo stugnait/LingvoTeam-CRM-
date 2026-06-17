@@ -12,6 +12,10 @@ import {
     MessageSquare,
     DollarSign,
     BarChart2,
+    Settings2,
+    FileText,
+    Image as ImageIcon,
+    Type,
 } from "lucide-react"
 
 import { useTranslators } from "@/src/features/translators/hooks/useTranslators"
@@ -52,7 +56,7 @@ interface TranslatorTrafficMeta {
 interface CreateOrderModalProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    onSubmit: () => void
+    onSubmit: (data?: any) => void
     loading: boolean
 
     mode?: "create" | "edit"
@@ -156,6 +160,27 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     const [customDiscount, setCustomDiscount] = useState<string>("")
     const [isRestored, setIsRestored] = useState(false)
 
+    // --- Логіка ручної статистики ---
+    const [isManualStats, setIsManualStats] = useState(false)
+    const [manualStats, setManualStats] = useState({
+        pages: "",
+        charsWithSpaces: "",
+        charsNoSpaces: "",
+        images: ""
+    })
+
+    // Синхронізація автоматичної статистики з ручною при зміні файлів
+    useEffect(() => {
+        if (statsResult && !isManualStats) {
+            setManualStats({
+                pages: String(statsResult.total_stats.physical_pages),
+                charsWithSpaces: String(statsResult.total_stats.chars_with_spaces),
+                charsNoSpaces: String(statsResult.total_stats.chars_no_spaces),
+                images: String(statsResult.total_stats.images),
+            })
+        }
+    }, [statsResult])
+
     // --- Логіка підрахунку знижки ---
     const selectedClient = clients.find((c) => String(c.id) === clientId)
     const defaultDiscountPercent = selectedClient?.discount_percent ? Number(selectedClient.discount_percent) : 0
@@ -227,6 +252,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                     if (d.customDiscount) { setCustomDiscount(d.customDiscount) }
                     if (d.totalAmount) { setTotalAmount(d.totalAmount) }
                     if (d.currentStep !== undefined) { setCurrentStep(d.currentStep) }
+
+                    if (d.isManualStats !== undefined) { setIsManualStats(d.isManualStats) }
+                    if (d.manualStats) { setManualStats(d.manualStats) }
+
                     if (d.files && Array.isArray(d.files)) {
                         setFiles(d.files)
                         if (d.filesConfirmed) {
@@ -261,6 +290,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                 filesConfirmed,
                 files,
                 currentStep,
+                isManualStats,
+                manualStats
             }
             try {
                 await localforage.setItem(DRAFT_KEY, draft)
@@ -273,7 +304,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         clientId, sourceLanguage, targetLanguage, trafficId, currencyId,
         editor, managerAccept, managerDelivery, selectedTranslatorId,
         translatorTrafficId, comment, priority, deadline,
-        customDiscount, totalAmount, files, filesConfirmed, currentStep, open, isRestored, mode,
+        customDiscount, totalAmount, files, filesConfirmed,
+        currentStep, isManualStats, manualStats, open, isRestored, mode,
     ])
 
     const handleModalClose = (open: boolean) => {
@@ -284,6 +316,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             setPriceData(null)
             setUseManualPrice(false)
             setCurrentStep(0)
+            setIsManualStats(false)
         }
         onOpenChange(open)
     }
@@ -324,7 +357,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         } catch (error) {
             console.error("Помилка видалення чернетки:", error)
         }
-        onSubmit()
+        // Передаємо ручну статистику, якщо її потрібно зберігати на бекенді
+        onSubmit({
+            manualStats: isManualStats ? manualStats : null
+        })
     }
 
     // ─── Validation ─────────────────────────────────────────────────────────
@@ -578,6 +614,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 setImagesAnalyzed(false)
                                 setTotalAmount("")
                                 setUseManualPrice(false)
+                                setIsManualStats(false) // Скидаємо при завантаженні нових
                             }}
                         />
 
@@ -586,46 +623,151 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 type="button"
                                 onClick={handleConfirmFiles}
                                 disabled={!files.length || statsLoading}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50"
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:opacity-50 transition-all hover:bg-blue-700 w-full sm:w-auto"
                             >
                                 {statsLoading ? t("orders.calculating") : t("orders.confirmFiles")}
                             </button>
                         )}
 
+                        {/* --- Оновлений дизайн блоку статистики --- */}
                         {filesConfirmed && statsResult && (
-                            <div className="bg-gray-100 p-4 rounded-lg text-sm space-y-1">
-                                <p>{t("common.pages")}: {statsResult.total_stats.physical_pages}</p>
-                                <p>{t("common.withSpaces")}: {statsResult.total_stats.chars_with_spaces}</p>
-                                <p>{t("orders.charsWithoutSpaces")}: {statsResult.total_stats.chars_no_spaces}</p>
-                                <p>{t("common.images")}: {statsResult.total_stats.images}</p>
-                                {statsResult.total_stats.images > 0 && (
-                                    <div className="mt-3 flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                        <span className="text-yellow-500 mt-0.5">⚠️</span>
-                                        <p className="text-yellow-700 text-xs leading-relaxed">
-                                            {t("orders.documentImagesWarning", { count: statsResult.total_stats.images })}
-                                        </p>
+                            <div className={`rounded-xl border shadow-sm transition-all duration-300 ${isManualStats ? 'border-blue-300 bg-blue-50/20' : 'border-gray-200 bg-white'}`}>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl gap-3">
+                                    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                                        <Settings2 className="h-4 w-4 text-blue-600" />
+                                        Статистика документа
+                                    </h3>
+                                    <label className="flex items-center gap-2 cursor-pointer select-none bg-white px-3 py-1.5 rounded-lg border border-gray-200 transition-colors hover:bg-gray-50 shadow-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={isManualStats}
+                                            onChange={(e) => setIsManualStats(e.target.checked)}
+                                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                        />
+                                        <span className="text-sm font-medium text-gray-700">
+                                            Редагувати вручну
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <div className="p-4">
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {/* Сторінки */}
+                                        <div className="flex flex-col space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <span className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+                                                <FileText className="w-3.5 h-3.5 text-gray-400" />
+                                                {t("orders.autoPages")}
+                                            </span>
+                                            {isManualStats ? (
+                                                <Input
+                                                    type="number" min="0" className="h-8 mt-1 font-semibold text-blue-700 bg-white"
+                                                    value={manualStats.pages}
+                                                    onChange={(e) => setManualStats(p => ({ ...p, pages: e.target.value }))}
+                                                />
+                                            ) : (
+                                                <span className="text-lg font-bold text-gray-900">{manualStats.pages}</span>
+                                            )}
+                                        </div>
+
+                                        {/* З пробілами */}
+                                        <div className="flex flex-col space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <span className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+                                                <Type className="w-3.5 h-3.5 text-gray-400" />
+                                                {t("common.withSpaces")}
+                                            </span>
+                                            {isManualStats ? (
+                                                <Input
+                                                    type="number" min="0" className="h-8 mt-1 font-semibold text-blue-700 bg-white"
+                                                    value={manualStats.charsWithSpaces}
+                                                    onChange={(e) => setManualStats(p => ({ ...p, charsWithSpaces: e.target.value }))}
+                                                />
+                                            ) : (
+                                                <span className="text-lg font-bold text-gray-900">{manualStats.charsWithSpaces}</span>
+                                            )}
+                                        </div>
+
+                                        {/* Без пробілів */}
+                                        <div className="flex flex-col space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <span className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+                                                <Type className="w-3.5 h-3.5 text-gray-400" />
+                                                {t("common.withoutSpaces")}
+                                            </span>
+                                            {isManualStats ? (
+                                                <Input
+                                                    type="number" min="0" className="h-8 mt-1 font-semibold text-blue-700 bg-white"
+                                                    value={manualStats.charsNoSpaces}
+                                                    onChange={(e) => setManualStats(p => ({ ...p, charsNoSpaces: e.target.value }))}
+                                                />
+                                            ) : (
+                                                <span className="text-lg font-bold text-gray-900">{manualStats.charsNoSpaces}</span>
+                                            )}
+                                        </div>
+
+                                        {/* Зображення */}
+                                        <div className="flex flex-col space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <span className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+                                                <ImageIcon className="w-3.5 h-3.5 text-gray-400" />
+                                                {t("common.images")}
+                                            </span>
+                                            {isManualStats ? (
+                                                <Input
+                                                    type="number" min="0" className="h-8 mt-1 font-semibold text-blue-700 bg-white"
+                                                    value={manualStats.images}
+                                                    onChange={(e) => setManualStats(p => ({ ...p, images: e.target.value }))}
+                                                />
+                                            ) : (
+                                                <span className="text-lg font-bold text-gray-900">{manualStats.images}</span>
+                                            )}
+                                        </div>
                                     </div>
-                                )}
+
+                                    {isManualStats && (
+                                        <div className="mt-4 flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <span className="text-blue-500 mt-0.5">ℹ️</span>
+                                            <p className="text-blue-800 text-xs sm:text-sm leading-relaxed">
+                                                Ви редагуєте статистику вручну. Автоматичний прорахунок ціни базується на оригінальних файлах, тому <strong>рекомендуємо вказати фінальну ціну вручну</strong> на останньому кроці.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {!isManualStats && Number(manualStats.images) > 0 && (
+                                        <div className="mt-4 flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                            <span className="text-yellow-500 mt-0.5">⚠️</span>
+                                            <p className="text-yellow-700 text-xs sm:text-sm leading-relaxed">
+                                                Документ містить <strong>{manualStats.images}</strong> зображень. Текст у зображеннях не враховується автоматично — підрахунок може бути некоректним.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
                         {analysisResult && (
-                            <div className="bg-purple-50 p-4 rounded-lg text-sm">
-                                <p className="text-purple-700 font-medium">{t("orders.ocrCompleted")}</p>
-                                <p>{t("orders.ocrTotalImages")}: {analysisResult.total_images_found}</p>
-                                <p>{t("orders.ocrTotalSymbols")}: {analysisResult.total_detected_symbols_from_images}</p>
-                                <div className="mt-3 space-y-2">
+                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 text-sm">
+                                <p className="text-purple-700 font-semibold mb-3 flex items-center gap-2">
+                                    <Settings2 className="w-4 h-4" /> {t("orders.ocrCompleted")}
+                                </p>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-white p-3 rounded-lg border border-purple-100">
+                                        <p className="text-xs text-gray-500 mb-1">{t("orders.ocrTotalImages")}</p>
+                                        <p className="font-semibold text-gray-800">{analysisResult.total_images_found}</p>
+                                    </div>
+                                    <div className="bg-white p-3 rounded-lg border border-purple-100">
+                                        <p className="text-xs text-gray-500 mb-1">{t("orders.ocrTotalSymbols")}</p>
+                                        <p className="font-semibold text-gray-800">{analysisResult.total_detected_symbols_from_images}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
                                     {analysisResult.results?.map((r: any, idx: number) => (
-                                        <div key={idx} className="p-2 bg-white rounded border">
-                                            <div className="font-medium">{r.filename} ({r.file_type})</div>
+                                        <div key={idx} className="p-3 bg-white rounded-lg border border-purple-100/50">
+                                            <div className="font-medium text-gray-800 mb-1">{r.filename} <span className="text-xs text-gray-400 font-normal">({r.file_type})</span></div>
                                             {r.error ? (
-                                                <div className="text-red-600">{r.error}</div>
+                                                <div className="text-red-600 text-xs bg-red-50 p-2 rounded">{r.error}</div>
                                             ) : (
-                                                <>
-                                                    <div>{t("common.images")}: {r.images_found}</div>
-                                                    <div>{t("orders.symbols")}: {r.detected_symbols_from_images}</div>
-                                                    {r.preview_text && <div className="text-gray-600">{r.preview_text}</div>}
-                                                </>
+                                                <div className="flex items-center gap-4 text-xs text-gray-600">
+                                                    <span>{t("common.images")}: <strong>{r.images_found}</strong></span>
+                                                    <span>{t("orders.symbols")}: <strong>{r.detected_symbols_from_images}</strong></span>
+                                                </div>
                                             )}
                                         </div>
                                     ))}
@@ -634,7 +776,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         )}
 
                         {imagesAnalyzed && !analysisLoading && (
-                            <div className="text-green-600 text-sm font-medium">✅ {t("orders.imagesAnalysisCompleted")}</div>
+                            <div className="text-green-600 text-sm font-medium flex items-center gap-1.5 bg-green-50 p-3 rounded-lg border border-green-100">
+                                ✅ {t("orders.imagesAnalysisCompleted")}
+                            </div>
                         )}
                     </div>
                 </WizardStep>
@@ -938,39 +1082,30 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             <div className="space-y-6">
                                 <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                     <BarChart2 className="h-4 w-4 text-blue-600" />
-                                    {t("orders.fileStatistics")}
+                                    Підсумкова статистика
                                 </h3>
 
                                 {statsResult ? (
                                     <>
-                                        <div className="rounded-xl border divide-y text-sm">
-                                            <div className="flex justify-between px-4 py-3">
-                                                <span className="text-gray-500">{t("orders.autoPages")}</span>
-                                                <span className="font-medium">{statsResult.total_stats.physical_pages}</span>
+                                        {/* Сумарний вивід зафіксованої статистики (read-only) */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div className="text-xs text-gray-500">{t("orders.autoPages")}</div>
+                                                <div className="text-lg font-bold text-gray-800">{manualStats.pages}</div>
                                             </div>
-                                            <div className="flex justify-between px-4 py-3">
-                                                <span className="text-gray-500">{t("common.withSpaces")}</span>
-                                                <span className="font-medium">{statsResult.total_stats.chars_with_spaces}</span>
+                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div className="text-xs text-gray-500">{t("common.withSpaces")}</div>
+                                                <div className="text-lg font-bold text-gray-800">{manualStats.charsWithSpaces}</div>
                                             </div>
-                                            <div className="flex justify-between px-4 py-3">
-                                                <span className="text-gray-500">{t("common.withoutSpaces")}</span>
-                                                <span className="font-medium">{statsResult.total_stats.chars_no_spaces}</span>
+                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div className="text-xs text-gray-500">{t("common.withoutSpaces")}</div>
+                                                <div className="text-lg font-bold text-gray-800">{manualStats.charsNoSpaces}</div>
                                             </div>
-                                            <div className="flex justify-between px-4 py-3">
-                                                <span className="text-gray-500">{t("common.images")}</span>
-                                                <span className="font-medium">{statsResult.total_stats.images}</span>
+                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div className="text-xs text-gray-500">{t("common.images")}</div>
+                                                <div className="text-lg font-bold text-gray-800">{manualStats.images}</div>
                                             </div>
                                         </div>
-
-                                        {statsResult.total_stats.images > 0 && (
-                                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                                                <span className="text-yellow-500 mt-0.5">⚠️</span>
-                                                <p className="text-yellow-700 text-xs leading-relaxed">
-                                                    Документ містить <strong>{statsResult.total_stats.images}</strong> зображень.
-                                                    Текст у зображеннях не враховується автоматично — підрахунок може бути некоректним.
-                                                </p>
-                                            </div>
-                                        )}
 
                                         <div className="rounded-xl border p-4 space-y-3">
                                             <label className="text-sm font-medium text-gray-700 block">
@@ -1042,14 +1177,10 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                         )}
 
                                         {priceData && !priceLoading && (
-                                            <div className="rounded-xl border p-4 space-y-2 bg-green-50 text-sm">
-                                                <p className="font-semibold text-green-700">{t("orders.priceCalculation")}</p>
+                                            <div className={`rounded-xl border p-4 space-y-2 text-sm ${isManualStats ? 'bg-gray-50 border-gray-200' : 'bg-green-50 border-green-200'}`}>
+                                                <p className={`font-semibold ${isManualStats ? 'text-gray-600' : 'text-green-700'}`}>{t("orders.priceCalculation")}</p>
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-600">{t("orders.autoPages")}:</span>
-                                                    <span className="font-medium">{priceData.pages}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">{t("orders.autoBasePrice")}</span>
+                                                    <span className="text-gray-600">{t("orders.autoBasePrice")} ({priceData.pages} стор.)</span>
                                                     <span className="font-medium">{priceData.total_client_price} {orderCurrency}</span>
                                                 </div>
                                                 {activeDiscount > 0 && (
@@ -1062,9 +1193,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                         </span>
                                                     </div>
                                                 )}
-                                                <div className="flex justify-between border-t border-green-200 pt-2 mt-2">
+                                                <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
                                                     <span className="text-gray-800 font-semibold">{t("orders.amountDue")}</span>
-                                                    <span className="font-bold text-green-700">{discountedAutoPrice} {orderCurrency}</span>
+                                                    <span className={`font-bold ${isManualStats ? 'text-gray-700' : 'text-green-700'}`}>{discountedAutoPrice} {orderCurrency}</span>
                                                 </div>
                                                 {priceData.translator_rate_per_page && (
                                                     <>
@@ -1072,9 +1203,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                             <span className="text-gray-600">{t("orders.translatorCost")}</span>
                                                             <span className="font-medium">{priceData.translator_total} {orderCurrency}</span>
                                                         </div>
-                                                        <div className="flex justify-between border-t border-green-200 pt-2 mt-1">
+                                                        <div className="flex justify-between border-t border-gray-200 pt-2 mt-1">
                                                             <span className="text-gray-600">{t("orders.margin")}</span>
-                                                            <span className={`font-semibold ${isMarginNegative ? 'text-red-600' : 'text-green-700'}`}>
+                                                            <span className={`font-semibold ${isMarginNegative ? 'text-red-600' : (isManualStats ? 'text-gray-700' : 'text-green-700')}`}>
                                                                 {realMargin} {orderCurrency}
                                                             </span>
                                                         </div>
@@ -1123,24 +1254,6 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                             setForm(prev => ({ ...prev, phone: values.formattedValue }))
                         }}
                     />
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input
-                            type="number"
-                            min="0"
-                            placeholder={t("orders.currencyId")}
-                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            onKeyDown={(e) => {
-                                if (["-", "e", "E", "+"].includes(e.key)) { e.preventDefault() }
-                            }}
-                            onFocus={(e) => e.target.select()}
-                            value={form.currency_id === 0 ? "" : form.currency_id}
-                            onChange={(e) => {
-                                const val = e.target.value
-                                const numericValue = val === "" ? 0 : Math.max(0, parseInt(val, 10))
-                                setForm(prev => ({ ...prev, currency_id: numericValue }))
-                            }}
-                        />
-                    </div>
                 </div>
             </BaseFormModal>
         </>

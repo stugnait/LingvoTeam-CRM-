@@ -11,10 +11,23 @@ import type {
 export const clientsCreationApi = {
 
     // GET /clients/
-    list: (page: number = 1, search?: string) =>
-        apiFetch<ClientsListResponse>(`clients/?page=${page}&search=${search ?? ""}`, {
+    list: (page: number = 1, search?: string, categoryId?: string) => {
+        const params = new URLSearchParams()
+        params.append('page', String(page))
+
+        if (search) {
+            params.append('search', search)
+        }
+
+        // Якщо вибрана конкретна категорія (не "all"), передаємо її в запит
+        if (categoryId && categoryId !== "all") {
+            params.append('category', categoryId)
+        }
+
+        return apiFetch<ClientsListResponse>(`clients/?${params.toString()}`, {
             method: "GET",
-        }),
+        })
+    },
 
     // GET /clients/:id/
     getById: (id: string) =>

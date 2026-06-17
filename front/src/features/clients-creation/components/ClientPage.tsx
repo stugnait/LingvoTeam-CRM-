@@ -30,12 +30,13 @@ export function ClientPage() {
     // === КЛІЄНТИ ===
     const {
         clients, page, totalPages, onPageChange, search, setSearch,
+        categoryFilter, setCategoryFilter, // <--- ДІСТАЄМО СТАНИ ФІЛЬТРА
         isFormOpen, isDeleteOpen, selectedClient, form, setForm, errors,
         openAddClient, openEditClient, openDeleteClient, submitClient,
         handleConfirm, closeModals,
     } = useClientsCreation()
 
-    // === КАТЕГОРІЇ (використовуємо аліаси, щоб не було конфлікту імен) ===
+    // === КАТЕГОРІЇ ===
     const {
         categories,
         isFormOpen: isCatFormOpen,
@@ -52,7 +53,6 @@ export function ClientPage() {
         closeModals: closeCatModals,
     } = useClientsCategories()
 
-    // Формуємо опції категорій для селекта при створенні клієнта
     const categoryOptions = categories?.map(cat => ({
         value: String(cat.id),
         label: cat.name,
@@ -76,9 +76,7 @@ export function ClientPage() {
                             </p>
                         </div>
 
-                        {/* Перемикач та Кнопка додавання */}
                         <div className="flex items-center gap-3 w-full sm:w-auto">
-                            {/* СВІТЧ */}
                             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex-1 sm:flex-none">
                                 <button
                                     onClick={() => setViewMode("clients")}
@@ -106,7 +104,6 @@ export function ClientPage() {
                                 </button>
                             </div>
 
-                            {/* Динамічна кнопка */}
                             <Button onClick={viewMode === "clients" ? openAddClient : openAddCategory} className="shrink-0">
                                 <Plus className="h-4 w-4 sm:mr-2" />
                                 <span className="hidden sm:inline">
@@ -116,14 +113,20 @@ export function ClientPage() {
                         </div>
                     </div>
 
-                    {/* Фільтри показуємо тільки для клієнтів */}
+                    {/* Фільтри */}
                     {viewMode === "clients" && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t("common.search")}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <ClientFilters search={search} setSearch={setSearch} />
+                                <ClientFilters
+                                    search={search}
+                                    setSearch={setSearch}
+                                    categoryFilter={categoryFilter}             // <--- ПЕРЕДАЄМО
+                                    setCategoryFilter={setCategoryFilter}       // <--- ПЕРЕДАЄМО
+                                    categories={categories}                     // <--- ПЕРЕДАЄМО
+                                />
                             </CardContent>
                         </Card>
                     )}
@@ -140,7 +143,6 @@ export function ClientPage() {
                         </CardHeader>
 
                         <CardContent className="p-0">
-                            {/* Динамічний рендер таблиць */}
                             {viewMode === "clients" ? (
                                 <ClientTable
                                     clients={clients}
@@ -159,7 +161,6 @@ export function ClientPage() {
                             )}
                         </CardContent>
                     </Card>
-
                 </div>
             </main>
 
@@ -173,8 +174,11 @@ export function ClientPage() {
                 submitLabel={selectedClient ? t("common.save") : t("common.create")}
                 onSubmit={() => submitClient(form)}
             >
-                <div className="space-y-4">
+                <div className="space-y-4 pt-2">
                     <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-sm font-medium">{t("clients.clientName")} <span className="text-red-500">*</span></label>
+                        </div>
                         <Input
                             placeholder={t("clients.clientName")}
                             value={form.full_name}
@@ -185,9 +189,13 @@ export function ClientPage() {
                     </div>
 
                     <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-sm font-medium">{t("auth.email")}</label>
+                            <span className="text-xs text-muted-foreground">(необов&#39;язково)</span>
+                        </div>
                         <Input
                             placeholder={t("auth.email")}
-                            value={form.email}
+                            value={form.email || ""}
                             className={errors?.email ? "border-red-500" : ""}
                             onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
                         />
@@ -195,11 +203,15 @@ export function ClientPage() {
                     </div>
 
                     <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-sm font-medium">Телефон</label>
+                            <span className="text-xs text-muted-foreground">(необов&#39;язково)</span>
+                        </div>
                         <PatternFormat
                             format="+38 (###) ###-##-##"
                             allowEmptyFormatting
                             mask="_"
-                            value={form.phone_number}
+                            value={form.phone_number || ""}
                             customInput={Input}
                             type="tel"
                             className={errors?.phone_number ? "border-red-500" : ""}
@@ -211,10 +223,14 @@ export function ClientPage() {
                     </div>
 
                     <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-sm font-medium">Категорія</label>
+                            <span className="text-xs text-muted-foreground">(необов&#39;язково)</span>
+                        </div>
                         <Combobox
                             options={categoryOptions}
                             value={String(form.category || "")}
-                            onChange={(value) => setForm(prev => ({ ...prev, category: Number(value) }))}
+                            onChange={(value) => setForm(prev => ({ ...prev, category: value ? Number(value) : null }))}
                             placeholder={t("clients.selectCategory")}
                         />
                     </div>
@@ -242,7 +258,7 @@ export function ClientPage() {
             >
                 <div className="space-y-4">
                     <div>
-                        <label className="text-sm font-medium mb-1 block">{t("clients.categoryName")}</label>
+                        <label className="text-sm font-medium mb-1 block">{t("clients.categoryName")} <span className="text-red-500">*</span></label>
                         <Input
                             placeholder={t("clients.categoryNamePlaceholder")}
                             value={catForm.name}
@@ -252,7 +268,7 @@ export function ClientPage() {
                         {catErrors.name && <p className="text-red-500 text-sm mt-1">{catErrors.name}</p>}
                     </div>
                     <div>
-                        <label className="text-sm font-medium mb-1 block">{t("clients.discountPercent")}</label>
+                        <label className="text-sm font-medium mb-1 block">{t("clients.discountPercent")} <span className="text-red-500">*</span></label>
                         <Input
                             type="number"
                             min="0"
