@@ -123,8 +123,6 @@ export function UserWizardModal({
         setForm(prev => ({
             ...prev,
             is_translator: !prev.is_translator,
-            // скидаємо currency якщо знімають галочку
-            currency_id: prev.is_translator ? null : prev.currency_id,
         }))
     }
 
