@@ -22,38 +22,6 @@ class Migration(migrations.Migration):
             preserve_default=False,
         ),
         migrations.CreateModel(
-            name='File',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file_type', models.CharField(max_length=16)),
-                ('dropbox_url', models.CharField(max_length=255)),
-                ('detected_pages', models.FloatField(default=0)),
-                ('detected_symbols', models.IntegerField(default=0)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='files', to='orders.order')),
-            ],
-            options={
-                'db_table': 'files',
-            },
-        ),
-        migrations.CreateModel(
-            name='OrderEditorReview',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('review_comment', models.TextField(verbose_name="Коментар рев'ю")),
-                ('review_status', models.CharField(choices=[('rejected', 'Відхилено'), ('approved', 'Прийнято')], default='rejected', max_length=20, verbose_name="Статус рев'ю")),
-                ('reviewed_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата перевірки')),
-                ('editor', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='Редактор')),
-                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='editor_reviews', to='orders.order', verbose_name='Замовлення')),
-            ],
-            options={
-                'verbose_name': "Рев'ю редактора",
-                'verbose_name_plural': "Рев'ю редакторів",
-                'db_table': 'order_editor_review',
-                'ordering': ['-reviewed_at'],
-            },
-        ),
-        migrations.CreateModel(
             name='OrderStatusHistory',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -68,22 +36,6 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Історія статусів',
                 'db_table': 'order_status_history',
                 'ordering': ['-created_at'],
-            },
-        ),
-        migrations.CreateModel(
-            name='TranslationQuality',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('score', models.IntegerField(validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(5)], verbose_name='Оцінка (1-5)')),
-                ('comment', models.TextField(blank=True, null=True, verbose_name='Коментар до оцінки')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата оцінювання')),
-                ('order', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='quality_score', to='orders.order', verbose_name='Замовлення')),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='Оцінювач')),
-            ],
-            options={
-                'verbose_name': 'Оцінка якості',
-                'verbose_name_plural': 'Оцінки якості',
-                'db_table': 'translation_quality',
             },
         ),
     ]
