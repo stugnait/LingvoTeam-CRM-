@@ -200,6 +200,40 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
 
     const effectivePrice = totalAmount || discountedAutoPrice || "-"
 
+    // Повне скидання стейту візарда (і батьківських полів, і локальних).
+    // ВАЖЛИВО: викликати тільки тоді, коли модалка вже фактично закрита
+    // (open === false), а не одразу в момент кліку на "Створити", інакше
+    // юзер побачить, як форма миттєво стрибає на 1-й крок ще до закриття.
+    const resetWizardState = () => {
+        // Поля, що контролюються батьком
+        setClientId("")
+        setFiles([])
+        setSourceLanguage("")
+        setTargetLanguage("")
+        setTrafficId("")
+        setCurrencyId("")
+        setSelectedTranslatorId(null)
+        setEditor("")
+        setTranslatorTrafficId("")
+        setManagerAccept("")
+        setManagerDelivery("")
+        setDeadline(undefined)
+        setComment("")
+        setPriority(undefined as any)
+        setTotalAmount("")
+
+        // Локальний стейт самого візарда
+        resetStats()
+        setCurrentStep(0)
+        setFilesConfirmed(false)
+        setImagesAnalyzed(false)
+        setPriceData(null)
+        setUseManualPrice(false)
+        setCustomDiscount("")
+        setIsManualStats(false)
+        setManualStats({ pages: "", charsWithSpaces: "", charsNoSpaces: "", images: "" })
+    }
+
     // ─── Handlers ───────────────────────────────────────────────────────────
 
     const handleQuickCreateTranslator = async () => {
@@ -225,6 +259,15 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     useEffect(() => {
         if (!open) {
             setIsRestored(false)
+
+            // Модалка щойно закрилась (юзер тиснув "Х", "Скасувати",
+            // або батько закрив її сам після успішного сабміту).
+            // Скидаємо все, щоб наступне відкриття почалось "з чистого листа".
+            // У режимі "edit" нічого не чіпаємо — там немає чернетки і
+            // поля належать конкретному замовленню, яке редагується.
+            if (mode !== "edit") {
+                resetWizardState()
+            }
             return
         }
         if (mode === "edit") {
@@ -309,15 +352,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     ])
 
     const handleModalClose = (open: boolean) => {
-        if (!open) {
-            resetStats()
-            setFilesConfirmed(false)
-            setImagesAnalyzed(false)
-            setPriceData(null)
-            setUseManualPrice(false)
-            setCurrentStep(0)
-            setIsManualStats(false)
-        }
+        // Тут більше нічого не скидаємо вручну — увесь reset відбувається
+        // централізовано в useEffect вище, в момент переходу open -> false.
         onOpenChange(open)
     }
 
@@ -357,7 +393,12 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         } catch (error) {
             console.error("Помилка видалення чернетки:", error)
         }
-        // Передаємо ручну статистику, якщо її потрібно зберігати на бекенді
+
+        // Нічого зі стейту тут не скидаємо! Поки triває запит, "loading"
+        // прокидається в WizardModal і показує лоадер на кнопці.
+        // Як тільки батько (після успіху) виставить open=false, useEffect
+        // вище сам підчистить усі поля — юзер побачить лише закриту модалку,
+        // а не "стрибок" форми на крок 1 ще до закриття.
         onSubmit({
             manualStats: isManualStats ? manualStats : null
         })

@@ -90,7 +90,7 @@ class OrderTrafficFilter(filters.FilterSet):
 
 class OrderFilter(filters.FilterSet):
     status = filters.ModelChoiceFilter(field_name='status_id', queryset=Status.objects.all())
-    manager = filters.ModelChoiceFilter(field_name='manager_accept_id', queryset=User.objects.all())
+    manager = filters.ModelChoiceFilter(queryset=User.objects.all(), method='filter_by_manager')
     date_from = filters.DateFilter(field_name='created_at', lookup_expr='gte')
     date_to = filters.DateFilter(field_name='created_at', lookup_expr='lte')
     deadline_from = filters.DateFilter(field_name='deadline', lookup_expr='gte')
@@ -98,7 +98,14 @@ class OrderFilter(filters.FilterSet):
 
     class Meta:
         model = Order
-        fields = ['status', 'manager', 'created_at', 'deadline']
+        fields = ['status', 'created_at', 'deadline']
+
+    def filter_by_manager(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(
+            Q(manager_accept_id=value) | Q(manager_delivery_id=value)
+        )
 
 
 @extend_schema_view(
@@ -173,8 +180,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_class = OrderFilter
-    ordering_fields = ['position', 'created_at']
-    ordering = ['position']
+    ordering_fields = ['id', 'position', 'created_at']
+
+    ordering = ['-id']
 
     search_fields = ['id']
 
