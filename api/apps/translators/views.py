@@ -81,8 +81,9 @@ class NumberInFilter(django_filters.BaseInFilter, django_filters.NumberFilter):
     pass
 
 class TranslatorFilter(django_filters.FilterSet):
+    # Використовуємо 'traffic', бо так називається поле в моделі Translator
     categories = NumberInFilter(
-        field_name='translatortraffic__category',
+        field_name='traffic__category',
         lookup_expr='in'
     )
 
@@ -98,16 +99,16 @@ class TranslatorFilter(django_filters.FilterSet):
 
         if source and target:
             queryset = queryset.filter(
-                translatortraffic__language_pair__source_language_id=source,
-                translatortraffic__language_pair__target_language_id=target,
+                traffic__language_pair__source_language_id=source,
+                traffic__language_pair__target_language_id=target,
             )
         elif source:
             queryset = queryset.filter(
-                translatortraffic__language_pair__source_language_id=source,
+                traffic__language_pair__source_language_id=source,
             )
         elif target:
             queryset = queryset.filter(
-                translatortraffic__language_pair__target_language_id=target,
+                traffic__language_pair__target_language_id=target,
             )
 
         return queryset.distinct()
