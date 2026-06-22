@@ -1280,7 +1280,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             by_editor.setdefault(row["editor_id"], row["id"])
 
         editors = (User.objects
-                   .filter(role__rolepermission__permission__slug='order.approve_translation')
+                   .filter(role__slug='editor')
                    .distinct()
                    .only("id", "full_name")
                    .order_by("id"))

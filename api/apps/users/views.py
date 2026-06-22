@@ -169,7 +169,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         editors = User.objects.filter(
             id__in=editor_ids,
-            role__permissions__slug='order.approve_translation'
+            role__slug='editor'
         ).distinct().order_by('id')
 
         page = self.paginate_queryset(editors)
