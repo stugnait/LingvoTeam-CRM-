@@ -680,7 +680,10 @@ class OrderViewSet(viewsets.ModelViewSet):
             if request.user.is_staff:
                 is_editor = True
             elif hasattr(request.user, 'role') and request.user.role:
-                is_editor = request.user.role.permissions.filter(slug='order.approve_translation').exists()
+                is_editor = RolePermission.objects.filter(
+                    role=request.user.role,
+                    permission__slug='order.approve_translation'
+                ).exists()
 
         provided_password = request.COOKIES.get(f'order_auth_{order.id}') or request.data.get('password')
         link_obj = OrderLink.objects.filter(order=order).last()
