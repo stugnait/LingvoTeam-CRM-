@@ -257,20 +257,24 @@ export function TaskModal({
                                             {filesLoading ? "..." : sourceFiles.length}
                                         </Badge>
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={filesLoading || sourceStatsLoading || sourceFiles.length === 0}
-                                        onClick={() => orderId && onAnalyzeFolder?.(orderId, "source")}
-                                        className="h-7 text-xs border-blue-200 bg-white text-blue-600 hover:bg-blue-50 gap-1"
-                                    >
-                                        {sourceStatsLoading ? (
-                                            <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-                                        ) : (
-                                            <BarChart2 className="h-3 w-3 text-blue-500" />
-                                        )}
-                                        {sourceStatsLoading ? t("task.analyzing") : t("task.analyzeFolder", { folder: t("common.source") })}
-                                    </Button>
+
+                                    {/* 👉 ДОДАНО ПЕРЕВІРКУ onAnalyzeFolder */}
+                                    {onAnalyzeFolder && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={filesLoading || sourceStatsLoading || sourceFiles.length === 0}
+                                            onClick={() => orderId && onAnalyzeFolder(orderId, "source")}
+                                            className="h-7 text-xs border-blue-200 bg-white text-blue-600 hover:bg-blue-50 gap-1"
+                                        >
+                                            {sourceStatsLoading ? (
+                                                <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                                            ) : (
+                                                <BarChart2 className="h-3 w-3 text-blue-500" />
+                                            )}
+                                            {sourceStatsLoading ? t("task.analyzing") : t("task.analyzeFolder", { folder: t("common.source") })}
+                                        </Button>
+                                    )}
                                 </div>
 
                                 {renderStatsBlock(sourceStats, t)}
@@ -307,20 +311,24 @@ export function TaskModal({
                                             {filesLoading ? "..." : targetFiles.length}
                                         </Badge>
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={filesLoading || targetStatsLoading || targetFiles.length === 0}
-                                        onClick={() => orderId && onAnalyzeFolder?.(orderId, "target")}
-                                        className="h-7 text-xs border-emerald-200 bg-white text-emerald-600 hover:bg-emerald-50 gap-1"
-                                    >
-                                        {targetStatsLoading ? (
-                                            <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
-                                        ) : (
-                                            <BarChart2 className="h-3 w-3 text-emerald-500" />
-                                        )}
-                                        {targetStatsLoading ? t("task.analyzing") : t("task.analyzeFolder", { folder: t("common.target") })}
-                                    </Button>
+
+                                    {/* 👉 ДОДАНО ПЕРЕВІРКУ onAnalyzeFolder */}
+                                    {onAnalyzeFolder && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={filesLoading || targetStatsLoading || targetFiles.length === 0}
+                                            onClick={() => orderId && onAnalyzeFolder(orderId, "target")}
+                                            className="h-7 text-xs border-emerald-200 bg-white text-emerald-600 hover:bg-emerald-50 gap-1"
+                                        >
+                                            {targetStatsLoading ? (
+                                                <Loader2 className="h-3 w-3 animate-spin text-emerald-600" />
+                                            ) : (
+                                                <BarChart2 className="h-3 w-3 text-emerald-500" />
+                                            )}
+                                            {targetStatsLoading ? t("task.analyzing") : t("task.analyzeFolder", { folder: t("common.target") })}
+                                        </Button>
+                                    )}
                                 </div>
 
                                 {renderStatsBlock(targetStats, t)}
