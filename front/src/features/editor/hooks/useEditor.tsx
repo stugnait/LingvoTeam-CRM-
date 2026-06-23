@@ -5,8 +5,11 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { KanbanTask, KanbanColumn, OrderListItem } from '../types';
 import { statusIdToTaskStatus } from '../types';
 import { fetchOrders, updateOrderStatus, fetchOrderById } from '../services/orders';
-import type {ProfileUser} from "@/src/features/profile/types";
-import {ordersApi} from "@/src/features/editor/api";
+import type { ProfileUser } from "@/src/features/profile/types";
+import { ordersApi } from "@/src/features/editor/api";
+
+// 👉 ДОДАНО: імпорт useToast
+import { useToast } from "@/src/hooks/use-toast";
 
 const initialColumns: KanbanColumn[] = [
     { id: 'planned',        title: 'Planned',        status: 'planned',        editor_status: '5',  taskIds: [], color: '#8b5cf6', icon: null },
@@ -18,7 +21,6 @@ const initialColumns: KanbanColumn[] = [
 ];
 
 // Хелпер — витягує editor_status як рядок незалежно від формату API
-// API може повернути: editor_status: 5 (число), або editor_status: {id:5} (об'єкт)
 const getEditorStatusId = (obj: any): string => {
     const raw = obj?.editor_status_id ?? obj?.editor_status?.id ?? obj?.editor_status;
     if (raw === null || raw === undefined || raw === '') {return '';}
@@ -27,6 +29,9 @@ const getEditorStatusId = (obj: any): string => {
 }
 
 export const useEditor = () => {
+    // 👉 ДОДАНО: ініціалізація тостів
+    const { toast } = useToast();
+
     const [tasks, setTasks] = useState<KanbanTask[]>([]);
     const [selectedTask, setSelectedTask] = useState<OrderListItem | null>(null);
     const [columns, setColumns] = useState<KanbanColumn[]>(initialColumns);
@@ -44,6 +49,28 @@ export const useEditor = () => {
     const [filesLoading, setFilesLoading] = useState(false);
     const [downloadLoading, setDownloadLoading] = useState(false);
 
+    /* ======================
+       TOAST HELPERS
+    ====================== */
+    const handleError = useCallback((e: any, fallback: string) => {
+        toast({
+            title: "Error",
+            description: e?.detail || fallback,
+            variant: "error"
+        });
+    }, [toast]);
+
+    const handleSuccess = useCallback((title: string, description: string) => {
+        toast({
+            title,
+            description,
+            variant: "success"
+        });
+    }, [toast]);
+
+    /* ======================
+       LOAD DATA
+    ====================== */
     useEffect(() => {
         const loadOrders = async () => {
             setIsLoading(true);
@@ -61,24 +88,56 @@ export const useEditor = () => {
                 })
 
                 setColumns(newColumns);
-            } catch (err) {
+            } catch (err: any) {
                 const errorMessage = err instanceof Error ? err.message : 'Unknown error';
                 setError(`Failed to load orders: ${errorMessage}`);
+                handleError(err, "Failed to load orders");
             } finally {
                 setIsLoading(false);
             }
         };
         loadOrders();
-    }, []);
+    }, [handleError]);
 
+    const refreshOrders = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const fetchedTasks = await fetchOrders();
+            setTasks(fetchedTasks);
+
+            const newColumns = initialColumns.map(column => ({
+                ...column,
+                taskIds: fetchedTasks
+                    .filter(task => getEditorStatusId(task) === column.editor_status)
+                    .map(task => task.id.toString())
+            }));
+
+            setColumns(newColumns);
+            setError(null);
+            handleSuccess("Refreshed", "Orders updated successfully");
+        } catch (err) {
+            setError('Failed to refresh orders.');
+            handleError(err, "Failed to refresh orders");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [handleError, handleSuccess]);
+
+    /* ======================
+       EDITOR ACTIONS
+    ====================== */
     const openEditorActionModal = useCallback(async (orderId: number) => {
-        const order = await fetchOrderById(orderId);
-        if (!order) { throw new Error('Order not found'); }
-        const editorStatusId = getEditorStatusId(order);
-        if (editorStatusId === '8') { setIsApproveModalOpen(true); return; }
-        if (editorStatusId === '11') { setIsRejectModalOpen(true); return; }
-        console.warn('No editor action for editor_status_id:', editorStatusId);
-    }, []);
+        try {
+            const order = await fetchOrderById(orderId);
+            if (!order) { throw new Error('Order not found'); }
+            const editorStatusId = getEditorStatusId(order);
+            if (editorStatusId === '8') { setIsApproveModalOpen(true); return; }
+            if (editorStatusId === '11') { setIsRejectModalOpen(true); return; }
+            console.warn('No editor action for editor_status_id:', editorStatusId);
+        } catch (e) {
+            handleError(e, "Failed to load order details");
+        }
+    }, [handleError]);
 
     const rejectTranslation = useCallback(async (orderId: number, comment?: string) => {
         try {
@@ -87,12 +146,13 @@ export const useEditor = () => {
             setIsRejectModalOpen(false);
             setIsModalOpen(false);
             setSelectedTask(null);
+            handleSuccess("Success", "Translation rejected successfully");
         } catch (e) {
-            console.error('❌ Reject translation failed:', e);
+            handleError(e, "Failed to reject translation");
         } finally {
             setIsEditorActionLoading(false);
         }
-    }, []);
+    }, [handleError, handleSuccess]);
 
     const approveTranslation = useCallback(async (orderId: number, score: number, comment?: string, files?: File[]) => {
         try {
@@ -101,13 +161,17 @@ export const useEditor = () => {
             setIsApproveModalOpen(false);
             setIsModalOpen(false);
             setSelectedTask(null);
+            handleSuccess("Success", "Translation approved successfully");
         } catch (e) {
-            console.error('❌ Approve translation failed:', e);
+            handleError(e, "Failed to approve translation");
         } finally {
             setIsEditorActionLoading(false);
         }
-    }, []);
+    }, [handleError, handleSuccess]);
 
+    /* ======================
+       FILE DOWNLOAD
+    ====================== */
     const downloadBlob = (blob: Blob, filename: string) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -123,19 +187,21 @@ export const useEditor = () => {
         try {
             const blob = await ordersApi.downloadFilesSource(orderId);
             downloadBlob(blob, `order_${orderId}_source.zip`);
+            handleSuccess("Success", "Source files downloaded");
         } catch (error) {
-            console.error('❌ Failed to download SOURCE files:', error);
+            handleError(error, "Failed to download SOURCE files");
         }
-    }, []);
+    }, [handleError, handleSuccess]);
 
     const downloadOrderTargetFiles = useCallback(async (orderId: number) => {
         try {
             const blob = await ordersApi.downloadFilesTarget(orderId);
             downloadBlob(blob, `order_${orderId}_target.zip`);
+            handleSuccess("Success", "Target files downloaded");
         } catch (error) {
-            console.error('❌ Failed to download TARGET files:', error);
+            handleError(error, "Failed to download TARGET files");
         }
-    }, []);
+    }, [handleError, handleSuccess]);
 
     const loadOrderFiles = useCallback(async (orderId: number) => {
         setFilesLoading(true);
@@ -148,36 +214,41 @@ export const useEditor = () => {
             setSourceFiles(sourceRes.status === 'fulfilled' ? (sourceRes.value.files || []) : []);
             setTargetFiles(targetRes.status === 'fulfilled' ? (targetRes.value.files || []) : []);
         } catch (error) {
-            console.error('Failed to load files', error);
+            handleError(error, "Failed to load files");
         } finally {
             setFilesLoading(false);
         }
-    }, []);
+    }, [handleError]);
 
     const downloadSingleSourceFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
         setDownloadLoading(true);
         try {
             const blob = await ordersApi.downloadFile(orderId, 'source', fileId);
             downloadBlob(blob, filename);
+            handleSuccess("Success", "File downloaded");
         } catch (error) {
-            console.error('Failed to download source file', error);
+            handleError(error, "Failed to download source file");
         } finally {
             setDownloadLoading(false);
         }
-    }, []);
+    }, [handleError, handleSuccess]);
 
     const downloadSingleTargetFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
         setDownloadLoading(true);
         try {
             const blob = await ordersApi.downloadFile(orderId, 'target', fileId);
             downloadBlob(blob, filename);
+            handleSuccess("Success", "File downloaded");
         } catch (error) {
-            console.error('Failed to download target file', error);
+            handleError(error, "Failed to download target file");
         } finally {
             setDownloadLoading(false);
         }
-    }, []);
+    }, [handleError, handleSuccess]);
 
+    /* ======================
+       KANBAN DRAG & DROP
+    ====================== */
     const tasksMap = useMemo(() =>
             new Map(tasks.map(task => [task.id.toString(), task])),
         [tasks]
@@ -230,8 +301,9 @@ export const useEditor = () => {
 
             try {
                 await updateOrderStatus(parseInt(activeId), newEditorStatusId);
+                handleSuccess("Updated", "Task status updated");
             } catch (error) {
-                console.error('Failed to update editor status:', error);
+                handleError(error, "Failed to update editor status");
             }
             return;
         }
@@ -271,12 +343,16 @@ export const useEditor = () => {
 
             try {
                 await updateOrderStatus(parseInt(activeId), newEditorStatusId);
+                handleSuccess("Updated", "Task status updated");
             } catch (error) {
-                console.error('Failed to update editor status:', error);
+                handleError(error, "Failed to update editor status");
             }
         }
-    }, [columns, tasksMap]);
+    }, [columns, tasksMap, handleError, handleSuccess]);
 
+    /* ======================
+       MODAL CONTROLS
+    ====================== */
     const handleUpdateTask = useCallback((taskId: string, updates: Partial<KanbanTask>) => {
         setTasks(prev => prev.map(task =>
             task.id.toString() === taskId ? { ...task, ...updates } : task
@@ -303,31 +379,27 @@ export const useEditor = () => {
             const editorStatusId = getEditorStatusId(order);
             console.log('🔍 openOrderById:', { orderId, editor_status_raw: (order as any).editor_status, editorStatusId });
 
-            // Planned(5), To Do(6), In Translation(1), Done(2) — інфо-модал
             if (['5', '6', '1', '2'].includes(editorStatusId)) {
                 setIsModalOpen(true);
                 return;
             }
-            // In Checking(8) — approve
             if (editorStatusId === '8') {
                 setIsApproveModalOpen(true);
                 return;
             }
-            // Revision(11) — reject
             if (editorStatusId === '11') {
                 setIsRejectModalOpen(true);
                 return;
             }
 
-            // Fallback — якщо статус не розпізнано, все одно відкриваємо інфо-модал
             console.warn('Unknown editor_status_id, opening info modal as fallback:', editorStatusId);
             setIsModalOpen(true);
         } catch (e) {
-            console.error(e);
+            handleError(e, "Failed to load order details");
         } finally {
             setIsModalLoading(false);
         }
-    }, [loadOrderFiles]);
+    }, [loadOrderFiles, handleError]);
 
     const closeModal = () => {
         setIsModalOpen(false);
@@ -357,29 +429,6 @@ export const useEditor = () => {
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
         };
-    }, []);
-
-    const refreshOrders = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const fetchedTasks = await fetchOrders();
-            setTasks(fetchedTasks);
-
-            const newColumns = initialColumns.map(column => ({
-                ...column,
-                taskIds: fetchedTasks
-                    .filter(task => getEditorStatusId(task) === column.editor_status)
-                    .map(task => task.id.toString())
-            }));
-
-            setColumns(newColumns);
-            setError(null);
-        } catch (err) {
-            setError('Failed to refresh orders.');
-            console.error('Error refreshing orders:', err);
-        } finally {
-            setIsLoading(false);
-        }
     }, []);
 
     return {
