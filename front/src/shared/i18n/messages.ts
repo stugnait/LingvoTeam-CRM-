@@ -460,6 +460,7 @@ export const messages: Record<Locale, Messages> = {
         "task.downloadAll": "Скачати все ({folder})",
         "task.intakeManager": "Менеджер прийому",
         "task.deliveryManager": "Менеджер здачі",
+        "task.addSourceFiles": "Завантажити оригінал",
 
         "kanban.clientLabel": "Клієнт:",
         "kanban.pairLabel": "Пара:",
@@ -1098,6 +1099,7 @@ export const messages: Record<Locale, Messages> = {
         "task.downloadAll": "Download all ({folder})",
         "task.intakeManager": "Intake manager",
         "task.deliveryManager": "Delivery manager",
+        "task.addSourceFiles": "To upload original files",
 
         "kanban.clientLabel": "Client:",
         "kanban.pairLabel": "Pair:",

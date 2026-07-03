@@ -104,6 +104,12 @@ interface TaskModalProps {
     // Пропси для завантаження в Target менеджером
     onUploadTarget?: (files: File[]) => Promise<boolean>
     isUploadingTarget?: boolean
+
+    onUploadSource?: (files: File[]) => Promise<boolean>
+    isUploadingSource?: boolean
+
+    onDeleteFile?: (orderId: number, fileId: number, filename: string) => void
+    deleteFileLoadingId?: number | null
 }
 
 export function TaskModal({
@@ -141,6 +147,12 @@ export function TaskModal({
 
                               onUploadTarget,
                               isUploadingTarget,
+
+                              onUploadSource,
+                              isUploadingSource,
+
+                              onDeleteFile,
+                              deleteFileLoadingId,
 
                               onDelete,
                               onEdit,
@@ -290,16 +302,73 @@ export function TaskModal({
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-medium text-blue-900 truncate">{f.name}</p>
                                                 </div>
-                                                <Button
-                                                    size="sm" variant="outline" className="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
-                                                    onClick={() => orderId && onDownloadSingleSource?.(orderId, f.id, f.name)} disabled={downloadLoading}
-                                                >
-                                                    {t("common.download")}
-                                                </Button>
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    <Button
+                                                        size="sm" variant="outline" className="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                        onClick={() => orderId && onDownloadSingleSource?.(orderId, f.id, f.name)} disabled={downloadLoading}
+                                                    >
+                                                        {t("common.download")}
+                                                    </Button>
+                                                    {onDeleteFile && (
+                                                        <Button
+                                                            size="sm" variant="outline"
+                                                            className="h-7 w-7 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                            onClick={() => orderId && onDeleteFile(orderId, f.id, f.name)}
+                                                            disabled={deleteFileLoadingId === f.id}
+                                                        >
+                                                            {deleteFileLoadingId === f.id ? (
+                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
                                         ))
                                     )}
                                 </div>
+
+                                {/* Компактна зона завантаження оригіналу менеджером */}
+                                {onUploadSource && (
+                                    <div className="mt-4 pt-3 border-t border-dashed border-blue-200/80">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            id="manager-source-upload"
+                                            className="hidden"
+                                            disabled={isUploadingSource || filesLoading}
+                                            onChange={async (e) => {
+                                                const files = Array.from(e.target.files || []);
+                                                if (files.length > 0 && onUploadSource) {
+                                                    await onUploadSource(files);
+                                                }
+                                                e.target.value = ""; // Скидаємо інпут
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor="manager-source-upload"
+                                            className={`
+                                                flex flex-col items-center justify-center p-4 border-2 border-dashed 
+                                                border-blue-200 rounded-lg cursor-pointer bg-white 
+                                                hover:bg-blue-50/40 transition-all text-center
+                                                ${isUploadingSource ? "opacity-50 pointer-events-none" : ""}
+                                            `}
+                                        >
+                                            {isUploadingSource ? (
+                                                <div className="flex items-center gap-2 text-xs text-blue-600 font-semibold">
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    <span>{t("task.uploadingSource")}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-blue-700 font-medium flex items-center gap-2">
+                                                    <FileUp className="h-4 w-4 text-blue-500 animate-pulse" />
+                                                    <span>{t("task.addSourceFiles")}</span>
+                                                </div>
+                                            )}
+                                        </label>
+                                    </div>
+                                )}
                             </div>
 
                             {/* TARGET BLOCK */}
@@ -344,12 +413,28 @@ export function TaskModal({
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-medium text-emerald-900 truncate">{f.name}</p>
                                                 </div>
-                                                <Button
-                                                    size="sm" variant="outline" className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                                                    onClick={() => orderId && onDownloadSingleTarget?.(orderId, f.id, f.name)} disabled={downloadLoading}
-                                                >
-                                                    {t("common.download")}
-                                                </Button>
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    <Button
+                                                        size="sm" variant="outline" className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                                        onClick={() => orderId && onDownloadSingleTarget?.(orderId, f.id, f.name)} disabled={downloadLoading}
+                                                    >
+                                                        {t("common.download")}
+                                                    </Button>
+                                                    {onDeleteFile && (
+                                                        <Button
+                                                            size="sm" variant="outline"
+                                                            className="h-7 w-7 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                            onClick={() => orderId && onDeleteFile(orderId, f.id, f.name)}
+                                                            disabled={deleteFileLoadingId === f.id}
+                                                        >
+                                                            {deleteFileLoadingId === f.id ? (
+                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
                                         ))
                                     )}
@@ -418,7 +503,8 @@ export function TaskModal({
                     </div>
 
                     {/* Right Sidebar */}
-                    <div className="w-full sm:w-80 border-t sm:border-t-0 sm:border-l bg-gray-50 overflow-y-auto p-3 sm:p-4">
+                    {/* Додано pb-8 sm:pb-8 для комфортного відступу при скролі до самого низу */}
+                    <div className="w-full sm:w-80 border-t sm:border-t-0 sm:border-l bg-gray-50 overflow-y-auto p-3 sm:p-4 pb-8 sm:pb-8">
                         <div className="mb-6">
                             <Button className="w-full justify-between bg-blue-600 hover:bg-blue-700 text-white shadow-sm" variant="default">
                                 <span className="font-medium">{t(status)}</span>
@@ -426,7 +512,8 @@ export function TaskModal({
                             </Button>
                         </div>
 
-                        <div className="space-y-1 bg-white rounded-lg border border-gray-200 p-1">
+                        {/* Додано mb-4, щоб блок не прилипав до самого низу контейнера */}
+                        <div className="space-y-1 bg-white rounded-lg border border-gray-200 p-1 mb-4">
                             <button className="flex items-center justify-between w-full py-2.5 px-3 hover:bg-gray-50 rounded">
                                 <span className="text-sm font-semibold text-gray-700">{t("common.details")}</span>
                                 <Settings className="h-4 w-4 text-gray-400"/>

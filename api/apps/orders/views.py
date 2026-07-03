@@ -201,6 +201,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             'upload_target_files': ['order.view'],
             'margins': ['order.view'],
             'editors_by_language_pair': ['order.view'],
+            'upload_source_files': ['order.view'],
+            'delete_order_file': ['order.view']
         }
 
         if self.action in ['update', 'partial_update']:
@@ -493,6 +495,93 @@ class OrderViewSet(viewsets.ModelViewSet):
             {"message": "Target files uploaded", "count": len(uploaded), "files": uploaded},
             status=status.HTTP_201_CREATED,
         )
+
+    @extend_schema(
+        summary="Завантаження оригінальних файлів (Source) менеджером",
+        request=UploadFileSerializer,
+        tags=["Order Files"]
+    )
+    @action(detail=True, methods=["post"], url_path="upload-source-files", parser_classes=[MultiPartParser, FormParser])
+    def upload_source_files(self, request, pk=None):
+        order = self.get_object()
+        user = request.user
+
+        is_authorized = (
+                user == order.manager_accept_id or
+                user == order.manager_delivery_id or
+                user == order.translator_id or
+                user == order.editor_id
+        )
+
+        if not is_authorized and not user.role.slug in ['admin', 'owner']:
+            return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UploadFileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        files = serializer.validated_data["files"]
+        base_path = f"/orders/order_{order.id}"
+
+        uploaded = []
+        for f in files:
+            dropbox_path = upload_file_to_order_folder(
+                order=order,
+                file=f,
+                base_path=base_path,
+                subdir="source",
+            )
+            uploaded.append({"filename": f.name, "dropbox_path": dropbox_path})
+
+        for i, f in enumerate(files):
+            f.seek(0)
+            stats = analyze_file_content(f)
+            ext = os.path.splitext(f.name)[1].lstrip(".").lower()
+            dropbox_url = uploaded[i]["dropbox_path"]
+
+            File.objects.create(
+                order=order,
+                file_type=ext,
+                dropbox_url=dropbox_url,
+                detected_pages=stats.get("pages", 0),
+                detected_symbols=stats.get("chars_no_spaces", 0),
+            )
+
+        return Response(
+            {"message": "Source files uploaded", "count": len(uploaded), "files": uploaded},
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        summary="Видалити файл замовлення (Source/Target)",
+        tags=["Order Files"]
+    )
+    @action(detail=True, methods=["delete"], url_path=r"delete-file/(?P<file_id>\d+)")
+    def delete_order_file(self, request, pk=None, file_id=None):
+        order = self.get_object()
+        user = request.user
+
+        is_authorized = (
+                user == order.manager_accept_id or
+                user == order.manager_delivery_id or
+                user == order.translator_id or
+                user == order.editor_id
+        )
+
+        if not is_authorized and not user.role.slug in ['admin', 'owner']:
+            return Response({"detail": "Недостатньо прав."}, status=status.HTTP_403_FORBIDDEN)
+
+        file_obj = get_object_or_404(File, id=file_id, order=order)
+
+        if file_obj.dropbox_url and file_obj.dropbox_url != "None":
+            try:
+                dbx = get_dbx()
+                dbx.files_delete_v2(file_obj.dropbox_url)
+            except Exception as e:
+                logger.warning(f"Не вдалося видалити файл з Dropbox {file_obj.dropbox_url}: {e}")
+
+        file_obj.delete()
+
+        return Response({"message": "Файл видалено", "file_id": int(file_id)}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path=r'analyze-folder/(?P<folder>source|target)')
     def analyze_folder_files(self, request, pk=None, folder=None):

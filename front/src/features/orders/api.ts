@@ -210,6 +210,23 @@ export const ordersApi = {
             }
         ),
 
+    uploadSourceFiles: (orderId: number, body: FormData) =>
+        apiFetch<{ message: string; count: number; files: any[] }>(
+            `orders/${orderId}/upload-source-files/`,
+            {
+                method: "POST",
+                body,
+            }
+        ),
+
+    deleteOrderFile: (orderId: number, fileId: number) =>
+        apiFetch<{ message: string; file_id: number }>(
+            `orders/${orderId}/delete-file/${fileId}/`,
+            {
+                method: "DELETE",
+            }
+        ),
+
     confirmOrder: (orderId: number) =>
         apiFetch<{ message: string; slug: string }>(
             `orders/${orderId}/confirm-order/`,

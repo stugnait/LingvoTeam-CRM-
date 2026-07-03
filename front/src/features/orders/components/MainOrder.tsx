@@ -66,7 +66,10 @@ export default function OrdersPage() {
         downloadSingleTargetFile,
         searchFilter,
         handleSearchChange,
-        updateClientStatusLoading
+        updateClientStatusLoading,
+        deleteLoading,
+        deleteFileLoading,
+        deleteOrderFile
     } = useOrders()
 
     const { user } = useProfile()
@@ -100,6 +103,8 @@ export default function OrdersPage() {
     const [selectedTranslatorId, setSelectedTranslatorId] = useState<number | null>(null)
     const [files, setFiles] = useState<File[]>([])
 
+    const [isUploadingSource, setIsUploadingSource] = useState(false)
+
     const [deadline, setDeadline] = useState<Date | undefined>(undefined)
     const [comment, setComment] = useState("")
     const [priority, setPriority] = useState<Priority | undefined>(undefined)
@@ -111,6 +116,8 @@ export default function OrdersPage() {
     const [managerDelivery, setManagerDelivery] = useState("")
     const router = useRouter()
     const [totalAmount, setTotalAmount] = useState("")
+
+
 
     const handleUpdateClientStatus = async (orderId: number, statusId: number) => {
         try {
@@ -143,6 +150,25 @@ export default function OrdersPage() {
             }).format(date)
         } catch (e) {
             return dateString
+        }
+    }
+
+    const handleUploadSourceFiles = async (files: File[]) => {
+        if (!viewingOrder) return false
+        try {
+            setIsUploadingSource(true)
+            const formData = new FormData()
+            files.forEach(file => formData.append('files', file))
+
+            await ordersApi.uploadSourceFiles(viewingOrder.id, formData)
+
+            loadOrderFiles(viewingOrder.id)
+            return true
+        } catch (error) {
+            console.error("Помилка при завантаженні файлів у Source менеджером:", error)
+            return false
+        } finally {
+            setIsUploadingSource(false)
         }
     }
 
@@ -381,6 +407,11 @@ export default function OrdersPage() {
                     onDownloadTranslation={() => downloadOrderTargetFiles(viewingOrder.id)}
                     onCancel={() => setIsViewModalOpen(false)}
                     onSave={() => setIsViewModalOpen(false)}
+
+                    onUploadSource={handleUploadSourceFiles}
+                    isUploadingSource={isUploadingSource}
+                    onDeleteFile={(orderId, fileId) => deleteOrderFile(orderId, fileId)}
+                    deleteFileLoadingId={deleteFileLoading}
 
                     // 👉 ДОДАНО ФУНКЦІЇ ДЛЯ ТРЬОХ КРАПОК
                     onEdit={() => {

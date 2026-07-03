@@ -29,6 +29,7 @@ export function useOrders() {
     ====================== */
 
     const [loading, setLoading] = useState(false)
+    const [deleteFileLoading, setDeleteFileLoading] = useState<number | null>(null)
     const [deleteLoading, setDeleteLoading] = useState<number | null>(null)
     const [updateLoading, setUpdateLoading] = useState<number | null>(null)
     const [updateClientStatusLoading, setUpdateClientStatusLoading] = useState<number | null>(null) // 👉 ДОДАНО
@@ -194,6 +195,22 @@ export function useOrders() {
             setFilesLoading(false)
         }
     }, [])
+
+    // 👉 ДОДАНО: видалення файлу (Source/Target). Розміщено ПІСЛЯ loadOrderFiles,
+    // бо посилається на нього в масиві залежностей — інакше буде
+    // "Cannot access 'loadOrderFiles' before initialization".
+    const deleteOrderFile = useCallback(async (orderId: number, fileId: number) => {
+        try {
+            setDeleteFileLoading(fileId)
+            await ordersApi.deleteOrderFile(orderId, fileId)
+            handleSuccess("Deleted", "File deleted")
+            await loadOrderFiles(orderId)
+        } catch (e) {
+            handleError(e, "Failed to delete file")
+        } finally {
+            setDeleteFileLoading(null)
+        }
+    }, [handleError, handleSuccess, loadOrderFiles])
 
     const downloadSingleSourceFile = useCallback(async (orderId: number, fileId: number, filename: string) => {
         try {
@@ -611,6 +628,10 @@ export function useOrders() {
         downloadSingleSourceFile,
         downloadSingleTargetFile,
         searchFilter,
-        handleSearchChange
+        handleSearchChange,
+
+        // 👉 ДОДАНО: видалення файлу
+        deleteOrderFile,
+        deleteFileLoading,
     }
 }
