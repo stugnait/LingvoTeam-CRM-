@@ -18,7 +18,9 @@ ALLOWED_HOSTS = [
     "lingvoteam.website",
     "www.lingvoteam.website",
     'api.lingvoteam.website',
-    'www.api.lingvoteam.website'
+    'www.api.lingvoteam.website',
+    'lingvoteam-crm.pp.ua',
+    'www.lingvoteam-crm.pp.ua'
 ]
 
 CORS_ALLOW_CREDENTIALS = True
