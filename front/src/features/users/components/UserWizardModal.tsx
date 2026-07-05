@@ -19,7 +19,7 @@ import type { Permission, Role } from "../types"
 import type { UserFormData } from "../types"
 
 // -----------------------------------------------------------------------
-// Які таби є обов'язковими (locked) для кожного slug ролі
+// Какие табы являются обязательными (locked) для каждого slug роли
 // -----------------------------------------------------------------------
 const ROLE_LOCKED_TABS: Record<string, string[]> = {
     manager:   ["Orders"],
@@ -78,7 +78,7 @@ export function UserWizardModal({
 
     const isEditorRole = selectedRoleObj?.slug === "editor"
 
-    // Обчислюємо які permission_ids вже є у ролі (базові — locked)
+    // Вычисляем, какие permission_ids уже есть у роли (базовые — locked)
     const rolePermissionIds = useMemo(() => {
         if (!selectedRoleObj) { return new Set<number>() }
         return new Set(
@@ -92,7 +92,7 @@ export function UserWizardModal({
         )
     }, [selectedRoleObj, permissions, lockedTabs])
 
-    // Toggle окремого таба (тільки не-locked)
+    // Toggle отдельного таба (только не-locked)
     const toggleTab = (tabKey: string) => {
         if (lockedTabs.includes(tabKey)) { return }
 
@@ -126,11 +126,26 @@ export function UserWizardModal({
         }))
     }
 
+    // ── Валидация шагов для блокировки кнопок и переходов ──
+    const isStep1Valid = Boolean(
+        form.full_name?.trim() &&
+        form.email?.trim() &&
+        form.phone?.trim() &&
+        !errors.full_name &&
+        !errors.email &&
+        !errors.phone
+    )
+
+    const isStep2Valid = Boolean(
+        form.role &&
+        !errors.role
+    )
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="p-0 gap-0 max-w-lg w-[95vw] sm:w-full overflow-hidden bg-background">
 
-                {/* ── Прогрес-хедер ── */}
+                {/* ── Прогресс-хедер ── */}
                 <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b shrink-0">
                     <div className="flex items-center justify-between mb-3">
                         <h2 className="text-base font-semibold">
@@ -141,7 +156,7 @@ export function UserWizardModal({
                         </span>
                     </div>
 
-                    {/* Прогрес-бар */}
+                    {/* Прогресс-бар */}
                     <div className="flex gap-2">
                         {[1, 2].map(n => (
                             <div
@@ -154,7 +169,7 @@ export function UserWizardModal({
                         ))}
                     </div>
 
-                    {/* Лейбли кроків */}
+                    {/* Лейблы шагов */}
                     <div className="flex mt-2">
                         <span className={cn("flex-1 text-xs", step === 1 ? "text-primary font-medium" : "text-muted-foreground")}>
                             Особисті дані
@@ -168,8 +183,10 @@ export function UserWizardModal({
                 {/* ── Sliding content ── */}
                 <div className="relative overflow-hidden" style={{ minHeight: 380 }}>
 
-                    {/* КРОК 1 — особисті дані */}
+                    {/* КРОК 1 — личные данные */}
                     <div
+                        {...(step !== 1 ? { inert: "true" } : {})}
+                        aria-hidden={step !== 1}
                         className={cn(
                             "absolute inset-0 flex flex-col gap-5 p-4 sm:p-6 transition-transform duration-300 ease-in-out",
                             step === 1 ? "translate-x-0" : "-translate-x-full"
@@ -260,14 +277,16 @@ export function UserWizardModal({
                         </div>
                     </div>
 
-                    {/* КРОК 2 — роль + доступи */}
+                    {/* КРОК 2 — роль + доступы */}
                     <div
+                        {...(step !== 2 ? { inert: "true" } : {})}
+                        aria-hidden={step !== 2}
                         className={cn(
                             "absolute inset-0 flex flex-col gap-4 p-4 sm:p-6 transition-transform duration-300 ease-in-out overflow-y-auto",
                             step === 2 ? "translate-x-0" : "translate-x-full"
                         )}
                     >
-                        {/* Вибір ролі */}
+                        {/* Выбор роли */}
                         <div>
                             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
                                 Основна роль <span className="text-destructive">*</span>
@@ -279,7 +298,6 @@ export function UserWizardModal({
                                         ...prev,
                                         role: Number(value),
                                         extra_permission_ids: [],
-                                        // скидаємо translator-поля при зміні ролі
                                         is_translator: false,
                                         currency_id: null,
                                     }))
@@ -301,10 +319,9 @@ export function UserWizardModal({
                             )}
                         </div>
 
-                        {/* ── Галочка "також перекладач" — тільки для editor ── */}
+                        {/* Галочка "также переводчик" — только для editor */}
                         {isEditorRole && (
                             <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-3">
-                                {/* Чекбокс */}
                                 <button
                                     type="button"
                                     onClick={toggleIsTranslator}
@@ -325,11 +342,10 @@ export function UserWizardModal({
                                         </p>
                                     </div>
                                 </button>
-
                             </div>
                         )}
 
-                        {/* Таби — показуємо тільки якщо роль вибрана */}
+                        {/* Табы модулей */}
                         {selectedRoleObj ? (
                             <div>
                                 <div className="flex items-center justify-between mb-3">
@@ -416,7 +432,7 @@ export function UserWizardModal({
                             <Button variant="ghost" onClick={() => onOpenChange(false)}>
                                 Скасувати
                             </Button>
-                            <Button onClick={onNextStep}>
+                            <Button onClick={onNextStep} disabled={!isStep1Valid}>
                                 Далі
                                 <ArrowRight className="h-4 w-4 ml-2" />
                             </Button>
@@ -427,7 +443,7 @@ export function UserWizardModal({
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Назад
                             </Button>
-                            <Button onClick={onSubmit}>
+                            <Button onClick={onSubmit} disabled={!isStep2Valid}>
                                 {isEdit ? "Зберегти зміни" : "Створити користувача"}
                                 <ChevronRight className="h-4 w-4 ml-2" />
                             </Button>

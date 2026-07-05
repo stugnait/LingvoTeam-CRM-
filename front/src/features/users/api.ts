@@ -2,6 +2,7 @@ import { apiFetch } from "@/src/shared/api/client"
 import type {Permission, Role, RoleFormData, User, UserFormData, UsersListResponse} from "./types"
 
 // 👇 Допоміжна функція для створення FormData
+// 👇 Допоміжна функція для створення FormData
 const buildFormData = (data: UserFormData): FormData => {
     const formData = new FormData()
 
@@ -15,18 +16,15 @@ const buildFormData = (data: UserFormData): FormData => {
             return
         }
 
-        // Масиви (наприклад extra_permission_ids) —
-        // кожен елемент окремим полем, щоб Django правильно розпарсив
+        // Масиви (наприклад extra_permission_ids)
         if (Array.isArray(value)) {
-            if (value.length === 0) {
-                // Порожній масив — надсилаємо порожній рядок,
-                // щоб бекенд знав що треба очистити список
-                formData.append(key, "")
-            } else {
+            if (value.length > 0) {
                 value.forEach((item) => {
                     formData.append(key, String(item))
                 })
             }
+            // ✅ Якщо масив порожній (length === 0), ми ПРОСТО НІЧОГО НЕ ДОДАЄМО.
+            // Django автоматично сприйме відсутність ключа як порожній список (або проігнорує, якщо це POST).
             return
         }
 
