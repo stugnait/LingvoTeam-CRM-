@@ -20,9 +20,11 @@ import { TaskModal } from "@/src/components/modals/jira/InfoModal";
 import { filterTasksByDeadline, type DeadlineFilter } from '@/src/components/canban/KanbanDeadlineFilter';
 
 import { useEditor } from '../hooks/useEditor';
+import { useProfile } from '@/src/features/profile/hooks/useProfile'; // Отримуємо профайл!
 import type { KanbanTask } from '../types';
 import { formatPriority } from '../types';
 import { cn } from '@/src/lib/utils';
+import { useI18n } from "@/src/shared/i18n/I18nProvider"; // Додав для перекладів
 
 import {
     Target,
@@ -31,6 +33,7 @@ import {
     Search,
     RotateCcw,
     CheckSquare,
+    Filter
 } from 'lucide-react';
 import { RejectOrderModal } from "@/src/components/modals/jira/RejectOrderModal";
 import { RatingModal } from "@/src/components/modals/jira/RatingModal";
@@ -45,10 +48,10 @@ const COLUMN_ICONS: Record<string, React.ReactNode> = {
     done:           <CheckSquare className="w-4 h-4" />,
 };
 
-const formatDate = (dateString?: string) => {
+const formatDate = (dateString?: string, locale: string = "uk") => {
     if (!dateString) { return 'Не вказано'; }
     try {
-        return new Intl.DateTimeFormat('uk-UA', {
+        return new Intl.DateTimeFormat(locale === "uk" ? "uk-UA" : "en-US", {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -61,6 +64,9 @@ const formatDate = (dateString?: string) => {
 };
 
 export default function EditorMain() {
+    const { t, locale } = useI18n(); // Для перекладу кнопок
+    const { user } = useProfile();   // Отримуємо юзера!
+
     const {
         tasks,
         columns,
@@ -94,7 +100,12 @@ export default function EditorMain() {
         downloadSingleTargetFile,
     } = useEditor();
 
+    const currentUserId = user?.id ? Number(user.id) : null;
+
     const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>('all');
+
+    // Стейт для перемикача "Мої таски". По замовчуванню можна поставити false
+    const [isOnlyMine, setIsOnlyMine] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -119,13 +130,24 @@ export default function EditorMain() {
 
     const allTasks = useMemo(() => formattedTasks, [formattedTasks]);
 
-    // ✅ Фільтруємо по taskIds з хука — там вже правильний розподіл по editor_status_id
+    // ✅ Універсальний фільтр
     const getFormattedTasksForColumn = useCallback((column: any) => {
-        const columnTasks = formattedTasks.filter(
+        let columnTasks = formattedTasks.filter(
             t => column.taskIds.includes(t.id.toString())
         ) as KanbanTask[];
+
+        if (isOnlyMine && currentUserId) {
+            columnTasks = columnTasks.filter(t => {
+                const taskAny = t as any;
+                // Фільтруємо, якщо юзер є або едітором, або менеджером
+                return taskAny.editor_id === currentUserId ||
+                    taskAny.manager_accept_id === currentUserId ||
+                    taskAny.manager_delivery_id === currentUserId;
+            });
+        }
+
         return filterTasksByDeadline(columnTasks, deadlineFilter);
-    }, [formattedTasks, deadlineFilter]);
+    }, [formattedTasks, deadlineFilter, isOnlyMine, currentUserId]);
 
     const columnsWithIcons = useMemo(() =>
             columns.map(col => ({
@@ -156,7 +178,28 @@ export default function EditorMain() {
                 allTasks={allTasks}
             />
 
-            <div className="p-3 sm:p-6">
+            {/* Блок з фільтрами, стилізований так само як у OrdersPage */}
+            <div className="px-3 sm:px-6 pt-6 pb-2">
+                <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 self-start max-w-fit">
+                    <Filter className="w-4 h-4 text-muted-foreground shrink-0 ml-1" />
+                    <div className="flex bg-muted/50 p-1 rounded-lg">
+                        <button
+                            onClick={() => setIsOnlyMine(false)}
+                            className={cn("px-4 py-1.5 text-sm font-medium rounded-md", !isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+                        >
+                            {t("common.allOrders")}
+                        </button>
+                        <button
+                            onClick={() => setIsOnlyMine(true)}
+                            className={cn("px-4 py-1.5 text-sm font-medium rounded-md", isOnlyMine ? "bg-background text-foreground shadow-sm" : "text-muted-foreground")}
+                        >
+                            {t("common.myOrders")}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-3 sm:p-6 pt-0 mt-4">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-64">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
@@ -220,7 +263,7 @@ export default function EditorMain() {
                             : null}
                         clientName={(selectedTask as any).client_name}
                         languagePair={(selectedTask as any).language_pair_name}
-                        dueDate={formatDate((selectedTask as any).deadline)}
+                        dueDate={formatDate((selectedTask as any).deadline, locale)}
                         onDownloadOriginal={() => downloadOrderSourceFiles(selectedTask.id)}
                         onDownloadTranslation={() => downloadOrderTargetFiles(selectedTask.id)}
                         onCancel={closeModal}
@@ -234,11 +277,10 @@ export default function EditorMain() {
                         onLoadFiles={loadOrderFiles}
                         onDownloadSingleSource={downloadSingleSourceFile}
                         onDownloadSingleTarget={downloadSingleTargetFile}
-                        // Тут немає onAnalyzeFolder, тому кнопка не з'явиться!
                     />
                 )}
 
-                {/* RejectModal — відкриття контролює useEditor по editor_status_id === '11' */}
+                {/* RejectModal */}
                 {selectedTask && (
                     <RejectOrderModal
                         open={isRejectModalOpen}
@@ -249,7 +291,7 @@ export default function EditorMain() {
                     />
                 )}
 
-                {/* RatingModal — відкриття контролює useEditor по editor_status_id === '8' */}
+                {/* RatingModal */}
                 {selectedTask && (
                     <RatingModal
                         open={isApproveModalOpen}

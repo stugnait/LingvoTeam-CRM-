@@ -220,16 +220,21 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Order.objects.none()
 
-        if user.role.slug in ['admin', 'owner']:
+        # Тепер адміни, власники та едітори спочатку отримують ВСІ замовлення
+        if user.role.slug in ['admin', 'owner', 'editor']:
             queryset = Order.objects.all()
-        elif user.role.slug == 'editor':
-            queryset = Order.objects.filter(editor_id=user)
         else:
             queryset = Order.objects.all()
 
+        # Фільтрація "Тільки мої"
         my_orders_only = self.request.query_params.get('my_orders')
         if my_orders_only and my_orders_only.lower() == 'true':
-            queryset = queryset.filter(Q(manager_accept_id=user) | Q(manager_delivery_id=user))
+            if user.role.slug == 'editor':
+                # Для едітора шукаємо по editor_id
+                queryset = queryset.filter(editor_id=user)
+            else:
+                # Для менеджера шукаємо по manager_accept_id або manager_delivery_id
+                queryset = queryset.filter(Q(manager_accept_id=user) | Q(manager_delivery_id=user))
 
         return queryset
 
