@@ -185,7 +185,7 @@ export function UserWizardModal({
 
                     {/* КРОК 1 — личные данные */}
                     <div
-                        {...(step !== 1 ? { inert: "true" } : {})}
+                        {...(step !== 1 ? {inert: true} : {})}
                         aria-hidden={step !== 1}
                         className={cn(
                             "absolute inset-0 flex flex-col gap-5 p-4 sm:p-6 transition-transform duration-300 ease-in-out",
@@ -194,11 +194,12 @@ export function UserWizardModal({
                     >
                         {/* Аватар */}
                         <div className="flex items-center gap-4">
-                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border bg-muted flex items-center justify-center">
+                            <div
+                                className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border bg-muted flex items-center justify-center">
                                 {avatarPreview ? (
-                                    <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
+                                    <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover"/>
                                 ) : (
-                                    <UserIcon className="h-7 w-7 text-muted-foreground" />
+                                    <UserIcon className="h-7 w-7 text-muted-foreground"/>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -209,13 +210,15 @@ export function UserWizardModal({
                                     id="wizard-avatar-upload"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0]
-                                        if (file) { setForm(prev => ({ ...prev, avatar: file })) }
+                                        if (file) {
+                                            setForm(prev => ({...prev, avatar: file}))
+                                        }
                                         e.target.value = ""
                                     }}
                                 />
                                 <Button asChild variant="outline" size="sm">
                                     <label htmlFor="wizard-avatar-upload" className="cursor-pointer">
-                                        <Upload className="h-4 w-4 mr-2" />
+                                        <Upload className="h-4 w-4 mr-2"/>
                                         Фото
                                     </label>
                                 </Button>
@@ -223,7 +226,7 @@ export function UserWizardModal({
                                     <Button
                                         type="button" variant="ghost" size="sm"
                                         className="text-destructive hover:text-destructive"
-                                        onClick={() => setForm(prev => ({ ...prev, avatar: null }))}
+                                        onClick={() => setForm(prev => ({...prev, avatar: null}))}
                                     >
                                         Видалити
                                     </Button>
@@ -237,7 +240,7 @@ export function UserWizardModal({
                                 <Input
                                     placeholder="Повне ім'я"
                                     value={form.full_name}
-                                    onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
+                                    onChange={(e) => setForm(prev => ({...prev, full_name: e.target.value}))}
                                     className={errors.full_name ? "border-destructive" : ""}
                                 />
                                 {errors.full_name && (
@@ -249,7 +252,7 @@ export function UserWizardModal({
                                 <Input
                                     placeholder="Email"
                                     value={form.email}
-                                    onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                                    onChange={(e) => setForm(prev => ({...prev, email: e.target.value}))}
                                     className={errors.email ? "border-destructive" : ""}
                                 />
                                 {errors.email && (
@@ -267,7 +270,7 @@ export function UserWizardModal({
                                     type="tel"
                                     className={errors.phone ? "border-destructive" : ""}
                                     onValueChange={(values) =>
-                                        setForm(prev => ({ ...prev, phone: values.formattedValue }))
+                                        setForm(prev => ({...prev, phone: values.formattedValue}))
                                     }
                                 />
                                 {errors.phone && (
@@ -279,7 +282,7 @@ export function UserWizardModal({
 
                     {/* КРОК 2 — роль + доступы */}
                     <div
-                        {...(step !== 2 ? { inert: "true" } : {})}
+                        {...(step !== 2 ? {inert: true} : {})}
                         aria-hidden={step !== 2}
                         className={cn(
                             "absolute inset-0 flex flex-col gap-4 p-4 sm:p-6 transition-transform duration-300 ease-in-out overflow-y-auto",
@@ -288,7 +291,8 @@ export function UserWizardModal({
                     >
                         {/* Выбор роли */}
                         <div>
-                            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                            <label
+                                className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
                                 Основна роль <span className="text-destructive">*</span>
                             </label>
                             <Select
@@ -304,7 +308,7 @@ export function UserWizardModal({
                                 }}
                             >
                                 <SelectTrigger className={errors.role ? "border-destructive" : ""}>
-                                    <SelectValue placeholder="Оберіть роль..." />
+                                    <SelectValue placeholder="Оберіть роль..."/>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {safeRoles.map(role => (
@@ -333,7 +337,7 @@ export function UserWizardModal({
                                             ? "bg-primary border-primary text-primary-foreground"
                                             : "border-input bg-background"
                                     )}>
-                                        {form.is_translator && <Check className="h-3.5 w-3.5" />}
+                                        {form.is_translator && <Check className="h-3.5 w-3.5"/>}
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium">Також є перекладачем</p>
@@ -349,7 +353,8 @@ export function UserWizardModal({
                         {selectedRoleObj ? (
                             <div>
                                 <div className="flex items-center justify-between mb-3">
-                                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    <label
+                                        className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                                         Модулі доступу
                                     </label>
                                     <span className="text-xs text-muted-foreground">
@@ -391,7 +396,7 @@ export function UserWizardModal({
                                                         </p>
                                                         {isLocked && (
                                                             <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                                                                <Lock className="h-3 w-3" />
+                                                                <Lock className="h-3 w-3"/>
                                                                 Обов&#39;язковий для цієї ролі
                                                             </p>
                                                         )}
@@ -406,8 +411,8 @@ export function UserWizardModal({
                                                 )}>
                                                     {isSelected && (
                                                         isLocked
-                                                            ? <Lock className="h-3 w-3 text-primary-foreground" />
-                                                            : <Check className="h-3.5 w-3.5" />
+                                                            ? <Lock className="h-3 w-3 text-primary-foreground"/>
+                                                            : <Check className="h-3.5 w-3.5"/>
                                                     )}
                                                 </div>
                                             </button>
@@ -418,7 +423,7 @@ export function UserWizardModal({
                         ) : (
                             <div className="flex-1 flex items-center justify-center">
                                 <p className="text-sm text-muted-foreground text-center">
-                                    Спочатку оберіть роль,<br />щоб побачити доступні модулі
+                                    Спочатку оберіть роль,<br/>щоб побачити доступні модулі
                                 </p>
                             </div>
                         )}
@@ -426,7 +431,8 @@ export function UserWizardModal({
                 </div>
 
                 {/* ── Футер ── */}
-                <div className="px-4 sm:px-6 py-3 sm:py-4 border-t shrink-0 flex items-center justify-between bg-background">
+                <div
+                    className="px-4 sm:px-6 py-3 sm:py-4 border-t shrink-0 flex items-center justify-between bg-background">
                     {step === 1 ? (
                         <>
                             <Button variant="ghost" onClick={() => onOpenChange(false)}>
