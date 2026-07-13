@@ -186,6 +186,24 @@ export function OrdersTable({
         setLoadingId(null)
     }
 
+    const handleEditClick = async (e: React.MouseEvent, order: any) => {
+        e.stopPropagation(); // Зупиняємо клік, щоб не спрацював onTaskOpen на рядку
+
+        if (!onEdit) return;
+
+        try {
+            // Отримуємо повні деталі замовлення перед редагуванням
+            const fullDetails = await onOpen(order.id);
+
+            // Зливаємо базові дані рядка з повними деталями і відправляємо в onEdit
+            onEdit({ ...order, ...fullDetails });
+        } catch (error) {
+            console.error("Failed to fetch full details for editing", error);
+            // Fallback: якщо сталася помилка, передаємо хоча б те, що маємо
+            onEdit(order);
+        }
+    };
+
     useEffect(() => {
         if (!highlightId) { return }
         setActiveHighlightId(highlightId)
@@ -541,15 +559,16 @@ export function OrdersTable({
                                             {onEdit && (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm">
+                                                        {/* Додано зупинку спливання на тригер */}
+                                                        <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end" className="z-[101]">
-                                                        <DropdownMenuItem onClick={() => onEdit(order as any)}>
+                                                        <DropdownMenuItem onClick={(e) => handleEditClick(e, order)}>
                                                             <Pencil className="h-4 w-4 mr-2" /> {t("common.edit")}
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => onDelete(order.id)} className="text-destructive">
+                                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(order.id); }} className="text-destructive">
                                                             <Trash2 className="h-4 w-4 mr-2" /> {t("common.delete")}
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>

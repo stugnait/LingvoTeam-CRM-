@@ -197,23 +197,57 @@ export default function OrdersPage() {
         setIsModalOpen(true)
     }
 
-    const handleEdit = (order: any) => {
-        setEditingOrder(order)
-        setClientId(String(order.client_id ?? ""))
-        setSourceLanguage(String(order.source_language ?? ""))
-        setTargetLanguage(String(order.target_language ?? ""))
-        setTrafficId(String(order.traffic_id ?? ""))
-        setCurrencyId(String(order.currency_id ?? ""))
-        setEditor(String(order.editor_id ?? ""))
-        setLanguagePairId(String(order.language_pair_id ?? ""))
-        setTranslatorTrafficId(String(order.translator_traffic_id ?? ""))
-        setSelectedTranslatorId(order.translator_id ?? null)
-        setDeadline(order.deadline ? new Date(order.deadline) : undefined)
-        setComment(order.client_comment ?? "")
-        setPriority(order.priority ?? undefined)
-        setIsModalOpen(true)
-        setManagerAccept(String(order.manager_accept_id ?? ""))
-        setManagerDelivery(String(order.manager_delivery_id ?? ""))
+    const handleEdit = async (order: any) => {
+        try {
+            // 1. Завантажуємо повні деталі замовлення (для точних ID)
+            const details = await loadOrderDetails(order.id)
+
+            // 2. Завантажуємо файли ордера (щоб відобразити в модалці)
+            await loadOrderFiles(order.id)
+
+            // 3. Зливаємо дані: details мають вищий пріоритет
+            const merged = { ...order, ...details }
+            setEditingOrder(merged)
+
+            // 4. КЛІЄНТ
+            const cId = merged.client?.id || merged.client_id
+            setClientId(cId ? String(cId) : "")
+
+            // 5. МОВИ (шукаємо ID за існуючим ID або за текстовою назвою)
+            const sLang = languages.find(l => l.id === merged.source_language_id || l.name === merged.source_language)
+            setSourceLanguage(sLang ? String(sLang.id) : "")
+
+            const tLang = languages.find(l => l.id === merged.target_language_id || l.name === merged.target_language)
+            setTargetLanguage(tLang ? String(tLang.id) : "")
+
+            // 6. ТАРИФ І ВАЛЮТА
+            setTrafficId(String(merged.traffic_id ?? ""))
+            setCurrencyId(String(merged.currency_id ?? ""))
+            setLanguagePairId(String(merged.language_pair_id ?? ""))
+
+            // 7. РЕДАКТОР І ПЕРЕКЛАДАЧ
+            const edId = merged.editor?.id || merged.editor_id
+            setEditor(edId ? String(edId) : "")
+
+            const trId = merged.translator?.id || merged.translator_id
+            setSelectedTranslatorId(trId ? Number(trId) : null)
+            setTranslatorTrafficId(String(merged.translator_traffic_id ?? ""))
+
+            // 8. МЕНЕДЖЕРИ
+            setManagerAccept(String(merged.manager_accept_id ?? ""))
+            setManagerDelivery(String(merged.manager_delivery_id ?? ""))
+
+            // 9. ІНШІ ДАНІ (дедлайн, пріоритет, коментар, сума)
+            setDeadline(merged.deadline ? new Date(merged.deadline) : undefined)
+            setComment(merged.client_comment ?? merged.comment ?? "")
+            setPriority(merged.priority ?? undefined)
+            setTotalAmount(String(merged.total_client_price ?? merged.total_amount ?? ""))
+
+            // 10. Відкриваємо модалку редагування тільки після завантаження всіх даних
+            setIsModalOpen(true)
+        } catch (error) {
+            console.error("Помилка завантаження деталей для редагування:", error)
+        }
     }
 
     const handleSubmit = async () => {
@@ -387,6 +421,10 @@ export default function OrdersPage() {
                 tariffs={traffics || []} managerAccept={managerAccept} setManagerAccept={setManagerAccept} managerDelivery={managerDelivery}
                 setManagerDelivery={setManagerDelivery} managers={managers || []} onRefreshTranslators={refreshTranslators}
                 totalAmount={totalAmount} setTotalAmount={setTotalAmount}
+                sourceFiles={sourceFiles}
+                onDownloadFile={(fileId, filename) => editingOrder && downloadSingleSourceFile(editingOrder.id, fileId, filename)}
+                onDeleteFile={(fileId) => editingOrder && deleteOrderFile(editingOrder.id, fileId)}
+                deleteFileLoadingId={deleteFileLoading}
             />
 
             {viewingOrder && (

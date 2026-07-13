@@ -18,7 +18,9 @@ import {
     Image as ImageIcon,
     Type,
     Plus,
-    UserPlus
+    UserPlus,
+    X,
+    Loader2
 } from "lucide-react"
 
 import { useTranslators } from "@/src/features/translators/hooks/useTranslators"
@@ -145,6 +147,10 @@ interface CreateOrderModalProps {
     onRefreshTranslators?: () => Promise<any[]>
     totalAmount: string
     setTotalAmount: (value: string) => void
+    sourceFiles?: { id: number; name: string }[]
+    onDownloadFile?: (fileId: number, filename: string) => void
+    onDeleteFile?: (fileId: number) => void
+    deleteFileLoadingId?: number | null
 }
 
 type EditorOption = {
@@ -179,6 +185,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
         managerDelivery, setManagerDelivery,
         managers,
         totalAmount, setTotalAmount,
+        sourceFiles, onDownloadFile, onDeleteFile, deleteFileLoadingId
     } = props
 
     const {
@@ -435,6 +442,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     // ─── Validation ─────────────────────────────────────────────────────────
 
     const stepValidation = (step: number): boolean => {
+        // Якщо ми редагуємо, дозволяємо вільний перехід між сторінками
+        if (mode === "edit") return true;
+
         switch (step) {
             case 0:
                 return !!clientId && !!sourceLanguage && !!targetLanguage && files.length > 0 && filesConfirmed
@@ -454,6 +464,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
     }
 
     const stepError = (step: number): string | null => {
+        // Прибираємо повідомлення про помилку під час редагування
+        if (mode === "edit") return null;
+
         switch (step) {
             case 0:
                 if (!clientId) { return t("orders.validation.selectClient") }
@@ -686,6 +699,41 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 setIsManualStats(false)
                             }}
                         />
+
+                        {/* 👉 ДОДАНО: Відображення існуючих файлів у стилі як на скріншоті */}
+                        {mode === "edit" && sourceFiles && sourceFiles.length > 0 && (
+                            <div className="mt-3 space-y-1.5 px-1">
+                                {sourceFiles.map((file) => (
+                                    <div key={file.id} className="flex items-center justify-between py-1.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => onDownloadFile && onDownloadFile(file.id, file.name)}
+                                            className="flex items-center gap-2 overflow-hidden text-sm text-slate-600 hover:text-blue-600 transition-colors text-left"
+                                            title="Завантажити файл"
+                                        >
+                                            <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                                            <span className="truncate">{file.name}</span>
+                                        </button>
+
+                                        <div className="flex items-center gap-3 shrink-0 ml-4">
+                                            <span className="text-[11px] text-slate-400">Вже завантажено</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => onDeleteFile && onDeleteFile(file.id)}
+                                                disabled={deleteFileLoadingId === file.id}
+                                                className="text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50 flex items-center justify-center p-1 rounded-md hover:bg-slate-100"
+                                            >
+                                                {deleteFileLoadingId === file.id ? (
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                ) : (
+                                                    <X className="h-3.5 w-3.5" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {!filesConfirmed && (
                             <button
@@ -1156,21 +1204,64 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 {statsResult ? (
                                     <>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
-                                                <div className="text-xs text-gray-500">{t("orders.autoPages")}</div>
-                                                <div className="text-lg font-bold text-gray-800">{manualStats.pages}</div>
+                                            <div
+                                                className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div
+                                                    className="text-xs text-gray-500 mb-1">{t("orders.autoPages")}</div>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    className="h-8 text-center font-bold text-gray-800 bg-white"
+                                                    value={manualStats.pages}
+                                                    onChange={(e) => {
+                                                        setIsManualStats(true)
+                                                        setManualStats(p => ({...p, pages: e.target.value}))
+                                                    }}
+                                                />
                                             </div>
-                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
-                                                <div className="text-xs text-gray-500">{t("common.withSpaces")}</div>
-                                                <div className="text-lg font-bold text-gray-800">{manualStats.charsWithSpaces}</div>
+                                            <div
+                                                className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div
+                                                    className="text-xs text-gray-500 mb-1">{t("common.withSpaces")}</div>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    className="h-8 text-center font-bold text-gray-800 bg-white"
+                                                    value={manualStats.charsWithSpaces}
+                                                    onChange={(e) => {
+                                                        setIsManualStats(true)
+                                                        setManualStats(p => ({...p, charsWithSpaces: e.target.value}))
+                                                    }}
+                                                />
                                             </div>
-                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
-                                                <div className="text-xs text-gray-500">{t("common.withoutSpaces")}</div>
-                                                <div className="text-lg font-bold text-gray-800">{manualStats.charsNoSpaces}</div>
+                                            <div
+                                                className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div
+                                                    className="text-xs text-gray-500 mb-1">{t("common.withoutSpaces")}</div>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    className="h-8 text-center font-bold text-gray-800 bg-white"
+                                                    value={manualStats.charsNoSpaces}
+                                                    onChange={(e) => {
+                                                        setIsManualStats(true)
+                                                        setManualStats(p => ({...p, charsNoSpaces: e.target.value}))
+                                                    }}
+                                                />
                                             </div>
-                                            <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
-                                                <div className="text-xs text-gray-500">{t("common.images")}</div>
-                                                <div className="text-lg font-bold text-gray-800">{manualStats.images}</div>
+                                            <div
+                                                className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-center">
+                                                <div className="text-xs text-gray-500 mb-1">{t("common.images")}</div>
+                                                <Input
+                                                    type="number"
+                                                    min="0"
+                                                    className="h-8 text-center font-bold text-gray-800 bg-white"
+                                                    value={manualStats.images}
+                                                    onChange={(e) => {
+                                                        setIsManualStats(true)
+                                                        setManualStats(p => ({...p, images: e.target.value}))
+                                                    }}
+                                                />
                                             </div>
                                         </div>
 
@@ -1188,11 +1279,11 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                                         setCustomDiscount(e.target.value)
                                                         setUseManualPrice(false)
                                                     }}
-                                                    placeholder={t("orders.standardDiscount", { value: defaultDiscountPercent })}
+                                                    placeholder={t("orders.standardDiscount", {value: defaultDiscountPercent})}
                                                     className="w-32 px-3 py-1.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
                                                 <span className="text-xs text-gray-500">
-                                                    {t("orders.leaveEmptyForStandardDiscount", { value: defaultDiscountPercent })}
+                                                    {t("orders.leaveEmptyForStandardDiscount", {value: defaultDiscountPercent})}
                                                 </span>
                                             </div>
                                         </div>
