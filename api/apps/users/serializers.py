@@ -4,6 +4,8 @@ import string
 
 from django.core.validators import RegexValidator
 
+from django.utils import timezone
+
 from .models.editor_language_pairs import EditorLanguagePairs
 from .models.user import User
 from .models import Role
@@ -177,7 +179,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_active', 'avatar',
             'permissions',
             'extra_permission_ids',
-            'translator_id',   # null або id запису в translators
+            'translator_id',
         ]
 
 
@@ -223,7 +225,7 @@ class UserListSerializer(serializers.ModelSerializer):
             'role', 'is_active',
             'language_pairs', 'avatar',
             'extra_permission_ids',
-            'translator_id',   # null або id запису в translators
+            'translator_id', 'date_joined'
         )
 
 
@@ -418,6 +420,11 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         user = User(**validated_data)
         user.set_password(password)
+
+        # <--- ДОДАНО: встановлення дати перед збереженням юзера ---
+        user.date_joined = timezone.now()
+        # -----------------------------------------------------------
+
         user.save()
 
         if avatar:

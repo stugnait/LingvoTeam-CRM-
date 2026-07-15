@@ -78,7 +78,7 @@ export function useUsers() {
             setTotalPages(Math.ceil((response.count || 0) / 10))
             setPage(pageNumber)
         } catch {
-            toast({ title: "Error", description: "Failed to load users", variant: "error" })
+            toast({ title: "Помилка", description: "Не вдалося завантажити користувачів", variant: "error" })
         } finally {
             setLoading(false)
         }
@@ -103,7 +103,6 @@ export function useUsers() {
             avatar: null,
             extra_permission_ids: [],
             is_translator: false,
-            // currency_id: null,
         })
         setErrors({})
         setWizardStep(1)
@@ -121,7 +120,6 @@ export function useUsers() {
             avatar: null,
             extra_permission_ids: user.extra_permission_ids ?? [],
             is_translator: !!user.translator_id,
-            // currency_id: null,
         })
         setErrors({})
         setWizardStep(1)
@@ -153,19 +151,18 @@ export function useUsers() {
     // Wizard navigation
     // -------------------------
 
-    // Валідація першого кроку — повертає true якщо все ок
     const validateStep1 = (): boolean => {
         const newErrors: Partial<Record<keyof UserFormData, string>> = {}
 
-        if (!form.full_name.trim()) {newErrors.full_name = "Full name is required"}
+        if (!form.full_name.trim()) {newErrors.full_name = "Вкажіть повне ім'я"}
 
         if (!form.email.trim()) {
-            newErrors.email = "Email is required"
+            newErrors.email = "Вкажіть Email"
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-            newErrors.email = "Invalid email format"
+            newErrors.email = "Невірний формат Email"
         }
 
-        if (!form.phone.trim()) {newErrors.phone = "Phone is required"}
+        if (!form.phone.trim()) {newErrors.phone = "Вкажіть номер телефону"}
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors)
@@ -189,10 +186,9 @@ export function useUsers() {
     // Submit
     // -------------------------
     const submitUser = async (data: UserFormData) => {
-        // Фінальна валідація другого кроку
         if (!data.role || Number(data.role) <= 0) {
-            setErrors({ role: "Role is required" })
-            toast({ title: "Validation error", description: "Please select a role", variant: "error" })
+            setErrors({ role: "Оберіть роль" })
+            toast({ title: "Помилка валідації", description: "Будь ласка, оберіть роль", variant: "error" })
             return
         }
 
@@ -201,16 +197,17 @@ export function useUsers() {
 
             if (selectedUser) {
                 await usersApi.update(selectedUser.id, data)
-                toast({ title: "User updated", description: `${data.full_name} updated successfully` })
+                toast({ title: "Успіх", description: `Дані ${data.full_name} успішно оновлено` })
             } else {
                 await usersApi.register(data)
-                toast({ title: "User created", description: `${data.full_name} created successfully` })
+                toast({ title: "Успіх", description: `Користувача ${data.full_name} успішно створено` })
             }
 
             closeModals()
             await loadUsers(page)
-        } catch {
-            toast({ title: "Error", description: "Failed to save user", variant: "error" })
+        } catch (error: any) {
+            const errorMsg = error?.response?.data?.error || error?.response?.data?.detail || "Не вдалося зберегти користувача";
+            toast({ title: "Помилка", description: errorMsg, variant: "error" })
         }
     }
 
@@ -218,8 +215,9 @@ export function useUsers() {
         try {
             await usersApi.resetPass(userId)
             toast({ title: "Пароль скинуто", description: "Новий пароль надіслано на пошту користувача" })
-        } catch {
-            toast({ title: "Error", description: "Failed to reset password", variant: "error" })
+        } catch (error: any) {
+            const errorMsg = error?.response?.data?.error || error?.response?.data?.detail || "Не вдалося скинути пароль";
+            toast({ title: "Помилка", description: errorMsg, variant: "error" })
         }
     }
 
@@ -230,11 +228,13 @@ export function useUsers() {
         if (!selectedUser) {return}
         try {
             await usersApi.remove(selectedUser.id)
-            toast({ title: "User deleted", description: `${selectedUser.full_name} removed` })
+            toast({ title: "Видалено", description: `Користувача ${selectedUser.full_name} видалено` })
             closeModals()
             await loadUsers(page)
-        } catch {
-            toast({ title: "Error", description: "Failed to delete user", variant: "error" })
+        } catch (error: any) {
+            // Дістаємо повідомлення про ProtectedError з бекенду
+            const errorMsg = error?.error || error?.response?.data?.detail || "Не вдалося видалити користувача";
+            toast({ title: "Помилка видалення", description: errorMsg, variant: "error" })
         }
     }
 
@@ -242,11 +242,12 @@ export function useUsers() {
         if (!selectedUser) {return}
         try {
             await usersApi.deactivate(selectedUser.id)
-            toast({ title: "User deactivated", description: `${selectedUser.full_name} deactivated` })
+            toast({ title: "Деактивовано", description: `Користувача ${selectedUser.full_name} деактивовано` })
             closeModals()
             await loadUsers(page)
-        } catch {
-            toast({ title: "Error", description: "Failed to deactivate user", variant: "error" })
+        } catch (error: any) {
+            const errorMsg = error?.response?.data?.error || error?.response?.data?.detail || "Не вдалося деактивувати користувача";
+            toast({ title: "Помилка", description: errorMsg, variant: "error" })
         }
     }
 
@@ -271,7 +272,6 @@ export function useUsers() {
         filters,
         setFilters,
 
-        // Wizard
         wizardStep,
         goToStep1,
         goToStep2,

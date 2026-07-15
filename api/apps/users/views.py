@@ -2,6 +2,8 @@ import random
 import secrets
 import string
 
+from django.db.models.deletion import ProtectedError
+
 from django.contrib.auth import get_user_model
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import generics, viewsets, status
@@ -14,6 +16,7 @@ from LingvoTeam import settings
 from .authentification import set_auth_cookies
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
 
 from .models.user_permission import UserPermission
 from .serializers import ChangePasswordSerializer, ForgotPasswordSerializer, ResetPasswordSerializer, \
@@ -152,6 +155,23 @@ class UserViewSet(viewsets.ModelViewSet):
     search_fields = ['first_name', 'last_name', 'full_name']
     ordering_fields = ['id', 'email', 'first_name', 'last_name']
     filterset_fields = ['is_active', 'role', 'role__slug']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.action == 'list' and self.request.user and self.request.user.is_authenticated:
+            queryset = queryset.exclude(id=self.request.user.id)
+        return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {
+                    "error": "Неможливо видалити користувача, оскільки він прив'язаний до існуючих замовлень."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['GET'], url_path='editors-by-language')
     def get_editors_by_language(self, request):

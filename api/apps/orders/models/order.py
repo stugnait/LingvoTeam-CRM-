@@ -23,20 +23,20 @@ class Order(models.Model):
 
     language_pair_id = models.ForeignKey(
         "core.LanguagePair",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column='language_pair_id'
     )
 
     manager_accept_id = models.ForeignKey(
         "users.User",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='accepted_orders',
         db_column='manager_accept_id'
     )
 
     manager_delivery_id = models.ForeignKey(
         "users.User",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='delivered_orders',
         db_column='manager_delivery_id',
         null=True,
@@ -45,20 +45,20 @@ class Order(models.Model):
 
     editor_id = models.ForeignKey(
         "users.User",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='edited_orders',
         db_column='editor_id'
     )
 
     client_id = models.ForeignKey(
         "clients.Client",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column='client_id'
     )
 
     traffic_id = models.ForeignKey(
         'orders.OrderTraffic',
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column='traffic_id'
     )
 
@@ -66,32 +66,32 @@ class Order(models.Model):
 
     translator_id = models.ForeignKey(
         "translators.Translator",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column='translator_id'
     )
 
     translator_traffic_id = models.ForeignKey(
         "translators.TranslatorTraffic",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         db_column='translator_traffic_id'
     )
 
     # Також для статусів
     client_status = models.ForeignKey(
-        "Status", on_delete=models.CASCADE,
+        "Status", on_delete=models.PROTECT,
         related_name='client_status_orders', db_column='client_status'
     )
     translator_status = models.ForeignKey(
-        "Status", on_delete=models.CASCADE,
+        "Status", on_delete=models.PROTECT,
         related_name='translator_status_orders', db_column='translator_status'
     )
     status_id = models.ForeignKey(
-        "Status", on_delete=models.CASCADE,
+        "Status", on_delete=models.PROTECT,
         related_name='general_status_orders', db_column='status_id'
     )
 
     editor_status = models.ForeignKey(
-        "Status", on_delete=models.CASCADE,
+        "Status", on_delete=models.PROTECT,
         related_name='editor_status_orders', db_column='editor_status',
         null=True, blank=True
     )
@@ -106,7 +106,6 @@ class Order(models.Model):
     client_comment = models.TextField(null=True)
 
     translator_comment = models.TextField(null=True)
-
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True)
