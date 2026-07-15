@@ -112,13 +112,15 @@ export function TariffsPage() {
                         placeholder={t("tariffs.namePlaceholder")}
                         value={form.name}
                         className={errors?.name ? "border-red-500" : ""}
-                        onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) =>
+                            setForm(prev => ({...prev, name: e.target.value}))
+                        }
                     />
                     {errors?.name && (
                         <p className="text-xs text-red-500 -mt-2">{errors.name}</p>
                     )}
 
-                    {/* Language Pair + кнопка нової пари */}
+                    {/* Language Pair */}
                     <TariffForm
                         form={form}
                         setForm={setForm}
@@ -136,11 +138,17 @@ export function TariffsPage() {
                     {/* Currency */}
                     <Select
                         value={String(form.currency_id || "")}
-                        onValueChange={(val) => setForm(prev => ({ ...prev, currency_id: Number(val) }))}
+                        onValueChange={(val) =>
+                            setForm(prev => ({
+                                ...prev,
+                                currency_id: Number(val),
+                            }))
+                        }
                     >
                         <SelectTrigger className={errors?.currency_id ? "border-red-500" : ""}>
-                            <SelectValue placeholder={t("orders.currency")} />
+                            <SelectValue placeholder={t("orders.currency")}/>
                         </SelectTrigger>
+
                         <SelectContent>
                             {currencies.map(currency => (
                                 <SelectItem key={currency.id} value={String(currency.id)}>
@@ -149,18 +157,27 @@ export function TariffsPage() {
                             ))}
                         </SelectContent>
                     </Select>
+
                     {errors?.currency_id && (
-                        <p className="text-xs text-red-500 -mt-2">{errors.currency_id}</p>
+                        <p className="text-xs text-red-500 -mt-2">
+                            {errors.currency_id}
+                        </p>
                     )}
 
                     {/* Category */}
                     <Select
                         value={String(form.category || "")}
-                        onValueChange={(val) => setForm(prev => ({ ...prev, category: Number(val) }))}
+                        onValueChange={(val) =>
+                            setForm(prev => ({
+                                ...prev,
+                                category: Number(val),
+                            }))
+                        }
                     >
                         <SelectTrigger className={errors?.category ? "border-red-500" : ""}>
-                            <SelectValue placeholder={t("clients.selectCategory")} />
+                            <SelectValue placeholder={t("clients.selectCategory")}/>
                         </SelectTrigger>
+
                         <SelectContent>
                             {categories.map(category => (
                                 <SelectItem key={category.id} value={String(category.id)}>
@@ -169,67 +186,103 @@ export function TariffsPage() {
                             ))}
                         </SelectContent>
                     </Select>
+
                     {errors?.category && (
-                        <p className="text-xs text-red-500 -mt-2">{errors.category}</p>
+                        <p className="text-xs text-red-500 -mt-2">
+                            {errors.category}
+                        </p>
                     )}
 
-                    {/* Price per page */}
-                    {/* Price per page */}
-                    <Input
-
-                        type="number"
-                        min="0"
-                        step="any"
-                        placeholder={t("translators.pricePerPage")}
-                        className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.price_per_page ? "border-red-500" : ""}`}
-                        onKeyDown={(e) => {
-                            if (["-", "e", "E", "+"].includes(e.key)) {
-                                e.preventDefault();
-
-                            }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        // Переводимо у рядок для безпечного порівняння з "0"
-                        value={String(form.price_per_page) === "0" ? "" : form.price_per_page}
-                        onChange={(e) => {
-                            const val = e.target.value;
+                    {/* Tariff Type */}
+                    <Select
+                        value={form.price_type}
+                        onValueChange={(val: "page" | "action") =>
                             setForm(prev => ({
                                 ...prev,
-                                // Зберігаємо як рядок ("0" замість 0)
-                                price_per_page: val === "" ? "0" : val,
+                                price_type: val,
+                                price_per_page: val === "page" ? prev.price_per_page : "0",
+                                price_per_action: val === "action" ? prev.price_per_action : "0",
                             }))
-                        }}
-                    />
-                    {errors?.price_per_page && (
-                        <p className="text-xs text-red-500 -mt-2">{errors.price_per_page}</p>
-                    )}
+                        }
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Тип тарифу"/>
+                        </SelectTrigger>
 
-                    {/* Price per action */}
-                    <Input
-                        type="number"
-                        min="0"
-                        step="any"
-                        placeholder={t("translators.pricePerAction")}
-                        className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors?.price_per_action ? "border-red-500" : ""}`}
-                        onKeyDown={(e) => {
-                            if (["-", "e", "E", "+"].includes(e.key)) {
-                                e.preventDefault();
-                            }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        // Переводимо у рядок для безпечного порівняння з "0"
-                        value={String(form.price_per_action) === "0" ? "" : form.price_per_action}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            setForm(prev => ({
-                                ...prev,
-                                // Зберігаємо як рядок ("0" замість 0)
-                                price_per_action: val === "" ? "0" : val,
-                            }))
-                        }}
-                    />
-                    {errors?.price_per_action && (
-                        <p className="text-xs text-red-500 -mt-2">{errors.price_per_action}</p>
+                        <SelectContent>
+                            <SelectItem value="page">
+                                За сторінку
+                            </SelectItem>
+
+                            <SelectItem value="action">
+                                За файл
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {/* Price */}
+                    {form.price_type === "page" ? (
+                        <>
+                            <Input
+                                type="number"
+                                min="0"
+                                step="any"
+                                placeholder={t("translators.pricePerPage")}
+                                className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                    errors?.price_per_page ? "border-red-500" : ""
+                                }`}
+                                onKeyDown={(e) => {
+                                    if (["-", "e", "E", "+"].includes(e.key)) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                value={String(form.price_per_page) === "0" ? "" : form.price_per_page}
+                                onChange={(e) =>
+                                    setForm(prev => ({
+                                        ...prev,
+                                        price_per_page: e.target.value || "0",
+                                    }))
+                                }
+                            />
+
+                            {errors?.price_per_page && (
+                                <p className="text-xs text-red-500 -mt-2">
+                                    {errors.price_per_page}
+                                </p>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <Input
+                                type="number"
+                                min="0"
+                                step="any"
+                                placeholder={t("translators.pricePerAction")}
+                                className={`[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                    errors?.price_per_action ? "border-red-500" : ""
+                                }`}
+                                onKeyDown={(e) => {
+                                    if (["-", "e", "E", "+"].includes(e.key)) {
+                                        e.preventDefault();
+                                    }
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                value={String(form.price_per_action) === "0" ? "" : form.price_per_action}
+                                onChange={(e) =>
+                                    setForm(prev => ({
+                                        ...prev,
+                                        price_per_action: e.target.value || "0",
+                                    }))
+                                }
+                            />
+
+                            {errors?.price_per_action && (
+                                <p className="text-xs text-red-500 -mt-2">
+                                    {errors.price_per_action}
+                                </p>
+                            )}
+                        </>
                     )}
 
                 </div>

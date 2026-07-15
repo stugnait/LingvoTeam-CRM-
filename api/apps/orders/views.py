@@ -654,12 +654,17 @@ class OrderViewSet(viewsets.ModelViewSet):
     def calculate_full(self, request):
         files = request.FILES.getlist('files')
         traffic_id = request.data.get('traffic_id')
-
-        # Замість translator_id приймаємо конкретний ID обраного тарифу перекладача
         translator_traffic_id = request.data.get('translator_traffic_id')
 
+        # 👉 ДОДАНО: отримуємо тип тарифікації та кількість дій з фронтенду
+        pricing_type = request.data.get('pricing_type')
+        action_count = request.data.get('action_count')
+
         if not files or not traffic_id:
-            return Response({"detail": "files and traffic_id required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "files and traffic_id required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         total_pages = Decimal('0')
 
@@ -668,22 +673,45 @@ class OrderViewSet(viewsets.ModelViewSet):
             stats = analyze_file_content(f)
             total_pages += Decimal(str(stats["pages"]))
 
-        # 1. Розрахунок ціни для клієнта (за тарифом замовлення)
+        files_count = Decimal(str(len(files)))
         traffic = get_object_or_404(OrderTraffic, id=traffic_id)
-        client_price = total_pages * Decimal(str(traffic.price_per_page))
 
+        # 👉 ДОДАНО: Визначаємо логіку розрахунку для КЛІЄНТА (Сторінки або Дія)
+        if pricing_type == 'action' or (pricing_type is None and traffic.price_per_action is not None):
+            calculation_type = "action"
+            client_rate = Decimal(str(traffic.price_per_action or 0))
+
+            # Якщо передали кількість дій вручну - використовуємо її, інакше беремо кількість файлів
+            if action_count is not None and str(action_count).strip():
+                units = Decimal(str(action_count).strip())
+            else:
+                units = files_count if files_count > 0 else Decimal('1')
+        else:
+            calculation_type = "page"
+            client_rate = Decimal(str(traffic.price_per_page or 0))
+            units = total_pages
+
+        client_price = client_rate * units
+
+        # Визначаємо логіку розрахунку для ПЕРЕКЛАДАЧА
         translator_rate = None
         translator_total = None
         margin = None
 
-        # 2. Розрахунок оплати перекладачу (за ОБРАНИМ тарифом)
         if translator_traffic_id:
             try:
                 tt = TranslatorTraffic.objects.get(id=translator_traffic_id)
-                if tt.rate_per_page is not None:
+
+                # 👉 ДОДАНО: Якщо клієнт платить за дію, перекладач теж отримує за дію (якщо у нього є такий тариф)
+                if calculation_type == "action" and tt.rate_per_action is not None:
+                    translator_rate = Decimal(str(tt.rate_per_action))
+                    translator_total = translator_rate * units
+                    margin = client_price - translator_total
+                elif tt.rate_per_page is not None:
                     translator_rate = Decimal(str(tt.rate_per_page))
                     translator_total = translator_rate * total_pages
                     margin = client_price - translator_total
+
             except TranslatorTraffic.DoesNotExist:
                 return Response(
                     {"detail": "Обраний тариф перекладача не знайдено"},
@@ -691,14 +719,20 @@ class OrderViewSet(viewsets.ModelViewSet):
                 )
 
         return Response({
+            "calculation_type": calculation_type,
             "pages": float(total_pages),
-            "client_price_per_page": str(traffic.price_per_page),
+            "files": int(files_count),
+            "client_rate": str(client_rate),
             "total_client_price": str(client_price.quantize(Decimal("0.01"))),
-            # Явна перевірка is not None вирішує проблему з нулями
             "translator_rate_per_page": str(translator_rate) if translator_rate is not None else None,
-            "translator_total": str(
-                translator_total.quantize(Decimal("0.01"))) if translator_total is not None else None,
-            "margin": str(margin.quantize(Decimal("0.01"))) if margin is not None else None,
+            "translator_total": (
+                str(translator_total.quantize(Decimal("0.01")))
+                if translator_total is not None else None
+            ),
+            "margin": (
+                str(margin.quantize(Decimal("0.01")))
+                if margin is not None else None
+            ),
         })
     @action(detail=True, methods=['post'], url_path='reject-translation')
     def reject_translation(self, request, pk=None):
@@ -1203,7 +1237,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         description="Порівнює ціну замовлення з тарифами перекладачів. Якщо передати translator_traffic_id, рахує тільки для нього.",
         parameters=[
             OpenApiParameter("traffic_id", int, required=True, description="ID тарифу клієнта (замовлення)"),
-            OpenApiParameter("translator_traffic_id", int, required=False, description="ID обраного тарифу перекладача")
+            OpenApiParameter("translator_traffic_id", int, required=False,
+                             description="ID обраного тарифу перекладача"),
+            OpenApiParameter("pricing_type", str, required=False, description="Тип розрахунку: 'page' або 'action'")
         ],
         tags=["Order Pricing"]
     )
@@ -1211,6 +1247,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     def margins(self, request):
         traffic_id = request.query_params.get("traffic_id")
         translator_traffic_id = request.query_params.get("translator_traffic_id")
+
+        # 👉 ДОДАНО: Зчитуємо тип розрахунку
+        pricing_type = request.query_params.get("pricing_type")
 
         if not traffic_id:
             return Response({"detail": "traffic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1221,20 +1260,26 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({"detail": "traffic_id must be int"}, status=status.HTTP_400_BAD_REQUEST)
 
         ot = OrderTraffic.objects.filter(id=traffic_id_int).values(
-            "price_per_page", "currency_id_id", "language_pair_id", "category_id"
+            "price_per_page", "price_per_action", "currency_id_id", "language_pair_id", "category_id"
         ).first()
 
-        if not ot or ot.get("price_per_page") is None:
+        if not ot:
             return Response({"detail": "OrderTraffic not found or invalid"}, status=status.HTTP_404_NOT_FOUND)
 
-        order_price = Decimal(str(ot["price_per_page"]))
+        # 👉 ДОДАНО: Визначаємо, яку ціну клієнта брати для порівняння
+        is_action_based = pricing_type == "action" or (pricing_type is None and ot.get("price_per_action") is not None)
+
+        if is_action_based:
+            order_price = Decimal(str(ot.get("price_per_action") or 0))
+        else:
+            order_price = Decimal(str(ot.get("price_per_page") or 0))
+
         currency_id = ot.get("currency_id_id")
         lp_id = ot.get("language_pair_id")
         category_id = ot.get("category_id")
 
         translator_traffics = TranslatorTraffic.objects.filter(language_pair_id=lp_id).prefetch_related('translators')
 
-        # ЯКЩО ПЕРЕДАЛИ КОНКРЕТНИЙ ТАРИФ ПЕРЕКЛАДАЧА - ФІЛЬТРУЄМО ТІЛЬКИ ЙОГО
         if translator_traffic_id:
             try:
                 tt_id = int(str(translator_traffic_id).strip())
@@ -1248,20 +1293,21 @@ class OrderViewSet(viewsets.ModelViewSet):
             is_exact_match = (tt.category_id == category_id)
             is_fallback = (category_id is not None and tt.category_id is None)
 
-            # Відсіюємо чужі категорії, тільки якщо ми шукаємо списком (немає конкретного translator_traffic_id)
             if not translator_traffic_id:
                 if tt.category_id is not None and tt.category_id != category_id:
                     continue
 
             for tr in tt.translators.all():
-                tr_rate = Decimal(str(tt.rate_per_page)) if tt.rate_per_page is not None else None
+                # 👉 ДОДАНО: Беремо відповідний тариф перекладача (за дію або за сторінку)
+                tr_rate_val = tt.rate_per_action if is_action_based else tt.rate_per_page
+                tr_rate = Decimal(str(tr_rate_val)) if tr_rate_val is not None else None
+
                 margin_percent = None
                 margin_absolute = None
                 margin_label = None
 
                 if tr_rate is not None:
                     margin_absolute = order_price - tr_rate
-                    # Запобігаємо діленню на нуль
                     if order_price > 0:
                         margin_percent = (margin_absolute / order_price) * Decimal("100")
                     else:
@@ -1269,7 +1315,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
                     margin_label = "Не вигідно" if margin_percent < 40 else "Вигідно"
 
-                # Додаємо КОЖЕН тариф окремо (ніякого злиття чи заміни)
                 results.append({
                     "translator_id": tr.id,
                     "translator_name": getattr(tr, "full_name", None),
@@ -1291,8 +1336,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         def sort_key(x):
             mval = Decimal(x["margin_percent"]) if x["margin_percent"] is not None else Decimal("-Infinity")
             return (
-                1 if x["is_exact_match"] else 0,  # Пріоритет 1: Точний збіг категорії
-                mval,  # Пріоритет 2: Найкраща маржа
+                1 if x["is_exact_match"] else 0,
+                mval,
             )
 
         results.sort(key=sort_key, reverse=True)
@@ -1306,6 +1351,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             "currency_id": currency_id,
             "category_id": category_id,
             "results": results,
+            "calculation_type": "action" if is_action_based else "page"  # Повертаємо для перевірки
         }, status=status.HTTP_200_OK)
 
         # def sort_key(x):

@@ -24,14 +24,14 @@ export function TranslatorTrafficTable({ traffic, onEdit, onDelete }: Props) {
                         <TableHead>{t("common.name")}</TableHead>
                         <TableHead>{t("common.languagePair")}</TableHead>
                         <TableHead>{t("orders.category")}</TableHead>
-                        <TableHead>{t("common.rate")} ({t("common.pageUnit")} / {t("common.actionUnit")})</TableHead>
+                        <TableHead>{t("common.rate")}</TableHead>
                         <TableHead className="w-[70px]" />
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {traffic.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                                 {t("translators.noRatesFound")}
                             </TableCell>
                         </TableRow>
@@ -42,7 +42,23 @@ export function TranslatorTrafficTable({ traffic, onEdit, onDelete }: Props) {
                                 <TableCell>{item.source_language} - {item.target_language}</TableCell>
                                 <TableCell>{item.category_name || "—"}</TableCell>
                                 <TableCell>
-                                    {item.rate_per_page} / {item.rate_per_action} {item.currency_sign}
+                                    {Number(item.rate_per_page) > 0 ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold">{item.rate_per_page} {item.currency_sign}</span>
+                                            <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                                {t("common.pageUnit")}
+                                            </span>
+                                        </div>
+                                    ) : Number(item.rate_per_action) > 0 ? (
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold">{item.rate_per_action} {item.currency_sign}</span>
+                                            <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+                                                {t("common.actionUnit")}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-muted-foreground">0 {item.currency_sign}</span>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <DropdownMenu>

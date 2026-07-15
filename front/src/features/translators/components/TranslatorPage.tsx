@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react" // <--- ДОДАНО useRef
+import { useRef } from "react"
 import type { ReactNode } from "react"
 import { useTranslators } from "../hooks/useTranslators"
 import { useOrders } from "@/src/features/orders/hooks/useOrders"
@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/ta
 
 import { TranslatorsTable } from "./TranslatorsTable"
 import { TranslatorTrafficTable } from "./TranslatorTrafficTable"
-import { Plus, Tag, UserPlus, Upload } from "lucide-react" // <--- ДОДАНО Upload
+import { Plus, Tag, UserPlus, Upload } from "lucide-react"
 import { DashboardHeader } from "@/src/shared/components/layout/DashboardHeader"
 import { TranslatorsFilters } from "@/src/features/translators/components/TranslatorFilter"
 import { useI18n } from "@/src/shared/i18n/I18nProvider"
@@ -112,6 +112,12 @@ export default function TranslatorsPage() {
         setTrafficForm,
         trafficErrors,
         selectedTraffic,
+
+        trafficRateType,
+        setTrafficRateType,
+        inlineTrafficRateType,
+        setInlineTrafficRateType,
+
         openAddTraffic,
         openEditTraffic,
         openDeleteTraffic,
@@ -124,13 +130,12 @@ export default function TranslatorsPage() {
         inlineTrafficLoading,
         createAndSelectTraffic,
 
-        loading, // <--- ДІСТАЄМО loading
-        handleImportExcel // <--- ДІСТАЄМО ФУНКЦІЮ ІМПОРТУ
+        loading,
+        handleImportExcel
     } = useTranslators()
 
     const { languages: orderLanguages } = useOrders()
 
-    // === РЕФ ДЛЯ ІНПУТА ФАЙЛІВ ===
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +179,6 @@ export default function TranslatorsPage() {
                                     <TabsTrigger value="traffic">{t("translators.tariffsTab")}</TabsTrigger>
                                 </TabsList>
 
-                                {/* Кнопки для вкладки "Перекладачі" */}
                                 <TabsContent value="translators" className="mt-0 flex gap-2">
                                     <input
                                         type="file"
@@ -199,7 +203,6 @@ export default function TranslatorsPage() {
                                     </Button>
                                 </TabsContent>
 
-                                {/* Кнопка для вкладки "Тарифи" */}
                                 <TabsContent value="traffic" className="mt-0">
                                     <Button onClick={() => openAddTraffic()}>
                                         <Plus className="h-4 w-4 mr-2" />
@@ -358,7 +361,7 @@ export default function TranslatorsPage() {
                 </div>
             </BaseFormModal>
 
-            {/* ─── ІНШІ МОДАЛКИ (БЕЗ ЗМІН) ─── */}
+            {/* ─── MODAL: ТАРИФ (ОСНОВНИЙ) ─── */}
             <BaseFormModal
                 open={isTrafficFormOpen}
                 onOpenChange={(open) => !open && closeModals()}
@@ -369,7 +372,6 @@ export default function TranslatorsPage() {
                 submitLabel={selectedTraffic ? t("common.save") : t("common.create")}
                 onSubmit={submitTraffic}
             >
-                {/* ... (КОД МОДАЛКИ ТАРИФУ БЕЗ ЗМІН) ... */}
                 <div className="space-y-4">
                     <ModalField label={t("translators.tariffName")} required error={trafficErrors?.name}>
                         <Input
@@ -439,30 +441,48 @@ export default function TranslatorsPage() {
                         </Select>
                     </ModalField>
 
-                    <ModalField label={t("translators.pricePerPage")}>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={t("translators.pricePerPage")}
-                            value={trafficForm.rate_per_page === 0 ? "" : trafficForm.rate_per_page}
-                            onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
-                            className={modalInputClassName}
-                        />
-                    </ModalField>
+                    <ModalField label={t("common.rate")}>
+                        <div className="flex bg-slate-100 p-1 rounded-lg mb-3">
+                            <button
+                                type="button"
+                                className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-all ${trafficRateType === "page" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+                                onClick={() => setTrafficRateType("page")}
+                            >
+                                {t("translators.pricePerPage")}
+                            </button>
+                            <button
+                                type="button"
+                                className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-all ${trafficRateType === "action" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+                                onClick={() => setTrafficRateType("action")}
+                            >
+                                {t("translators.pricePerAction")}
+                            </button>
+                        </div>
 
-                    <ModalField label={t("translators.pricePerAction")}>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={t("translators.pricePerAction")}
-                            value={trafficForm.rate_per_action === 0 ? "" : trafficForm.rate_per_action}
-                            onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
-                            className={modalInputClassName}
-                        />
+                        {trafficRateType === "page" ? (
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder={t("translators.pricePerPage")}
+                                value={trafficForm.rate_per_page === 0 ? "" : trafficForm.rate_per_page}
+                                onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
+                                className={modalInputClassName}
+                            />
+                        ) : (
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder={t("translators.pricePerAction")}
+                                value={trafficForm.rate_per_action === 0 ? "" : trafficForm.rate_per_action}
+                                onChange={(e) => setTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
+                                className={modalInputClassName}
+                            />
+                        )}
                     </ModalField>
                 </div>
             </BaseFormModal>
 
+            {/* ─── MODAL: ТАРИФ (INLINE) ─── */}
             <BaseFormModal
                 open={isInlineTrafficOpen}
                 onOpenChange={(open) => {
@@ -548,30 +568,48 @@ export default function TranslatorsPage() {
                         </Select>
                     </ModalField>
 
-                    <ModalField label={t("translators.pricePerPage")}>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={t("translators.pricePerPage")}
-                            value={inlineTrafficForm.rate_per_page === 0 ? "" : inlineTrafficForm.rate_per_page}
-                            onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
-                            className={modalInputClassName}
-                        />
-                    </ModalField>
+                    <ModalField label={t("common.rate")}>
+                        <div className="flex bg-slate-100 p-1 rounded-lg mb-3">
+                            <button
+                                type="button"
+                                className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-all ${inlineTrafficRateType === "page" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+                                onClick={() => setInlineTrafficRateType("page")}
+                            >
+                                {t("translators.pricePerPage")}
+                            </button>
+                            <button
+                                type="button"
+                                className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-all ${inlineTrafficRateType === "action" ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700"}`}
+                                onClick={() => setInlineTrafficRateType("action")}
+                            >
+                                {t("translators.pricePerAction")}
+                            </button>
+                        </div>
 
-                    <ModalField label={t("translators.pricePerAction")}>
-                        <Input
-                            type="number"
-                            step="0.01"
-                            placeholder={t("translators.pricePerAction")}
-                            value={inlineTrafficForm.rate_per_action === 0 ? "" : inlineTrafficForm.rate_per_action}
-                            onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
-                            className={modalInputClassName}
-                        />
+                        {inlineTrafficRateType === "page" ? (
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder={t("translators.pricePerPage")}
+                                value={inlineTrafficForm.rate_per_page === 0 ? "" : inlineTrafficForm.rate_per_page}
+                                onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_page: Number(e.target.value) }))}
+                                className={modalInputClassName}
+                            />
+                        ) : (
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder={t("translators.pricePerAction")}
+                                value={inlineTrafficForm.rate_per_action === 0 ? "" : inlineTrafficForm.rate_per_action}
+                                onChange={(e) => setInlineTrafficForm(prev => ({ ...prev, rate_per_action: Number(e.target.value) }))}
+                                className={modalInputClassName}
+                            />
+                        )}
                     </ModalField>
                 </div>
             </BaseFormModal>
 
+            {/* ─── MODAL: МОВНА ПАРА ─── */}
             <BaseFormModal
                 open={isNewPairModalOpen}
                 onOpenChange={(open) => {

@@ -59,6 +59,11 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
         return pair
 
     def create(self, validated_data):
+        if validated_data.get("price_per_page") is not None:
+            validated_data["price_per_action"] = None
+        else:
+            validated_data["price_per_page"] = None
+
         if 'language_pair' in validated_data:
             return super().create(validated_data)
 
@@ -67,7 +72,8 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
             return super().create(validated_data)
 
         raise serializers.ValidationError(
-            {"language_pair": "Потрібен або language_pair_id або source/target language."})
+            {"language_pair": "Потрібен або language_pair_id або source/target language."}
+        )
 
     def update(self, instance, validated_data):
         if 'source_language' in validated_data or 'target_language' in validated_data:
@@ -80,6 +86,12 @@ class OrderTrafficSerializer(serializers.ModelSerializer):
                 instance.language_pair.target_language_id if instance.language_pair else None
             )
             instance.language_pair = self._resolve_language_pair(validated_data)
+
+        if validated_data.get("price_per_page") is not None:
+            validated_data["price_per_action"] = None
+        elif validated_data.get("price_per_action") is not None:
+            validated_data["price_per_page"] = None
+
         return super().update(instance, validated_data)
 
 

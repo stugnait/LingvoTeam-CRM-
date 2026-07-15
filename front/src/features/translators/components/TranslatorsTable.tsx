@@ -25,7 +25,7 @@ import {
 } from "lucide-react"
 
 import type { Translator } from "../types"
-import {cn} from "@/src/lib/utils";
+import { cn } from "@/src/lib/utils"
 import { useI18n } from "@/src/shared/i18n/I18nProvider"
 
 interface Props {
@@ -84,16 +84,16 @@ export function TranslatorsTable({
 
                                 <TableCell>
                                     <div className="flex items-center">
-        <span
-            className={cn(
-                "px-2.5 py-1 rounded-md text-xs font-semibold",
-                translator.orders_count === 0
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-primary/10 text-primary"
-            )}
-        >
-            {translator.orders_count ?? 0}
-        </span>
+                                        <span
+                                            className={cn(
+                                                "px-2.5 py-1 rounded-md text-xs font-semibold",
+                                                translator.orders_count === 0
+                                                    ? "bg-muted text-muted-foreground"
+                                                    : "bg-primary/10 text-primary"
+                                            )}
+                                        >
+                                            {translator.orders_count ?? 0}
+                                        </span>
                                     </div>
                                 </TableCell>
 
@@ -107,29 +107,43 @@ export function TranslatorsTable({
 
                                         <DropdownMenuContent align="start" className="w-[280px]">
                                             {translator.traffic?.length ? (
-                                                translator.traffic.map((tr) => (
-                                                    <div
-                                                        key={tr.id}
-                                                        className="px-3 py-2 border-b last:border-0"
-                                                    >
-                                                        <p className="text-sm font-medium">
-                                                            {tr.language_pair_name}
-                                                        </p>
+                                                /* Додано обгортку для скролу (max-h-64 = ~250px) */
+                                                <div className="max-h-64 overflow-y-auto">
+                                                    {translator.traffic.map((tr) => (
+                                                        <div
+                                                            key={tr.id}
+                                                            className="px-3 py-2 border-b last:border-0"
+                                                        >
+                                                            <p className="text-sm font-medium">
+                                                                {tr.name || tr.language_pair_name}
+                                                            </p>
 
-                                                        <p className="text-xs text-muted-foreground">
-                                                            {tr.source_language} → {tr.target_language}
-                                                        </p>
+                                                            <p className="text-xs text-muted-foreground mb-2">
+                                                                {tr.source_language} → {tr.target_language}
+                                                            </p>
 
-                                                        <div className="flex justify-between mt-1 text-xs">
-                            <span>
-                                {t("translators.pageRate", { value: tr.rate_per_page, currency: tr.currency_sign })}
-                            </span>
-                                                            <span>
-                                {t("translators.actionRate", { value: tr.rate_per_action, currency: tr.currency_sign })}
-                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                {Number(tr.rate_per_page) > 0 ? (
+                                                                    <>
+                                                                        <span className="text-sm font-semibold">{tr.rate_per_page} {tr.currency_sign}</span>
+                                                                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                                                            {t("common.pageUnit")}
+                                                                        </span>
+                                                                    </>
+                                                                ) : Number(tr.rate_per_action) > 0 ? (
+                                                                    <>
+                                                                        <span className="text-sm font-semibold">{tr.rate_per_action} {tr.currency_sign}</span>
+                                                                        <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
+                                                                            {t("common.actionUnit")}
+                                                                        </span>
+                                                                    </>
+                                                                ) : (
+                                                                    <span className="text-sm text-muted-foreground">0 {tr.currency_sign}</span>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))
+                                                    ))}
+                                                </div>
                                             ) : (
                                                 <p className="px-3 py-2 text-sm text-muted-foreground">
                                                     {t("translators.noRates")}

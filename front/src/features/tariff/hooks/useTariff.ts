@@ -229,10 +229,16 @@ export function useTariffs() {
             if (!data.language_pair_id) {newErrors.language_pair_id = "Please select a language pair"}
             if (!data.currency_id) {newErrors.currency_id = "Please select a currency"}
             if (!data.category) {newErrors.category = "Please select a category"}
-            if (!data.price_per_page || Number(data.price_per_page) <= 0)
-                {newErrors.price_per_page = "Price per page must be greater than 0"}
-            if (!data.price_per_action || Number(data.price_per_action) <= 0)
-                {newErrors.price_per_action = "Price per action must be greater than 0"}
+            const hasPagePrice =
+                data.price_per_page !== "" && Number(data.price_per_page) > 0
+
+            const hasActionPrice =
+                data.price_per_action !== "" && Number(data.price_per_action) > 0
+
+            if (hasPagePrice === hasActionPrice) {
+                newErrors.price_per_page = "Specify either price per page or price per action"
+                newErrors.price_per_action = "Specify either price per page or price per action"
+            }
 
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors)
@@ -242,13 +248,19 @@ export function useTariffs() {
 
             setErrors({})
 
-            const payload = {
+            const payload: any = {
                 name: data.name,
                 language_pair: data.language_pair_id,
                 currency_id: data.currency_id,
                 category: data.category,
-                price_per_page: Number(data.price_per_page),
-                price_per_action: Number(data.price_per_action),
+            }
+
+            if (hasPagePrice) {
+                payload.price_per_page = Number(data.price_per_page)
+                payload.price_per_action = null
+            } else {
+                payload.price_per_page = null
+                payload.price_per_action = Number(data.price_per_action)
             }
 
             if (selectedTariff) {

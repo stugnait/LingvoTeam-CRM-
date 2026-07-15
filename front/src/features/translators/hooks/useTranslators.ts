@@ -73,6 +73,8 @@ export function useTranslators() {
         rate_per_action: 0,
     })
     const [inlineTrafficLoading, setInlineTrafficLoading] = useState(false)
+    // Тип тарифу для інлайн форми (додавання тарифу прямо під час створення перекладача)
+    const [inlineTrafficRateType, setInlineTrafficRateType] = useState<"page" | "action">("page")
 
 
     // TRAFFIC STATES
@@ -88,6 +90,9 @@ export function useTranslators() {
         rate_per_action: 0,
     })
     const [trafficErrors, setTrafficErrors] = useState<Partial<Record<keyof TranslatorTrafficPayload, string>>>({})
+    // Тип тарифу для основної модалки тарифів
+    const [trafficRateType, setTrafficRateType] = useState<"page" | "action">("page")
+
     const [isNewPairModalOpen, setIsNewPairModalOpen] = useState(false)
     const [newPairForm, setNewPairForm] = useState({
         source_language: 0,
@@ -115,7 +120,14 @@ export function useTranslators() {
 
         setInlineTrafficLoading(true)
         try {
-            const created = await translatorsApi.createTranslatorTraffic(inlineTrafficForm)
+            // Формуємо payload залежно від вибраного типу, обнуляючи непотрібне поле
+            const payloadToSubmit = {
+                ...inlineTrafficForm,
+                rate_per_page: inlineTrafficRateType === "page" ? Number(inlineTrafficForm.rate_per_page || 0) : 0,
+                rate_per_action: inlineTrafficRateType === "action" ? Number(inlineTrafficForm.rate_per_action || 0) : 0,
+            }
+
+            const created = await translatorsApi.createTranslatorTraffic(payloadToSubmit)
 
             // Додаємо новий тариф в загальний список
             setTraffic(prev => [...prev, created])
@@ -128,6 +140,7 @@ export function useTranslators() {
 
             setIsInlineTrafficOpen(false)
             setInlineTrafficForm({ name: "", currency_id: 0, language_pair: null, category: null, rate_per_page: 0, rate_per_action: 0 })
+            setInlineTrafficRateType("page") // Скидаємо тип
             toast({ title: "Tariff created", description: created.name })
         } catch (e) {
             toast({ title: "Error", description: "Failed to create tariff", variant: "error" })
@@ -140,34 +153,24 @@ export function useTranslators() {
     // Load Helpers (INDEPENDENTLY)
     // -------------------------
     const loadHelpers = useCallback(() => {
-        // Оголошуємо проміси для незалежного виконання
         const fetchCurrencies = ordersApi.listCurrency().catch(err => { console.error("Currencies error", err); return { results: [] }; });
         const fetchLanguages = translatorsApi.listLanguages().catch(err => { console.error("Languages error", err); return { results: [] }; });
         const fetchPairs = translatorsApi.listLanguagePairs().catch(err => { console.error("Pairs error", err); return { results: [] }; });
         const fetchCategories = translatorsApi.listCategories().catch(err => { console.error("Categories error", err); return { results: [] }; });
 
         Promise.all([fetchCurrencies, fetchLanguages, fetchPairs, fetchCategories]).then(([curRes, langRes, pairRes, catRes]) => {
-            // 1. Валюти
             setCurrencies(curRes.results || []);
 
-            // 2. Мови (для мапінгу пар)
             const langs = langRes.results || [];
             setLanguages(langs.map((lang) => ({
                 id: lang.id,
                 name: lang.name || `Language #${lang.id}`,
             })));
 
-            // Функція-помічник для пошуку назви мови по ID
             const getLangName = (val: LanguagePairApiItem["source_language"]) => {
-                if (!val) {
-                    return "Unknown";
-                }
-                if (typeof val === 'string') {
-                    return val;
-                }
-                if (typeof val !== 'number') {
-                    return val.name || "Unknown";
-                }
+                if (!val) return "Unknown";
+                if (typeof val === 'string') return val;
+                if (typeof val !== 'number') return val.name || "Unknown";
                 if (typeof val === 'number') {
                     const found = langs.find((language) => language.id === val);
                     return found ? found.name : `ID:${val}`;
@@ -175,11 +178,8 @@ export function useTranslators() {
                 return "Unknown";
             };
 
-            // 3. Мовні пари
             const pairs = (pairRes.results || []).map((p) => {
                 let pairName = `Pair #${p.id}`;
-
-                // Перевіряємо всі можливі варіанти відповіді бекенду
                 if (p.name && typeof p.name === 'string') {
                     pairName = p.name;
                 } else if (p.pair_name) {
@@ -191,15 +191,10 @@ export function useTranslators() {
                     const tgt = getLangName(p.target_language);
                     pairName = `${src} -> ${tgt}`;
                 }
-
-                return {
-                    id: p.id,
-                    name: pairName
-                };
+                return { id: p.id, name: pairName };
             });
             setLanguagePairs(pairs);
 
-            // 4. Категорії (Order Traffic)
             const cats = (catRes.results || []).map((c) => ({
                 id: c.id,
                 name: c.name || `Category #${c.id}`
@@ -273,7 +268,6 @@ export function useTranslators() {
             full_name: "",
             email: "",
             phone: "",
-
             tariff_ids: [],
         })
 
@@ -320,6 +314,7 @@ export function useTranslators() {
             rate_per_page: 0,
             rate_per_action: 0,
         })
+        setTrafficRateType("page") // За замовчуванням
         setTrafficErrors({})
         setIsTrafficFormOpen(true)
     }
@@ -334,6 +329,8 @@ export function useTranslators() {
             rate_per_page: trafficItem.rate_per_page || 0,
             rate_per_action: trafficItem.rate_per_action || 0,
         })
+        // Визначаємо тип на основі того, яке значення заповнене
+        setTrafficRateType(Number(trafficItem.rate_per_action) > 0 ? "action" : "page")
         setTrafficErrors({})
         setIsTrafficFormOpen(true)
     }
@@ -390,7 +387,6 @@ export function useTranslators() {
                 if (prev.some((pair) => pair.id === created.id)) {
                     return prev.map((pair) => pair.id === created.id ? { id: created.id, name: pairName } : pair)
                 }
-
                 return [...prev, { id: created.id, name: pairName }]
             })
 
@@ -427,17 +423,13 @@ export function useTranslators() {
         try {
             const newErrors: Partial<Record<keyof TranslatorPayload, string>> = {}
 
-            if (!data.full_name.trim()) {
-                newErrors.full_name = "Full name is required"
-            }
+            if (!data.full_name.trim()) newErrors.full_name = "Full name is required"
             if (!data.email.trim()) {
                 newErrors.email = "Email is required"
             } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
                 newErrors.email = "Invalid email format"
             }
-            if (!data.phone.trim()) {
-                newErrors.phone = "Phone is required"
-            }
+            if (!data.phone.trim()) newErrors.phone = "Phone is required"
 
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors)
@@ -471,15 +463,9 @@ export function useTranslators() {
         try {
             const newErrors: Partial<Record<keyof TranslatorTrafficPayload, string>> = {}
 
-            if (!trafficForm.name) {
-                newErrors.name = "Required"
-            }
-            if (!trafficForm.currency_id) {
-                newErrors.currency_id = "Required"
-            }
-            if (!trafficForm.language_pair) {
-                newErrors.language_pair = "Required"
-            }
+            if (!trafficForm.name) newErrors.name = "Required"
+            if (!trafficForm.currency_id) newErrors.currency_id = "Required"
+            if (!trafficForm.language_pair) newErrors.language_pair = "Required"
 
             if (Object.keys(newErrors).length > 0) {
                 setTrafficErrors(newErrors)
@@ -489,11 +475,18 @@ export function useTranslators() {
 
             setTrafficErrors({})
 
+            // Формуємо payload залежно від вибраного типу
+            const payloadToSubmit = {
+                ...trafficForm,
+                rate_per_page: trafficRateType === "page" ? Number(trafficForm.rate_per_page || 0) : 0,
+                rate_per_action: trafficRateType === "action" ? Number(trafficForm.rate_per_action || 0) : 0,
+            }
+
             if (selectedTraffic) {
-                await translatorsApi.updateTranslatorTraffic(selectedTraffic.id, trafficForm)
+                await translatorsApi.updateTranslatorTraffic(selectedTraffic.id, payloadToSubmit)
                 toast({ title: "Rate updated", description: `Successfully updated` })
             } else {
-                await translatorsApi.createTranslatorTraffic(trafficForm)
+                await translatorsApi.createTranslatorTraffic(payloadToSubmit)
                 toast({ title: "Rate created", description: `Successfully created` })
             }
 
@@ -539,7 +532,6 @@ export function useTranslators() {
                 description: response.message || "Перекладачів успішно імпортовано",
             })
 
-            // Перезавантажуємо першу сторінку після імпорту
             await loadTranslators(1)
 
         } catch (error: any) {
@@ -594,6 +586,12 @@ export function useTranslators() {
         setNewPairForm,
         newPairLoading,
         createAndSelectLanguagePair,
+
+        // Додані стейти для перемикання типів тарифу
+        trafficRateType,
+        setTrafficRateType,
+        inlineTrafficRateType,
+        setInlineTrafficRateType,
 
         openAddTraffic,
         openEditTraffic,

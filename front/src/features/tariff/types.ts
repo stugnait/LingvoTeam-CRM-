@@ -31,6 +31,7 @@ export interface TariffsFormData {
     language_pair_id: number   // ← тепер зберігаємо ID пари напряму
     source_language: number // залишаємо для payload на бек
     target_language: number
+    price_type: string
     currency_id: number
     category: number
     price_per_page: string

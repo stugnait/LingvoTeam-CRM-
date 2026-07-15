@@ -51,8 +51,8 @@ export function TariffTable({
                             <TableHead className="font-semibold text-foreground/80">{t("common.name")}</TableHead>
                             <TableHead className="font-semibold text-foreground/80">{t("common.languagePair")}</TableHead>
                             <TableHead className="font-semibold text-foreground/80">{t("orders.category")}</TableHead>
-                            <TableHead className="font-semibold text-foreground/80">{t("tariffs.pricePerPage")}</TableHead>
-                            <TableHead className="font-semibold text-foreground/80">{t("tariffs.pricePerAction")}</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">Тип тарифу</TableHead>
+                            <TableHead className="font-semibold text-foreground/80">Ціна</TableHead>
                             <TableHead className="font-semibold text-foreground/80">{t("orders.currency")}</TableHead>
                             <TableHead className="w-[70px] font-semibold text-foreground/80" />
                         </TableRow>
@@ -94,22 +94,29 @@ export function TariffTable({
                                 </TableCell>
 
                                 <TableCell>
-                                    <div className="flex items-center gap-1">
-                                    <span className="text-sm font-semibold text-foreground">
-                                        {tariff.currency_sign}
-                                        {tariff.price_per_page}
-                                    </span>
-                                        <span className="text-xs text-muted-foreground">/{t("common.pageUnit")}</span>
-                                    </div>
+                                    {tariff.price_per_page != null ? (
+                                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-300">
+            За сторінку
+        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            За файл
+        </span>
+                                    )}
                                 </TableCell>
 
                                 <TableCell>
                                     <div className="flex items-center gap-1">
-                                    <span className="text-sm font-semibold text-foreground">
-                                        {tariff.currency_sign}
-                                        {tariff.price_per_action}
-                                    </span>
-                                        <span className="text-xs text-muted-foreground">/{t("common.actionUnit")}</span>
+        <span className="text-sm font-semibold text-foreground">
+            {tariff.currency_sign}
+            {tariff.price_per_page ?? tariff.price_per_action}
+        </span>
+
+                                        <span className="text-xs text-muted-foreground">
+            {tariff.price_per_page != null
+                ? `/${t("common.pageUnit")}`
+                : `/${t("common.actionUnit")}`}
+        </span>
                                     </div>
                                 </TableCell>
 
