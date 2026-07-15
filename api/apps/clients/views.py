@@ -80,7 +80,8 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     search_fields = ['full_name', 'email']
 
-    ordering_fields = ['full_name', 'created_at']
+    ordering = ['-id']
+    ordering_fields = ['-id', 'full_name', 'email']
 
     filterset_fields = ['category']
 

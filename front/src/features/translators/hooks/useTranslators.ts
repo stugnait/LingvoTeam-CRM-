@@ -73,7 +73,6 @@ export function useTranslators() {
         rate_per_action: 0,
     })
     const [inlineTrafficLoading, setInlineTrafficLoading] = useState(false)
-    // Тип тарифу для інлайн форми (додавання тарифу прямо під час створення перекладача)
     const [inlineTrafficRateType, setInlineTrafficRateType] = useState<"page" | "action">("page")
 
 
@@ -90,7 +89,6 @@ export function useTranslators() {
         rate_per_action: 0,
     })
     const [trafficErrors, setTrafficErrors] = useState<Partial<Record<keyof TranslatorTrafficPayload, string>>>({})
-    // Тип тарифу для основної модалки тарифів
     const [trafficRateType, setTrafficRateType] = useState<"page" | "action">("page")
 
     const [isNewPairModalOpen, setIsNewPairModalOpen] = useState(false)
@@ -120,7 +118,6 @@ export function useTranslators() {
 
         setInlineTrafficLoading(true)
         try {
-            // Формуємо payload залежно від вибраного типу, обнуляючи непотрібне поле
             const payloadToSubmit = {
                 ...inlineTrafficForm,
                 rate_per_page: inlineTrafficRateType === "page" ? Number(inlineTrafficForm.rate_per_page || 0) : 0,
@@ -129,10 +126,7 @@ export function useTranslators() {
 
             const created = await translatorsApi.createTranslatorTraffic(payloadToSubmit)
 
-            // Додаємо новий тариф в загальний список
             setTraffic(prev => [...prev, created])
-
-            // Автоматично чекаємо його для поточного перекладача
             setForm(prev => ({
                 ...prev,
                 tariff_ids: [...prev.tariff_ids, created.id]
@@ -140,7 +134,7 @@ export function useTranslators() {
 
             setIsInlineTrafficOpen(false)
             setInlineTrafficForm({ name: "", currency_id: 0, language_pair: null, category: null, rate_per_page: 0, rate_per_action: 0 })
-            setInlineTrafficRateType("page") // Скидаємо тип
+            setInlineTrafficRateType("page")
             toast({ title: "Tariff created", description: created.name })
         } catch (e) {
             toast({ title: "Error", description: "Failed to create tariff", variant: "error" })
@@ -149,9 +143,6 @@ export function useTranslators() {
         }
     }
 
-    // -------------------------
-    // Load Helpers (INDEPENDENTLY)
-    // -------------------------
     const loadHelpers = useCallback(() => {
         const fetchCurrencies = ordersApi.listCurrency().catch(err => { console.error("Currencies error", err); return { results: [] }; });
         const fetchLanguages = translatorsApi.listLanguages().catch(err => { console.error("Languages error", err); return { results: [] }; });
@@ -203,9 +194,6 @@ export function useTranslators() {
         });
     }, []);
 
-    // -------------------------
-    // Load translators
-    // -------------------------
     const loadTranslators = useCallback(async (pageNumber: number = 1) => {
         try {
             setLoading(true)
@@ -235,9 +223,6 @@ export function useTranslators() {
         }
     }, [debouncedSearch, ordering, sourceLanguage, targetLanguage, languagePairId, toast])
 
-    // -------------------------
-    // Load Traffic
-    // -------------------------
     const loadTraffic = useCallback(async () => {
         try {
             const response = await translatorsApi.listTranslatorTraffic()
@@ -258,35 +243,26 @@ export function useTranslators() {
         loadTranslators(newPage)
     }
 
-    // -------------------------
-    // Modal handlers
-    // -------------------------
     const openAddTranslator = () => {
         setSelectedTranslator(null)
-
         setForm({
             full_name: "",
             email: "",
             phone: "",
             tariff_ids: [],
         })
-
         setErrors({})
         setIsFormOpen(true)
     }
 
     const openEditTranslator = (translator: Translator) => {
         setSelectedTranslator(translator)
-
         setForm({
             full_name: translator.full_name,
             email: translator.email,
-            phone: translator.phone,
-
-            tariff_ids:
-                translator.traffic?.map(t => t.id) || [],
+            phone: translator.phone || "",
+            tariff_ids: translator.traffic?.map(t => t.id) || [],
         })
-
         setErrors({})
         setIsFormOpen(true)
     }
@@ -303,7 +279,6 @@ export function useTranslators() {
         setIsConfirmOpen(true)
     }
 
-    // TRAFFIC MODALS
     const openAddTraffic = (translator?: Translator) => {
         setSelectedTraffic(null)
         setTrafficForm({
@@ -314,7 +289,7 @@ export function useTranslators() {
             rate_per_page: 0,
             rate_per_action: 0,
         })
-        setTrafficRateType("page") // За замовчуванням
+        setTrafficRateType("page")
         setTrafficErrors({})
         setIsTrafficFormOpen(true)
     }
@@ -329,7 +304,6 @@ export function useTranslators() {
             rate_per_page: trafficItem.rate_per_page || 0,
             rate_per_action: trafficItem.rate_per_action || 0,
         })
-        // Визначаємо тип на основі того, яке значення заповнене
         setTrafficRateType(Number(trafficItem.rate_per_action) > 0 ? "action" : "page")
         setTrafficErrors({})
         setIsTrafficFormOpen(true)
@@ -416,9 +390,6 @@ export function useTranslators() {
         }
     }
 
-    // -------------------------
-    // Submit handlers
-    // -------------------------
     const submitTranslator = async (data: TranslatorPayload) => {
         try {
             const newErrors: Partial<Record<keyof TranslatorPayload, string>> = {}
@@ -429,7 +400,7 @@ export function useTranslators() {
             } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
                 newErrors.email = "Invalid email format"
             }
-            if (!data.phone.trim()) newErrors.phone = "Phone is required"
+            // ВИДАЛЕНО: Перевірку обов'язкового телефону прибрано
 
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors)
@@ -475,7 +446,6 @@ export function useTranslators() {
 
             setTrafficErrors({})
 
-            // Формуємо payload залежно від вибраного типу
             const payloadToSubmit = {
                 ...trafficForm,
                 rate_per_page: trafficRateType === "page" ? Number(trafficForm.rate_per_page || 0) : 0,
@@ -545,9 +515,6 @@ export function useTranslators() {
         }
     }
 
-    // -------------------------
-    // Public API
-    // -------------------------
     return {
         translators,
         loading,
@@ -569,7 +536,6 @@ export function useTranslators() {
         confirmAction,
         selectedTranslator,
 
-        // Traffic & Select options
         traffic,
         isTrafficFormOpen,
         trafficForm,
@@ -587,7 +553,6 @@ export function useTranslators() {
         newPairLoading,
         createAndSelectLanguagePair,
 
-        // Додані стейти для перемикання типів тарифу
         trafficRateType,
         setTrafficRateType,
         inlineTrafficRateType,

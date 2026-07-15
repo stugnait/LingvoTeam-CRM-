@@ -345,7 +345,8 @@ export default function TranslatorsPage() {
                         </Button>
                     </ModalField>
 
-                    <ModalField label={t("profile.phone")} required error={errors?.phone}>
+                    {/* Поле телефону без обов'язкового параметра (required прибрано) */}
+                    <ModalField label={t("profile.phone")} error={errors?.phone}>
                         <PatternFormat
                             format="+38 (###) ###-##-##"
                             allowEmptyFormatting
