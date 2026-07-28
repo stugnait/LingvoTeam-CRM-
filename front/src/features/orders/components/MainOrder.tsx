@@ -1,4 +1,3 @@
-// src/features/orders/components/MainOrder.tsx
 "use client"
 
 import { Button } from "@/src/components/ui/button"
@@ -17,6 +16,9 @@ import { ordersApi } from "@/src/features/orders/api"
 import OrdersKanbanBoard from "./OrdersKanbanBoard"
 import { TaskModal } from "@/src/components/modals/jira/InfoModal"
 import { useI18n } from "@/src/shared/i18n/I18nProvider"
+
+// Імпорти для модального вікна вибору email (без RadioGroup)
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/src/components/ui/dialog"
 
 export default function OrdersPage() {
     const { locale, t } = useI18n()
@@ -83,14 +85,16 @@ export default function OrdersPage() {
     const [viewingOrder, setViewingOrder] = useState<any | null>(null)
     const [isViewModalOpen, setIsViewModalOpen] = useState(false)
 
-    // Результати аналізу парок
     const [sourceStats, setSourceStats] = useState<any | null>(null)
     const [sourceStatsLoading, setSourceStatsLoading] = useState(false)
     const [targetStats, setTargetStats] = useState<any | null>(null)
     const [targetStatsLoading, setTargetStatsLoading] = useState(false)
 
-    // 👉 ДОДАНО: Стан завантаження для target-файлів менеджером
     const [isUploadingTarget, setIsUploadingTarget] = useState(false)
+
+    // Стейт для модалки вибору email при підтвердженні ордера
+    const [confirmModalData, setConfirmModalData] = useState<{ isOpen: boolean, orderId: number, emails: string[] } | null>(null)
+    const [selectedConfirmEmail, setSelectedConfirmEmail] = useState<string>("")
 
     const [clientId, setClientId] = useState("")
     const [sourceLanguage, setSourceLanguage] = useState("")
@@ -117,6 +121,35 @@ export default function OrdersPage() {
     const router = useRouter()
     const [totalAmount, setTotalAmount] = useState("")
 
+
+    // Функція-перехоплювач підтвердження
+    const handleConfirmOrderRequest = async (orderId: number) => {
+        const orderToConfirm = orders.find(o => o.id === orderId)
+
+        // Беремо ID з того, що прийшло (на скріншоті чітко видно client_id)
+        const currentClientId = orderToConfirm?.client_id
+
+        // Шукаємо повного клієнта в масиві clients (приводимо до Number для надійності)
+        const fullClient = clients.find(c => Number(c.id) === Number(currentClientId))
+
+        let clientEmails: string[] = []
+
+        // Перевіряємо і новий масив emails, і старе поле email (раптом що)
+        if (fullClient?.emails && Array.isArray(fullClient.emails) && fullClient.emails.length > 0) {
+            clientEmails = fullClient.emails
+        } else if (fullClient?.email) {
+            clientEmails = [fullClient.email]
+        }
+
+        // Якщо знайшли хоча б один емейл - завжди показуємо модалку
+        if (clientEmails.length > 0) {
+            setConfirmModalData({ isOpen: true, orderId, emails: clientEmails })
+            setSelectedConfirmEmail(clientEmails[0])
+        } else {
+            alert(`У клієнта ${orderToConfirm?.client_name} не вказано жодного email. Замовлення буде підтверджено, але лист не надіслано.`)
+            confirmOrder(orderId, "")
+        }
+    }
 
 
     const handleUpdateClientStatus = async (orderId: number, statusId: number) => {
@@ -199,33 +232,25 @@ export default function OrdersPage() {
 
     const handleEdit = async (order: any) => {
         try {
-            // 1. Завантажуємо повні деталі замовлення (для точних ID)
             const details = await loadOrderDetails(order.id)
-
-            // 2. Завантажуємо файли ордера (щоб відобразити в модалці)
             await loadOrderFiles(order.id)
 
-            // 3. Зливаємо дані: details мають вищий пріоритет
             const merged = { ...order, ...details }
             setEditingOrder(merged)
 
-            // 4. КЛІЄНТ
             const cId = merged.client?.id || merged.client_id
             setClientId(cId ? String(cId) : "")
 
-            // 5. МОВИ (шукаємо ID за існуючим ID або за текстовою назвою)
             const sLang = languages.find(l => l.id === merged.source_language_id || l.name === merged.source_language)
             setSourceLanguage(sLang ? String(sLang.id) : "")
 
             const tLang = languages.find(l => l.id === merged.target_language_id || l.name === merged.target_language)
             setTargetLanguage(tLang ? String(tLang.id) : "")
 
-            // 6. ТАРИФ І ВАЛЮТА
             setTrafficId(String(merged.traffic_id ?? ""))
             setCurrencyId(String(merged.currency_id ?? ""))
             setLanguagePairId(String(merged.language_pair_id ?? ""))
 
-            // 7. РЕДАКТОР І ПЕРЕКЛАДАЧ
             const edId = merged.editor?.id || merged.editor_id
             setEditor(edId ? String(edId) : "")
 
@@ -233,17 +258,14 @@ export default function OrdersPage() {
             setSelectedTranslatorId(trId ? Number(trId) : null)
             setTranslatorTrafficId(String(merged.translator_traffic_id ?? ""))
 
-            // 8. МЕНЕДЖЕРИ
             setManagerAccept(String(merged.manager_accept_id ?? ""))
             setManagerDelivery(String(merged.manager_delivery_id ?? ""))
 
-            // 9. ІНШІ ДАНІ (дедлайн, пріоритет, коментар, сума)
             setDeadline(merged.deadline ? new Date(merged.deadline) : undefined)
             setComment(merged.client_comment ?? merged.comment ?? "")
             setPriority(merged.priority ?? undefined)
             setTotalAmount(String(merged.total_client_price ?? merged.total_amount ?? ""))
 
-            // 10. Відкриваємо модалку редагування тільки після завантаження всіх даних
             setIsModalOpen(true)
         } catch (error) {
             console.error("Помилка завантаження деталей для редагування:", error)
@@ -320,7 +342,6 @@ export default function OrdersPage() {
         }
     }
 
-    // 👉 ДОДАНО: Функція завантаження файлів у Target папку замовлення менеджером
     const handleUploadTargetFiles = async (files: File[]) => {
         if (!viewingOrder) return false
         try {
@@ -330,7 +351,6 @@ export default function OrdersPage() {
 
             await ordersApi.uploadTargetFiles(viewingOrder.id, formData)
 
-            // Після завантаження автоматично оновлюємо файлову структуру в модалці
             loadOrderFiles(viewingOrder.id)
             return true
         } catch (error) {
@@ -396,7 +416,11 @@ export default function OrdersPage() {
                             dateToFilter={dateToFilter} onDateToChange={handleDateToChange}
                             managers={managers || []} onOpen={loadOrderDetails} languagePairs={languagePairs}
                             translatorsCache={translatorsCache} clients={clients || []} highlightId={activeHighlightId}
-                            confirmOrder={confirmOrder} downloadOrderSourceFiles={downloadOrderSourceFiles}
+
+                            // Передаємо наш перехоплювач замість прямого виклику
+                            confirmOrder={handleConfirmOrderRequest}
+
+                            downloadOrderSourceFiles={downloadOrderSourceFiles}
                             downloadOrderTargetFiles={downloadOrderTargetFiles} onEdit={handleEdit}
                             onDelete={(id) => deleteOrder(id)} updateOrder={updateOrder}
                             searchFilter={searchFilter} onSearchChange={handleSearchChange}
@@ -451,14 +475,13 @@ export default function OrdersPage() {
                     onDeleteFile={(orderId, fileId) => deleteOrderFile(orderId, fileId)}
                     deleteFileLoadingId={deleteFileLoading}
 
-                    // 👉 ДОДАНО ФУНКЦІЇ ДЛЯ ТРЬОХ КРАПОК
                     onEdit={() => {
-                        setIsViewModalOpen(false) // Закриваємо модалку деталей
-                        handleEdit(viewingOrder)  // Відкриваємо модалку редагування
+                        setIsViewModalOpen(false)
+                        handleEdit(viewingOrder)
                     }}
                     onDelete={() => {
-                        setIsViewModalOpen(false)     // Закриваємо модалку
-                        deleteOrder(viewingOrder.id)  // Видаляємо
+                        setIsViewModalOpen(false)
+                        deleteOrder(viewingOrder.id)
                     }}
 
                     orderId={viewingOrder.id}
@@ -480,6 +503,50 @@ export default function OrdersPage() {
                     isUploadingTarget={isUploadingTarget}
                 />
             )}
+
+            {/* Модалка вибору email для підтвердження зі стандартними HTML input radio */}
+            <Dialog open={confirmModalData?.isOpen} onOpenChange={(open) => !open && setConfirmModalData(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Оберіть email для відправки</DialogTitle>
+                        <DialogDescription>
+                            У цього клієнта є декілька email-адрес. Оберіть, на яку саме відправити готове замовлення.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4 flex flex-col gap-3">
+                        {confirmModalData?.emails.map(email => (
+                            <label key={email} className="flex items-center space-x-3 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="confirm-email"
+                                    value={email}
+                                    checked={selectedConfirmEmail === email}
+                                    onChange={(e) => setSelectedConfirmEmail(e.target.value)}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                />
+                                <span className="font-medium text-sm">{email}</span>
+                            </label>
+                        ))}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmModalData(null)}>Скасувати</Button>
+                        <Button
+                            disabled={!selectedConfirmEmail}
+                            onClick={() => {
+                                if (confirmModalData) {
+                                    confirmOrder(confirmModalData.orderId, selectedConfirmEmail)
+                                    setConfirmModalData(null)
+                                }
+                            }}
+                        >
+                            Відправити
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </div>
     )
 }

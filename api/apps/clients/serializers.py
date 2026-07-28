@@ -10,13 +10,19 @@ class ClientCategorySerializer(serializers.ModelSerializer):
 class ClientSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True, default="---")
     discount_percent = serializers.FloatField(source='category.discount_percent', read_only=True, default=0)
+    emails = serializers.ListField(
+        child=serializers.EmailField(),
+        required=False,
+        allow_empty=True,
+        default=list
+    )
 
     class Meta:
         model = Client
         fields = [
             'id',
             'full_name',
-            'email',
+            'emails',
             'phone_number',
             'category',
             'category_name',
@@ -26,7 +32,7 @@ class ClientSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
         # Робимо поля необов'язковими на рівні API
         extra_kwargs = {
-            'email': {'required': False, 'allow_blank': True, 'allow_null': True},
+            'emails': {'required': False, 'allow_blank': True, 'allow_null': True},
             'phone_number': {'required': False, 'allow_blank': True, 'allow_null': True},
             'category': {'required': False, 'allow_null': True},
         }

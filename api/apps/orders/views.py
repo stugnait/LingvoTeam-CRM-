@@ -397,6 +397,61 @@ class OrderViewSet(viewsets.ModelViewSet):
             "files": file_results
         })
 
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        # Обробляємо дані так само, як у create
+        data = request.data.dict() if hasattr(request.data, 'getlist') else request.data.copy()
+
+        # Отримуємо нові файли, якщо вони є
+        new_files = []
+        if hasattr(request.data, 'getlist'):
+            new_files = request.data.getlist('files')
+            if new_files:
+                data.pop('files', None)  # Видаляємо з data, щоб серіалізатор не сварився
+
+        # Якщо прийшли нові мови, треба оновити language_pair
+        if 'source_language' in data and 'target_language' in data:
+            source_id = data.pop('source_language')
+            target_id = data.pop('target_language')
+            try:
+                language_pair_instance, created = LanguagePair.objects.get_or_create(
+                    source_language_id=source_id,
+                    target_language_id=target_id
+                )
+                data['language_pair_id'] = language_pair_instance.id
+            except Exception as e:
+                pass  # Якщо помилка, залишаємо стару пару
+
+        # Робимо стандартне оновлення полів
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        # ЯКЩО Є НОВІ ФАЙЛИ - ЗАВАНТАЖУЄМО ЇХ В DROPBOX!
+        if new_files:
+            # 1. Завантажуємо в Dropbox
+            stats_data = self._analyze_and_upload_files(instance, new_files)
+
+            # 2. Додаємо статистику нових файлів до існуючої
+            totals = stats_data.get("total_stats", {})
+            instance.page_count = (instance.page_count or 0) + totals.get("physical_pages", 0)
+            instance.symbols_count = (instance.symbols_count or 0) + totals.get("chars_no_spaces", 0)
+            instance.symbols_with_spaces_count = (instance.symbols_with_spaces_count or 0) + totals.get(
+                "chars_with_spaces", 0)
+            instance.images_count = (instance.images_count or 0) + totals.get("images", 0)
+
+            instance.save(update_fields=['page_count', 'symbols_count', 'symbols_with_spaces_count', 'images_count'])
+
+        return Response(serializer.data)
+
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
     def _analyze_and_upload_files(self, order, files):
         total_stats = {
             "chars_with_spaces": 0,
@@ -1464,8 +1519,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="Підтвердити та активувати замовлення",
         description=(
-            "Змінює статус замовлення на 'Виконано' (ID 4), генерує унікальне посилання з паролем "
-            "для клієнта, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
+                "Змінює статус замовлення на 'Виконано' (ID 4), генерує унікальне посилання з паролем "
+                "для клієнта, аналізує завантажені файли (сторінки/символи) та надсилає запрошення."
         ),
         operation_id="confirm_order_with_files",
         responses={200: OpenApiTypes.OBJECT},
@@ -1474,6 +1529,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="confirm-order")
     def confirm_order(self, request, pk=None):
         order = self.get_object()
+
+        # 1. ЧИТАЄМО ЕМЕЙЛ З URL
+        target_email = request.query_params.get("target_email")
 
         qs = (
             File.objects
@@ -1505,7 +1563,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.client_status = done_status
             order.save(update_fields=["status_id", "client_status"])
 
-        self._generate_client_link_and_notify(order)
+        # 2. ПЕРЕДАЄМО ЕМЕЙЛ ДАЛІ
+        self._generate_client_link_and_notify(order, target_email)
 
         return Response(
             {
@@ -1518,6 +1577,66 @@ class OrderViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    def _send_client_invite(self, order, full_link, password, expire_date, recipient_email):
+        try:
+            subject = f"Готове замовлення - LingvoTeam"
+            message = (
+                f"Вітаємо!\n\n"
+                f"Ваше замовлення готове. Посилання з роботою: {full_link}\n"
+                f"Пароль доступу: {password}\n\n"
+                f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
+                f"З повагою, команда LingvoTeam."
+            )
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient_email],  # ТЕПЕР ВІДПРАВЛЯЄМО НА РЯДОК ЕМЕЙЛУ
+                fail_silently=False,
+            )
+        except Exception as e:
+            logger.error(f"Email error: {e}")
+
+    def _generate_client_link_and_notify(self, order, target_email=None):
+        if not order.client_id:
+            return
+
+        client_emails = getattr(order.client_id, 'emails', [])
+        emails_to_use = client_emails if client_emails else []
+
+        if not emails_to_use and getattr(order.client_id, 'email', None):
+            emails_to_use = [order.client_id.email]
+
+        recipient_email = target_email if target_email else (emails_to_use[0] if emails_to_use else None)
+
+        if not recipient_email:
+            logger.warning(f"No recipient email found for order {order.id}")
+            return
+
+        # 3. ПЕРЕВІРЯЄМО, ЧИ ВЖЕ Є ЛІНК (і не виходимо з функції, якщо він є!)
+        existing_link = OrderLink.objects.filter(order=order, assignee=OrderLink.Assignee.CLIENT).first()
+
+        if existing_link:
+            client_generated_link_slug = existing_link.link
+            client_generated_password = existing_link.password
+            expire_date = existing_link.expire_at
+        else:
+            client_generated_link_slug = str(uuid.uuid4())
+            client_generated_password = secrets.token_urlsafe(8)
+            expire_date = timezone.now() + timedelta(days=45)
+
+            OrderLink.objects.create(
+                order=order,
+                assignee=OrderLink.Assignee.CLIENT,
+                link=client_generated_link_slug,
+                password=client_generated_password,
+                expire_at=expire_date
+            )
+
+        base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        full_client_link = f"{base_url}/clients/{client_generated_link_slug}"
+
+        self._send_client_invite(order, full_client_link, client_generated_password, expire_date, recipient_email)
     # --- Private Helpers ---
 
     def _get_language_pair(self, raw_lp_id):
@@ -1727,50 +1846,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         except Exception as e:
             logger.error(f"Email error: {e}")
-
-    def _send_client_invite(self, order, full_link, password, expire_date, recipient):
-        try:
-            subject = f"Нове замовлення - LingvoTeam"
-            message = (
-                f"Вітаємо, {recipient.full_name}!\n\n"
-                f"Посилання з роботою: {full_link}\n"
-                f"Пароль доступу: {password}\n\n"
-                f"Термін дії посилання: до {expire_date.strftime('%d.%m.%Y %H:%M')}\n\n"
-                f"З повагою, команда LingvoTeam."
-            )
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient.email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            logger.error(f"Email error: {e}")
-
-    def _generate_client_link_and_notify(self, order):
-        if OrderLink.objects.filter(order=order, assignee=OrderLink.Assignee.CLIENT).exists():
-            return
-
-        if not (order.client_id and order.client_id.email):
-            return
-
-        client_generated_link_slug = str(uuid.uuid4())
-        client_generated_password = secrets.token_urlsafe(8)
-        expire_date = timezone.now() + timedelta(days=45)
-
-        OrderLink.objects.create(
-            order=order,
-            assignee=OrderLink.Assignee.CLIENT,
-            link=client_generated_link_slug,
-            password=client_generated_password,
-            expire_at=expire_date
-        )
-
-        base_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
-        full_client_link = f"{base_url}/clients/{client_generated_link_slug}"
-
-        self._send_client_invite(order, full_client_link, client_generated_password, expire_date, order.client_id)
 
     @extend_schema(
         summary="Перемістити замовлення",

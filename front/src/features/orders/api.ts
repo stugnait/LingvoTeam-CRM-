@@ -227,13 +227,20 @@ export const ordersApi = {
             }
         ),
 
-    confirmOrder: (orderId: number) =>
-        apiFetch<{ message: string; slug: string }>(
-            `orders/${orderId}/confirm-order/`,
-            {
-                method: "GET",
-            }
-        ),
+        confirmOrder: (orderId: number, targetEmail?: string) => {
+            // Формуємо URL залежно від того, чи є емейл
+            const url = targetEmail
+                ? `orders/${orderId}/confirm-order/?target_email=${targetEmail}`
+                : `orders/${orderId}/confirm-order/`;
+
+            return apiFetch<{ message: string; slug: string }>(
+                url,
+                {
+                    method: "GET",
+                }
+            );
+        },
+
     getEditorsByLanguagePair: (sourceLanguageId: number, targetLanguageId: number) =>
         apiFetch<EditorsByLanguagePairResponse>(
             `orders/editors-by-language-pair/?source_language_id=${sourceLanguageId}&target_language_id=${targetLanguageId}`,

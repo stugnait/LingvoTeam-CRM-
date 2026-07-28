@@ -3,7 +3,8 @@
 import { useState, useRef } from "react"
 import { Button } from "@/src/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
-import { Plus, Users, Tags, Upload } from "lucide-react"
+// ДОДАНО ІКОНКУ X (Хрестик) для видалення емейлу
+import { Plus, Users, Tags, Upload, X } from "lucide-react"
 import { PatternFormat } from 'react-number-format'
 import { cn } from "@/src/lib/utils"
 
@@ -24,34 +25,22 @@ import { useI18n } from "@/src/shared/i18n/I18nProvider"
 export function ClientPage() {
     const { t } = useI18n()
 
-    // === СТАН ДЛЯ ПЕРЕМИКАННЯ РЕЖИМІВ ===
     const [viewMode, setViewMode] = useState<"clients" | "categories">("clients")
 
-    // === КЛІЄНТИ ===
     const {
         clients, page, totalPages, onPageChange, search, setSearch,
         categoryFilter, setCategoryFilter,
         isFormOpen, isDeleteOpen, selectedClient, form, setForm, errors,
         openAddClient, openEditClient, openDeleteClient, submitClient,
         handleConfirm, closeModals,
-        loading, handleImportExcel // <--- ДІСТАЄМО СТАНИ ТА ФУНКЦІЮ ІМПОРТУ
+        loading, handleImportExcel
     } = useClientsCreation()
 
-    // === КАТЕГОРІЇ ===
     const {
-        categories,
-        isFormOpen: isCatFormOpen,
-        isDeleteOpen: isCatDeleteOpen,
-        selectedCategory,
-        form: catForm,
-        setForm: setCatForm,
-        errors: catErrors,
-        openAddCategory,
-        openEditCategory,
-        openDeleteCategory,
-        submitCategory,
-        handleConfirm: handleCatConfirm,
-        closeModals: closeCatModals,
+        categories, isFormOpen: isCatFormOpen, isDeleteOpen: isCatDeleteOpen,
+        selectedCategory, form: catForm, setForm: setCatForm, errors: catErrors,
+        openAddCategory, openEditCategory, openDeleteCategory, submitCategory,
+        handleConfirm: handleCatConfirm, closeModals: closeCatModals,
     } = useClientsCategories()
 
     const categoryOptions = categories?.map(cat => ({
@@ -59,7 +48,6 @@ export function ClientPage() {
         label: cat.name,
     }))
 
-    // === РЕФ ДЛЯ ІНПУТА ФАЙЛІВ ===
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const onFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,7 +107,6 @@ export function ClientPage() {
                             </div>
 
                             <div className="flex items-center gap-2 w-full sm:w-auto">
-                                {/* Кнопка імпорту показується тільки для клієнтів */}
                                 {viewMode === "clients" && (
                                     <>
                                         <input
@@ -226,19 +213,54 @@ export function ClientPage() {
                         {errors.full_name && <p className="text-red-500 text-sm mt-1">{errors.full_name}</p>}
                     </div>
 
+                    {/* --- НОВИЙ БЛОК ДЛЯ МАСИВУ ЕМЕЙЛІВ --- */}
                     <div>
                         <div className="flex justify-between items-center mb-1">
                             <label className="text-sm font-medium">{t("auth.email")}</label>
                             <span className="text-xs text-muted-foreground">(необов&#39;язково)</span>
                         </div>
-                        <Input
-                            placeholder={t("auth.email")}
-                            value={form.email || ""}
-                            className={errors?.email ? "border-red-500" : ""}
-                            onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                        />
-                        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                        <div className="space-y-2">
+                            {form.emails.map((email, idx) => (
+                                <div key={idx} className="flex gap-2">
+                                    <Input
+                                        placeholder="example@mail.com"
+                                        value={email}
+                                        className={errors?.emails ? "border-red-500" : ""}
+                                        onChange={(e) => {
+                                            const newEmails = [...form.emails]
+                                            newEmails[idx] = e.target.value
+                                            setForm(prev => ({ ...prev, emails: newEmails }))
+                                        }}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => {
+                                            const newEmails = form.emails.filter((_, i) => i !== idx)
+                                            setForm(prev => ({ ...prev, emails: newEmails }))
+                                        }}
+                                        className="shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setForm(prev => ({ ...prev, emails: [...prev.emails, ""] }))}
+                                className="w-full border-dashed text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Додати ще емейл
+                            </Button>
+                        </div>
+                        {errors.emails && <p className="text-red-500 text-sm mt-1">{errors.emails}</p>}
                     </div>
+                    {/* --- КІНЕЦЬ БЛОКУ ЕМЕЙЛІВ --- */}
 
                     <div>
                         <div className="flex justify-between items-center mb-1">

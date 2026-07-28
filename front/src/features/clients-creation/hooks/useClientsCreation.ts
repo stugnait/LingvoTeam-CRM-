@@ -8,7 +8,6 @@ import { clientsCreationApi } from "../api"
 import type { Client, ClientFormData } from "../types"
 
 export function useClientsCreation() {
-
     const { toast } = useToast()
     const [clients, setClients] = useState<Client[]>([])
     const [loading, setLoading] = useState(false)
@@ -21,7 +20,7 @@ export function useClientsCreation() {
 
     const [form, setForm] = useState<ClientFormData>({
         full_name: "",
-        email: "",
+        emails: [], // За замовчуванням порожній масив
         phone_number: "",
         category: null
     })
@@ -41,8 +40,6 @@ export function useClientsCreation() {
                 title: "Успіх",
                 description: response.message || "Клієнтів успішно імпортовано",
             })
-
-            // Перезавантажуємо першу сторінку після імпорту
             await loadClients(1)
 
         } catch (error: any) {
@@ -56,11 +53,9 @@ export function useClientsCreation() {
         }
     }
 
-
     const loadClients = useCallback(async (pageNumber: number = 1) => {
         try {
             setLoading(true)
-
             const response = await clientsCreationApi.list(
                 pageNumber,
                 debouncedSearch,
@@ -72,13 +67,11 @@ export function useClientsCreation() {
             setPage(pageNumber)
 
         } catch (error) {
-
             toast({
                 title: "Error",
                 description: "Failed to load clients",
                 variant: "error",
             })
-
         } finally {
             setLoading(false)
         }
@@ -92,7 +85,6 @@ export function useClientsCreation() {
         const timer = setTimeout(() => {
             setDebouncedSearch(search)
         }, 400)
-
         return () => clearTimeout(timer)
     }, [search])
 
@@ -104,7 +96,7 @@ export function useClientsCreation() {
         setSelectedClient(null)
         setForm({
             full_name: "",
-            email: "",
+            emails: [""], // Відкриваємо з одним порожнім полем
             phone_number: "",
             category: null
         })
@@ -116,7 +108,7 @@ export function useClientsCreation() {
         setSelectedClient(client)
         setForm({
             full_name: client.full_name,
-            email: client.email || "",
+            emails: client.emails && client.emails.length > 0 ? [...client.emails] : [""],
             phone_number: client.phone_number || "",
             category: client.category?.id || null
         })
@@ -137,7 +129,6 @@ export function useClientsCreation() {
     }
 
     const submitClient = async (data: ClientFormData) => {
-
         try {
             const newErrors: Partial<Record<keyof ClientFormData, string>> = {}
 
@@ -145,10 +136,17 @@ export function useClientsCreation() {
                 newErrors.full_name = "Full name is required"
             }
 
-            if (data.email && data.email.trim() !== "") {
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-                    newErrors.email = "Invalid email format"
+            // Валідація масиву емейлів
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            let hasEmailError = false
+            data.emails.forEach(email => {
+                if (email.trim() !== "" && !emailRegex.test(email)) {
+                    hasEmailError = true
                 }
+            })
+
+            if (hasEmailError) {
+                newErrors.emails = "Один або кілька емейлів мають неправильний формат"
             }
 
             if (Object.keys(newErrors).length > 0) {
@@ -158,9 +156,14 @@ export function useClientsCreation() {
 
             setErrors({})
 
+            // Фільтруємо порожні емейли перед відправкою
+            const validEmails = data.emails
+                .map(e => e.trim())
+                .filter(e => e !== "")
+
             const payload = {
                 ...data,
-                email: data.email?.trim() ? data.email.trim() : null,
+                emails: validEmails,
                 phone_number: data.phone_number?.trim() ? data.phone_number.trim() : null,
             }
 
@@ -191,7 +194,7 @@ export function useClientsCreation() {
     }
 
     const confirmDelete = async () => {
-        if (!selectedClient) {return}
+        if (!selectedClient) return
         try {
             await clientsCreationApi.remove(selectedClient.id)
             toast({
@@ -210,33 +213,15 @@ export function useClientsCreation() {
     }
 
     const handleConfirm = async () => {
-        if (!selectedClient) {return}
+        if (!selectedClient) return
         await confirmDelete()
     }
 
     return {
-        clients,
-        loading,
-        page,
-        totalPages,
-        onPageChange,
-        isFormOpen,
-        isDeleteOpen,
-        selectedClient,
-        form,
-        setForm,
-        errors,
-        search,
-        setSearch,
-        categoryFilter,
-        setCategoryFilter,
-        openAddClient,
-        openEditClient,
-        openDeleteClient,
-        submitClient,
-        confirmDelete,
-        handleConfirm,
-        closeModals,
-        handleImportExcel
+        clients, loading, page, totalPages, onPageChange,
+        isFormOpen, isDeleteOpen, selectedClient, form, setForm, errors,
+        search, setSearch, categoryFilter, setCategoryFilter,
+        openAddClient, openEditClient, openDeleteClient,
+        submitClient, confirmDelete, handleConfirm, closeModals, handleImportExcel
     }
 }

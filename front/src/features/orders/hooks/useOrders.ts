@@ -372,12 +372,13 @@ export function useOrders() {
         }
     }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, loadOrders, handleError, handleSuccess])
 
-    const confirmOrder = useCallback(async (orderId: number) => {
+    const confirmOrder = useCallback(async (orderId: number, targetEmail?: string) => {
         try {
             setUpdateLoading(orderId)
 
             if (ordersApi.confirmOrder) {
-                await ordersApi.confirmOrder(orderId)
+                // ЗМІНЕНО: Передаємо email в API
+                await ordersApi.confirmOrder(orderId, targetEmail)
             } else {
                 console.warn("Потрібно реалізувати ordersApi.confirmOrder у файлі api.ts")
             }
@@ -390,7 +391,6 @@ export function useOrders() {
             setUpdateLoading(null)
         }
     }, [page, isOnlyMineFilter, statusFilter, managerFilter, dateFromFilter, dateToFilter, loadOrders, handleError, handleSuccess])
-
 
     /* ======================
        UPDATE ORDER

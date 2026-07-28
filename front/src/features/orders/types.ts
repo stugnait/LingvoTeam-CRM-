@@ -112,6 +112,7 @@ export interface Client {
     email: string
     phone_number: string
     category: string
+    emails?: string[];
 
     category_name: number
 

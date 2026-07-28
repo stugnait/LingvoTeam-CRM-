@@ -81,7 +81,12 @@ export function ClientTable({
                                         )}
                                     </div>
                                 </TableCell>
-                                <TableCell>{client.email || "—"}</TableCell>
+                                {/* ЗМІНЕНО: Вивід масиву емейлів */}
+                                <TableCell>
+                                    {client.emails && client.emails.length > 0
+                                        ? client.emails.join(", ")
+                                        : "—"}
+                                </TableCell>
                                 <TableCell>{client.phone_number || "—"}</TableCell>
                                 <TableCell>
                                     <DropdownMenu>
@@ -114,7 +119,12 @@ export function ClientTable({
                     <div key={client.id} className="flex items-center justify-between px-4 py-3 gap-3">
                         <div className="min-w-0 space-y-1">
                             <p className="font-medium text-sm truncate">{client.full_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{client.email || "—"}</p>
+                            {/* ЗМІНЕНО: Вивід масиву емейлів для мобілки */}
+                            <p className="text-xs text-muted-foreground truncate">
+                                {client.emails && client.emails.length > 0
+                                    ? client.emails.join(", ")
+                                    : "—"}
+                            </p>
                             <p className="text-xs text-muted-foreground">{client.phone_number || "—"}</p>
                             <div className="flex items-center gap-1 flex-wrap">
                                 <Badge variant={client.category ? "secondary" : "outline"} className="text-xs">

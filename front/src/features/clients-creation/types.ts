@@ -7,7 +7,7 @@ export interface ClientCategory {
 export interface Client {
     id: number
     full_name: string
-    email: string | null
+    emails: string[];
     phone_number: string | null
     category: ClientCategory | null
     // Додаткові поля, які приходять з ClientSerializer
@@ -18,7 +18,7 @@ export interface Client {
 
 export interface ClientFormData {
     full_name: string
-    email: string | null       // Додано | null
+    emails: string[]      // Додано | null
     phone_number: string | null // Додано | null
     category: number | null
 }

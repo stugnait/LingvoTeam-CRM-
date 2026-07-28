@@ -501,9 +501,34 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
             console.error("Помилка видалення чернетки:", error)
         }
 
-        onSubmit({
-            manualStats: isManualStats ? manualStats : null
-        })
+        // Збираємо всі дані для відправки
+        const submitData: any = {
+            manualStats: isManualStats ? manualStats : null,
+            client_id: clientId,
+            source_language: sourceLanguage,
+            target_language: targetLanguage,
+            traffic_id: trafficId,
+            currency_id: currencyId,
+            editor_id: editor,
+            manager_accept_id: managerAccept,
+            manager_delivery_id: managerDelivery,
+            translator_id: selectedTranslatorId,
+            translator_traffic_id: translatorTrafficId,
+            comment: comment,
+            priority: priority,
+            total_amount: totalAmount,
+        };
+
+        if (deadline) {
+            submitData.deadline = deadline.toISOString();
+        }
+
+        // ЯКЩО Є НОВІ ФАЙЛИ - ОБОВ'ЯЗКОВО ПЕРЕДАЄМО ЇХ!
+        if (files && files.length > 0) {
+            submitData.files = files;
+        }
+
+        onSubmit(submitData)
     }
 
     const stepValidation = (step: number): boolean => {

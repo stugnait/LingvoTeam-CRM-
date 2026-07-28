@@ -78,10 +78,10 @@ class ClientViewSet(viewsets.ModelViewSet):
     permission_classes = [HasPermission]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
-    search_fields = ['full_name', 'email']
+    search_fields = ['full_name', 'emails__icontains']
 
     ordering = ['-id']
-    ordering_fields = ['-id', 'full_name', 'email']
+    ordering_fields = ['-id', 'full_name']
 
     filterset_fields = ['category']
 
@@ -101,25 +101,23 @@ class ClientViewSet(viewsets.ModelViewSet):
             ws = wb.active
             clients_to_create = []
 
-            # Очікуємо структуру: Колонки A: Ім'я, B: Email, C: Телефон
-            # min_row=2 пропускає перший рядок (заголовки таблиці)
             for row in ws.iter_rows(min_row=2, values_only=True):
                 full_name = str(row[0]).strip() if row[0] is not None else None
-                email = str(row[1]).strip() if row[1] is not None else None
+                email_val = str(row[1]).strip() if row[1] is not None else None  # Зчитали емейл
                 phone = str(row[2]).strip() if row[2] is not None else None
 
-                # Ім'я обов'язкове. Якщо його немає — пропускаємо рядок
                 if not full_name:
                     continue
 
+                # ЗМІНА: Перетворюємо одиночний рядок з Excel на масив (список)
+                parsed_emails = [email_val] if email_val else []
+
                 clients_to_create.append(Client(
                     full_name=full_name,
-                    email=email if email else None,
+                    emails=parsed_emails,  # ЗАМІНИЛИ email=email на emails=parsed_emails
                     phone_number=phone if phone else None
-                    # Категорію спеціально не вказуємо (вона буде null)
                 ))
 
-            # Масове створення для швидкодії (1 запит до БД замість тисячі)
             Client.objects.bulk_create(clients_to_create)
 
             return Response(
